@@ -1,0 +1,358 @@
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Create axios instance
+const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  timeout: 60000, // Increased to 60 seconds for slow connections
+});
+
+// Retry configuration
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
+
+// Helper function to delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Request interceptor - add auth token
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error: AxiosError) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - handle errors with retry logic
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
+    
+    // Don't retry if no config or if it's a 401/403 error
+    if (!config || error.response?.status === 401 || error.response?.status === 403) {
+      if (error.response?.status === 401) {
+        // Unauthorized - clear token and redirect to login
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      }
+      return Promise.reject(error);
+    }
+
+    // Initialize retry count
+    config._retryCount = config._retryCount || 0;
+
+    // Check if we should retry (network errors or timeout)
+    const shouldRetry = 
+      config._retryCount < MAX_RETRIES && 
+      (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || !error.response);
+
+    if (shouldRetry) {
+      config._retryCount += 1;
+      console.log(`Retrying request (${config._retryCount}/${MAX_RETRIES})...`);
+      await delay(RETRY_DELAY * config._retryCount);
+      return api(config);
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+
+// Auth API
+export const authAPI = {
+  login: (email: string, password: string) =>
+    api.post('/login', { email, password }),
+  
+  logout: () =>
+    api.post('/logout'),
+  
+  me: () =>
+    api.get('/me'),
+  
+  register: (data: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    class_id?: number;
+  }) => api.post('/register', data),
+};
+
+// User API
+export const userAPI = {
+  getAll: (params?: { role?: string; class_id?: number; page?: number; per_page?: number }) =>
+    api.get('/users', { params }),
+  
+  getById: (id: number) =>
+    api.get(`/users/${id}`),
+  
+  create: (data: Partial<{
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    class_id: number;
+  }>) => api.post('/users', data),
+  
+  update: (id: number, data: Partial<{
+    name: string;
+    email: string;
+    role: string;
+    class_id: number;
+  }>) => api.put(`/users/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/users/${id}`),
+};
+
+// Class API
+export const classAPI = {
+  getAll: () =>
+    api.get('/classes'),
+  
+  getById: (id: number) =>
+    api.get(`/classes/${id}`),
+  
+  create: (data: { name: string; grade?: string; grade_level?: string; academic_year: string }) =>
+    api.post('/classes', data),
+  
+  update: (id: number, data: Partial<{ name: string; grade?: string; grade_level?: string; academic_year: string }>) =>
+    api.put(`/classes/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/classes/${id}`),
+  
+  getStudents: (id: number) =>
+    api.get(`/classes/${id}/students`),
+};
+
+// Attendance API
+export const attendanceAPI = {
+  // Session management (Teacher)
+  startSession: (data: {
+    class_id: number;
+    subject: string;
+    duration_minutes?: number;
+  }) => api.post('/attendance/session/start', data),
+  
+  stopSession: (sessionId: number) =>
+    api.post(`/attendance/session/${sessionId}/stop`),
+  
+  getActiveSessions: () =>
+    api.get('/attendance/sessions/active'),
+  
+  getSessionById: (id: number) =>
+    api.get(`/attendance/sessions/${id}`),
+  
+  // QR Scanning (Student)
+  scanQR: (data: {
+    qr_token: string;
+    photo: string; // base64
+    ip_address?: string;
+  }) => api.post('/attendance/scan', data),
+  
+  // Get attendance records
+  getBySession: (sessionId: number) =>
+    api.get(`/attendance/session/${sessionId}/records`),
+  
+  getStudentAttendance: (studentId: number, params?: { month?: number; year?: number }) =>
+    api.get(`/attendance/student/${studentId}`, { params }),
+  
+  getStudentHistory: () =>
+    api.get('/attendance/history'),
+  
+  getClassAttendance: (classId: number, params?: { date?: string }) =>
+    api.get(`/attendance/class/${classId}`, { params }),
+};
+
+// Exam API
+export const examAPI = {
+  getAll: (params?: { class_id?: number; status?: string; page?: number }) =>
+    api.get('/exams', { params }),
+  
+  getById: (id: number) =>
+    api.get(`/exams/${id}`),
+  
+  create: (data: {
+    class_id: number;
+    title: string;
+    subject: string;
+    description?: string;
+    start_time: string;
+    end_time: string;
+    duration: number;
+  }) => api.post('/exams', data),
+  
+  update: (id: number, data: Partial<{
+    title: string;
+    subject: string;
+    description: string;
+    start_time: string;
+    end_time: string;
+    duration: number;
+    status: string;
+  }>) => api.put(`/exams/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/exams/${id}`),
+  
+  // Questions
+  getQuestions: (examId: number) =>
+    api.get(`/exams/${examId}/questions`),
+  
+  addQuestion: (examId: number, data: {
+    type: string;
+    question_text: string;
+    options?: string[];
+    correct_answer?: string;
+    points: number;
+  }) => api.post(`/exams/${examId}/questions`, data),
+  
+  updateQuestion: (examId: number, questionId: number, data: Partial<{
+    question_text: string;
+    options: string[];
+    correct_answer: string;
+    points: number;
+  }>) => api.put(`/exams/${examId}/questions/${questionId}`, data),
+  
+  deleteQuestion: (examId: number, questionId: number) =>
+    api.delete(`/exams/${examId}/questions/${questionId}`),
+  
+  // Student exam actions
+  start: (examId: number) =>
+    api.post(`/exam/${examId}/start`),
+  
+  submitAnswer: (examId: number, data: {
+    question_id: number;
+    answer: string;
+  }) => api.post(`/exam/${examId}/answer`, data),
+  
+  submit: (examId: number) =>
+    api.post(`/exam/${examId}/submit`),
+  
+  getResult: (examId: number, studentId?: number) =>
+    api.get(`/exams/${examId}/result`, { params: { student_id: studentId } }),
+  
+  getAllResults: (examId: number) =>
+    api.get(`/exams/${examId}/results`),
+};
+
+// Monitoring API
+export const monitoringAPI = {
+  uploadSnapshot: (data: {
+    exam_id?: number;
+    session_id?: number;
+    photo: string; // base64
+    type: 'exam' | 'attendance';
+  }) => api.post('/monitoring/snapshot', data),
+  
+  reportViolation: (data: {
+    exam_id: number;
+    type: string;
+    description?: string;
+  }) => api.post('/monitoring/violation', data),
+  
+  getViolations: (examId: number, studentId?: number) =>
+    api.get(`/monitoring/violations/${examId}`, { params: { student_id: studentId } }),
+  
+  getExamMonitoring: (examId: number) =>
+    api.get(`/monitoring/exam/${examId}`),
+};
+
+// Schedule API
+export const scheduleAPI = {
+  getAll: (params?: { class_id?: number; teacher_id?: number; day?: number }) =>
+    api.get('/schedules', { params }),
+  
+  getById: (id: number) =>
+    api.get(`/schedules/${id}`),
+  
+  create: (data: {
+    class_id: number;
+    subject: string;
+    teacher_id: number;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    room?: string;
+  }) => api.post('/schedules', data),
+  
+  update: (id: number, data: Partial<{
+    class_id: number;
+    subject: string;
+    teacher_id: number;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    room: string;
+  }>) => api.put(`/schedules/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/schedules/${id}`),
+  
+  getToday: (classId?: number) =>
+    api.get('/schedules/today', { params: { class_id: classId } }),
+
+  getMySchedule: () =>
+    api.get('/my-schedule'),
+
+  getTeacherSchedule: () =>
+    api.get('/teacher-schedule'),
+};
+
+// Dashboard Stats API
+export const statsAPI = {
+  getAdminStats: () =>
+    api.get('/stats/admin'),
+  
+  getTeacherStats: () =>
+    api.get('/stats/teacher'),
+  
+  getStudentStats: () =>
+    api.get('/stats/student'),
+  
+  getAttendanceChart: (params?: { period?: 'week' | 'month' | 'year' }) =>
+    api.get('/stats/attendance-chart', { params }),
+  
+  getRecentActivities: (limit?: number) =>
+    api.get('/stats/activities', { params: { limit } }),
+};
+
+// Material/Content API  
+export const materialAPI = {
+  getAll: (params?: { class_id?: number; subject?: string; page?: number }) =>
+    api.get('/materials', { params }),
+  
+  getById: (id: number) =>
+    api.get(`/materials/${id}`),
+  
+  create: (formData: FormData) =>
+    api.post('/materials', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  
+  update: (id: number, formData: FormData) =>
+    api.post(`/materials/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  
+  delete: (id: number) =>
+    api.delete(`/materials/${id}`),
+};

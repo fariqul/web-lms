@@ -1,0 +1,434 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { Card, Button, Input } from '@/components/ui';
+import { Calendar, Plus, Edit2, Trash2, Clock, User, MapPin, X, Loader2 } from 'lucide-react';
+import { classAPI, userAPI, scheduleAPI } from '@/services/api';
+
+interface Schedule {
+  id: number;
+  class_id: number;
+  class_room?: { id: number; name: string };
+  subject: string;
+  teacher_id: number;
+  teacher?: { id: number; name: string };
+  room: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+}
+
+const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+// Generate time options from 06:00 to 18:00 with 15 minute intervals
+const TIME_OPTIONS: string[] = [];
+for (let hour = 6; hour <= 18; hour++) {
+  for (let min = 0; min < 60; min += 15) {
+    const h = hour.toString().padStart(2, '0');
+    const m = min.toString().padStart(2, '0');
+    TIME_OPTIONS.push(`${h}:${m}`);
+  }
+}
+
+export default function AdminJadwalPage() {
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
+  const [teachers, setTeachers] = useState<{ id: number; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [formData, setFormData] = useState({
+    class_id: '',
+    subject: '',
+    teacher_id: '',
+    room: '',
+    day_of_week: 1,
+    start_time: '',
+    end_time: '',
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch all data in parallel
+      const [classesRes, usersRes, schedulesRes] = await Promise.all([
+        classAPI.getAll(),
+        userAPI.getAll({ per_page: 1000 }),
+        scheduleAPI.getAll(),
+      ]);
+
+      // Process classes
+      const classesData = classesRes.data?.data || [];
+      setClasses(classesData.map((c: { id: number; name: string }) => ({ id: c.id, name: c.name })));
+
+      // Process teachers
+      const usersRaw = usersRes.data?.data;
+      const usersData = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.data || []);
+      const teachersList = usersData.filter((u: { role: string }) => u.role === 'guru');
+      setTeachers(teachersList.map((t: { id: number; name: string }) => ({ id: t.id, name: t.name })));
+
+      // Process schedules
+      const schedulesRaw = schedulesRes.data?.data;
+      const schedulesData = Array.isArray(schedulesRaw) ? schedulesRaw : (schedulesRaw?.data || []);
+      setSchedules(schedulesData);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredSchedules = schedules.filter(s => s.day_of_week === selectedDay);
+
+  const resetForm = () => {
+    setFormData({
+      class_id: '',
+      subject: '',
+      teacher_id: '',
+      room: '',
+      day_of_week: selectedDay,
+      start_time: '',
+      end_time: '',
+    });
+    setEditingSchedule(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        class_id: Number(formData.class_id),
+        subject: formData.subject,
+        teacher_id: Number(formData.teacher_id),
+        room: formData.room,
+        day_of_week: formData.day_of_week,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+      };
+
+      if (editingSchedule) {
+        // Update existing schedule
+        await scheduleAPI.update(editingSchedule.id, payload);
+      } else {
+        // Create new schedule
+        await scheduleAPI.create(payload);
+      }
+
+      // Refresh data
+      await fetchData();
+      setShowModal(false);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to save schedule:', error);
+      alert('Gagal menyimpan jadwal. Silakan coba lagi.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    setFormData({
+      class_id: schedule.class_id.toString(),
+      subject: schedule.subject,
+      teacher_id: schedule.teacher_id.toString(),
+      room: schedule.room || '',
+      day_of_week: schedule.day_of_week,
+      start_time: schedule.start_time,
+      end_time: schedule.end_time,
+    });
+    setEditingSchedule(schedule);
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Yakin ingin menghapus jadwal ini?')) {
+      try {
+        await scheduleAPI.delete(id);
+        await fetchData();
+      } catch (error) {
+        console.error('Failed to delete schedule:', error);
+        alert('Gagal menghapus jadwal.');
+      }
+    }
+  };
+
+  // Helper to get class name from schedule
+  const getClassName = (schedule: Schedule) => {
+    if (schedule.class_room?.name) return schedule.class_room.name;
+    const cls = classes.find(c => c.id === schedule.class_id);
+    return cls?.name || '-';
+  };
+
+  // Helper to get teacher name from schedule
+  const getTeacherName = (schedule: Schedule) => {
+    if (schedule.teacher?.name) return schedule.teacher.name;
+    const teacher = teachers.find(t => t.id === schedule.teacher_id);
+    return teacher?.name || '-';
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
+            <p className="text-gray-600">Kelola jadwal pelajaran untuk semua kelas</p>
+          </div>
+          <Button onClick={() => { resetForm(); setShowModal(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Jadwal
+          </Button>
+        </div>
+
+        {/* Day Selector */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {DAYS.map((day, index) => (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(index + 1)}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                selectedDay === index + 1
+                  ? 'bg-teal-500 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              {day}
+            </button>
+          ))}
+        </div>
+
+        {/* Schedule List */}
+        <Card className="overflow-hidden">
+          {filteredSchedules.length === 0 ? (
+            <div className="p-8 text-center">
+              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
+              <p className="text-sm text-gray-400 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Waktu
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mata Pelajaran
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kelas
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Guru
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ruangan
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredSchedules
+                    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                    .map((schedule) => (
+                      <tr key={schedule.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">
+                              {schedule.start_time.slice(0, 5)} - {schedule.end_time.slice(0, 5)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-sm rounded-full">
+                            {schedule.subject}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-900">
+                          {getClassName(schedule)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-600">{getTeacherName(schedule)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-600">{schedule.room || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(schedule)}
+                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(schedule.id)}
+                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Add/Edit Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-lg">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  {editingSchedule ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}
+                </h2>
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-gray-100 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hari</label>
+                  <select
+                    value={formData.day_of_week}
+                    onChange={(e) => setFormData({ ...formData, day_of_week: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    required
+                  >
+                    {DAYS.map((day, index) => (
+                      <option key={day} value={index + 1}>{day}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <select
+                      value={formData.class_id}
+                      onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      required
+                    >
+                      <option value="">Pilih Kelas</option>
+                      {classes.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Input
+                    label="Mata Pelajaran"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    placeholder="Contoh: Informatika"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Guru Pengajar</label>
+                  <select
+                    value={formData.teacher_id}
+                    onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    required
+                  >
+                    <option value="">Pilih Guru</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <Input
+                  label="Ruangan"
+                  value={formData.room}
+                  onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                  placeholder="Contoh: Lab Komputer 1"
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Waktu Mulai</label>
+                    <select
+                      value={formData.start_time}
+                      onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      required
+                    >
+                      <option value="">Pilih Waktu</option>
+                      {TIME_OPTIONS.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Waktu Selesai</label>
+                    <select
+                      value={formData.end_time}
+                      onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      required
+                    >
+                      <option value="">Pilih Waktu</option>
+                      {TIME_OPTIONS.filter(t => t > formData.start_time).map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => { setShowModal(false); resetForm(); }}>
+                    Batal
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      editingSchedule ? 'Simpan Perubahan' : 'Simpan Jadwal'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}
