@@ -14,7 +14,7 @@ class DemoSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Classes
+        // Create Classes (using firstOrCreate to be idempotent)
         $classes = [
             ['name' => 'X IPA 1', 'grade_level' => 'X', 'academic_year' => '2024/2025'],
             ['name' => 'X IPA 2', 'grade_level' => 'X', 'academic_year' => '2024/2025'],
@@ -28,18 +28,20 @@ class DemoSeeder extends Seeder
         ];
 
         foreach ($classes as $class) {
-            ClassRoom::create($class);
+            ClassRoom::firstOrCreate(['name' => $class['name']], $class);
         }
 
-        // Create Admin
-        User::create([
-            'name' => 'Administrator',
-            'email' => 'admin@sma15mks.sch.id',
-            'password' => Hash::make('Password123'),
-            'role' => 'admin',
-        ]);
+        // Create Admin (using firstOrCreate to be idempotent)
+        User::firstOrCreate(
+            ['email' => 'admin@sma15mks.sch.id'],
+            [
+                'name' => 'Administrator',
+                'password' => Hash::make('Password123'),
+                'role' => 'admin',
+            ]
+        );
 
-        // Create Teachers
+        // Create Teachers (using firstOrCreate to be idempotent)
         $teachers = [
             ['name' => 'Pak Budi Santoso', 'email' => 'guru@sma15mks.sch.id', 'nip' => '198501152010011001'],
             ['name' => 'Bu Sri Wahyuni', 'email' => 'sri.wahyuni@sma15mks.sch.id', 'nip' => '198703202012012002'],
@@ -47,16 +49,18 @@ class DemoSeeder extends Seeder
         ];
 
         foreach ($teachers as $teacher) {
-            User::create([
-                'name' => $teacher['name'],
-                'email' => $teacher['email'],
-                'password' => Hash::make('Password123'),
-                'role' => 'guru',
-                'nip' => $teacher['nip'],
-            ]);
+            User::firstOrCreate(
+                ['email' => $teacher['email']],
+                [
+                    'name' => $teacher['name'],
+                    'password' => Hash::make('Password123'),
+                    'role' => 'guru',
+                    'nip' => $teacher['nip'],
+                ]
+            );
         }
 
-        // Create Students
+        // Create Students (using firstOrCreate to be idempotent)
         $xIpa1 = ClassRoom::where('name', 'X IPA 1')->first();
         
         $students = [
@@ -73,30 +77,34 @@ class DemoSeeder extends Seeder
         ];
 
         foreach ($students as $student) {
-            User::create([
-                'name' => $student['name'],
-                'email' => $student['email'],
-                'password' => Hash::make('Password123'),
-                'role' => 'siswa',
-                'nisn' => $student['nisn'],
-                'class_id' => $xIpa1->id,
-            ]);
+            User::firstOrCreate(
+                ['email' => $student['email']],
+                [
+                    'name' => $student['name'],
+                    'password' => Hash::make('Password123'),
+                    'role' => 'siswa',
+                    'nisn' => $student['nisn'],
+                    'class_id' => $xIpa1->id,
+                ]
+            );
         }
 
-        // Add more students to other classes
+        // Add more students to other classes (using firstOrCreate to be idempotent)
         $otherClasses = ClassRoom::where('name', '!=', 'X IPA 1')->get();
         $nisnCounter = 12345688;
         
         foreach ($otherClasses as $class) {
             for ($i = 1; $i <= 5; $i++) {
-                User::create([
-                    'name' => "Siswa {$class->name} - {$i}",
-                    'email' => "siswa{$nisnCounter}@sma15mks.sch.id",
-                    'password' => Hash::make('Password123'),
-                    'role' => 'siswa',
-                    'nisn' => "00{$nisnCounter}",
-                    'class_id' => $class->id,
-                ]);
+                User::firstOrCreate(
+                    ['email' => "siswa{$nisnCounter}@sma15mks.sch.id"],
+                    [
+                        'name' => "Siswa {$class->name} - {$i}",
+                        'password' => Hash::make('Password123'),
+                        'role' => 'siswa',
+                        'nisn' => "00{$nisnCounter}",
+                        'class_id' => $class->id,
+                    ]
+                );
                 $nisnCounter++;
             }
         }
