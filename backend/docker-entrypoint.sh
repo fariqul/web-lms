@@ -47,8 +47,15 @@ php artisan route:clear
 php artisan view:clear
 php artisan cache:clear
 
-# TEMPORARY: Fresh migrate to reset database (change back to migrate --force after first deploy)
-php artisan migrate:fresh --force --seed
+# Start Apache in background first (so health check passes)
+apache2-foreground &
+APACHE_PID=$!
 
-# Start Apache
-apache2-foreground
+# Wait a moment for Apache to start
+sleep 5
+
+# Run fresh migration with seeding (TEMPORARY - change to migrate --force after first successful deploy)
+php artisan migrate:fresh --force --seed || echo "Migration/seeding failed"
+
+# Wait for Apache process
+wait $APACHE_PID

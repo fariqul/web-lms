@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Force rebuild: 2026-02-05-v3-fresh-migrate
+# Force rebuild: 2026-02-05-v4-bg-migration
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
