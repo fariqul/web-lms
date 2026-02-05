@@ -1,5 +1,6 @@
 FROM php:8.2-apache
 
+# Force rebuild: 2026-02-05-v2
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
