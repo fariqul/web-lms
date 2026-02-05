@@ -47,11 +47,8 @@ php artisan route:clear
 php artisan view:clear
 php artisan cache:clear
 
-# Run migrations (with error handling)
-php artisan migrate --force || echo "Migration failed or already up to date"
-
-# Run seeder to create admin user (only if users table is empty)
-php artisan db:seed --force || echo "Seeding failed or already seeded"
+# TEMPORARY: Fresh migrate to reset database (change back to migrate --force after first deploy)
+php artisan migrate:fresh --force --seed
 
 # Start Apache
 apache2-foreground
