@@ -257,23 +257,37 @@ export const examAPI = {
 // Monitoring API
 export const monitoringAPI = {
   uploadSnapshot: (data: {
-    exam_id?: number;
-    session_id?: number;
+    exam_id: number;
     photo: string; // base64
-    type: 'exam' | 'attendance';
-  }) => api.post('/monitoring/snapshot', data),
+  }) => {
+    // Convert base64 to blob and send as FormData
+    const formData = new FormData();
+    const byteString = atob(data.photo.split(',')[1]);
+    const mimeString = data.photo.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeString });
+    formData.append('image', blob, 'snapshot.jpg');
+    
+    return api.post(`/exams/${data.exam_id}/snapshot`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   
   reportViolation: (data: {
     exam_id: number;
     type: string;
     description?: string;
-  }) => api.post('/monitoring/violation', data),
+  }) => api.post(`/exams/${data.exam_id}/violation`, data),
   
   getViolations: (examId: number, studentId?: number) =>
-    api.get(`/monitoring/violations/${examId}`, { params: { student_id: studentId } }),
+    api.get(`/exams/${examId}/results/${studentId}`),
   
   getExamMonitoring: (examId: number) =>
-    api.get(`/monitoring/exam/${examId}`),
+    api.get(`/exams/${examId}/monitoring`),
 };
 
 // Schedule API
@@ -355,4 +369,206 @@ export const materialAPI = {
   
   delete: (id: number) =>
     api.delete(`/materials/${id}`),
+};
+
+// Assignment/Tugas API
+export const assignmentAPI = {
+  getAll: (params?: { class_id?: number; status?: string }) =>
+    api.get('/assignments', { params }),
+  
+  getById: (id: number) =>
+    api.get(`/assignments/${id}`),
+  
+  create: (formData: FormData) =>
+    api.post('/assignments', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  
+  update: (id: number, formData: FormData) =>
+    api.post(`/assignments/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  
+  delete: (id: number) =>
+    api.delete(`/assignments/${id}`),
+  
+  // Student submit assignment
+  submit: (assignmentId: number, formData: FormData) =>
+    api.post(`/assignments/${assignmentId}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  
+  // Get submissions for an assignment (teacher)
+  getSubmissions: (assignmentId: number) =>
+    api.get(`/assignments/${assignmentId}/submissions`),
+  
+  // Grade a submission (teacher)
+  grade: (submissionId: number, data: { score: number; feedback?: string }) =>
+    api.post(`/submissions/${submissionId}/grade`, data),
+  
+  // Get new assignments count (student dashboard)
+  getNewCount: () =>
+    api.get('/assignments-new-count'),
+  
+  // Get pending assignments (student)
+  getPending: () =>
+    api.get('/assignments-pending'),
+};
+
+// Announcement API
+export const announcementAPI = {
+  getAll: (params?: { all?: boolean }) =>
+    api.get('/announcements', { params }),
+  
+  getById: (id: number) =>
+    api.get(`/announcements/${id}`),
+  
+  create: (data: {
+    title: string;
+    content: string;
+    priority?: 'normal' | 'important' | 'urgent';
+    target?: 'all' | 'guru' | 'siswa';
+    published_at?: string;
+    expires_at?: string;
+  }) =>
+    api.post('/announcements', data),
+  
+  update: (id: number, data: {
+    title?: string;
+    content?: string;
+    priority?: 'normal' | 'important' | 'urgent';
+    target?: 'all' | 'guru' | 'siswa';
+    is_active?: boolean;
+    expires_at?: string;
+  }) =>
+    api.put(`/announcements/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/announcements/${id}`),
+  
+  // Get latest announcements for dashboard
+  getLatest: (limit?: number) =>
+    api.get('/announcements-latest', { params: { limit } }),
+  
+  // Get unread count
+  getUnreadCount: () =>
+    api.get('/announcements-unread-count'),
+};
+
+// Bank Question API
+export const bankQuestionAPI = {
+  // For teachers
+  getAll: (params?: { subject?: string; grade_level?: string; difficulty?: string; search?: string }) =>
+    api.get('/bank-questions', { params }),
+  
+  create: (data: {
+    subject: string;
+    type: 'pilihan_ganda' | 'essay';
+    question: string;
+    options?: string[];
+    correct_answer: string;
+    explanation?: string;
+    difficulty: 'mudah' | 'sedang' | 'sulit';
+    grade_level: '10' | '11' | '12';
+    class_id?: number;
+  }) =>
+    api.post('/bank-questions', data),
+  
+  update: (id: number, data: {
+    subject?: string;
+    type?: 'pilihan_ganda' | 'essay';
+    question?: string;
+    options?: string[];
+    correct_answer?: string;
+    explanation?: string;
+    difficulty?: 'mudah' | 'sedang' | 'sulit';
+    grade_level?: '10' | '11' | '12';
+    class_id?: number;
+    is_active?: boolean;
+  }) =>
+    api.put(`/bank-questions/${id}`, data),
+  
+  delete: (id: number) =>
+    api.delete(`/bank-questions/${id}`),
+  
+  bulkCreate: (questions: Array<{
+    subject: string;
+    type: 'pilihan_ganda' | 'essay';
+    question: string;
+    options?: string[];
+    correct_answer: string;
+    explanation?: string;
+    difficulty: 'mudah' | 'sedang' | 'sulit';
+    grade_level: '10' | '11' | '12';
+    class_id?: number;
+  }>) =>
+    api.post('/bank-questions/bulk', { questions }),
+  
+  duplicate: (id: number) =>
+    api.post(`/bank-questions/${id}/duplicate`),
+  
+  // For students
+  getSubjects: (gradeLevel?: string) =>
+    api.get('/bank-questions/subjects', { params: { grade_level: gradeLevel } }),
+  
+  getPracticeQuestions: (params: { subject: string; grade_level?: string; difficulty?: string; limit?: number }) =>
+    api.get('/bank-questions/practice', { params }),
+};
+
+// PDF Import API
+export const pdfImportAPI = {
+  // Get available formats
+  getFormats: () =>
+    api.get('/pdf-import/formats'),
+  
+  // Parse PDF file (upload)
+  parsePdf: (file: File, format?: string, answerKeyFile?: File) => {
+    const formData = new FormData();
+    formData.append('pdf_file', file);
+    if (format) formData.append('format', format);
+    if (answerKeyFile) formData.append('answer_key_file', answerKeyFile);
+    
+    return api.post('/pdf-import/parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  
+  // Parse PDF from URL
+  parseFromUrl: (url: string, format?: string) =>
+    api.post('/pdf-import/parse-url', { url, format }),
+  
+  // Import parsed questions to database
+  importQuestions: (data: {
+    questions: Array<{
+      number: number;
+      question: string;
+      options: string[];
+      correct_answer: string;
+      explanation?: string;
+      difficulty?: string;
+    }>;
+    subject: string;
+    grade_level: '10' | '11' | '12';
+    difficulty?: string;
+    source?: string;
+  }) =>
+    api.post('/pdf-import/import', data),
+};
+
+// URL Import API (utbk.or.id)
+export const urlImportAPI = {
+  // Preview questions from URL
+  preview: (url: string) =>
+    api.post('/url-import/preview', { url }),
+  
+  // Import questions from URL
+  import: (data: {
+    url: string;
+    subject: string;
+    difficulty?: 'mudah' | 'sedang' | 'sulit';
+    grade_level?: '10' | '11' | '12';
+    class_id?: number;
+    selected_questions?: number[];
+  }) =>
+    api.post('/url-import/import', data),
 };

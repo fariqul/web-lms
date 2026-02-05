@@ -5,9 +5,10 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  onClick?: () => void;
 }
 
-export function Card({ children, className, padding = 'md' }: CardProps) {
+export function Card({ children, className, padding = 'md', onClick }: CardProps) {
   const paddingClasses = {
     none: '',
     sm: 'p-3',
@@ -17,9 +18,11 @@ export function Card({ children, className, padding = 'md' }: CardProps) {
 
   return (
     <div
+      onClick={onClick}
       className={clsx(
         'bg-white rounded-xl shadow-sm',
         paddingClasses[padding],
+        onClick && 'cursor-pointer',
         className
       )}
     >
@@ -92,7 +95,7 @@ interface QuickActionCardProps {
   onClick?: () => void;
   href?: string;
   color?: 'blue' | 'green' | 'orange' | 'teal';
-  badge?: string;
+  badge?: string | number;
 }
 
 export function QuickActionCard({
@@ -122,7 +125,7 @@ export function QuickActionCard({
       )}
     >
       {badge && (
-        <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
           {badge}
         </span>
       )}

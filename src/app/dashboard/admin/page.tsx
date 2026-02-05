@@ -13,6 +13,12 @@ import {
   FileEdit,
   UserPlus,
   Loader2,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import api from '@/services/api';
 
@@ -31,6 +37,36 @@ interface AttendanceChartData {
   [key: string]: string | number;
 }
 
+interface TeacherClass {
+  class_name: string;
+  subject: string;
+  time: string;
+  status: 'mengajar' | 'belum' | 'tidak_mengajar';
+  session_id: number | null;
+}
+
+interface TeacherRecap {
+  teacher_id: number;
+  teacher_name: string;
+  total_scheduled: number;
+  taught: number;
+  missed: number;
+  pending: number;
+  status: 'good' | 'warning' | 'pending';
+  classes: TeacherClass[];
+}
+
+interface TeacherDailyRecap {
+  date: string;
+  day_name: string;
+  summary: {
+    total_teachers_scheduled: number;
+    teachers_teaching: number;
+    teachers_with_missed: number;
+  };
+  teachers: TeacherRecap[];
+}
+
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -41,6 +77,8 @@ export default function AdminDashboard() {
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [attendanceChart, setAttendanceChart] = useState<AttendanceChartData[]>([]);
+  const [teacherRecap, setTeacherRecap] = useState<TeacherDailyRecap | null>(null);
+  const [expandedTeacher, setExpandedTeacher] = useState<number | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -69,6 +107,11 @@ export default function AdminDashboard() {
         // Process weekly attendance chart
         if (data.weekly_attendance && Array.isArray(data.weekly_attendance)) {
           setAttendanceChart(data.weekly_attendance);
+        }
+        
+        // Process teacher daily recap
+        if (data.teacher_daily_recap) {
+          setTeacherRecap(data.teacher_daily_recap);
         }
       }
     } catch (error) {
@@ -100,6 +143,45 @@ export default function AdminDashboard() {
         return { icon: <FileEdit className="w-4 h-4" />, color: 'bg-orange-100 text-orange-600' };
       default:
         return { icon: <UserPlus className="w-4 h-4" />, color: 'bg-blue-100 text-blue-600' };
+    }
+  };
+
+  const getTeacherStatusBadge = (status: string) => {
+    switch (status) {
+      case 'good':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <CheckCircle className="w-3 h-3" />
+            Lengkap
+          </span>
+        );
+      case 'warning':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            <XCircle className="w-3 h-3" />
+            Ada yang Terlewat
+          </span>
+        );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+            <Clock className="w-3 h-3" />
+            Belum Lengkap
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getClassStatusIcon = (status: string) => {
+    switch (status) {
+      case 'mengajar':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'tidak_mengajar':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-yellow-500" />;
     }
   };
 
@@ -243,6 +325,130 @@ export default function AdminDashboard() {
             </div>
           )}
         </Card>
+
+        {/* Teacher Daily Recap */}
+        {teacherRecap && (
+          <Card>
+            <CardHeader
+              title={`Rekap Aktivitas Guru - ${teacherRecap.day_name}`}
+              subtitle="Monitoring kehadiran guru sesuai jadwal mengajar"
+            />
+            
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-blue-600">{teacherRecap.summary.total_teachers_scheduled}</p>
+                <p className="text-sm text-blue-700">Guru Terjadwal</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-green-600">{teacherRecap.summary.teachers_teaching}</p>
+                <p className="text-sm text-green-700">Sudah Mengajar</p>
+              </div>
+              <div className="bg-red-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-red-600">{teacherRecap.summary.teachers_with_missed}</p>
+                <p className="text-sm text-red-700">Tidak Mengajar</p>
+              </div>
+            </div>
+
+            {/* Alert if there are teachers not teaching */}
+            {teacherRecap.summary.teachers_with_missed > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-red-800">Perhatian!</h4>
+                  <p className="text-sm text-red-700">
+                    Ada {teacherRecap.summary.teachers_with_missed} guru yang melewatkan jadwal mengajar hari ini.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Teacher List */}
+            {teacherRecap.teachers.length > 0 ? (
+              <div className="space-y-3">
+                {teacherRecap.teachers.map((teacher) => (
+                  <div key={teacher.teacher_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Teacher Header */}
+                    <button
+                      onClick={() => setExpandedTeacher(
+                        expandedTeacher === teacher.teacher_id ? null : teacher.teacher_id
+                      )}
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          teacher.status === 'good' ? 'bg-green-100' :
+                          teacher.status === 'warning' ? 'bg-red-100' : 'bg-yellow-100'
+                        }`}>
+                          <Users className={`w-5 h-5 ${
+                            teacher.status === 'good' ? 'text-green-600' :
+                            teacher.status === 'warning' ? 'text-red-600' : 'text-yellow-600'
+                          }`} />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium text-gray-900">{teacher.teacher_name}</p>
+                          <p className="text-sm text-gray-500">
+                            {teacher.taught}/{teacher.total_scheduled} jadwal terpenuhi
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {getTeacherStatusBadge(teacher.status)}
+                        {expandedTeacher === teacher.teacher_id ? (
+                          <ChevronUp className="w-5 h-5 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Expanded Detail */}
+                    {expandedTeacher === teacher.teacher_id && (
+                      <div className="border-t border-gray-200 bg-gray-50 p-4">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-gray-500">
+                              <th className="pb-2">Kelas</th>
+                              <th className="pb-2">Mata Pelajaran</th>
+                              <th className="pb-2">Jam</th>
+                              <th className="pb-2 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {teacher.classes.map((cls, idx) => (
+                              <tr key={idx} className="border-t border-gray-200">
+                                <td className="py-2 font-medium text-gray-900">{cls.class_name}</td>
+                                <td className="py-2 text-gray-700">{cls.subject}</td>
+                                <td className="py-2 text-gray-600">{cls.time}</td>
+                                <td className="py-2 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    {getClassStatusIcon(cls.status)}
+                                    <span className={`text-xs ${
+                                      cls.status === 'mengajar' ? 'text-green-600' :
+                                      cls.status === 'tidak_mengajar' ? 'text-red-600' : 'text-yellow-600'
+                                    }`}>
+                                      {cls.status === 'mengajar' ? 'Mengajar' :
+                                       cls.status === 'tidak_mengajar' ? 'Tidak Mengajar' : 'Menunggu'}
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>Tidak ada jadwal guru untuk hari ini</p>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -1,15 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button, Input } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { User, Mail, Phone, Lock, Camera, Save } from 'lucide-react';
+import api from '@/services/api';
+import { User, Mail, Lock, Camera, Save, Loader2, X } from 'lucide-react';
 
 export default function AkunPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -21,9 +26,74 @@ export default function AkunPage() {
     confirm_password: '',
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Would call API to update profile
     setIsEditing(false);
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('File harus berupa gambar!');
+        return;
+      }
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Ukuran file maksimal 2MB!');
+        return;
+      }
+      
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewPhoto(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!selectedFile) return;
+    
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', selectedFile);
+      
+      await api.post('/profile/photo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Refresh user data to get new photo
+      if (refreshUser) {
+        await refreshUser();
+      }
+      
+      setPreviewPhoto(null);
+      setSelectedFile(null);
+      alert('Foto profil berhasil diperbarui!');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Gagal mengupload foto. Silakan coba lagi.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const cancelPhotoUpload = () => {
+    setPreviewPhoto(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -69,21 +139,72 @@ export default function AkunPage() {
           <div className="flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-3xl font-bold">
-                {user?.name?.charAt(0).toUpperCase()}
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
+                {previewPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={previewPhoto} alt="Preview" className="w-full h-full object-cover" />
+                ) : user?.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.photo} alt={user.name || ''} className="w-full h-full object-cover" loading="eager" />
+                ) : (
+                  user?.name?.charAt(0).toUpperCase()
+                )}
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border hover:bg-gray-50">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <button 
+                onClick={handlePhotoClick}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border hover:bg-gray-50 transition-colors"
+                title="Ganti foto profil"
+              >
                 <Camera className="w-4 h-4 text-gray-600" />
               </button>
             </div>
 
             {/* Info */}
-            <div className="text-center sm:text-left">
+            <div className="text-center sm:text-left flex-1">
               <h2 className="text-xl font-bold text-gray-900">{user?.name}</h2>
               <p className="text-gray-600">{user?.email}</p>
               <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor()}`}>
                 {getRoleLabel()}
               </span>
+              
+              {/* Photo Upload Actions */}
+              {previewPhoto && (
+                <div className="flex gap-2 mt-4">
+                  <Button 
+                    size="sm" 
+                    onClick={handleUploadPhoto} 
+                    disabled={uploadingPhoto}
+                  >
+                    {uploadingPhoto ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        Mengupload...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-1" />
+                        Simpan Foto
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={cancelPhotoUpload}
+                    disabled={uploadingPhoto}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Batal
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </Card>

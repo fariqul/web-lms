@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -128,13 +129,70 @@ class AuthController extends Controller
     }
 
     /**
+     * Update profile photo
+     */
+    public function updatePhoto(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $user = $request->user();
+
+        // Delete old photo if exists and is local
+        if ($user->photo && str_contains($user->photo, '/storage/photos/')) {
+            $oldPath = str_replace('/storage/', '', parse_url($user->photo, PHP_URL_PATH));
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        // Store new photo
+        $file = $request->file('photo');
+        $filename = 'profile_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('photos', $filename, 'public');
+        
+        // Get public URL
+        $publicUrl = url('/storage/' . $path);
+        
+        $user->photo = $publicUrl;
+        $user->save();
+
+        $user->load('classRoom');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'nisn' => $user->nisn,
+                'nip' => $user->nip,
+                'class_id' => $user->class_id,
+                'class' => $user->classRoom ? [
+                    'id' => $user->classRoom->id,
+                    'name' => $user->classRoom->name,
+                ] : null,
+                'photo' => $user->photo,
+            ],
+            'message' => 'Foto profil berhasil diupdate',
+        ]);
+    }
+
+    /**
      * Change password
      */
     public function changePassword(Request $request)
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
+            'new_password' => [
+                'required',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+            ],
+        ], [
+            'new_password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
         $user = $request->user();

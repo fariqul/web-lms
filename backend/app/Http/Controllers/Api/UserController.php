@@ -56,11 +56,17 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
+            'password' => [
+                'required',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/', // At least 1 lowercase, 1 uppercase, 1 number
+            ],
             'role' => 'required|in:admin,guru,siswa',
             'nisn' => 'nullable|string|unique:users',
             'nip' => 'nullable|string|unique:users',
             'class_id' => 'nullable|exists:classes,id',
+        ], [
+            'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
         $user = User::create([
@@ -103,11 +109,17 @@ class UserController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
-            'password' => 'sometimes|min:8',
+            'password' => [
+                'sometimes',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+            ],
             'role' => 'sometimes|in:admin,guru,siswa',
             'nisn' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nip' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'class_id' => 'nullable|exists:classes,id',
+        ], [
+            'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
         if ($request->has('name')) {

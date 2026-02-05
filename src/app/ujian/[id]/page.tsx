@@ -39,20 +39,6 @@ export default function ExamTakingPage() {
   const router = useRouter();
   const examId = Number(params.id) || 1;
   
-  const {
-    isFullscreen,
-    isCameraActive,
-    violationCount,
-    enterFullscreen,
-    startCamera,
-    videoRef,
-  } = useExamMode({
-    examId,
-    onViolation: (type) => {
-      console.log('Violation:', type);
-    },
-  });
-
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<ExamData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -62,6 +48,37 @@ export default function ExamTakingPage() {
   const [isStarted, setIsStarted] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+
+  // Force submit handler
+  const handleForceSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await api.post(`/exams/${examId}/finish`, {
+        answers,
+        time_spent: (exam?.duration || 90) * 60 - timeRemaining,
+      });
+      router.push('/ujian?reason=force_submit');
+    } catch (error) {
+      console.error('Failed to submit exam:', error);
+      router.push('/ujian');
+    }
+  };
+
+  const {
+    isFullscreen,
+    isCameraActive,
+    violationCount,
+    maxViolations,
+    enterFullscreen,
+    startCamera,
+    videoRef,
+  } = useExamMode({
+    examId,
+    onViolation: (type) => {
+      console.log('Violation:', type);
+    },
+    onForceSubmit: handleForceSubmit,
+  });
 
   useEffect(() => {
     fetchExam();
@@ -121,13 +138,30 @@ export default function ExamTakingPage() {
   };
 
   const handleStartExam = async () => {
-    await enterFullscreen();
-    await startCamera();
-    setIsStarted(true);
+    try {
+      // Call API to start exam and create exam result
+      await api.post(`/exams/${examId}/start`);
+      await enterFullscreen();
+      await startCamera();
+      setIsStarted(true);
+    } catch (error) {
+      console.error('Failed to start exam:', error);
+      alert('Gagal memulai ujian. Silakan coba lagi.');
+    }
   };
 
-  const handleAnswer = (questionId: number, answer: string) => {
+  const handleAnswer = async (questionId: number, answer: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
+    
+    // Save answer to server
+    try {
+      await api.post(`/exams/${examId}/answer`, {
+        question_id: questionId,
+        answer,
+      });
+    } catch (error) {
+      console.error('Failed to save answer:', error);
+    }
   };
 
   const handleToggleFlag = (questionNumber: number) => {
@@ -147,11 +181,8 @@ export default function ExamTakingPage() {
     if (confirmed) {
       setSubmitting(true);
       try {
-        await api.post(`/exams/${examId}/submit`, {
-          answers,
-          time_spent: (exam?.duration || 90) * 60 - timeRemaining,
-        });
-        router.push('/ujian');
+        await api.post(`/exams/${examId}/finish`);
+        router.push('/ujian?submitted=true');
       } catch (error) {
         console.error('Failed to submit exam:', error);
         alert('Gagal mengumpulkan ujian. Coba lagi.');
@@ -246,7 +277,9 @@ export default function ExamTakingPage() {
             {violationCount > 0 && (
               <div className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="w-5 h-5" />
-                <span className="text-sm">{violationCount} pelanggaran</span>
+                <span className="text-sm">
+                  {violationCount}{maxViolations ? `/${maxViolations}` : ''} pelanggaran
+                </span>
               </div>
             )}
           </div>

@@ -59,7 +59,7 @@ class MaterialController extends Controller
             'subject' => 'required|string|max:100',
             'type' => 'required|in:video,document,link',
             'class_id' => 'required|exists:classes,id',
-            'file' => 'nullable|file|max:10240', // 10MB max
+            'file' => 'nullable|file|max:51200|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,mp4,mp3,zip,rar', // 50MB max, allowed types
             'file_url' => 'nullable|url',
         ]);
 
@@ -75,8 +75,10 @@ class MaterialController extends Controller
 
         $fileUrl = null;
         if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('materials', 'public');
-            $fileUrl = Storage::url($path);
+            $file = $request->file('file');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
+            $path = $file->storeAs('materials', $filename, 'public');
+            $fileUrl = url('/storage/' . $path);
         } elseif ($request->has('file_url')) {
             $fileUrl = $request->file_url;
         }
@@ -130,19 +132,21 @@ class MaterialController extends Controller
             'subject' => 'sometimes|string|max:100',
             'type' => 'sometimes|in:video,document,link',
             'class_id' => 'sometimes|exists:classes,id',
-            'file' => 'nullable|file|max:10240',
+            'file' => 'nullable|file|max:51200', // 50MB max
             'file_url' => 'nullable|url',
         ]);
 
         if ($request->hasFile('file')) {
-            // Delete old file if exists
-            if ($material->file_url && !str_starts_with($material->file_url, 'http')) {
-                $oldPath = str_replace('/storage/', '', $material->file_url);
+            // Delete old file if exists and is local
+            if ($material->file_url && str_contains($material->file_url, '/storage/materials/')) {
+                $oldPath = str_replace(url('/storage/'), '', $material->file_url);
                 Storage::disk('public')->delete($oldPath);
             }
             
-            $path = $request->file('file')->store('materials', 'public');
-            $material->file_url = Storage::url($path);
+            $file = $request->file('file');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
+            $path = $file->storeAs('materials', $filename, 'public');
+            $material->file_url = url('/storage/' . $path);
         } elseif ($request->has('file_url')) {
             $material->file_url = $request->file_url;
         }

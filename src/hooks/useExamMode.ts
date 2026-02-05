@@ -6,6 +6,7 @@ import { monitoringAPI } from '@/services/api';
 interface UseExamModeOptions {
   examId: number;
   onViolation?: (type: string) => void;
+  onForceSubmit?: () => void;
   enableCamera?: boolean;
   snapshotInterval?: number; // in seconds
 }
@@ -15,6 +16,7 @@ interface UseExamModeReturn {
   isCameraActive: boolean;
   violations: string[];
   violationCount: number;
+  maxViolations: number | null;
   enterFullscreen: () => Promise<void>;
   exitFullscreen: () => void;
   startCamera: () => Promise<void>;
@@ -26,6 +28,7 @@ interface UseExamModeReturn {
 export function useExamMode({
   examId,
   onViolation,
+  onForceSubmit,
   enableCamera = true,
   snapshotInterval = 60,
 }: UseExamModeOptions): UseExamModeReturn {
@@ -33,6 +36,7 @@ export function useExamMode({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [violations, setViolations] = useState<string[]>([]);
   const [violationCount, setViolationCount] = useState(0);
+  const [maxViolations, setMaxViolations] = useState<number | null>(null);
   
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -41,18 +45,31 @@ export function useExamMode({
   // Report violation to server
   const reportViolation = useCallback(async (type: string, description?: string) => {
     try {
-      await monitoringAPI.reportViolation({
+      const response = await monitoringAPI.reportViolation({
         exam_id: examId,
         type,
         description,
       });
+      
+      const data = response.data?.data;
+      if (data) {
+        setViolationCount(data.violation_count);
+        setMaxViolations(data.max_violations);
+        
+        // Force submit if max violations exceeded
+        if (data.force_submit) {
+          alert(`Anda telah melakukan ${data.violation_count} pelanggaran. Ujian akan dikumpulkan secara otomatis.`);
+          onForceSubmit?.();
+          return;
+        }
+      }
+      
       setViolations(prev => [...prev, type]);
-      setViolationCount(prev => prev + 1);
       onViolation?.(type);
     } catch (error) {
       console.error('Failed to report violation:', error);
     }
-  }, [examId, onViolation]);
+  }, [examId, onViolation, onForceSubmit]);
 
   // Fullscreen management
   const enterFullscreen = useCallback(async () => {
@@ -122,7 +139,6 @@ export function useExamMode({
       await monitoringAPI.uploadSnapshot({
         exam_id: examId,
         photo: base64,
-        type: 'exam',
       });
       
       return base64;
@@ -242,6 +258,7 @@ export function useExamMode({
     isCameraActive,
     violations,
     violationCount,
+    maxViolations,
     enterFullscreen,
     exitFullscreen,
     startCamera,

@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
 }
 
@@ -92,6 +93,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roleArray.includes(user.role);
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.me();
+      setUser(response.data.data);
+      localStorage.setItem('user', JSON.stringify(response.data.data));
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -100,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     checkAuth,
+    refreshUser,
     hasRole,
   };
 

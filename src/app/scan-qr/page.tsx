@@ -19,6 +19,25 @@ export default function ScanQRPage() {
   const html5QrCodeRef = useRef<unknown>(null);
   const isProcessingRef = useRef(false);
   const handleScanQRRef = useRef<(qrData: string) => void>(() => {});
+  const [pendingApproval, setPendingApproval] = useState(false);
+
+  // Generate device fingerprint
+  const getDeviceId = () => {
+    // Check if we have a stored device ID
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+      // Generate new device ID
+      const components = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + 'x' + screen.height,
+        new Date().getTimezoneOffset(),
+      ];
+      deviceId = btoa(components.join('|')).slice(0, 32);
+      localStorage.setItem('device_id', deviceId);
+    }
+    return deviceId;
+  };
 
   const handleScanQR = async (qrData: string) => {
     // Prevent duplicate scans using ref to avoid stale closure
@@ -28,13 +47,15 @@ export default function ScanQRPage() {
     
     isProcessingRef.current = true;
     setLastScannedToken(qrData);
+    setPendingApproval(false);
     
     try {
       setStatus('processing');
       
-      // Submit attendance to API
+      // Submit attendance to API with device ID
       const response = await api.post('/attendance/submit', {
         qr_token: qrData,
+        device_id: getDeviceId(),
       });
 
       if (response.data?.success) {
@@ -50,8 +71,20 @@ export default function ScanQRPage() {
     } catch (error: unknown) {
       console.error('Scan failed:', error);
       setStatus('error');
-      const err = error as { response?: { data?: { message?: string } } };
-      setMessage(err.response?.data?.message || 'Gagal memproses absensi');
+      const err = error as { response?: { data?: { message?: string; error_code?: string; requires_approval?: boolean } } };
+      const errorCode = err.response?.data?.error_code;
+      
+      // Handle specific error codes
+      if (errorCode === 'NETWORK_NOT_ALLOWED') {
+        setMessage('⚠️ ' + (err.response?.data?.message || 'Harus menggunakan WiFi sekolah'));
+      } else if (errorCode === 'DEVICE_SWITCH_PENDING') {
+        setPendingApproval(true);
+        setMessage('⏳ ' + (err.response?.data?.message || 'Menunggu persetujuan guru'));
+      } else if (errorCode === 'DEVICE_SWITCH_REJECTED') {
+        setMessage('❌ ' + (err.response?.data?.message || 'Permintaan ditolak'));
+      } else {
+        setMessage(err.response?.data?.message || 'Gagal memproses absensi');
+      }
       isProcessingRef.current = false;
     }
   };
@@ -245,11 +278,26 @@ export default function ScanQRPage() {
           )}
 
           {status === 'error' && (
-            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
-              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+            <div className={`flex items-center gap-3 p-4 rounded-lg mb-4 ${
+              pendingApproval 
+                ? 'bg-yellow-50 border border-yellow-200' 
+                : 'bg-red-50 border border-red-200'
+            }`}>
+              <AlertCircle className={`w-6 h-6 flex-shrink-0 ${
+                pendingApproval ? 'text-yellow-600' : 'text-red-600'
+              }`} />
               <div>
-                <p className="font-medium text-red-800">Gagal</p>
-                <p className="text-sm text-red-600">{message}</p>
+                <p className={`font-medium ${pendingApproval ? 'text-yellow-800' : 'text-red-800'}`}>
+                  {pendingApproval ? 'Menunggu Persetujuan' : 'Gagal'}
+                </p>
+                <p className={`text-sm ${pendingApproval ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {message}
+                </p>
+                {pendingApproval && (
+                  <p className="text-xs text-yellow-600 mt-2">
+                    Silakan hubungi guru untuk mendapatkan persetujuan. Coba scan ulang setelah disetujui.
+                  </p>
+                )}
               </div>
             </div>
           )}

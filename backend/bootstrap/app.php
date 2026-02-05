@@ -20,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         
         $middleware->statefulApi();
         
+        // Register custom middleware aliases
+        $middleware->alias([
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
+        ]);
+        
+        // Enable API rate limiting
+        $middleware->throttleApi('60,1'); // 60 requests per minute
+        
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);

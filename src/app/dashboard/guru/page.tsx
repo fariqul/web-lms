@@ -12,9 +12,10 @@ import {
   ChevronRight,
   AlertCircle,
   Loader2,
+  Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import api from '@/services/api';
+import api, { announcementAPI } from '@/services/api';
 
 interface ScheduleItem {
   id: number;
@@ -36,6 +37,15 @@ interface AttendanceDay {
   alpha: number;
 }
 
+interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  priority: 'normal' | 'important' | 'urgent';
+  created_at: string;
+  author?: { name: string; role: string };
+}
+
 export default function GuruDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -54,6 +64,8 @@ export default function GuruDashboard() {
   ]);
 
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [newAnnouncementsCount, setNewAnnouncementsCount] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -62,12 +74,18 @@ export default function GuruDashboard() {
   const fetchData = async () => {
     try {
       // Fetch all data in parallel
-      const [examsRes, scheduleRes, sessionsRes, attendanceRes] = await Promise.all([
+      const [examsRes, scheduleRes, sessionsRes, attendanceRes, announcementsRes, announcementsCountRes] = await Promise.all([
         api.get('/exams').catch(() => ({ data: { data: [] } })),
         api.get('/teacher-schedule').catch(() => ({ data: { data: {} } })),
         api.get('/attendance-sessions', { params: { status: 'active' } }).catch(() => ({ data: { data: { data: [] } } })),
         api.get('/teacher-attendance-stats').catch(() => ({ data: { data: null } })),
+        announcementAPI.getLatest(3).catch(() => ({ data: { data: [] } })),
+        announcementAPI.getUnreadCount().catch(() => ({ data: { data: { count: 0 } } })),
       ]);
+
+      // Process announcements
+      setAnnouncements(announcementsRes.data?.data || []);
+      setNewAnnouncementsCount(announcementsCountRes.data?.data?.count || 0);
 
       // Process exams
       const examsRaw = examsRes.data?.data;
@@ -108,6 +126,42 @@ export default function GuruDashboard() {
     return time.substring(0, 5); // "08:00:00" -> "08:00"
   };
 
+  const formatAnnouncementDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    
+    if (diff < 60 * 60 * 1000) {
+      const minutes = Math.floor(diff / (60 * 1000));
+      return `${minutes} menit lalu`;
+    }
+    if (diff < 24 * 60 * 60 * 1000) {
+      const hours = Math.floor(diff / (60 * 60 * 1000));
+      return `${hours} jam lalu`;
+    }
+    if (diff < 7 * 24 * 60 * 60 * 1000) {
+      const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+      return `${days} hari lalu`;
+    }
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-700 border-red-200';
+      case 'important': return 'bg-orange-100 text-orange-700 border-orange-200';
+      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'Mendesak';
+      case 'important': return 'Penting';
+      default: return 'Umum';
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -126,6 +180,29 @@ export default function GuruDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Selamat Datang, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-gray-600">Kelola absensi dan ujian Anda di sini</p>
         </div>
+
+        {/* Notification Banner for Announcements */}
+        {newAnnouncementsCount > 0 && (
+          <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-teal-500 rounded-lg flex items-center justify-center">
+                <Megaphone className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-teal-900">
+                  Ada {newAnnouncementsCount} pengumuman baru minggu ini!
+                </p>
+                <p className="text-sm text-teal-700">Jangan lewatkan informasi penting</p>
+              </div>
+              <Link 
+                href="/pengumuman"
+                className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors"
+              >
+                Lihat Semua
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-4">
@@ -233,6 +310,61 @@ export default function GuruDashboard() {
               Buat Ujian Pertama
             </Link>
           </div>
+        </Card>
+
+        {/* Latest Announcements */}
+        <Card>
+          <CardHeader 
+            title="Pengumuman Terbaru" 
+            action={
+              <Link href="/pengumuman" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
+                Lihat Semua <ChevronRight className="w-4 h-4" />
+              </Link>
+            }
+          />
+          {announcements.length > 0 ? (
+            <div className="space-y-3">
+              {announcements.map((announcement) => (
+                <Link
+                  key={announcement.id}
+                  href="/pengumuman"
+                  className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      announcement.priority === 'urgent' ? 'bg-red-100' :
+                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-teal-100'
+                    }`}>
+                      <Megaphone className={`w-5 h-5 ${
+                        announcement.priority === 'urgent' ? 'text-red-600' :
+                        announcement.priority === 'important' ? 'text-orange-600' : 'text-teal-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900 truncate">{announcement.title}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(announcement.priority)}`}>
+                          {getPriorityLabel(announcement.priority)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 line-clamp-1 mt-1">{announcement.content}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {announcement.author?.name} • {formatAnnouncementDate(announcement.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Megaphone className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>Belum ada pengumuman</p>
+              <Link href="/pengumuman" className="text-teal-600 hover:underline text-sm mt-2 inline-block">
+                Buat Pengumuman
+              </Link>
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

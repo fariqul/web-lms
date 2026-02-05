@@ -35,7 +35,7 @@ class DemoSeeder extends Seeder
         User::create([
             'name' => 'Administrator',
             'email' => 'admin@sma15mks.sch.id',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('Password123'),
             'role' => 'admin',
         ]);
 
@@ -50,7 +50,7 @@ class DemoSeeder extends Seeder
             User::create([
                 'name' => $teacher['name'],
                 'email' => $teacher['email'],
-                'password' => Hash::make('password'),
+                'password' => Hash::make('Password123'),
                 'role' => 'guru',
                 'nip' => $teacher['nip'],
             ]);
@@ -76,7 +76,7 @@ class DemoSeeder extends Seeder
             User::create([
                 'name' => $student['name'],
                 'email' => $student['email'],
-                'password' => Hash::make('password'),
+                'password' => Hash::make('Password123'),
                 'role' => 'siswa',
                 'nisn' => $student['nisn'],
                 'class_id' => $xIpa1->id,
@@ -92,7 +92,7 @@ class DemoSeeder extends Seeder
                 User::create([
                     'name' => "Siswa {$class->name} - {$i}",
                     'email' => "siswa{$nisnCounter}@sma15mks.sch.id",
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make('Password123'),
                     'role' => 'siswa',
                     'nisn' => "00{$nisnCounter}",
                     'class_id' => $class->id,
@@ -104,8 +104,8 @@ class DemoSeeder extends Seeder
         $this->command->info('Demo data seeded successfully!');
         $this->command->info('');
         $this->command->info('Login credentials:');
-        $this->command->info('Admin: admin@sma15mks.sch.id / password');
-        $this->command->info('Guru: guru@sma15mks.sch.id / password');
-        $this->command->info('Siswa: siswa@sma15mks.sch.id / password');
+        $this->command->info('Admin: admin@sma15mks.sch.id / Password123');
+        $this->command->info('Guru: guru@sma15mks.sch.id / Password123');
+        $this->command->info('Siswa: siswa@sma15mks.sch.id / Password123');
     }
 }

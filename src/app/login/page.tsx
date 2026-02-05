@@ -6,6 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
 import { GraduationCap, Eye, EyeOff, Loader2 } from 'lucide-react';
 
+// Demo login only available in development mode
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -18,6 +21,23 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Client-side validation
+    if (!email || !password) {
+      setError('Email dan password harus diisi');
+      return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Format email tidak valid');
+      return;
+    }
+    
+    if (password.length < 8) {
+      setError('Password minimal 8 karakter');
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -31,12 +51,14 @@ export default function LoginPage() {
     }
   };
 
-  // Demo login for testing
+  // Demo login for testing - ONLY in development
   const handleDemoLogin = (role: 'admin' | 'guru' | 'siswa') => {
+    if (!isDevelopment) return;
+    
     const demoCredentials = {
-      admin: { email: 'admin@sma15mks.sch.id', password: 'password' },
-      guru: { email: 'guru@sma15mks.sch.id', password: 'password' },
-      siswa: { email: 'siswa@sma15mks.sch.id', password: 'password' },
+      admin: { email: 'admin@sma15mks.sch.id', password: 'Password123' },
+      guru: { email: 'guru@sma15mks.sch.id', password: 'Password123' },
+      siswa: { email: 'siswa@sma15mks.sch.id', password: 'Password123' },
     };
     setEmail(demoCredentials[role].email);
     setPassword(demoCredentials[role].password);
@@ -118,33 +140,38 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Login Buttons */}
-          <div className="mt-6 pt-6 border-t">
-            <p className="text-sm text-gray-500 text-center mb-3">Demo Login (Klik untuk mengisi)</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin')}
-                className="flex-1 py-2 px-3 text-xs font-medium bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('guru')}
-                className="flex-1 py-2 px-3 text-xs font-medium bg-teal-100 text-teal-600 rounded-lg hover:bg-teal-200 transition-colors"
-              >
-                Guru
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('siswa')}
-                className="flex-1 py-2 px-3 text-xs font-medium bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-              >
-                Siswa
-              </button>
+          {/* Demo Login Buttons - ONLY IN DEVELOPMENT */}
+          {isDevelopment && (
+            <div className="mt-6 pt-6 border-t">
+              <p className="text-sm text-gray-500 text-center mb-3">
+                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">DEV MODE</span>
+                {' '}Demo Login (Klik untuk mengisi)
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('admin')}
+                  className="flex-1 py-2 px-3 text-xs font-medium bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                >
+                  Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('guru')}
+                  className="flex-1 py-2 px-3 text-xs font-medium bg-teal-100 text-teal-600 rounded-lg hover:bg-teal-200 transition-colors"
+                >
+                  Guru
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('siswa')}
+                  className="flex-1 py-2 px-3 text-xs font-medium bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  Siswa
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}

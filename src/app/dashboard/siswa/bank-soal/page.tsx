@@ -1,0 +1,286 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { Card, Button } from '@/components/ui';
+import { 
+  BookOpen, 
+  Calculator, 
+  Microscope, 
+  FlaskConical, 
+  Atom,
+  Landmark,
+  Users,
+  Coins,
+  Globe2,
+  ScrollText,
+  Languages,
+  GraduationCap,
+  Clock,
+  Target,
+  ChevronRight,
+  Play,
+  BookMarked,
+  Loader2
+} from 'lucide-react';
+import { bankQuestionAPI } from '@/services/api';
+
+// Subject data with icons and colors
+const SUBJECTS = [
+  { id: 'Bahasa Indonesia', name: 'Bahasa Indonesia', icon: BookOpen, color: 'bg-red-100', iconColor: 'text-red-500' },
+  { id: 'Matematika', name: 'Matematika', icon: Calculator, color: 'bg-blue-100', iconColor: 'text-blue-500' },
+  { id: 'Biologi', name: 'Biologi', icon: Microscope, color: 'bg-green-100', iconColor: 'text-green-500' },
+  { id: 'Kimia', name: 'Kimia', icon: FlaskConical, color: 'bg-orange-100', iconColor: 'text-orange-500' },
+  { id: 'Fisika', name: 'Fisika', icon: Atom, color: 'bg-pink-100', iconColor: 'text-pink-500' },
+  { id: 'Sejarah', name: 'Sejarah', icon: Landmark, color: 'bg-amber-100', iconColor: 'text-amber-600' },
+  { id: 'Sosiologi', name: 'Sosiologi', icon: Users, color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+  { id: 'Ekonomi', name: 'Ekonomi', icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
+  { id: 'Geografi', name: 'Geografi', icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
+  { id: 'PKN', name: 'PKN', icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
+  { id: 'Bahasa Inggris', name: 'Bahasa Inggris', icon: Languages, color: 'bg-purple-100', iconColor: 'text-purple-500' },
+  { id: 'Informatika', name: 'Informatika', icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600' },
+  { id: 'IPA', name: 'IPA', icon: Microscope, color: 'bg-teal-100', iconColor: 'text-teal-500' },
+  { id: 'Seni Budaya', name: 'Seni Budaya', icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
+  { id: 'Pengetahuan Umum', name: 'Pengetahuan Umum', icon: BookOpen, color: 'bg-gray-100', iconColor: 'text-gray-600' },
+];
+
+const GRADES = [
+  { value: '10', label: 'Kelas 10' },
+  { value: '11', label: 'Kelas 11' },
+  { value: '12', label: 'Kelas 12' },
+];
+
+interface SubjectWithCount {
+  subject: string;
+  total_questions: number;
+}
+
+export default function SiswaBankSoalPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [selectedGrade, setSelectedGrade] = useState('10');
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [showModeSelection, setShowModeSelection] = useState(false);
+  const [subjectCounts, setSubjectCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetchSubjectStats();
+  }, [selectedGrade]);
+
+  const fetchSubjectStats = async () => {
+    try {
+      setLoading(true);
+      const response = await bankQuestionAPI.getSubjects(selectedGrade);
+      const data: SubjectWithCount[] = response.data?.data || [];
+      
+      const counts: Record<string, number> = {};
+      data.forEach(item => {
+        counts[item.subject] = item.total_questions;
+      });
+      setSubjectCounts(counts);
+    } catch (error) {
+      console.error('Failed to fetch subject stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubjectClick = (subjectId: string) => {
+    const count = subjectCounts[subjectId] || 0;
+    if (count === 0) {
+      alert('Belum ada soal untuk mata pelajaran ini.');
+      return;
+    }
+    setSelectedSubject(subjectId);
+    setShowModeSelection(true);
+  };
+
+  const handleModeSelect = (mode: 'tryout' | 'belajar') => {
+    if (selectedSubject) {
+      router.push(`/dashboard/siswa/bank-soal/${encodeURIComponent(selectedSubject)}?mode=${mode}&grade=${selectedGrade}`);
+    }
+  };
+
+  const selectedSubjectData = SUBJECTS.find(s => s.id === selectedSubject);
+
+  // Filter subjects that have questions or show all with count
+  const availableSubjects = SUBJECTS;
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Pelajaran Banksoal</h1>
+            <p className="text-gray-600">Pilih mata pelajaran untuk berlatih</p>
+          </div>
+          <select
+            value={selectedGrade}
+            onChange={(e) => setSelectedGrade(e.target.value)}
+            className="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 font-medium"
+          >
+            {GRADES.map(grade => (
+              <option key={grade.value} value={grade.value}>{grade.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Subject Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {availableSubjects.map((subject) => {
+            const IconComponent = subject.icon;
+            const questionCount = subjectCounts[subject.id] || 0;
+            
+            return (
+              <Card
+                key={subject.id}
+                className={`p-4 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 border-2 border-transparent hover:border-teal-200 ${questionCount === 0 ? 'opacity-60' : ''}`}
+                onClick={() => handleSubjectClick(subject.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-xl ${subject.color} flex items-center justify-center flex-shrink-0`}>
+                    <IconComponent className={`w-7 h-7 ${subject.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{subject.name}</h3>
+                    <p className="text-sm text-gray-500">
+                      {questionCount > 0 ? `${questionCount} soal tersedia` : 'Belum ada soal'}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Info if no questions at all */}
+        {Object.values(subjectCounts).every(c => c === 0) && (
+          <Card className="p-8 text-center">
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Belum ada soal untuk kelas {selectedGrade}.</p>
+            <p className="text-gray-400 text-sm mt-1">Silakan hubungi guru untuk menambahkan soal.</p>
+          </Card>
+        )}
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+          <Card className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <Target className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-teal-100 text-sm">Total Latihan</p>
+                <p className="text-2xl font-bold">128</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-blue-100 text-sm">Waktu Belajar</p>
+                <p className="text-2xl font-bold">24 jam</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-purple-100 text-sm">Rata-rata Nilai</p>
+                <p className="text-2xl font-bold">78.5</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Mode Selection Modal */}
+        {showModeSelection && selectedSubjectData && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+              <div className="text-center mb-6">
+                <div className={`w-16 h-16 rounded-2xl ${selectedSubjectData.color} flex items-center justify-center mx-auto mb-4`}>
+                  <selectedSubjectData.icon className={`w-8 h-8 ${selectedSubjectData.iconColor}`} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">{selectedSubjectData.name}</h3>
+                <p className="text-gray-500 mt-1">Pilih mode latihan</p>
+              </div>
+
+              <div className="space-y-3">
+                {/* Tryout Mode */}
+                <button
+                  onClick={() => handleModeSelect('tryout')}
+                  className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                      <Clock className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">Mode Tryout</h4>
+                      <p className="text-sm text-gray-500">Simulasi ujian dengan waktu terbatas</p>
+                    </div>
+                    <Play className="w-5 h-5 text-gray-400 group-hover:text-orange-500" />
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">Timer</span>
+                    <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">Skor Akhir</span>
+                    <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">Ranking</span>
+                  </div>
+                </button>
+
+                {/* Belajar Mode */}
+                <button
+                  onClick={() => handleModeSelect('belajar')}
+                  className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-all group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center group-hover:bg-teal-200 transition-colors">
+                      <BookMarked className="w-6 h-6 text-teal-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">Mode Belajar</h4>
+                      <p className="text-sm text-gray-500">Belajar santai dengan pembahasan</p>
+                    </div>
+                    <Play className="w-5 h-5 text-gray-400 group-hover:text-teal-500" />
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <span className="px-2 py-1 bg-teal-100 text-teal-600 text-xs rounded-full">Tanpa Timer</span>
+                    <span className="px-2 py-1 bg-teal-100 text-teal-600 text-xs rounded-full">Pembahasan</span>
+                    <span className="px-2 py-1 bg-teal-100 text-teal-600 text-xs rounded-full">Bookmark</span>
+                  </div>
+                </button>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={() => setShowModeSelection(false)}
+              >
+                Batal
+              </Button>
+            </Card>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}

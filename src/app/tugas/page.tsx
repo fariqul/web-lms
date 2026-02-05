@@ -1,0 +1,836 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { Card, Button, Input } from '@/components/ui';
+import { 
+  ClipboardList, 
+  Plus, 
+  Search, 
+  Calendar,
+  Users,
+  CheckCircle,
+  Clock,
+  Trash2, 
+  Edit, 
+  Eye,
+  X,
+  Loader2,
+  Upload,
+  FileText,
+  AlertCircle,
+  Download,
+  Star
+} from 'lucide-react';
+import { classAPI, assignmentAPI } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+
+interface Assignment {
+  id: number;
+  title: string;
+  description: string;
+  subject: string;
+  teacher_id: number;
+  class_id: number;
+  deadline: string;
+  max_score: number;
+  attachment_url?: string;
+  status: 'active' | 'closed';
+  created_at: string;
+  submissions_count: number;
+  ungraded_count: number;
+  teacher?: { id: number; name: string };
+  class_room?: { id: number; name: string };
+}
+
+interface Submission {
+  id: number;
+  assignment_id: number;
+  student_id: number;
+  content?: string;
+  file_url?: string;
+  score?: number;
+  feedback?: string;
+  status: 'submitted' | 'graded' | 'late';
+  submitted_at: string;
+  graded_at?: string;
+  student?: { id: number; name: string; nisn: string };
+}
+
+interface ClassOption {
+  value: string;
+  label: string;
+}
+
+export default function TugasGuruPage() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+  const [showGradeModal, setShowGradeModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    subject: '',
+    class_id: '',
+    deadline: '',
+    max_score: '100',
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Grade form
+  const [gradeData, setGradeData] = useState({
+    score: '',
+    feedback: '',
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      const [classesRes, assignmentsRes] = await Promise.all([
+        classAPI.getAll(),
+        assignmentAPI.getAll(),
+      ]);
+      
+      setClasses(
+        (classesRes.data?.data || []).map((c: { id: number; name: string }) => ({
+          value: c.id.toString(),
+          label: c.name,
+        }))
+      );
+      
+      setAssignments(assignmentsRes.data?.data || []);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      setError('Gagal memuat data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredAssignments = assignments.filter(a => 
+    a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.subject.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      subject: '',
+      class_id: '',
+      deadline: '',
+      max_score: '100',
+    });
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        setError('Ukuran file maksimal 50MB');
+        return;
+      }
+      setSelectedFile(file);
+      setError('');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const submitData = new FormData();
+      submitData.append('title', formData.title);
+      submitData.append('description', formData.description);
+      submitData.append('subject', formData.subject);
+      submitData.append('class_id', formData.class_id);
+      submitData.append('deadline', formData.deadline);
+      submitData.append('max_score', formData.max_score);
+      
+      if (selectedFile) {
+        submitData.append('attachment', selectedFile);
+      }
+
+      await assignmentAPI.create(submitData);
+      
+      setSuccess('Tugas berhasil dibuat!');
+      setShowAddModal(false);
+      resetForm();
+      fetchData();
+      
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error: any) {
+      console.error('Failed to create assignment:', error);
+      setError(error.response?.data?.message || 'Gagal membuat tugas');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAssignment) return;
+    
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const submitData = new FormData();
+      submitData.append('_method', 'PUT');
+      submitData.append('title', formData.title);
+      submitData.append('description', formData.description);
+      submitData.append('subject', formData.subject);
+      submitData.append('class_id', formData.class_id);
+      submitData.append('deadline', formData.deadline);
+      submitData.append('max_score', formData.max_score);
+      
+      if (selectedFile) {
+        submitData.append('attachment', selectedFile);
+      }
+
+      await assignmentAPI.update(selectedAssignment.id, submitData);
+      
+      setSuccess('Tugas berhasil diperbarui!');
+      setShowEditModal(false);
+      setSelectedAssignment(null);
+      resetForm();
+      fetchData();
+      
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error: any) {
+      console.error('Failed to update assignment:', error);
+      setError(error.response?.data?.message || 'Gagal memperbarui tugas');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Yakin ingin menghapus tugas ini?')) return;
+
+    try {
+      await assignmentAPI.delete(id);
+      setSuccess('Tugas berhasil dihapus!');
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error: any) {
+      setError(error.response?.data?.message || 'Gagal menghapus tugas');
+    }
+  };
+
+  const handleEdit = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setFormData({
+      title: assignment.title,
+      description: assignment.description || '',
+      subject: assignment.subject,
+      class_id: assignment.class_id.toString(),
+      deadline: assignment.deadline.slice(0, 16),
+      max_score: assignment.max_score.toString(),
+    });
+    setSelectedFile(null);
+    setShowEditModal(true);
+  };
+
+  const handleViewSubmissions = async (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    try {
+      const res = await assignmentAPI.getSubmissions(assignment.id);
+      setSubmissions(res.data?.data || []);
+      setShowSubmissionsModal(true);
+    } catch (error) {
+      setError('Gagal memuat data pengumpulan');
+    }
+  };
+
+  const handleOpenGrade = (submission: Submission) => {
+    setSelectedSubmission(submission);
+    setGradeData({
+      score: submission.score?.toString() || '',
+      feedback: submission.feedback || '',
+    });
+    setShowGradeModal(true);
+  };
+
+  const handleGrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubmission) return;
+
+    setSubmitting(true);
+    try {
+      await assignmentAPI.grade(selectedSubmission.id, {
+        score: parseInt(gradeData.score),
+        feedback: gradeData.feedback,
+      });
+
+      setSuccess('Nilai berhasil disimpan!');
+      setShowGradeModal(false);
+      
+      // Refresh submissions
+      if (selectedAssignment) {
+        const res = await assignmentAPI.getSubmissions(selectedAssignment.id);
+        setSubmissions(res.data?.data || []);
+      }
+      
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error: any) {
+      setError(error.response?.data?.message || 'Gagal menyimpan nilai');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const isOverdue = (deadline: string) => new Date(deadline) < new Date();
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
+            <CheckCircle className="w-5 h-5" />
+            <span>{success}</span>
+          </div>
+        )}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+            <AlertCircle className="w-5 h-5" />
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="ml-auto">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Tugas & Assignment</h1>
+            <p className="text-gray-600">Kelola tugas untuk siswa</p>
+          </div>
+          <Button onClick={() => { resetForm(); setShowAddModal(true); }}>
+            <Plus className="w-5 h-5 mr-2" />
+            Buat Tugas
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari tugas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Tugas</p>
+                <p className="text-xl font-bold text-gray-900">{assignments.length}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Aktif</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {assignments.filter(a => a.status === 'active').length}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Perlu Dinilai</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {assignments.reduce((sum, a) => sum + (a.ungraded_count || 0), 0)}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Assignments List */}
+        <div className="space-y-4">
+          {filteredAssignments.length === 0 ? (
+            <Card className="p-8 text-center">
+              <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Belum ada tugas</p>
+              <p className="text-sm text-gray-400 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
+            </Card>
+          ) : (
+            filteredAssignments.map((assignment) => (
+              <Card key={assignment.id} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    assignment.status === 'closed' ? 'bg-gray-100' :
+                    isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-teal-100'
+                  }`}>
+                    <ClipboardList className={`w-5 h-5 ${
+                      assignment.status === 'closed' ? 'text-gray-500' :
+                      isOverdue(assignment.deadline) ? 'text-red-500' : 'text-teal-500'
+                    }`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{assignment.description}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                            {assignment.subject}
+                          </span>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                            {assignment.class_room?.name || '-'}
+                          </span>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            assignment.status === 'closed' ? 'bg-gray-100 text-gray-600' :
+                            isOverdue(assignment.deadline) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                          }`}>
+                            {assignment.status === 'closed' ? 'Ditutup' :
+                             isOverdue(assignment.deadline) ? 'Lewat Deadline' : 'Aktif'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleViewSubmissions(assignment)}
+                          className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                          title="Lihat Pengumpulan"
+                        >
+                          <Users className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEdit(assignment)}
+                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(assignment.id)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        Deadline: {formatDate(assignment.deadline)}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {assignment.submissions_count || 0} pengumpulan
+                      </span>
+                      <span>•</span>
+                      <span>Nilai maks: {assignment.max_score}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Add/Edit Modal */}
+        {(showAddModal || showEditModal) && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+                <h2 className="text-lg font-semibold">
+                  {showEditModal ? 'Edit Tugas' : 'Buat Tugas Baru'}
+                </h2>
+                <button 
+                  onClick={() => { 
+                    setShowAddModal(false); 
+                    setShowEditModal(false);
+                    setSelectedAssignment(null);
+                    resetForm(); 
+                    setError(''); 
+                  }} 
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={showEditModal ? handleUpdate : handleSubmit} className="p-4 space-y-4">
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    {error}
+                  </div>
+                )}
+                
+                <Input
+                  label="Judul Tugas"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Masukkan judul tugas"
+                  required
+                />
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Instruksi atau deskripsi tugas"
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Mata Pelajaran"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    placeholder="Contoh: Matematika"
+                    required
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <select
+                      value={formData.class_id}
+                      onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      required
+                    >
+                      <option value="">Pilih Kelas</option>
+                      {classes.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.deadline}
+                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      required
+                    />
+                  </div>
+                  <Input
+                    label="Nilai Maksimal"
+                    type="number"
+                    value={formData.max_score}
+                    onChange={(e) => setFormData({ ...formData, max_score: e.target.value })}
+                    min="1"
+                    max="1000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lampiran (Opsional)
+                  </label>
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
+                      ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-gray-300 hover:border-teal-500'}`}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    {selectedFile ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-5 h-5 text-teal-500" />
+                        <span className="text-sm text-gray-700">{selectedFile.name}</span>
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(null);
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                        <p className="text-sm text-gray-500">Upload file lampiran</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setShowEditModal(false);
+                      setSelectedAssignment(null);
+                      resetForm();
+                    }}
+                    disabled={submitting}
+                  >
+                    Batal
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      showEditModal ? 'Perbarui Tugas' : 'Buat Tugas'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        )}
+
+        {/* Submissions Modal */}
+        {showSubmissionsModal && selectedAssignment && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-4 border-b flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Pengumpulan Tugas</h2>
+                  <p className="text-sm text-gray-500">{selectedAssignment.title}</p>
+                </div>
+                <button 
+                  onClick={() => { setShowSubmissionsModal(false); setSelectedAssignment(null); }} 
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {submissions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">Belum ada pengumpulan</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {submissions.map((submission) => (
+                      <div 
+                        key={submission.id} 
+                        className="p-4 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {submission.student?.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              NISN: {submission.student?.nisn}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                submission.status === 'graded' ? 'bg-green-100 text-green-700' :
+                                submission.status === 'late' ? 'bg-orange-100 text-orange-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                {submission.status === 'graded' ? 'Sudah Dinilai' :
+                                 submission.status === 'late' ? 'Terlambat' : 'Menunggu Penilaian'}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                Dikumpulkan: {formatDate(submission.submitted_at)}
+                              </span>
+                            </div>
+                            {submission.content && (
+                              <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                                {submission.content}
+                              </p>
+                            )}
+                            {submission.file_url && (
+                              <a 
+                                href={submission.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"
+                              >
+                                <Download className="w-4 h-4" />
+                                Download File
+                              </a>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            {submission.status === 'graded' ? (
+                              <div>
+                                <p className="text-2xl font-bold text-teal-600">
+                                  {submission.score}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  / {selectedAssignment.max_score}
+                                </p>
+                              </div>
+                            ) : (
+                              <Button 
+                                size="sm"
+                                onClick={() => handleOpenGrade(submission)}
+                              >
+                                <Star className="w-4 h-4 mr-1" />
+                                Nilai
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        {submission.feedback && (
+                          <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
+                            <p className="text-gray-500 text-xs mb-1">Feedback:</p>
+                            <p className="text-gray-700">{submission.feedback}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Grade Modal */}
+        {showGradeModal && selectedSubmission && selectedAssignment && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+            <Card className="w-full max-w-md">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Beri Nilai</h2>
+                <button 
+                  onClick={() => { setShowGradeModal(false); setSelectedSubmission(null); }} 
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleGrade} className="p-4 space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">Siswa</p>
+                  <p className="font-medium">{selectedSubmission.student?.name}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nilai (0 - {selectedAssignment.max_score})
+                  </label>
+                  <input
+                    type="number"
+                    value={gradeData.score}
+                    onChange={(e) => setGradeData({ ...gradeData, score: e.target.value })}
+                    min="0"
+                    max={selectedAssignment.max_score}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Feedback (Opsional)
+                  </label>
+                  <textarea
+                    value={gradeData.feedback}
+                    onChange={(e) => setGradeData({ ...gradeData, feedback: e.target.value })}
+                    placeholder="Berikan komentar atau feedback"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setShowGradeModal(false)}
+                    disabled={submitting}
+                  >
+                    Batal
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Simpan Nilai'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}

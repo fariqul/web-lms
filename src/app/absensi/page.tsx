@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Select, Table } from '@/components/ui';
-import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Eye, Users, Edit2, Save, X } from 'lucide-react';
+import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Eye, Users, Edit2, Save, X, Smartphone, AlertTriangle } from 'lucide-react';
 import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { QRCodeSVG } from 'qrcode.react';
+import Link from 'next/link';
 
 interface AttendanceRecord {
   id: number;
@@ -88,12 +89,19 @@ export default function AbsensiPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedStatuses, setEditedStatuses] = useState<Record<number, string>>({});
   const [savingStatus, setSavingStatus] = useState(false);
+  
+  // Anti-cheat options
+  const [requireSchoolNetwork, setRequireSchoolNetwork] = useState(false);
+  
+  // Pending device switch requests count
+  const [pendingDeviceRequests, setPendingDeviceRequests] = useState(0);
 
   // Load active session from localStorage or API on mount
   useEffect(() => {
     const initialize = async () => {
       await fetchClasses();
       await fetchSessionHistory();
+      await fetchPendingDeviceRequests();
       await loadActiveSession();
       setLoading(false);
     };
@@ -275,6 +283,29 @@ export default function AbsensiPage() {
       console.error('Failed to fetch session history:', error);
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  // Fetch pending device switch requests count
+  const fetchPendingDeviceRequests = async () => {
+    try {
+      const sessionsResponse = await api.get('/attendance-sessions/my-sessions');
+      const sessions = sessionsResponse.data?.data || [];
+      
+      let pendingCount = 0;
+      for (const session of sessions) {
+        try {
+          const response = await api.get(`/attendance-sessions/${session.id}/device-switch-requests`);
+          const requests = response.data?.data || [];
+          pendingCount += requests.filter((r: { status: string }) => r.status === 'pending').length;
+        } catch {
+          // Session might not have any requests
+        }
+      }
+      
+      setPendingDeviceRequests(pendingCount);
+    } catch (error) {
+      console.error('Failed to fetch pending device requests:', error);
     }
   };
 
@@ -461,6 +492,7 @@ export default function AbsensiPage() {
         subject: selectedSubject,
         valid_from: validFrom,
         valid_until: validUntil,
+        require_school_network: requireSchoolNetwork,
       });
       console.log('API response:', response.data);
 
@@ -570,6 +602,24 @@ export default function AbsensiPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Pending Device Requests Alert */}
+        {pendingDeviceRequests > 0 && (
+          <Link href="/absensi/persetujuan-device">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-yellow-100 transition-colors">
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <div className="flex-1">
+                <h3 className="font-medium text-yellow-800">
+                  {pendingDeviceRequests} permintaan pindah perangkat menunggu persetujuan
+                </h3>
+                <p className="text-sm text-yellow-700">
+                  Klik untuk melihat dan memproses permintaan
+                </p>
+              </div>
+              <Smartphone className="w-5 h-5 text-yellow-600" />
+            </div>
+          </Link>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 border-b border-gray-200">
           <button
@@ -621,6 +671,24 @@ export default function AbsensiPage() {
                       onChange={(e) => setSelectedSubject(e.target.value)}
                     />
                   </div>
+                  
+                  {/* Anti-Cheat Options */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Pengaturan Anti-Titip</h4>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={requireSchoolNetwork}
+                        onChange={(e) => setRequireSchoolNetwork(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Wajibkan WiFi Sekolah</span>
+                        <p className="text-xs text-gray-500">Siswa hanya bisa absen jika terhubung ke jaringan sekolah</p>
+                      </div>
+                    </label>
+                  </div>
+                  
                   <Button
                     onClick={handleStartSession}
                     leftIcon={<QrCode className="w-5 h-5" />}

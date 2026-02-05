@@ -9,6 +9,7 @@ use App\Models\Answer;
 use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -282,6 +283,17 @@ class ExamController extends Controller
      */
     public function updateQuestion(Request $request, Question $question)
     {
+        // Check ownership - only exam creator can update questions
+        $exam = $question->exam;
+        $user = $request->user();
+        
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mengubah soal ini',
+            ], 403);
+        }
+        
         $request->validate([
             'question_text' => 'sometimes|string',
             'question_type' => 'sometimes|in:multiple_choice,essay',
@@ -306,8 +318,19 @@ class ExamController extends Controller
     /**
      * Delete question
      */
-    public function deleteQuestion(Question $question)
+    public function deleteQuestion(Request $request, Question $question)
     {
+        // Check ownership - only exam creator can delete questions
+        $exam = $question->exam;
+        $user = $request->user();
+        
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus soal ini',
+            ], 403);
+        }
+        
         $question->delete();
 
         return response()->json([
@@ -686,13 +709,23 @@ class ExamController extends Controller
 
     /**
      * Get live monitoring data - OPTIMIZED
+     * Includes all students in class: not_started, in_progress, and completed
      */
     public function monitoring(Exam $exam)
     {
-        $results = ExamResult::with('student:id,name,nisn')
-            ->where('exam_id', $exam->id)
-            ->where('status', 'in_progress')
-            ->get(['id', 'exam_id', 'student_id', 'started_at', 'violation_count']);
+        // Load exam with class info
+        $exam->load('class');
+        
+        // Get all students in the class
+        $allStudents = User::where('role', 'siswa')
+            ->where('class_id', $exam->class_id)
+            ->select('id', 'name', 'nisn')
+            ->get();
+
+        // Get all exam results
+        $results = ExamResult::where('exam_id', $exam->id)
+            ->get()
+            ->keyBy('student_id');
 
         // Batch load latest snapshots
         $resultIds = $results->pluck('id');
@@ -710,19 +743,60 @@ class ExamController extends Controller
             ->groupBy('student_id')
             ->pluck('count', 'student_id');
 
-        $monitoringData = $results->map(function ($result) use ($latestSnapshots, $answerCounts) {
+        $monitoringData = $allStudents->map(function ($student) use ($results, $latestSnapshots, $answerCounts, $exam) {
+            $result = $results->get($student->id);
+            
+            if (!$result) {
+                // Student hasn't started yet
+                return [
+                    'student' => $student,
+                    'status' => 'not_started',
+                    'started_at' => null,
+                    'finished_at' => null,
+                    'violation_count' => 0,
+                    'answered_count' => 0,
+                    'total_questions' => $exam->total_questions,
+                    'score' => null,
+                    'latest_snapshot' => null,
+                ];
+            }
+            
             return [
-                'student' => $result->student,
+                'student' => $student,
+                'status' => $result->status,
                 'started_at' => $result->started_at,
+                'finished_at' => $result->finished_at,
                 'violation_count' => $result->violation_count,
-                'answered_count' => $answerCounts[$result->student_id] ?? 0,
+                'answered_count' => $answerCounts[$student->id] ?? 0,
+                'total_questions' => $exam->total_questions,
+                'score' => $result->status === 'completed' ? $result->percentage : null,
                 'latest_snapshot' => $latestSnapshots[$result->id] ?? null,
             ];
         });
 
+        // Summary stats
+        $summary = [
+            'total_students' => $allStudents->count(),
+            'not_started' => $monitoringData->where('status', 'not_started')->count(),
+            'in_progress' => $monitoringData->where('status', 'in_progress')->count(),
+            'completed' => $monitoringData->where('status', 'completed')->count(),
+            'total_violations' => $monitoringData->sum('violation_count'),
+        ];
+
         return response()->json([
             'success' => true,
-            'data' => $monitoringData,
+            'data' => [
+                'exam' => [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'duration' => $exam->duration,
+                    'total_questions' => $exam->total_questions,
+                    'start_time' => $exam->start_time,
+                    'end_time' => $exam->end_time,
+                ],
+                'participants' => $monitoringData,
+                'summary' => $summary,
+            ],
         ]);
     }
 }

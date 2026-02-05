@@ -1,67 +1,65 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button, Input, Textarea } from '@/components/ui';
-import { Bell, Plus, Calendar, Eye, Edit2, Trash2, X, Megaphone } from 'lucide-react';
+import { Bell, Plus, Calendar, Eye, Edit2, Trash2, X, Megaphone, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { announcementAPI } from '@/services/api';
 
 interface Announcement {
   id: number;
   title: string;
   content: string;
-  author: string;
+  priority: 'normal' | 'important' | 'urgent';
   target: 'all' | 'guru' | 'siswa';
+  is_active: boolean;
+  published_at: string;
+  expires_at: string | null;
   created_at: string;
-  is_pinned: boolean;
+  author?: {
+    id: number;
+    name: string;
+    role: string;
+  };
 }
 
 export default function PengumumanPage() {
   const { user } = useAuth();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: 1,
-      title: 'Jadwal Ujian Tengah Semester',
-      content: 'Ujian Tengah Semester akan dilaksanakan mulai tanggal 10 Februari 2026. Harap semua siswa mempersiapkan diri dengan baik. Jadwal lengkap akan diumumkan melalui wali kelas masing-masing.',
-      author: 'Administrator',
-      target: 'all',
-      created_at: '2026-01-28T10:00:00',
-      is_pinned: true,
-    },
-    {
-      id: 2,
-      title: 'Rapat Guru Bulanan',
-      content: 'Rapat guru bulanan akan dilaksanakan pada hari Sabtu, 1 Februari 2026 pukul 09:00 WIB di Aula Sekolah. Kehadiran seluruh guru sangat diharapkan.',
-      author: 'Administrator',
-      target: 'guru',
-      created_at: '2026-01-27T14:00:00',
-      is_pinned: false,
-    },
-    {
-      id: 3,
-      title: 'Pendaftaran Ekstrakurikuler',
-      content: 'Pendaftaran ekstrakurikuler semester genap dibuka mulai tanggal 1-7 Februari 2026. Silakan daftar melalui wali kelas atau langsung ke pembina masing-masing ekstrakurikuler.',
-      author: 'Administrator',
-      target: 'siswa',
-      created_at: '2026-01-25T08:00:00',
-      is_pinned: false,
-    },
-  ]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  
+  // Default target to 'siswa' for guru, 'all' for admin
+  const getDefaultTarget = () => user?.role === 'guru' ? 'siswa' : 'all';
+  
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    target: 'all' as 'all' | 'guru' | 'siswa',
+    target: getDefaultTarget() as 'all' | 'guru' | 'siswa',
+    priority: 'normal' as 'normal' | 'important' | 'urgent',
   });
 
   const canCreate = user?.role === 'admin' || user?.role === 'guru';
 
-  const filteredAnnouncements = announcements.filter(a => {
-    if (user?.role === 'admin') return true;
-    if (a.target === 'all') return true;
-    return a.target === user?.role;
-  });
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const fetchAnnouncements = async () => {
+    try {
+      setLoading(true);
+      const response = await announcementAPI.getAll();
+      setAnnouncements(response.data.data.data || response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
@@ -82,27 +80,88 @@ export default function PengumumanPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newAnnouncement: Announcement = {
-      id: announcements.length + 1,
-      title: formData.title,
-      content: formData.content,
-      author: user?.name || 'Unknown',
-      target: formData.target,
-      created_at: new Date().toISOString(),
-      is_pinned: false,
-    };
-    setAnnouncements([newAnnouncement, ...announcements]);
-    setShowModal(false);
-    setFormData({ title: '', content: '', target: 'all' });
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm('Yakin ingin menghapus pengumuman ini?')) {
-      setAnnouncements(announcements.filter(a => a.id !== id));
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'Mendesak';
+      case 'important': return 'Penting';
+      default: return 'Normal';
     }
   };
+
+  const resetForm = () => {
+    setFormData({ title: '', content: '', target: getDefaultTarget(), priority: 'normal' });
+    setEditMode(false);
+    setSelectedAnnouncement(null);
+  };
+
+  const handleOpenModal = (announcement?: Announcement) => {
+    if (announcement) {
+      setFormData({
+        title: announcement.title,
+        content: announcement.content,
+        target: announcement.target,
+        priority: announcement.priority,
+      });
+      setSelectedAnnouncement(announcement);
+      setEditMode(true);
+    } else {
+      resetForm();
+    }
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      if (editMode && selectedAnnouncement) {
+        await announcementAPI.update(selectedAnnouncement.id, formData);
+        alert('Pengumuman berhasil diperbarui!');
+      } else {
+        await announcementAPI.create(formData);
+        alert('Pengumuman berhasil dibuat!');
+      }
+      
+      setShowModal(false);
+      resetForm();
+      fetchAnnouncements();
+    } catch (error) {
+      console.error('Error saving announcement:', error);
+      alert('Gagal menyimpan pengumuman. Silakan coba lagi.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Yakin ingin menghapus pengumuman ini?')) {
+      try {
+        await announcementAPI.delete(id);
+        alert('Pengumuman berhasil dihapus!');
+        fetchAnnouncements();
+      } catch (error) {
+        console.error('Error deleting announcement:', error);
+        alert('Gagal menghapus pengumuman.');
+      }
+    }
+  };
+
+  const handleView = (announcement: Announcement) => {
+    setSelectedAnnouncement(announcement);
+    setEditMode(false);
+    setShowModal(false);
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -113,7 +172,7 @@ export default function PengumumanPage() {
             <p className="text-gray-600">Informasi dan pengumuman terbaru</p>
           </div>
           {canCreate && (
-            <Button onClick={() => setShowModal(true)}>
+            <Button onClick={() => handleOpenModal()}>
               <Plus className="w-4 h-4 mr-2" />
               Buat Pengumuman
             </Button>
@@ -121,7 +180,7 @@ export default function PengumumanPage() {
         </div>
 
         {/* Announcements List */}
-        {filteredAnnouncements.length === 0 ? (
+        {announcements.length === 0 ? (
           <Card className="p-12 text-center">
             <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Pengumuman</h3>
@@ -129,28 +188,35 @@ export default function PengumumanPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredAnnouncements.map((announcement) => (
+            {announcements.map((announcement) => (
               <Card 
                 key={announcement.id} 
-                className={`p-6 ${announcement.is_pinned ? 'border-l-4 border-orange-500' : ''}`}
+                className={`p-6 ${announcement.priority === 'urgent' ? 'border-l-4 border-red-500' : announcement.priority === 'important' ? 'border-l-4 border-orange-500' : ''}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      announcement.is_pinned ? 'bg-orange-100' : 'bg-blue-100'
+                      announcement.priority === 'urgent' ? 'bg-red-100' : 
+                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-blue-100'
                     }`}>
-                      {announcement.is_pinned ? (
-                        <Megaphone className={`w-6 h-6 ${announcement.is_pinned ? 'text-orange-600' : 'text-blue-600'}`} />
+                      {announcement.priority !== 'normal' ? (
+                        <Megaphone className={`w-6 h-6 ${
+                          announcement.priority === 'urgent' ? 'text-red-600' : 'text-orange-600'
+                        }`} />
                       ) : (
                         <Bell className="w-6 h-6 text-blue-600" />
                       )}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
-                        {announcement.is_pinned && (
-                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded">
-                            Penting
+                        {announcement.priority !== 'normal' && (
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                            announcement.priority === 'urgent' 
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {getPriorityLabel(announcement.priority)}
                           </span>
                         )}
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${
@@ -165,7 +231,7 @@ export default function PengumumanPage() {
                       </div>
                       <p className="text-gray-600 text-sm mb-3 line-clamp-2">{announcement.content}</p>
                       <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>{announcement.author}</span>
+                        <span>{announcement.author?.name || 'Admin'}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {formatDate(announcement.created_at)}
@@ -176,13 +242,16 @@ export default function PengumumanPage() {
                   <div className="flex items-center gap-2">
                     <button 
                       className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                      onClick={() => setSelectedAnnouncement(announcement)}
+                      onClick={() => handleView(announcement)}
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    {canCreate && (
+                    {canCreate && (user?.role === 'admin' || announcement.author?.id === user?.id) && (
                       <>
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+                        <button 
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          onClick={() => handleOpenModal(announcement)}
+                        >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
@@ -200,13 +269,15 @@ export default function PengumumanPage() {
           </div>
         )}
 
-        {/* Create Modal */}
+        {/* Create/Edit Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-lg">
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">Buat Pengumuman Baru</h2>
-                <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
+                <h2 className="text-lg font-semibold">
+                  {editMode ? 'Edit Pengumuman' : 'Buat Pengumuman Baru'}
+                </h2>
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="text-gray-500 hover:text-gray-700">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -224,24 +295,54 @@ export default function PengumumanPage() {
                   rows={5}
                   required
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Target</label>
-                  <select
-                    value={formData.target}
-                    onChange={(e) => setFormData({ ...formData, target: e.target.value as 'all' | 'guru' | 'siswa' })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Semua</option>
-                    <option value="guru">Guru</option>
-                    <option value="siswa">Siswa</option>
-                  </select>
+                <div className={user?.role === 'admin' ? 'grid grid-cols-2 gap-4' : ''}>
+                  {/* Target dropdown - only visible for admin */}
+                  {user?.role === 'admin' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Target</label>
+                      <select
+                        value={formData.target}
+                        onChange={(e) => setFormData({ ...formData, target: e.target.value as 'all' | 'guru' | 'siswa' })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">Semua</option>
+                        <option value="guru">Guru</option>
+                        <option value="siswa">Siswa</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Prioritas</label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="important">Penting</option>
+                      <option value="urgent">Mendesak</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => { setShowModal(false); resetForm(); }}
+                    disabled={submitting}
+                  >
                     Batal
                   </Button>
-                  <Button type="submit" className="flex-1">
-                    Publikasikan
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      editMode ? 'Simpan Perubahan' : 'Publikasikan'
+                    )}
                   </Button>
                 </div>
               </form>
@@ -250,7 +351,7 @@ export default function PengumumanPage() {
         )}
 
         {/* View Modal */}
-        {selectedAnnouncement && (
+        {selectedAnnouncement && !showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-lg">
               <div className="flex items-center justify-between p-4 border-b">
@@ -260,9 +361,29 @@ export default function PengumumanPage() {
                 </button>
               </div>
               <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {selectedAnnouncement.priority !== 'normal' && (
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                      selectedAnnouncement.priority === 'urgent' 
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {getPriorityLabel(selectedAnnouncement.priority)}
+                    </span>
+                  )}
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                    selectedAnnouncement.target === 'all' 
+                      ? 'bg-gray-100 text-gray-700'
+                      : selectedAnnouncement.target === 'guru'
+                      ? 'bg-teal-100 text-teal-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {getTargetLabel(selectedAnnouncement.target)}
+                  </span>
+                </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedAnnouncement.title}</h3>
                 <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                  <span>{selectedAnnouncement.author}</span>
+                  <span>{selectedAnnouncement.author?.name || 'Admin'}</span>
                   <span>{formatDate(selectedAnnouncement.created_at)}</span>
                 </div>
                 <p className="text-gray-600 whitespace-pre-wrap">{selectedAnnouncement.content}</p>

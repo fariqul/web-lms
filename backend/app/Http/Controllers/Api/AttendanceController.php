@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\AttendanceSession;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Models\StudentDevice;
+use App\Models\DeviceSwitchRequest;
+use App\Models\SchoolNetworkSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -74,6 +77,7 @@ class AttendanceController extends Controller
             'subject' => 'required|string|max:255',
             'valid_from' => 'required|date',
             'valid_until' => 'required|date|after:valid_from',
+            'require_school_network' => 'boolean',
         ]);
 
         $session = AttendanceSession::create([
@@ -84,6 +88,7 @@ class AttendanceController extends Controller
             'valid_from' => $request->valid_from,
             'valid_until' => $request->valid_until,
             'status' => 'active',
+            'require_school_network' => $request->require_school_network ?? false,
         ]);
 
         $session->load(['teacher:id,name', 'class:id,name']);
@@ -93,6 +98,23 @@ class AttendanceController extends Controller
             'data' => $session,
             'message' => 'Sesi absensi berhasil dibuat',
         ], 201);
+    }
+    
+    /**
+     * Get sessions for the current teacher
+     */
+    public function mySessions(Request $request)
+    {
+        $sessions = AttendanceSession::with(['class:id,name'])
+            ->where('teacher_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $sessions,
+        ]);
     }
 
     /**
@@ -262,6 +284,7 @@ class AttendanceController extends Controller
 
     /**
      * Submit attendance via QR scan (for students)
+     * With anti-cheating measures: IP validation & device tracking
      */
     public function submitAttendance(Request $request)
     {
@@ -270,9 +293,13 @@ class AttendanceController extends Controller
             'photo' => 'nullable|image|max:2048',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+            'device_id' => 'nullable|string',
         ]);
 
         $user = $request->user();
+        $clientIp = $request->ip();
+        $userAgent = $request->userAgent();
+        $deviceId = $request->device_id ?? $this->generateDeviceId($request);
 
         // Find active session with valid token
         $session = AttendanceSession::where('qr_token', $request->qr_token)
@@ -287,7 +314,7 @@ class AttendanceController extends Controller
             ], 422);
         }
 
-        // Check if student belongs to the class (use loose comparison to handle type differences)
+        // Check if student belongs to the class
         if ((int) $user->class_id !== (int) $session->class_id) {
             return response()->json([
                 'success' => false,
@@ -307,6 +334,88 @@ class AttendanceController extends Controller
             ], 422);
         }
 
+        // ===== ANTI-CHEAT: Check school network if required =====
+        if ($session->require_school_network) {
+            if (!SchoolNetworkSetting::isSchoolNetwork($clientIp)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Absensi hanya dapat dilakukan melalui jaringan WiFi sekolah',
+                    'error_code' => 'NETWORK_NOT_ALLOWED',
+                ], 422);
+            }
+        }
+
+        // ===== ANTI-CHEAT: Check device switching =====
+        $isSuspicious = false;
+        $suspiciousReason = null;
+        $needsApproval = false;
+
+        // Check if this device was used by another student in this session
+        $deviceUsedBy = Attendance::where('session_id', $session->id)
+            ->where('device_id', $deviceId)
+            ->where('student_id', '!=', $user->id)
+            ->first();
+
+        if ($deviceUsedBy) {
+            // Device already used by another student - need teacher approval
+            $existingRequest = DeviceSwitchRequest::where('session_id', $session->id)
+                ->where('student_id', $user->id)
+                ->where('device_id', $deviceId)
+                ->first();
+
+            if (!$existingRequest) {
+                // Create new approval request
+                DeviceSwitchRequest::create([
+                    'session_id' => $session->id,
+                    'student_id' => $user->id,
+                    'device_id' => $deviceId,
+                    'previous_student_id' => $deviceUsedBy->student_id,
+                    'status' => 'pending',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat ini sudah digunakan siswa lain. Menunggu persetujuan guru.',
+                    'error_code' => 'DEVICE_SWITCH_PENDING',
+                    'requires_approval' => true,
+                ], 422);
+            }
+
+            if ($existingRequest->status === 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan penggunaan perangkat sedang menunggu persetujuan guru.',
+                    'error_code' => 'DEVICE_SWITCH_PENDING',
+                    'requires_approval' => true,
+                ], 422);
+            }
+
+            if ($existingRequest->status === 'rejected') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan penggunaan perangkat ditolak oleh guru.',
+                    'error_code' => 'DEVICE_SWITCH_REJECTED',
+                ], 422);
+            }
+
+            // If approved, mark as suspicious but allow
+            $isSuspicious = true;
+            $suspiciousReason = 'Device digunakan bergantian dengan siswa lain (disetujui guru)';
+        }
+
+        // ===== Register/Update device =====
+        $studentDevice = StudentDevice::updateOrCreate(
+            [
+                'student_id' => $user->id,
+                'device_id' => $deviceId,
+            ],
+            [
+                'user_agent' => $userAgent,
+                'last_ip' => $clientIp,
+                'last_used_at' => now(),
+            ]
+        );
+
         // Save photo if provided
         $photoPath = null;
         if ($request->hasFile('photo')) {
@@ -322,12 +431,73 @@ class AttendanceController extends Controller
             'photo' => $photoPath,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'ip_address' => $clientIp,
+            'device_id' => $deviceId,
+            'user_agent' => $userAgent,
+            'is_suspicious' => $isSuspicious,
+            'suspicious_reason' => $suspiciousReason,
         ]);
 
         return response()->json([
             'success' => true,
             'data' => $attendance,
             'message' => 'Absensi berhasil dicatat',
+        ]);
+    }
+
+    /**
+     * Generate a device identifier from request
+     */
+    private function generateDeviceId(Request $request): string
+    {
+        // Create a fingerprint based on available data
+        $components = [
+            $request->userAgent(),
+            $request->header('Accept-Language'),
+            $request->header('Accept-Encoding'),
+        ];
+        
+        return hash('sha256', implode('|', $components));
+    }
+
+    /**
+     * Get pending device switch requests for a session (for teachers)
+     */
+    public function getDeviceSwitchRequests(Request $request, AttendanceSession $session)
+    {
+        $requests = DeviceSwitchRequest::with(['student:id,name,nisn', 'previousStudent:id,name,nisn'])
+            ->where('session_id', $session->id)
+            ->where('status', 'pending')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $requests,
+        ]);
+    }
+
+    /**
+     * Handle device switch request (approve/reject)
+     */
+    public function handleDeviceSwitchRequest(Request $request, DeviceSwitchRequest $switchRequest)
+    {
+        $request->validate([
+            'action' => 'required|in:approve,reject',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $switchRequest->update([
+            'status' => $request->action === 'approve' ? 'approved' : 'rejected',
+            'handled_by' => $request->user()->id,
+            'handled_at' => now(),
+            'reason' => $request->reason,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $request->action === 'approve' 
+                ? 'Permintaan disetujui' 
+                : 'Permintaan ditolak',
         ]);
     }
 

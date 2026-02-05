@@ -18,6 +18,8 @@ class AttendanceSession extends Model
         'valid_from',
         'valid_until',
         'status',
+        'require_school_network',
+        'allowed_ip_ranges',
     ];
 
     protected $casts = [
@@ -25,6 +27,8 @@ class AttendanceSession extends Model
         'teacher_id' => 'integer',
         'valid_from' => 'datetime',
         'valid_until' => 'datetime',
+        'require_school_network' => 'boolean',
+        'allowed_ip_ranges' => 'array',
     ];
 
     public function class()

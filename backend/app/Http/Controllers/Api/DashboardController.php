@@ -80,6 +80,9 @@ class DashboardController extends Controller
         
         // Additional stats - monthly activity, today's schedule, academic performance
         $additionalStats = $this->getAdminAdditionalStats();
+        
+        // Teacher daily recap - cek apakah guru mengajar sesuai jadwal
+        $teacherDailyRecap = $this->getTeacherDailyRecap();
 
         return response()->json([
             'success' => true,
@@ -89,8 +92,122 @@ class DashboardController extends Controller
                 'today_schedule' => $additionalStats['today_schedule'],
                 'academic_performance' => $additionalStats['academic_performance'],
                 'weekly_attendance' => $additionalStats['weekly_attendance'],
+                'teacher_daily_recap' => $teacherDailyRecap,
             ]),
         ]);
+    }
+    
+    /**
+     * Get teacher daily recap - cek guru mengajar sesuai jadwal atau tidak
+     */
+    private function getTeacherDailyRecap()
+    {
+        $today = today();
+        $dayOfWeek = $today->dayOfWeek;
+        $dayOfWeek = $dayOfWeek === 0 ? 7 : $dayOfWeek; // Convert Sunday to 7
+        
+        // Get all schedules for today with teacher and class info
+        $todaySchedules = \App\Models\Schedule::with(['teacher:id,name', 'classRoom:id,name'])
+            ->where('day', $dayOfWeek)
+            ->orderBy('start_time')
+            ->get();
+        
+        // Get all attendance sessions created today
+        $todaySessions = AttendanceSession::whereDate('created_at', $today)
+            ->get()
+            ->groupBy('teacher_id');
+        
+        // Build recap per teacher
+        $teacherRecap = [];
+        $teachersWithSchedule = $todaySchedules->groupBy('teacher_id');
+        
+        foreach ($teachersWithSchedule as $teacherId => $schedules) {
+            $teacher = $schedules->first()->teacher;
+            if (!$teacher) continue;
+            
+            $teacherSessions = $todaySessions->get($teacherId, collect());
+            
+            $scheduledClasses = [];
+            $taughtCount = 0;
+            $missedCount = 0;
+            
+            foreach ($schedules as $schedule) {
+                $className = $schedule->classRoom->name ?? 'Unknown';
+                $subject = $schedule->subject;
+                $startTime = \Carbon\Carbon::parse($schedule->start_time)->format('H:i');
+                $endTime = \Carbon\Carbon::parse($schedule->end_time)->format('H:i');
+                
+                // Check if teacher created session for this class and subject
+                $hasSession = $teacherSessions->first(function ($session) use ($schedule) {
+                    return $session->class_id == $schedule->class_id && 
+                           strtolower($session->subject) == strtolower($schedule->subject);
+                });
+                
+                $status = $hasSession ? 'mengajar' : 'belum';
+                
+                if ($hasSession) {
+                    $taughtCount++;
+                } else {
+                    // Check if schedule time has passed
+                    $scheduleEndTime = \Carbon\Carbon::parse($schedule->end_time);
+                    if (now()->gt($scheduleEndTime)) {
+                        $status = 'tidak_mengajar';
+                        $missedCount++;
+                    }
+                }
+                
+                $scheduledClasses[] = [
+                    'class_name' => $className,
+                    'subject' => $subject,
+                    'time' => "{$startTime} - {$endTime}",
+                    'status' => $status,
+                    'session_id' => $hasSession ? $hasSession->id : null,
+                ];
+            }
+            
+            $teacherRecap[] = [
+                'teacher_id' => $teacherId,
+                'teacher_name' => $teacher->name,
+                'total_scheduled' => $schedules->count(),
+                'taught' => $taughtCount,
+                'missed' => $missedCount,
+                'pending' => $schedules->count() - $taughtCount - $missedCount,
+                'status' => $this->getTeacherDayStatus($taughtCount, $missedCount, $schedules->count()),
+                'classes' => $scheduledClasses,
+            ];
+        }
+        
+        // Sort by status priority: missed first, then pending, then completed
+        usort($teacherRecap, function ($a, $b) {
+            $priority = ['warning' => 0, 'pending' => 1, 'good' => 2];
+            return ($priority[$a['status']] ?? 3) - ($priority[$b['status']] ?? 3);
+        });
+        
+        // Summary
+        $totalTeachers = count($teacherRecap);
+        $teachersTeaching = count(array_filter($teacherRecap, fn($t) => $t['taught'] > 0));
+        $teachersMissing = count(array_filter($teacherRecap, fn($t) => $t['missed'] > 0));
+        
+        return [
+            'date' => $today->format('Y-m-d'),
+            'day_name' => \App\Models\Schedule::getDays()[$dayOfWeek] ?? '',
+            'summary' => [
+                'total_teachers_scheduled' => $totalTeachers,
+                'teachers_teaching' => $teachersTeaching,
+                'teachers_with_missed' => $teachersMissing,
+            ],
+            'teachers' => $teacherRecap,
+        ];
+    }
+    
+    /**
+     * Get teacher day status
+     */
+    private function getTeacherDayStatus($taught, $missed, $total)
+    {
+        if ($missed > 0) return 'warning';
+        if ($taught < $total) return 'pending';
+        return 'good';
     }
 
     /**

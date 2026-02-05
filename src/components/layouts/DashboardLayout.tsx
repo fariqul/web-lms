@@ -19,6 +19,7 @@ import {
   BarChart3,
   Menu,
   X,
+  Wifi,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -39,11 +40,14 @@ const navigation: NavItem[] = [
   { name: 'Sesi Absensi', href: '/absensi', icon: ClipboardList, roles: ['guru'] },
   { name: 'Ujian / CBT', href: '/ujian', icon: GraduationCap, roles: ['guru'] },
   { name: 'Bank Soal', href: '/bank-soal', icon: FileText, roles: ['guru'] },
+  { name: 'Tugas', href: '/tugas', icon: FileText, roles: ['guru'] },
   { name: 'Materi Pelajaran', href: '/materi', icon: BookOpen, roles: ['guru'] },
   { name: 'Nilai Siswa', href: '/nilai', icon: BarChart3, roles: ['guru'] },
   // Siswa only
   { name: 'Scan QR Absensi', href: '/scan-qr', icon: QrCode, roles: ['siswa'] },
   { name: 'Ujian Saya', href: '/ujian-siswa', icon: GraduationCap, roles: ['siswa'] },
+  { name: 'Bank Soal', href: '/dashboard/siswa/bank-soal', icon: FileText, roles: ['siswa'] },
+  { name: 'Tugas Saya', href: '/tugas-siswa', icon: FileText, roles: ['siswa'] },
   { name: 'Riwayat Absensi', href: '/riwayat-absensi', icon: ClipboardList, roles: ['siswa'] },
   { name: 'Materi Pelajaran', href: '/materi-siswa', icon: BookOpen, roles: ['siswa'] },
   { name: 'Nilai Saya', href: '/nilai-siswa', icon: BarChart3, roles: ['siswa'] },
@@ -53,6 +57,7 @@ const navigation: NavItem[] = [
   { name: 'Kelola Pengguna', href: '/admin/users', icon: Users, roles: ['admin'] },
   { name: 'Kelola Kelas', href: '/admin/kelas', icon: GraduationCap, roles: ['admin'] },
   { name: 'Manajemen Jadwal', href: '/admin/jadwal', icon: Calendar, roles: ['admin'] },
+  { name: 'Jaringan Sekolah', href: '/admin/jaringan', icon: Wifi, roles: ['admin'] },
   { name: 'Statistik', href: '/admin/statistik', icon: BarChart3, roles: ['admin'] },
   // Common
   { name: 'Pengumuman', href: '/pengumuman', icon: Bell, roles: ['admin', 'guru', 'siswa'] },

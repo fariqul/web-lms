@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Modal, Input, Select } from '@/components/ui';
-import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users } from 'lucide-react';
+import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2 } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
 
@@ -142,6 +142,19 @@ export default function UjianPage() {
   const upcomingExams = exams.filter((e) => e.status === 'scheduled' || e.status === 'active' || e.status === 'draft');
   const completedExams = exams.filter((e) => e.status === 'completed');
 
+  const handleDeleteExam = async (examId: number, examTitle: string) => {
+    if (!confirm(`Yakin ingin menghapus ujian "${examTitle}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+    try {
+      await api.delete(`/exams/${examId}`);
+      fetchData();
+    } catch (error: unknown) {
+      console.error('Failed to delete exam:', error);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Gagal menghapus ujian');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'draft':
@@ -255,6 +268,15 @@ export default function UjianPage() {
                         Monitor
                       </Button>
                     </Link>
+                    {(exam.status === 'draft' || exam.status === 'scheduled') && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDeleteExam(exam.id, exam.title)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))

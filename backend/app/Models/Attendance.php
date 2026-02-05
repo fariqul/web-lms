@@ -13,13 +13,21 @@ class Attendance extends Model
         'session_id',
         'student_id',
         'photo_path',
+        'photo',
         'ip_address',
+        'device_id',
+        'user_agent',
+        'is_suspicious',
+        'suspicious_reason',
         'status',
         'scanned_at',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [
         'scanned_at' => 'datetime',
+        'is_suspicious' => 'boolean',
     ];
 
     public function session()

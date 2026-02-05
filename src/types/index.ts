@@ -8,6 +8,7 @@ export interface User {
   role: UserRole;
   class_id?: number;
   avatar?: string;
+  photo?: string;
   nisn?: string;
   nip?: string;
   class?: Class;
