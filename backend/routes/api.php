@@ -23,6 +23,15 @@ use App\Http\Controllers\Api\UrlImportController;
 |--------------------------------------------------------------------------
 */
 
+// Health check endpoint for uptime monitoring (keep-alive)
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toISOString(),
+        'service' => 'SMA 15 Makassar LMS API',
+    ]);
+});
+
 // Public routes with rate limiting for login (prevent brute force)
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1'); // 5 attempts per minute
 
