@@ -41,14 +41,16 @@ if [ -z "$APP_KEY" ]; then
     php artisan key:generate --force
 fi
 
-# Clear caches
+# Clear config caches (before migration)
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
-php artisan cache:clear
 
 # Run migrations
 php artisan migrate --force || echo "Migration failed or already up to date"
+
+# Clear cache (after migration, so cache table exists)
+php artisan cache:clear 2>/dev/null || true
 
 # Start Apache
 apache2-foreground
