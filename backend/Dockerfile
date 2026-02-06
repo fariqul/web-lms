@@ -1,6 +1,5 @@
 FROM php:8.2-apache
 
-# Force rebuild: 2026-02-05-v4-bg-migration
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
@@ -9,10 +8,9 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
-    libpq-dev \
     zip \
     unzip \
-    && docker-php-ext-install pdo_mysql pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
@@ -46,12 +44,8 @@ RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/Allo
 # Set ServerName to suppress warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-# Change Apache to listen on port 8000 (Koyeb default)
-RUN sed -i 's/Listen 80/Listen 8000/' /etc/apache2/ports.conf
-RUN sed -i 's/:80/:8000/' /etc/apache2/sites-available/000-default.conf
-
-# Expose port 8000
-EXPOSE 8000
+# Expose port 80
+EXPOSE 80
 
 # Start script
 COPY docker-entrypoint.sh /usr/local/bin/

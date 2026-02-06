@@ -11,11 +11,11 @@ APP_URL=${APP_URL:-http://localhost}
 LOG_CHANNEL=${LOG_CHANNEL:-stack}
 LOG_LEVEL=${LOG_LEVEL:-error}
 
-DB_CONNECTION=${DB_CONNECTION:-pgsql}
-DB_HOST=${DB_HOST:-localhost}
-DB_PORT=${DB_PORT:-5432}
+DB_CONNECTION=${DB_CONNECTION:-mysql}
+DB_HOST=${DB_HOST:-mysql}
+DB_PORT=${DB_PORT:-3306}
 DB_DATABASE=${DB_DATABASE:-lms}
-DB_USERNAME=${DB_USERNAME:-postgres}
+DB_USERNAME=${DB_USERNAME:-root}
 DB_PASSWORD=${DB_PASSWORD:-}
 
 SESSION_DRIVER=${SESSION_DRIVER:-database}
@@ -47,15 +47,8 @@ php artisan route:clear
 php artisan view:clear
 php artisan cache:clear
 
-# Start Apache in background first (so health check passes)
-apache2-foreground &
-APACHE_PID=$!
+# Run migrations
+php artisan migrate --force || echo "Migration failed or already up to date"
 
-# Wait a moment for Apache to start
-sleep 5
-
-# Run fresh migration with seeding (TEMPORARY - change to migrate --force after first successful deploy)
-php artisan migrate:fresh --force --seed || echo "Migration/seeding failed"
-
-# Wait for Apache process
-wait $APACHE_PID
+# Start Apache
+apache2-foreground
