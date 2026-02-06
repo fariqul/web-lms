@@ -56,6 +56,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Proxy API requests to avoid mixed content (HTTPS -> HTTP)
+  async rewrites() {
+    return [
+      {
+        source: '/backend-api/:path*',
+        destination: 'http://52.63.72.178/api/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
