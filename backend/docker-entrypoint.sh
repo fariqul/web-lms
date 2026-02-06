@@ -49,6 +49,9 @@ php artisan view:clear
 # Run migrations
 php artisan migrate --force || echo "Migration failed or already up to date"
 
+# Create storage symlink (public/storage -> storage/app/public)
+php artisan storage:link 2>/dev/null || true
+
 # Clear cache (after migration, so cache table exists)
 php artisan cache:clear 2>/dev/null || true
 
