@@ -128,9 +128,9 @@ export default function MateriPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file size (50MB max)
-      if (file.size > 50 * 1024 * 1024) {
-        setError('Ukuran file maksimal 50MB');
+      // Validate file size (100MB max)
+      if (file.size > 100 * 1024 * 1024) {
+        setError('Ukuran file maksimal 100MB');
         return;
       }
       

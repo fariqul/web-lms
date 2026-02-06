@@ -360,15 +360,23 @@ export const materialAPI = {
   create: (formData: FormData) =>
     api.post('/materials', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000, // 5 minutes for large video uploads
     }),
   
   update: (id: number, formData: FormData) =>
     api.post(`/materials/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000, // 5 minutes for large video uploads
     }),
   
   delete: (id: number) =>
     api.delete(`/materials/${id}`),
+  
+  download: (id: number) =>
+    api.get(`/materials/${id}/download`, {
+      responseType: 'blob',
+      timeout: 120000, // 2 min for large downloads
+    }),
 };
 
 // Assignment/Tugas API

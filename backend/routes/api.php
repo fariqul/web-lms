@@ -187,6 +187,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/exams/{exam}', [ExamController::class, 'show']);
     Route::get('/materials', [MaterialController::class, 'index']);
     Route::get('/materials/{material}', [MaterialController::class, 'show']);
+    Route::get('/materials/{material}/download', [MaterialController::class, 'download']);
     
     // Assignments read access
     Route::get('/assignments', [AssignmentController::class, 'index']);

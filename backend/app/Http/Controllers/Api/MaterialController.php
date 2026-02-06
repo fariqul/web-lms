@@ -59,7 +59,7 @@ class MaterialController extends Controller
             'subject' => 'required|string|max:100',
             'type' => 'required|in:video,document,link',
             'class_id' => 'required|exists:classes,id',
-            'file' => 'nullable|file|max:51200|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,mp4,mp3,zip,rar', // 50MB max, allowed types
+            'file' => 'nullable|file|max:102400|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,mp4,mp3,zip,rar,avi,mov,mkv,webm', // 100MB max
             'file_url' => 'nullable|url',
         ]);
 
@@ -188,5 +188,41 @@ class MaterialController extends Controller
             'success' => true,
             'message' => 'Materi berhasil dihapus',
         ]);
+    }
+
+    /**
+     * Download material file (force download)
+     */
+    public function download(Material $material)
+    {
+        if (!$material->file_url) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak tersedia',
+            ], 404);
+        }
+
+        // Extract relative path from full URL
+        // file_url format: http://domain/storage/materials/filename.pdf
+        $path = null;
+        if (str_contains($material->file_url, '/storage/')) {
+            $path = str_replace(url('/storage/'), '', $material->file_url);
+            // Also handle if APP_URL differs
+            $path = preg_replace('#^.*/storage/#', '', $material->file_url);
+        }
+
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak ditemukan di server',
+            ], 404);
+        }
+
+        $fullPath = Storage::disk('public')->path($path);
+        $filename = basename($path);
+        // Remove timestamp prefix for cleaner filename
+        $cleanName = preg_replace('/^\d+_/', '', $filename);
+
+        return response()->download($fullPath, $cleanName);
     }
 }

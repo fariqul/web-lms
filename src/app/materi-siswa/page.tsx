@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card } from '@/components/ui';
 import { BookOpen, FileText, Download, Play, Clock, User, Loader2, Search, Link as LinkIcon } from 'lucide-react';
-import api from '@/services/api';
+import api, { materialAPI } from '@/services/api';
 
 interface Material {
   id: number;
@@ -219,9 +219,34 @@ export default function MateriSiswaPage() {
 
                 <button
                   className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
-                  onClick={() => {
+                  onClick={async () => {
                     if (material.file_url) {
-                      window.open(material.file_url, '_blank');
+                      if (material.type === 'link') {
+                        window.open(material.file_url, '_blank');
+                      } else {
+                        try {
+                          const response = await materialAPI.download(material.id);
+                          const blob = new Blob([response.data]);
+                          const url = window.URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          // Get filename from Content-Disposition or use title
+                          const contentDisposition = response.headers['content-disposition'];
+                          let filename = material.title;
+                          if (contentDisposition) {
+                            const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                            if (match) filename = match[1].replace(/['"]/g, '');
+                          }
+                          link.setAttribute('download', filename);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          window.URL.revokeObjectURL(url);
+                        } catch {
+                          // Fallback: open in new tab
+                          window.open(material.file_url, '_blank');
+                        }
+                      }
                     }
                   }}
                 >
