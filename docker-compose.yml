@@ -13,8 +13,6 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-LmsSekolah123!}
     volumes:
       - mysql_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
