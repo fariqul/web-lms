@@ -120,6 +120,9 @@ export const userAPI = {
   
   delete: (id: number) =>
     api.delete(`/users/${id}`),
+  
+  resetPassword: (id: number, newPassword: string) =>
+    api.post(`/users/${id}/reset-password`, { new_password: newPassword }),
 };
 
 // Class API

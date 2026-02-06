@@ -197,4 +197,28 @@ class UserController extends Controller
             'data' => $teachers,
         ]);
     }
+
+    /**
+     * Reset user password (admin only)
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $request->validate([
+            'new_password' => [
+                'required',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+            ],
+        ], [
+            'new_password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
+        ]);
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil direset untuk ' . $user->name,
+        ]);
+    }
 }

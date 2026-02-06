@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         // User Management
         Route::apiResource('users', UserController::class);
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::get('/teachers', [UserController::class, 'teachers']);
         Route::get('/students/class/{classId}', [UserController::class, 'studentsByClass']);
         

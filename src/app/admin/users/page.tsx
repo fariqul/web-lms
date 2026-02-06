@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2 } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 
 interface User {
@@ -39,6 +39,10 @@ export default function AdminUsersPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [resetPasswordData, setResetPasswordData] = useState({ password: '', showPassword: false });
+  const [resetSuccess, setResetSuccess] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -106,11 +110,38 @@ export default function AdminUsersPage() {
       });
     }
     setIsModalOpen(true);
+    setShowPassword(false);
   };
 
   const handleDeleteClick = (user: User) => {
     setSelectedUser(user);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleResetPasswordClick = (user: User) => {
+    setSelectedUser(user);
+    setResetPasswordData({ password: '', showPassword: false });
+    setResetSuccess('');
+    setIsResetPasswordOpen(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser || !resetPasswordData.password) return;
+    setSubmitting(true);
+    try {
+      await userAPI.resetPassword(selectedUser.id, resetPasswordData.password);
+      setResetSuccess(`Password ${selectedUser.name} berhasil direset!`);
+      setTimeout(() => {
+        setIsResetPasswordOpen(false);
+        setResetSuccess('');
+      }, 2000);
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Gagal mereset password';
+      alert(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,16 +220,25 @@ export default function AdminUsersPage() {
       key: 'actions',
       header: 'Aksi',
       render: (item: User) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => handleOpenModal(item)}
             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Edit"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
+            onClick={() => handleResetPasswordClick(item)}
+            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+            title="Reset Password"
+          >
+            <KeyRound className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => handleDeleteClick(item)}
             className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Hapus"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -294,13 +334,26 @@ export default function AdminUsersPage() {
             required
           />
           {!selectedUser && (
-            <Input
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
+            <div className="w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  className="w-full rounded-lg border border-gray-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
           )}
           <Select
             label="Role"
@@ -369,6 +422,70 @@ export default function AdminUsersPage() {
         confirmText="Hapus"
         variant="danger"
       />
+
+      {/* Reset Password Modal */}
+      <Modal
+        isOpen={isResetPasswordOpen}
+        onClose={() => setIsResetPasswordOpen(false)}
+        title="Reset Password"
+        size="sm"
+      >
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          {resetSuccess ? (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
+              {resetSuccess}
+            </div>
+          ) : (
+            <>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  Reset password untuk: <strong>{selectedUser?.name}</strong>
+                </p>
+                <p className="text-xs text-blue-500 mt-1">{selectedUser?.email}</p>
+              </div>
+
+              <div className="w-full">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+                <div className="relative">
+                  <input
+                    type={resetPasswordData.showPassword ? 'text' : 'password'}
+                    value={resetPasswordData.password}
+                    onChange={(e) => setResetPasswordData({ ...resetPasswordData, password: e.target.value })}
+                    required
+                    minLength={8}
+                    className="w-full rounded-lg border border-gray-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setResetPasswordData({ ...resetPasswordData, showPassword: !resetPasswordData.showPassword })}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {resetPasswordData.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Harus mengandung huruf besar, huruf kecil, dan angka</p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsResetPasswordOpen(false)}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={submitting || resetPasswordData.password.length < 8}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Mereset...
+                    </>
+                  ) : (
+                    'Reset Password'
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </form>
+      </Modal>
     </DashboardLayout>
   );
 }
