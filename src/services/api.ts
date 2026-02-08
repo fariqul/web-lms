@@ -93,8 +93,8 @@ export const authAPI = {
     class_id?: number;
   }) => api.post('/register', data),
 
-  forgotPassword: (email: string) =>
-    api.post('/forgot-password', { email }),
+  forgotPassword: (email: string, contact?: { contact_type?: string; contact_value?: string; nama?: string }) =>
+    api.post('/forgot-password', { email, ...contact }),
 
   resetPassword: (data: { token: string; email: string; password: string; password_confirmation: string }) =>
     api.post('/reset-password', data),

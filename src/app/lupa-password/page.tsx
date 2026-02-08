@@ -2,11 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { GraduationCap, Mail, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { GraduationCap, Mail, Phone, ArrowLeft, Loader2, CheckCircle, User } from 'lucide-react';
 import { authAPI } from '@/services/api';
 
 export default function LupaPasswordPage() {
   const [email, setEmail] = useState('');
+  const [contactType, setContactType] = useState<'whatsapp' | 'email'>('whatsapp');
+  const [contactValue, setContactValue] = useState('');
+  const [nama, setNama] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -16,7 +19,7 @@ export default function LupaPasswordPage() {
     setError('');
 
     if (!email) {
-      setError('Email harus diisi');
+      setError('Email akun harus diisi');
       return;
     }
 
@@ -27,11 +30,15 @@ export default function LupaPasswordPage() {
 
     setIsLoading(true);
     try {
-      await authAPI.forgotPassword(email);
+      await authAPI.forgotPassword(email, {
+        contact_type: contactType,
+        contact_value: contactValue || undefined,
+        nama: nama || undefined,
+      });
       setSuccess(true);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      setError(axiosErr?.response?.data?.message || 'Gagal mengirim link reset password. Pastikan email terdaftar.');
+      setError(axiosErr?.response?.data?.message || 'Gagal mengirim permintaan. Coba lagi nanti.');
     } finally {
       setIsLoading(false);
     }
@@ -55,14 +62,24 @@ export default function LupaPasswordPage() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Email Terkirim!</h2>
-              <p className="text-gray-600 mb-6">
-                Link reset password telah dikirim ke <strong>{email}</strong>. 
-                Silakan periksa inbox atau folder spam Anda.
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Permintaan Terkirim!</h2>
+              <p className="text-gray-600 mb-4">
+                Permintaan reset password untuk <strong>{email}</strong> telah dikirim ke admin.
               </p>
-              <p className="text-sm text-gray-500 mb-6">
-                Link akan kedaluwarsa dalam 60 menit.
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                <p className="text-sm text-blue-800 font-medium mb-1">Langkah selanjutnya:</p>
+                <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                  <li>Admin akan mereset password Anda</li>
+                  {contactValue && (
+                    <li>
+                      Admin akan menghubungi Anda via{' '}
+                      {contactType === 'whatsapp' ? 'WhatsApp' : 'Email'} di{' '}
+                      <strong>{contactValue}</strong>
+                    </li>
+                  )}
+                  <li>Password baru akan diinformasikan oleh admin</li>
+                </ul>
+              </div>
               <Link
                 href="/login"
                 className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
@@ -75,7 +92,7 @@ export default function LupaPasswordPage() {
             <>
               <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Lupa Password</h2>
               <p className="text-gray-500 text-center mb-6 text-sm">
-                Masukkan email yang terdaftar. Kami akan mengirimkan link untuk reset password.
+                Masukkan email akun Anda. Admin akan mereset password dan menghubungi Anda.
               </p>
 
               {error && (
@@ -85,19 +102,91 @@ export default function LupaPasswordPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Email Akun */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Akun <span className="text-red-500">*</span>
+                  </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="email"
-                      placeholder="nama@sma15mks.sch.id"
+                      placeholder="Email yang digunakan untuk login"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
+                </div>
+
+                {/* Nama Lengkap (optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Lengkap <span className="text-gray-400 text-xs">(opsional)</span>
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Nama lengkap Anda"
+                      value={nama}
+                      onChange={(e) => setNama(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Contact Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hubungi saya via <span className="text-gray-400 text-xs">(opsional)</span>
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setContactType('whatsapp')}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                        contactType === 'whatsapp'
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      📱 WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContactType('email')}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                        contactType === 'email'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      ✉️ Email
+                    </button>
+                  </div>
+                  <div className="relative">
+                    {contactType === 'whatsapp' ? (
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    ) : (
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    )}
+                    <input
+                      type={contactType === 'email' ? 'email' : 'tel'}
+                      placeholder={
+                        contactType === 'whatsapp'
+                          ? 'Contoh: 08123456789'
+                          : 'Email aktif Anda'
+                      }
+                      value={contactValue}
+                      onChange={(e) => setContactValue(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Admin akan menghubungi Anda untuk memberitahu password baru
+                  </p>
                 </div>
 
                 <button
@@ -111,7 +200,7 @@ export default function LupaPasswordPage() {
                       Mengirim...
                     </>
                   ) : (
-                    'Kirim Link Reset Password'
+                    'Kirim Permintaan Reset'
                   )}
                 </button>
               </form>

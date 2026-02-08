@@ -3,23 +3,25 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class PasswordResetController extends Controller
 {
     /**
-     * Send a password reset token to the user's email.
+     * Request password reset via admin notification.
      * POST /api/forgot-password
      */
     public function forgotPassword(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
+            'contact_type' => 'nullable|string|in:whatsapp,email',
+            'contact_value' => 'nullable|string|max:100',
+            'nama' => 'nullable|string|max:100',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -28,53 +30,56 @@ class PasswordResetController extends Controller
             // Return success even if user not found to prevent email enumeration
             return response()->json([
                 'success' => true,
-                'message' => 'Jika email terdaftar, link reset password telah dikirim.',
+                'message' => 'Jika email terdaftar, permintaan reset password telah dikirim ke admin.',
             ]);
         }
 
-        // Generate token
-        $token = Str::random(64);
+        // Build contact info string
+        $contactInfo = '';
+        if ($request->contact_type && $request->contact_value) {
+            $contactLabel = $request->contact_type === 'whatsapp' ? 'WhatsApp' : 'Email';
+            $contactInfo = "\n📞 Kontak: {$contactLabel} - {$request->contact_value}";
+        }
 
-        // Delete any existing tokens for this email
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        // Build notification message
+        $userName = $request->nama ?: $user->name;
+        $roleLabel = match ($user->role) {
+            'admin' => 'Admin',
+            'guru' => 'Guru',
+            'siswa' => 'Siswa',
+            default => $user->role,
+        };
 
-        // Store token
-        DB::table('password_reset_tokens')->insert([
-            'email' => $request->email,
-            'token' => Hash::make($token),
-            'created_at' => now(),
-        ]);
+        $message = "🔑 Permintaan Reset Password\n"
+            . "👤 Nama: {$userName}\n"
+            . "📧 Email: {$user->email}\n"
+            . "🏷️ Role: {$roleLabel}"
+            . $contactInfo
+            . "\n\nSilakan reset password user ini melalui menu Kelola Akun.";
 
-        // Build reset URL (frontend URL)
-        $frontendUrl = config('app.frontend_url', 'https://web-lms-rowr.vercel.app');
-        $resetUrl = $frontendUrl . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
+        // Send notification to ALL admin users
+        $admins = User::where('role', 'admin')->get();
 
-        // Try to send email, but don't fail if mail is not configured
-        try {
-            Mail::send('emails.password-reset', [
-                'user' => $user,
-                'resetUrl' => $resetUrl,
-                'token' => $token,
-            ], function ($message) use ($user) {
-                $message->to($user->email, $user->name)
-                    ->subject('Reset Password - SMA 15 Makassar LMS');
-            });
-        } catch (\Exception $e) {
-            // If email sending fails, return the token directly (for development/demo)
-            return response()->json([
-                'success' => true,
-                'message' => 'Token reset password telah dibuat.',
-                'data' => [
-                    'token' => $token,
-                    'reset_url' => $resetUrl,
-                    'note' => 'Email tidak terkirim. Gunakan link berikut untuk reset password.',
-                ],
-            ]);
+        foreach ($admins as $admin) {
+            Notification::send(
+                $admin->id,
+                'password_reset_request',
+                'Permintaan Reset Password - ' . $userName,
+                $message,
+                [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'user_name' => $userName,
+                    'user_role' => $user->role,
+                    'contact_type' => $request->contact_type,
+                    'contact_value' => $request->contact_value,
+                ]
+            );
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Jika email terdaftar, link reset password telah dikirim.',
+            'message' => 'Permintaan reset password telah dikirim ke admin.',
         ]);
     }
 
