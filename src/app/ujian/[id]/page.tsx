@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useExamMode } from '@/hooks/useExamMode';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, ConfirmDialog } from '@/components/ui';
 import {
   Clock,
   AlertTriangle,
@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import api from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface Question {
   id: number;
@@ -37,6 +38,7 @@ interface ExamData {
 export default function ExamTakingPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const examId = Number(params.id) || 1;
   
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,7 @@ export default function ExamTakingPage() {
   const [isStarted, setIsStarted] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   // Force submit handler
   const handleForceSubmit = async () => {
@@ -74,9 +77,8 @@ export default function ExamTakingPage() {
     videoRef,
   } = useExamMode({
     examId,
-    onViolation: (type) => {
-      console.log('Violation:', type);
-    },
+    onViolation: () => {},
+
     onForceSubmit: handleForceSubmit,
   });
 
@@ -146,7 +148,7 @@ export default function ExamTakingPage() {
       setIsStarted(true);
     } catch (error) {
       console.error('Failed to start exam:', error);
-      alert('Gagal memulai ujian. Silakan coba lagi.');
+      toast.error('Gagal memulai ujian. Silakan coba lagi.');
     }
   };
 
@@ -176,18 +178,19 @@ export default function ExamTakingPage() {
     });
   };
 
-  const handleSubmit = async () => {
-    const confirmed = window.confirm('Apakah Anda yakin ingin mengumpulkan ujian?');
-    if (confirmed) {
-      setSubmitting(true);
-      try {
-        await api.post(`/exams/${examId}/finish`);
-        router.push('/ujian?submitted=true');
-      } catch (error) {
-        console.error('Failed to submit exam:', error);
-        alert('Gagal mengumpulkan ujian. Coba lagi.');
-        setSubmitting(false);
-      }
+  const handleSubmit = () => {
+    setShowSubmitConfirm(true);
+  };
+
+  const confirmSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await api.post(`/exams/${examId}/finish`);
+      router.push('/ujian?submitted=true');
+    } catch (error) {
+      console.error('Failed to submit exam:', error);
+      toast.error('Gagal mengumpulkan ujian. Coba lagi.');
+      setSubmitting(false);
     }
   };
 
@@ -406,6 +409,17 @@ export default function ExamTakingPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showSubmitConfirm}
+        onClose={() => setShowSubmitConfirm(false)}
+        onConfirm={confirmSubmit}
+        title="Kumpulkan Ujian"
+        message="Apakah Anda yakin ingin mengumpulkan ujian?"
+        confirmText="Kumpulkan"
+        variant="warning"
+        isLoading={submitting}
+      />
     </div>
   );
 }

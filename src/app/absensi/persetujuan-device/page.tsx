@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button } from '@/components/ui';
 import { Smartphone, CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
 import api from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface DeviceSwitchRequest {
   id: number;
@@ -37,6 +38,7 @@ interface DeviceSwitchRequest {
 }
 
 export default function DeviceApprovalPage() {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<DeviceSwitchRequest[]>([]);
   const [processing, setProcessing] = useState<number | null>(null);
@@ -94,7 +96,7 @@ export default function DeviceApprovalPage() {
       ));
     } catch (error) {
       console.error('Failed to handle request:', error);
-      alert('Gagal memproses permintaan. Silakan coba lagi.');
+      toast.error('Gagal memproses permintaan. Silakan coba lagi.');
     } finally {
       setProcessing(null);
     }

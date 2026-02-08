@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
 import { Calendar, Plus, Edit2, Trash2, Clock, User, MapPin, X, Loader2 } from 'lucide-react';
 import { classAPI, userAPI, scheduleAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface Schedule {
   id: number;
@@ -32,12 +33,14 @@ for (let hour = 6; hour <= 18; hour++) {
 }
 
 export default function AdminJadwalPage() {
+  const toast = useToast();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
   const [teachers, setTeachers] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState(1);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [formData, setFormData] = useState({
@@ -128,7 +131,7 @@ export default function AdminJadwalPage() {
       resetForm();
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      alert('Gagal menyimpan jadwal. Silakan coba lagi.');
+      toast.error('Gagal menyimpan jadwal. Silakan coba lagi.');
     } finally {
       setSubmitting(false);
     }
@@ -148,15 +151,20 @@ export default function AdminJadwalPage() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('Yakin ingin menghapus jadwal ini?')) {
-      try {
-        await scheduleAPI.delete(id);
-        await fetchData();
-      } catch (error) {
-        console.error('Failed to delete schedule:', error);
-        alert('Gagal menghapus jadwal.');
-      }
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteId === null) return;
+    try {
+      await scheduleAPI.delete(deleteId);
+      await fetchData();
+    } catch (error) {
+      console.error('Failed to delete schedule:', error);
+      toast.error('Gagal menghapus jadwal.');
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -429,6 +437,16 @@ export default function AdminJadwalPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        title="Hapus Jadwal"
+        message="Yakin ingin menghapus jadwal ini?"
+        confirmText="Hapus"
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

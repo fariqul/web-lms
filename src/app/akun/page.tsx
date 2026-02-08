@@ -4,11 +4,13 @@ import React, { useState, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button, Input } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import api from '@/services/api';
 import { User, Mail, Lock, Camera, Save, Loader2, X } from 'lucide-react';
 
 export default function AkunPage() {
   const { user, refreshUser } = useAuth();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -26,9 +28,23 @@ export default function AkunPage() {
     confirm_password: '',
   });
 
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const handleSave = async () => {
-    // Would call API to update profile
-    setIsEditing(false);
+    setSavingProfile(true);
+    try {
+      await api.post('/profile', { name: formData.name });
+      if (refreshUser) {
+        await refreshUser();
+      }
+      toast.success('Profil berhasil diperbarui!');
+      setIsEditing(false);
+    } catch {
+      toast.error('Gagal memperbarui profil. Silakan coba lagi.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handlePhotoClick = () => {
@@ -40,12 +56,12 @@ export default function AkunPage() {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('File harus berupa gambar!');
+        toast.warning('File harus berupa gambar!');
         return;
       }
       // Validate file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        alert('Ukuran file maksimal 2MB!');
+        toast.warning('Ukuran file maksimal 2MB!');
         return;
       }
       
@@ -79,10 +95,9 @@ export default function AkunPage() {
       
       setPreviewPhoto(null);
       setSelectedFile(null);
-      alert('Foto profil berhasil diperbarui!');
+      toast.success('Foto profil berhasil diperbarui!');
     } catch (error) {
-      console.error('Error uploading photo:', error);
-      alert('Gagal mengupload foto. Silakan coba lagi.');
+      toast.error('Gagal mengupload foto. Silakan coba lagi.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -96,16 +111,36 @@ export default function AkunPage() {
     }
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordData.new_password !== passwordData.confirm_password) {
-      alert('Password baru tidak cocok!');
+      toast.warning('Password baru tidak cocok!');
       return;
     }
-    // Would call API to change password
-    setShowPasswordModal(false);
-    setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
-    alert('Password berhasil diubah!');
+    if (passwordData.new_password.length < 8) {
+      toast.warning('Password minimal 8 karakter!');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await api.post('/change-password', {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password,
+        new_password_confirmation: passwordData.confirm_password,
+      });
+      toast.success('Password berhasil diubah!');
+      setShowPasswordModal(false);
+      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+      const msg = error.response?.data?.errors?.current_password?.[0]
+        || error.response?.data?.errors?.new_password?.[0]
+        || error.response?.data?.message
+        || 'Gagal mengubah password. Silakan coba lagi.';
+      toast.error(msg);
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const getRoleBadgeColor = () => {
@@ -222,9 +257,13 @@ export default function AkunPage() {
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
                   Batal
                 </Button>
-                <Button size="sm" onClick={handleSave}>
-                  <Save className="w-4 h-4 mr-1" />
-                  Simpan
+                <Button size="sm" onClick={handleSave} disabled={savingProfile}>
+                  {savingProfile ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-1" />
+                  )}
+                  {savingProfile ? 'Menyimpan...' : 'Simpan'}
                 </Button>
               </div>
             )}
@@ -333,11 +372,18 @@ export default function AkunPage() {
                   required
                 />
                 <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setShowPasswordModal(false)}>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setShowPasswordModal(false)} disabled={changingPassword}>
                     Batal
                   </Button>
-                  <Button type="submit" className="flex-1">
-                    Simpan
+                  <Button type="submit" className="flex-1" disabled={changingPassword}>
+                    {changingPassword ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      'Simpan'
+                    )}
                   </Button>
                 </div>
               </form>

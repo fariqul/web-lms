@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { 
   HelpCircle, 
   Plus, 
@@ -71,6 +72,7 @@ const SUBJECTS = [
 ];
 
 export default function BankSoalPage() {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -83,6 +85,7 @@ export default function BankSoalPage() {
   const [showPdfImportModal, setShowPdfImportModal] = useState(false);
   const [showUrlImportModal, setShowUrlImportModal] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [formData, setFormData] = useState({
     question: '',
@@ -232,7 +235,7 @@ export default function BankSoalPage() {
       resetForm();
     } catch (error) {
       console.error('Failed to save question:', error);
-      alert('Gagal menyimpan soal. Silakan coba lagi.');
+      toast.error('Gagal menyimpan soal. Silakan coba lagi.');
     } finally {
       setSaving(false);
     }
@@ -254,15 +257,21 @@ export default function BankSoalPage() {
     setShowAddModal(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('Yakin ingin menghapus soal ini?')) {
-      try {
-        await bankQuestionAPI.delete(id);
-        await fetchData();
-      } catch (error) {
-        console.error('Failed to delete question:', error);
-        alert('Gagal menghapus soal.');
-      }
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await bankQuestionAPI.delete(deleteId);
+      await fetchData();
+      toast.success('Soal berhasil dihapus.');
+    } catch (error) {
+      console.error('Failed to delete question:', error);
+      toast.error('Gagal menghapus soal.');
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -272,7 +281,7 @@ export default function BankSoalPage() {
       await fetchData();
     } catch (error) {
       console.error('Failed to duplicate question:', error);
-      alert('Gagal menduplikasi soal.');
+      toast.error('Gagal menduplikasi soal.');
     }
   };
 
@@ -341,7 +350,7 @@ export default function BankSoalPage() {
         } else if (data.response_code === 2) {
           errorMsg = 'Parameter tidak valid.';
         }
-        alert(errorMsg);
+        toast.error(errorMsg);
         return;
       }
       
@@ -373,10 +382,10 @@ export default function BankSoalPage() {
       
       await fetchData();
       setShowImportModal(false);
-      alert(`Berhasil mengimpor ${questionsToImport.length} soal!`);
+      toast.success(`Berhasil mengimpor ${questionsToImport.length} soal!`);
     } catch (error) {
       console.error('Import error:', error);
-      alert('Terjadi kesalahan saat mengimpor soal. Pastikan koneksi internet Anda stabil.');
+      toast.error('Terjadi kesalahan saat mengimpor soal. Pastikan koneksi internet Anda stabil.');
     } finally {
       setImportLoading(false);
     }
@@ -399,7 +408,7 @@ export default function BankSoalPage() {
 
   const handleParsePdf = async () => {
     if (!pdfImportData.file) {
-      alert('Pilih file PDF terlebih dahulu');
+      toast.warning('Pilih file PDF terlebih dahulu');
       return;
     }
 
@@ -423,12 +432,12 @@ export default function BankSoalPage() {
           }));
         }
       } else {
-        alert(response.data?.message || 'Gagal memproses PDF');
+        toast.error(response.data?.message || 'Gagal memproses PDF');
       }
     } catch (error: any) {
       console.error('PDF parse error:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Terjadi kesalahan saat memproses PDF';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setImportLoading(false);
     }
@@ -436,19 +445,19 @@ export default function BankSoalPage() {
 
   const handleImportPdfQuestions = async () => {
     if (!pdfParseResult || pdfParseResult.questions.length === 0) {
-      alert('Tidak ada soal untuk diimpor');
+      toast.warning('Tidak ada soal untuk diimpor');
       return;
     }
 
     if (!pdfImportData.subject) {
-      alert('Pilih mata pelajaran terlebih dahulu');
+      toast.warning('Pilih mata pelajaran terlebih dahulu');
       return;
     }
 
     // Check if all questions have answers
     const questionsWithAnswers = pdfParseResult.questions.filter(q => q.correct_answer);
     if (questionsWithAnswers.length === 0) {
-      alert('Tidak ada soal dengan kunci jawaban. Upload file kunci jawaban atau edit manual.');
+      toast.warning('Tidak ada soal dengan kunci jawaban. Upload file kunci jawaban atau edit manual.');
       return;
     }
 
@@ -474,13 +483,13 @@ export default function BankSoalPage() {
         await fetchData();
         setShowPdfImportModal(false);
         resetPdfImport();
-        alert(`Berhasil mengimpor ${response.data.data.imported} soal!`);
+        toast.success(`Berhasil mengimpor ${response.data.data.imported} soal!`);
       } else {
-        alert(response.data?.message || 'Gagal mengimpor soal');
+        toast.error(response.data?.message || 'Gagal mengimpor soal');
       }
     } catch (error) {
       console.error('Import error:', error);
-      alert('Terjadi kesalahan saat mengimpor soal');
+      toast.error('Terjadi kesalahan saat mengimpor soal');
     } finally {
       setImportLoading(false);
     }
@@ -511,7 +520,7 @@ export default function BankSoalPage() {
   // URL Import handlers
   const handleUrlPreview = async () => {
     if (!urlImportData.url) {
-      alert('Masukkan URL terlebih dahulu');
+      toast.warning('Masukkan URL terlebih dahulu');
       return;
     }
 
@@ -519,11 +528,11 @@ export default function BankSoalPage() {
     try {
       const parsedUrl = new URL(urlImportData.url);
       if (!parsedUrl.hostname.includes('utbk.or.id')) {
-        alert('Hanya URL dari utbk.or.id yang diizinkan');
+        toast.warning('Hanya URL dari utbk.or.id yang diizinkan');
         return;
       }
     } catch {
-      alert('URL tidak valid');
+      toast.warning('URL tidak valid');
       return;
     }
 
@@ -537,13 +546,13 @@ export default function BankSoalPage() {
         // Select all questions by default
         setSelectedUrlQuestions(response.data.data.questions.map((q: { number: number }) => q.number));
       } else {
-        alert(response.data?.message || 'Gagal memproses URL');
+        toast.error(response.data?.message || 'Gagal memproses URL');
       }
     } catch (error: unknown) {
       console.error('URL preview error:', error);
       const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
       const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Terjadi kesalahan saat memproses URL';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setImportLoading(false);
     }
@@ -551,12 +560,12 @@ export default function BankSoalPage() {
 
   const handleImportUrlQuestions = async () => {
     if (!urlPreviewResult || selectedUrlQuestions.length === 0) {
-      alert('Pilih minimal satu soal untuk diimpor');
+      toast.warning('Pilih minimal satu soal untuk diimpor');
       return;
     }
 
     if (!urlImportData.subject) {
-      alert('Pilih mata pelajaran terlebih dahulu');
+      toast.warning('Pilih mata pelajaran terlebih dahulu');
       return;
     }
     
@@ -576,13 +585,13 @@ export default function BankSoalPage() {
         await fetchData();
         setShowUrlImportModal(false);
         resetUrlImport();
-        alert(`Berhasil mengimpor ${response.data.data.imported} soal dari "${response.data.data.topic}"!`);
+        toast.success(`Berhasil mengimpor ${response.data.data.imported} soal dari "${response.data.data.topic}"!`);
       } else {
-        alert(response.data?.message || 'Gagal mengimpor soal');
+        toast.error(response.data?.message || 'Gagal mengimpor soal');
       }
     } catch (error) {
       console.error('URL Import error:', error);
-      alert('Terjadi kesalahan saat mengimpor soal');
+      toast.error('Terjadi kesalahan saat mengimpor soal');
     } finally {
       setImportLoading(false);
     }
@@ -1645,6 +1654,17 @@ export default function BankSoalPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        title="Hapus Soal"
+        message="Yakin ingin menghapus soal ini?"
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

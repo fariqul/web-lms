@@ -4,3 +4,4 @@ export { Input, Textarea, Select, Checkbox } from './Input';
 export { SimpleBarChart, MultiBarChart, SimpleLineChart, SimplePieChart, AttendanceChart } from './Chart';
 export { Modal, ConfirmDialog } from './Modal';
 export { Table, Pagination } from './Table';
+export { ToastProvider, useToast } from './Toast';

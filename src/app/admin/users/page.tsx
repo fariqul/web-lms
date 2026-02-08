@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
 import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface User {
   id: number;
@@ -30,6 +31,7 @@ const roleOptions = [
 ];
 
 export default function AdminUsersPage() {
+  const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +140,7 @@ export default function AdminUsersPage() {
       }, 2000);
     } catch (error: any) {
       const msg = error.response?.data?.message || 'Gagal mereset password';
-      alert(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -174,8 +176,7 @@ export default function AdminUsersPage() {
       setIsModalOpen(false);
       fetchData(); // Refresh data
     } catch (error) {
-      console.error('Failed to save user:', error);
-      alert('Gagal menyimpan data pengguna');
+      toast.error('Gagal menyimpan data pengguna');
     } finally {
       setSubmitting(false);
     }
@@ -188,8 +189,7 @@ export default function AdminUsersPage() {
       setIsDeleteDialogOpen(false);
       fetchData(); // Refresh data
     } catch (error) {
-      console.error('Failed to delete user:', error);
-      alert('Gagal menghapus pengguna');
+      toast.error('Gagal menghapus pengguna');
     }
   };
 

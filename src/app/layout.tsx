@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ToastProvider } from "@/components/ui/Toast";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -26,7 +27,9 @@ export default function RootLayout({
     <html lang="id">
       <body className={`${inter.variable} font-sans antialiased bg-gray-100`}>
         <AuthProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </AuthProvider>
         <Analytics />
       </body>

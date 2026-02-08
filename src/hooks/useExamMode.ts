@@ -58,7 +58,6 @@ export function useExamMode({
         
         // Force submit if max violations exceeded
         if (data.force_submit) {
-          alert(`Anda telah melakukan ${data.violation_count} pelanggaran. Ujian akan dikumpulkan secara otomatis.`);
           onForceSubmit?.();
           return;
         }

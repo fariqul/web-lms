@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, Button, Input, Textarea } from '@/components/ui';
+import { Card, Button, Input, Textarea, ConfirmDialog } from '@/components/ui';
 import { Bell, Plus, Calendar, Eye, Edit2, Trash2, X, Megaphone, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { announcementAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface Announcement {
   id: number;
@@ -26,12 +27,14 @@ interface Announcement {
 
 export default function PengumumanPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   
   // Default target to 'siswa' for guru, 'all' for admin
   const getDefaultTarget = () => user?.role === 'guru' ? 'siswa' : 'all';
@@ -117,33 +120,36 @@ export default function PengumumanPage() {
     try {
       if (editMode && selectedAnnouncement) {
         await announcementAPI.update(selectedAnnouncement.id, formData);
-        alert('Pengumuman berhasil diperbarui!');
+        toast.success('Pengumuman berhasil diperbarui!');
       } else {
         await announcementAPI.create(formData);
-        alert('Pengumuman berhasil dibuat!');
+        toast.success('Pengumuman berhasil dibuat!');
       }
       
       setShowModal(false);
       resetForm();
       fetchAnnouncements();
-    } catch (error) {
-      console.error('Error saving announcement:', error);
-      alert('Gagal menyimpan pengumuman. Silakan coba lagi.');
+    } catch {
+      toast.error('Gagal menyimpan pengumuman. Silakan coba lagi.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('Yakin ingin menghapus pengumuman ini?')) {
-      try {
-        await announcementAPI.delete(id);
-        alert('Pengumuman berhasil dihapus!');
-        fetchAnnouncements();
-      } catch (error) {
-        console.error('Error deleting announcement:', error);
-        alert('Gagal menghapus pengumuman.');
-      }
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteId === null) return;
+    try {
+      await announcementAPI.delete(deleteId);
+      toast.success('Pengumuman berhasil dihapus!');
+      fetchAnnouncements();
+    } catch {
+      toast.error('Gagal menghapus pengumuman.');
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -396,6 +402,15 @@ export default function PengumumanPage() {
             </Card>
           </div>
         )}
+        <ConfirmDialog
+          isOpen={deleteId !== null}
+          title="Hapus Pengumuman"
+          message="Yakin ingin menghapus pengumuman ini?"
+          confirmText="Hapus"
+          onConfirm={confirmDelete}
+          onClose={() => setDeleteId(null)}
+          variant="danger"
+        />
       </div>
     </DashboardLayout>
   );

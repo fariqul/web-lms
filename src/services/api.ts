@@ -64,7 +64,6 @@ api.interceptors.response.use(
 
     if (shouldRetry) {
       config._retryCount += 1;
-      console.log(`Retrying request (${config._retryCount}/${MAX_RETRIES})...`);
       await delay(RETRY_DELAY * config._retryCount);
       return api(config);
     }

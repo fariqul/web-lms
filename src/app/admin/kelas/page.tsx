@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
 import { Plus, Search, Edit2, Trash2, Users, Download, Loader2 } from 'lucide-react';
 import { classAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface ClassRoom {
   id: number;
@@ -22,6 +23,7 @@ const gradeOptions = [
 ];
 
 export default function AdminKelasPage() {
+  const toast = useToast();
   const [classes, setClasses] = useState<ClassRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,8 +99,7 @@ export default function AdminKelasPage() {
       setIsModalOpen(false);
       fetchClasses(); // Refresh data
     } catch (error) {
-      console.error('Failed to save class:', error);
-      alert('Gagal menyimpan data kelas');
+      toast.error('Gagal menyimpan data kelas');
     } finally {
       setSubmitting(false);
     }
@@ -111,8 +112,7 @@ export default function AdminKelasPage() {
       setIsDeleteDialogOpen(false);
       fetchClasses(); // Refresh data
     } catch (error) {
-      console.error('Failed to delete class:', error);
-      alert('Gagal menghapus kelas');
+      toast.error('Gagal menghapus kelas');
     }
   };
 

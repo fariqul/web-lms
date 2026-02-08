@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
 import {
   Wifi,
   Plus,
@@ -17,6 +17,7 @@ import {
   Shield,
 } from 'lucide-react';
 import api from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface NetworkSetting {
   id: number;
@@ -27,6 +28,7 @@ interface NetworkSetting {
 }
 
 export default function JaringanSekolahPage() {
+  const toast = useToast();
   const [networks, setNetworks] = useState<NetworkSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,6 +36,7 @@ export default function JaringanSekolahPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [currentIp, setCurrentIp] = useState<string>('');
   const [isCurrentIpInNetwork, setIsCurrentIpInNetwork] = useState<boolean>(false);
+  const [deleteNetworkId, setDeleteNetworkId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -69,7 +72,7 @@ export default function JaringanSekolahPage() {
 
   const handleSave = async () => {
     if (!formData.name || !formData.ip_range) {
-      alert('Nama dan IP Range wajib diisi');
+      toast.warning('Nama dan IP Range wajib diisi');
       return;
     }
 
@@ -84,7 +87,7 @@ export default function JaringanSekolahPage() {
       resetForm();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Gagal menyimpan');
+      toast.error(err.response?.data?.message || 'Gagal menyimpan');
     } finally {
       setSaving(false);
     }
@@ -100,15 +103,20 @@ export default function JaringanSekolahPage() {
     setShowAddForm(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus jaringan ini?')) return;
+  const handleDelete = (id: number) => {
+    setDeleteNetworkId(id);
+  };
 
+  const confirmDelete = async () => {
+    if (deleteNetworkId === null) return;
     try {
-      await api.delete(`/school-network-settings/${id}`);
+      await api.delete(`/school-network-settings/${deleteNetworkId}`);
       fetchNetworks();
     } catch (error) {
       console.error('Failed to delete:', error);
-      alert('Gagal menghapus');
+      toast.error('Gagal menghapus');
+    } finally {
+      setDeleteNetworkId(null);
     }
   };
 
@@ -334,6 +342,16 @@ export default function JaringanSekolahPage() {
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteNetworkId !== null}
+        onClose={() => setDeleteNetworkId(null)}
+        onConfirm={confirmDelete}
+        title="Hapus Jaringan"
+        message="Yakin ingin menghapus jaringan ini?"
+        confirmText="Hapus"
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

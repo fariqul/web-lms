@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, Button, Input, Modal } from '@/components/ui';
+import { Card, CardHeader, Button, Input, Modal, ConfirmDialog } from '@/components/ui';
 import {
   Plus,
   Trash2,
@@ -17,6 +17,7 @@ import {
   Send,
 } from 'lucide-react';
 import api from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface Option {
   id?: number;
@@ -47,6 +48,7 @@ interface ExamData {
 export default function EditSoalPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const examId = Number(params.id);
 
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,8 @@ export default function EditSoalPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
     question_type: 'multiple_choice',
@@ -115,7 +119,7 @@ export default function EditSoalPage() {
       }
     } catch (error) {
       console.error('Failed to fetch exam:', error);
-      alert('Gagal memuat data ujian');
+      toast.error('Gagal memuat data ujian');
     } finally {
       setLoading(false);
     }
@@ -123,7 +127,7 @@ export default function EditSoalPage() {
 
   const handleAddQuestion = async () => {
     if (!newQuestion.question_text.trim()) {
-      alert('Teks soal tidak boleh kosong');
+      toast.warning('Teks soal tidak boleh kosong');
       return;
     }
 
@@ -132,11 +136,11 @@ export default function EditSoalPage() {
       const hasEmptyOption = newQuestion.options.some(opt => !opt.text.trim());
       
       if (!hasCorrectAnswer) {
-        alert('Pilih satu jawaban yang benar');
+        toast.warning('Pilih satu jawaban yang benar');
         return;
       }
       if (hasEmptyOption) {
-        alert('Semua opsi harus diisi');
+        toast.warning('Semua opsi harus diisi');
         return;
       }
     }
@@ -164,39 +168,47 @@ export default function EditSoalPage() {
       }
     } catch (error) {
       console.error('Failed to add question:', error);
-      alert('Gagal menambah soal');
+      toast.error('Gagal menambah soal');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteQuestion = async (questionId: number) => {
-    if (!confirm('Yakin ingin menghapus soal ini?')) return;
+  const handleDeleteQuestion = (questionId: number) => {
+    setDeleteQuestionId(questionId);
+  };
 
+  const confirmDeleteQuestion = async () => {
+    if (deleteQuestionId === null) return;
     try {
-      await api.delete(`/questions/${questionId}`);
-      setQuestions(questions.filter(q => q.id !== questionId));
+      await api.delete(`/questions/${deleteQuestionId}`);
+      setQuestions(questions.filter(q => q.id !== deleteQuestionId));
     } catch (error) {
       console.error('Failed to delete question:', error);
-      alert('Gagal menghapus soal');
+      toast.error('Gagal menghapus soal');
+    } finally {
+      setDeleteQuestionId(null);
     }
   };
 
-  const handlePublish = async () => {
+  const handlePublish = () => {
     if (questions.length === 0) {
-      alert('Tambahkan minimal 1 soal sebelum publish');
+      toast.warning('Tambahkan minimal 1 soal sebelum publish');
       return;
     }
+    setShowPublishConfirm(true);
+  };
 
-    if (!confirm('Yakin ingin mempublikasi ujian ini? Siswa akan dapat melihat ujian sesuai jadwal.')) return;
-
+  const confirmPublish = async () => {
     try {
       await api.post(`/exams/${examId}/publish`);
-      alert('Ujian berhasil dipublikasi');
+      toast.success('Ujian berhasil dipublikasi');
       router.push('/ujian');
     } catch (error) {
       console.error('Failed to publish:', error);
-      alert('Gagal mempublikasi ujian');
+      toast.error('Gagal mempublikasi ujian');
+    } finally {
+      setShowPublishConfirm(false);
     }
   };
 
@@ -501,6 +513,26 @@ export default function EditSoalPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={deleteQuestionId !== null}
+        onClose={() => setDeleteQuestionId(null)}
+        onConfirm={confirmDeleteQuestion}
+        title="Hapus Soal"
+        message="Yakin ingin menghapus soal ini?"
+        confirmText="Hapus"
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        onConfirm={confirmPublish}
+        title="Publikasi Ujian"
+        message="Yakin ingin mempublikasi ujian ini? Siswa akan dapat melihat ujian sesuai jadwal."
+        confirmText="Publikasi"
+        variant="warning"
+      />
     </DashboardLayout>
   );
 }

@@ -25,6 +25,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { bankQuestionAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 // Subject data with icons and colors
 const SUBJECTS = [
@@ -58,6 +59,7 @@ interface SubjectWithCount {
 
 export default function SiswaBankSoalPage() {
   const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [selectedGrade, setSelectedGrade] = useState('10');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export default function SiswaBankSoalPage() {
   const handleSubjectClick = (subjectId: string) => {
     const count = subjectCounts[subjectId] || 0;
     if (count === 0) {
-      alert('Belum ada soal untuk mata pelajaran ini.');
+      toast.warning('Belum ada soal untuk mata pelajaran ini.');
       return;
     }
     setSelectedSubject(subjectId);

@@ -64,9 +64,11 @@ class SchoolNetworkSetting extends Model
      */
     public static function isSchoolNetwork(string $ip): bool
     {
+        /** @var \Illuminate\Database\Eloquent\Collection<int, static> $networks */
         $networks = self::where('is_active', true)->get();
         
         foreach ($networks as $network) {
+            /** @var self $network */
             if ($network->containsIp($ip)) {
                 return true;
             }

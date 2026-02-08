@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
 import { 
   BookOpen, 
   Plus, 
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { classAPI, materialAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface Material {
   id: number;
@@ -51,6 +52,7 @@ interface ClassOption {
 
 export default function MateriPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -62,6 +64,7 @@ export default function MateriPage() {
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -247,17 +250,23 @@ export default function MateriPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus materi ini?')) return;
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+  };
 
+  const confirmDelete = async () => {
+    if (deleteId === null) return;
     try {
-      await materialAPI.delete(id);
+      await materialAPI.delete(deleteId);
       setSuccess('Materi berhasil dihapus!');
+      toast.success('Materi berhasil dihapus!');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (error: any) {
       console.error('Failed to delete material:', error);
       setError(error.response?.data?.message || 'Gagal menghapus materi');
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -786,6 +795,16 @@ export default function MateriPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        title="Hapus Materi"
+        message="Yakin ingin menghapus materi ini?"
+        confirmText="Hapus"
+        cancelText="Batal"
+      />
     </DashboardLayout>
   );
 }

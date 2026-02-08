@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
 import { 
   ClipboardList, 
   Plus, 
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { classAPI, assignmentAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface Assignment {
   id: number;
@@ -64,6 +65,7 @@ interface ClassOption {
 
 export default function TugasGuruPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -78,6 +80,7 @@ export default function TugasGuruPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -228,16 +231,21 @@ export default function TugasGuruPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus tugas ini?')) return;
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+  };
 
+  const confirmDelete = async () => {
+    if (deleteId === null) return;
     try {
-      await assignmentAPI.delete(id);
+      await assignmentAPI.delete(deleteId);
       setSuccess('Tugas berhasil dihapus!');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (error: any) {
       setError(error.response?.data?.message || 'Gagal menghapus tugas');
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -831,6 +839,16 @@ export default function TugasGuruPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        title="Hapus Tugas"
+        message="Yakin ingin menghapus tugas ini?"
+        confirmText="Hapus"
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

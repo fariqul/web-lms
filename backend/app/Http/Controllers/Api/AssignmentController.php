@@ -48,6 +48,7 @@ class AssignmentController extends Controller
         // For students, add submission status
         if ($user->role === 'siswa') {
             $assignments = $assignments->map(function ($assignment) use ($user) {
+                /** @var \App\Models\Assignment $assignment */
                 $submission = $assignment->submissions()
                     ->where('student_id', $user->id)
                     ->first();

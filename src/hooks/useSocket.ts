@@ -43,12 +43,10 @@ export function useSocket({
 
     socketRef.current.on('connect', () => {
       isConnectedRef.current = true;
-      console.log('Socket connected');
     });
 
     socketRef.current.on('disconnect', () => {
       isConnectedRef.current = false;
-      console.log('Socket disconnected');
     });
 
     socketRef.current.on('error', (error) => {

@@ -18,6 +18,7 @@ class UtbkScraperService
         }
 
         // Fetch HTML content (disable SSL verification for development)
+        /** @var \Illuminate\Http\Client\Response $response */
         $response = Http::timeout(30)
             ->withoutVerifying()
             ->withHeaders([

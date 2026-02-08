@@ -8,6 +8,7 @@ import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/Toast';
 
 interface AttendanceRecord {
   id: number;
@@ -63,6 +64,7 @@ const statusOptions = [
 ];
 
 export default function AbsensiPage() {
+  const toast = useToast();
   const qrId = useId();
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -114,18 +116,14 @@ export default function AbsensiPage() {
       const savedSession = localStorage.getItem('activeAttendanceSession');
       
       if (!savedSession) {
-        console.log('No saved session in localStorage');
         return;
       }
       
       const session = JSON.parse(savedSession);
-      console.log('Found saved session:', session);
       
       try {
         // Verify session is still active via API
-        console.log('Verifying session via API:', `/attendance-sessions/${session.id}`);
         const response = await api.get(`/attendance-sessions/${session.id}`);
-        console.log('API response status:', response.data?.data?.status);
         
         if (response.data?.data?.status === 'active') {
           // Set all session data
@@ -148,10 +146,8 @@ export default function AbsensiPage() {
               }));
             setAttendanceRecords(records);
           }
-          console.log('Session restored successfully!');
         } else {
           // Session is no longer active, clear localStorage
-          console.log('Session status is not active:', response.data?.data?.status);
           clearSessionFromStorage();
         }
       } catch (apiError) {
@@ -374,10 +370,10 @@ export default function AbsensiPage() {
       
       setIsEditMode(false);
       setEditedStatuses({});
-      alert('Status kehadiran berhasil disimpan');
+      toast.success('Status kehadiran berhasil disimpan');
     } catch (error) {
       console.error('Failed to save statuses:', error);
-      alert('Gagal menyimpan status kehadiran');
+      toast.error('Gagal menyimpan status kehadiran');
     } finally {
       setSavingStatus(false);
     }
@@ -386,7 +382,7 @@ export default function AbsensiPage() {
   // Export all students attendance to CSV
   const handleExportAll = (studentAttendances: StudentAttendance[], sessionInfo?: { className?: string; subject?: string; date?: string }) => {
     if (studentAttendances.length === 0) {
-      alert('Tidak ada data untuk di-export');
+      toast.warning('Tidak ada data untuk di-export');
       return;
     }
 
@@ -428,7 +424,7 @@ export default function AbsensiPage() {
   // Export attendance to CSV
   const handleExport = (records: AttendanceRecord[], sessionInfo?: { className?: string; subject?: string; date?: string }) => {
     if (records.length === 0) {
-      alert('Tidak ada data untuk di-export');
+      toast.warning('Tidak ada data untuk di-export');
       return;
     }
 
@@ -475,7 +471,7 @@ export default function AbsensiPage() {
 
   const handleStartSession = async () => {
     if (!selectedClass || !selectedSubject) {
-      alert('Pilih kelas dan mata pelajaran terlebih dahulu');
+      toast.warning('Pilih kelas dan mata pelajaran terlebih dahulu');
       return;
     }
 
@@ -486,7 +482,6 @@ export default function AbsensiPage() {
       const validUntil = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(); // 2 hours from now
 
       // Create session via API
-      console.log('Creating attendance session...');
       const response = await api.post('/attendance-sessions', {
         class_id: parseInt(selectedClass),
         subject: selectedSubject,
@@ -494,7 +489,6 @@ export default function AbsensiPage() {
         valid_until: validUntil,
         require_school_network: requireSchoolNetwork,
       });
-      console.log('API response:', response.data);
 
       // Get the QR token from server response
       if (response.data?.data?.qr_token) {
@@ -506,7 +500,6 @@ export default function AbsensiPage() {
 
       // Save session ID for later use (close session)
       const sessionId = response.data?.data?.id;
-      console.log('Session ID from response:', sessionId);
       
       if (sessionId) {
         setCurrentSessionId(sessionId);
@@ -514,12 +507,7 @@ export default function AbsensiPage() {
         const selectedClassData = classes.find((c) => c.value === selectedClass);
         const studentsCount = (selectedClassData as { studentsCount?: number })?.studentsCount || 30;
         
-        console.log('Saving to localStorage:', { id: sessionId, class_id: selectedClass, subject: selectedSubject, totalStudents: studentsCount });
         saveSessionToStorage(sessionId, selectedClass, selectedSubject, studentsCount);
-        
-        // Verify it was saved
-        const saved = localStorage.getItem('activeAttendanceSession');
-        console.log('Verified localStorage after save:', saved);
       } else {
         console.error('No session ID in API response!');
       }
@@ -532,7 +520,7 @@ export default function AbsensiPage() {
       setTimeRemaining(300); // 5 minutes display timer
     } catch (error) {
       console.error('Failed to start session:', error);
-      alert('Gagal memulai sesi absensi. Pastikan API backend sudah berjalan.');
+      toast.error('Gagal memulai sesi absensi. Pastikan API backend sudah berjalan.');
     }
   };
 
@@ -558,7 +546,7 @@ export default function AbsensiPage() {
       fetchSessionHistory();
     } catch (error) {
       console.error('Failed to close session:', error);
-      alert('Gagal menutup sesi. Coba lagi.');
+      toast.error('Gagal menutup sesi. Coba lagi.');
     } finally {
       setIsClosing(false);
     }

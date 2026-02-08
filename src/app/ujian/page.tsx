@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, Button, Modal, Input, Select } from '@/components/ui';
+import { Card, CardHeader, Button, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
 import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2 } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface Exam {
   id: number;
@@ -39,11 +40,13 @@ const subjects = [
 
 export default function UjianPage() {
   const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteExam, setDeleteExam] = useState<{id: number, title: string} | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
@@ -89,7 +92,7 @@ export default function UjianPage() {
     e.preventDefault();
     
     if (!formData.title || !formData.subject || !formData.class_id || !formData.start_time) {
-      alert('Mohon lengkapi semua field yang diperlukan');
+      toast.warning('Mohon lengkapi semua field yang diperlukan');
       return;
     }
     
@@ -130,9 +133,9 @@ export default function UjianPage() {
       const axiosError = error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
       if (axiosError.response?.data?.errors) {
         const errors = Object.values(axiosError.response.data.errors).flat().join('\n');
-        alert('Gagal membuat ujian:\n' + errors);
+        toast.error('Gagal membuat ujian: ' + errors);
       } else {
-        alert('Gagal membuat ujian: ' + (axiosError.response?.data?.message || 'Terjadi kesalahan'));
+        toast.error('Gagal membuat ujian: ' + (axiosError.response?.data?.message || 'Terjadi kesalahan'));
       }
     } finally {
       setSubmitting(false);
@@ -142,16 +145,22 @@ export default function UjianPage() {
   const upcomingExams = exams.filter((e) => e.status === 'scheduled' || e.status === 'active' || e.status === 'draft');
   const completedExams = exams.filter((e) => e.status === 'completed');
 
-  const handleDeleteExam = async (examId: number, examTitle: string) => {
-    if (!confirm(`Yakin ingin menghapus ujian "${examTitle}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+  const handleDeleteExam = (examId: number, examTitle: string) => {
+    setDeleteExam({ id: examId, title: examTitle });
+  };
+
+  const confirmDeleteExam = async () => {
+    if (!deleteExam) return;
 
     try {
-      await api.delete(`/exams/${examId}`);
+      await api.delete(`/exams/${deleteExam.id}`);
       fetchData();
     } catch (error: unknown) {
       console.error('Failed to delete exam:', error);
       const axiosError = error as { response?: { data?: { message?: string } } };
-      alert(axiosError.response?.data?.message || 'Gagal menghapus ujian');
+      toast.error(axiosError.response?.data?.message || 'Gagal menghapus ujian');
+    } finally {
+      setDeleteExam(null);
     }
   };
 
@@ -385,6 +394,16 @@ export default function UjianPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deleteExam}
+        onClose={() => setDeleteExam(null)}
+        onConfirm={confirmDeleteExam}
+        title="Hapus Ujian"
+        message={`Yakin ingin menghapus ujian "${deleteExam?.title}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

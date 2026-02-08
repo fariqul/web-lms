@@ -137,7 +137,6 @@ export default function ScanQRPage() {
       // Success callback
       const onScanSuccess = (decodedText: string) => {
         // QR Code scanned successfully - use ref to avoid stale closure
-        console.log('QR Scanned:', decodedText);
         handleScanQRRef.current(decodedText);
       };
 
@@ -154,7 +153,6 @@ export default function ScanQRPage() {
           onScanSuccess,
           onScanError
         );
-        console.log('Started with environment (back) camera');
       } catch (backCameraError) {
         console.warn('Back camera not available, trying front camera:', backCameraError);
         try {
@@ -164,7 +162,6 @@ export default function ScanQRPage() {
             onScanSuccess,
             onScanError
           );
-          console.log('Started with user (front) camera');
         } catch (frontCameraError) {
           console.error('Both cameras failed:', frontCameraError);
           throw frontCameraError;
