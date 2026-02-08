@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database
   mysql:
@@ -47,6 +45,7 @@ services:
       SESSION_SECURE_COOKIE: "false"
       SANCTUM_STATEFUL_DOMAINS: "web-lms-rowr.vercel.app,52.63.72.178"
       CORS_ALLOWED_ORIGINS: "https://web-lms-rowr.vercel.app,http://52.63.72.178"
+      FRONTEND_URL: "https://web-lms-rowr.vercel.app"
     volumes:
       - backend_storage:/var/www/html/storage
     networks:
