@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Select, Table } from '@/components/ui';
-import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Eye, Users, Edit2, Save, X, Smartphone, AlertTriangle } from 'lucide-react';
+import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Smartphone, AlertTriangle } from 'lucide-react';
 import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
+import { useAttendanceSocket } from '@/hooks/useSocket';
+import { SessionHistoryTab, SessionHistory } from '@/components/absensi/SessionHistoryTab';
 
 interface AttendanceRecord {
   id: number;
@@ -17,28 +19,7 @@ interface AttendanceRecord {
   status: string;
 }
 
-interface StudentAttendance {
-  student: {
-    id: number;
-    name: string;
-    nisn: string;
-  };
-  status: string;
-  attendance?: {
-    id: number;
-    scanned_at: string | null;
-  };
-}
 
-interface SessionHistory {
-  id: number;
-  class_name: string;
-  subject: string;
-  status: 'active' | 'closed';
-  created_at: string;
-  total_present: number;
-  total_students: number;
-}
 
 interface ClassOption {
   value: string;
@@ -53,14 +34,6 @@ const subjects = [
   { value: 'informatika', label: 'Informatika' },
   { value: 'bahasa_indonesia', label: 'Bahasa Indonesia' },
   { value: 'bahasa_inggris', label: 'Bahasa Inggris' },
-];
-
-const statusOptions = [
-  { value: 'hadir', label: 'Hadir', color: 'bg-green-100 text-green-700' },
-  { value: 'izin', label: 'Izin', color: 'bg-blue-100 text-blue-700' },
-  { value: 'sakit', label: 'Sakit', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'alpha', label: 'Alpha', color: 'bg-red-100 text-red-700' },
-  { value: 'belum', label: 'Belum Absen', color: 'bg-gray-100 text-gray-600' },
 ];
 
 export default function AbsensiPage() {
@@ -81,16 +54,7 @@ export default function AbsensiPage() {
   // Session history states
   const [sessionHistory, setSessionHistory] = useState<SessionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [selectedHistorySession, setSelectedHistorySession] = useState<number | null>(null);
-  const [historyAttendances, setHistoryAttendances] = useState<AttendanceRecord[]>([]);
-  const [loadingHistoryDetail, setLoadingHistoryDetail] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
-  
-  // Edit status states
-  const [allStudentAttendances, setAllStudentAttendances] = useState<StudentAttendance[]>([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editedStatuses, setEditedStatuses] = useState<Record<number, string>>({});
-  const [savingStatus, setSavingStatus] = useState(false);
   
   // Anti-cheat options
   const [requireSchoolNetwork, setRequireSchoolNetwork] = useState(false);
@@ -205,17 +169,47 @@ export default function AbsensiPage() {
     }
   }, [currentSessionId]);
 
-  // Poll for attendance updates every 5 seconds
+  // WebSocket for real-time attendance updates (fallback to 30s polling)
+  const attendanceSocket = useAttendanceSocket(currentSessionId || 0);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isSessionActive && currentSessionId) {
-      // Fetch immediately
-      fetchAttendanceRecords();
-      // Then poll every 5 seconds
-      interval = setInterval(fetchAttendanceRecords, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [isSessionActive, currentSessionId, fetchAttendanceRecords]);
+    if (!isSessionActive || !currentSessionId) return;
+
+    // Fetch immediately on session start
+    fetchAttendanceRecords();
+
+    // Listen for real-time scan events via WebSocket
+    const handleStudentScanned = (data: unknown) => {
+      const scanData = data as { student_id: number; student_name?: string; scanned_at?: string; status?: string };
+      if (scanData.student_id) {
+        setAttendanceRecords((prev) => {
+          // Avoid duplicates
+          if (prev.some((r) => r.id === scanData.student_id)) return prev;
+          return [
+            ...prev,
+            {
+              id: scanData.student_id,
+              name: scanData.student_name || 'Unknown',
+              time: scanData.scanned_at
+                ? new Date(scanData.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+                : new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+              status: scanData.status || 'hadir',
+            },
+          ];
+        });
+      }
+    };
+
+    attendanceSocket.onStudentScanned(handleStudentScanned);
+
+    // Fallback: poll every 30s in case WebSocket is unavailable
+    const fallbackInterval = setInterval(fetchAttendanceRecords, 30000);
+
+    return () => {
+      clearInterval(fallbackInterval);
+      attendanceSocket.off(`attendance.${currentSessionId}.scanned`);
+    };
+  }, [isSessionActive, currentSessionId, fetchAttendanceRecords, attendanceSocket]);
 
   // Timer countdown
   useEffect(() => {
@@ -303,122 +297,6 @@ export default function AbsensiPage() {
     } catch (error) {
       console.error('Failed to fetch pending device requests:', error);
     }
-  };
-
-  // View session detail - shows all students with their status
-  const handleViewSession = async (sessionId: number) => {
-    setSelectedHistorySession(sessionId);
-    setLoadingHistoryDetail(true);
-    setIsEditMode(false);
-    setEditedStatuses({});
-    
-    try {
-      const response = await api.get(`/attendance-sessions/${sessionId}`);
-      const data = response.data?.data;
-      
-      // Get all student attendances (including those who haven't scanned)
-      if (data?.student_attendances) {
-        setAllStudentAttendances(data.student_attendances);
-      }
-      
-      // Also set the records for export (only hadir)
-      if (data?.attendances) {
-        const records = data.attendances
-          .filter((a: { status: string }) => a.status === 'hadir')
-          .map((a: { student_id: number; student?: { name: string }; scanned_at: string; status: string }) => ({
-            id: a.student_id,
-            name: a.student?.name || 'Unknown',
-            time: a.scanned_at ? new Date(a.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '-',
-            status: a.status,
-          }));
-        setHistoryAttendances(records);
-      }
-    } catch (error) {
-      console.error('Failed to fetch session detail:', error);
-    } finally {
-      setLoadingHistoryDetail(false);
-    }
-  };
-
-  // Handle status change in edit mode
-  const handleStatusChange = (studentId: number, newStatus: string) => {
-    setEditedStatuses(prev => ({
-      ...prev,
-      [studentId]: newStatus,
-    }));
-  };
-
-  // Save edited statuses
-  const handleSaveStatuses = async () => {
-    if (!selectedHistorySession || Object.keys(editedStatuses).length === 0) return;
-    
-    setSavingStatus(true);
-    try {
-      const updates = Object.entries(editedStatuses).map(([studentId, status]) => ({
-        student_id: parseInt(studentId),
-        status,
-      }));
-
-      await api.post(`/attendance-sessions/${selectedHistorySession}/bulk-update-status`, {
-        updates,
-      });
-
-      // Refresh session detail
-      await handleViewSession(selectedHistorySession);
-      // Refresh session history to update summary counts
-      await fetchSessionHistory();
-      
-      setIsEditMode(false);
-      setEditedStatuses({});
-      toast.success('Status kehadiran berhasil disimpan');
-    } catch (error) {
-      console.error('Failed to save statuses:', error);
-      toast.error('Gagal menyimpan status kehadiran');
-    } finally {
-      setSavingStatus(false);
-    }
-  };
-
-  // Export all students attendance to CSV
-  const handleExportAll = (studentAttendances: StudentAttendance[], sessionInfo?: { className?: string; subject?: string; date?: string }) => {
-    if (studentAttendances.length === 0) {
-      toast.warning('Tidak ada data untuk di-export');
-      return;
-    }
-
-    const className = sessionInfo?.className || 'Unknown';
-    const subjectName = sessionInfo?.subject || 'Unknown';
-    const dateStr = sessionInfo?.date || new Date().toLocaleDateString('id-ID');
-
-    // Create CSV content with all students
-    const headers = ['No', 'NISN', 'Nama Siswa', 'Status', 'Waktu Absen'];
-    const rows = studentAttendances.map((sa, index) => [
-      index + 1,
-      sa.student.nisn || '-',
-      sa.student.name,
-      statusOptions.find(s => s.value === sa.status)?.label || sa.status,
-      sa.attendance?.scanned_at ? new Date(sa.attendance.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '-'
-    ]);
-
-    const csvContent = [
-      `Daftar Kehadiran - ${className}`,
-      `Mata Pelajaran: ${subjectName}`,
-      `Tanggal: ${dateStr}`,
-      '',
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
-    // Download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `absensi_lengkap_${className.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   // Export attendance to CSV
@@ -795,257 +673,11 @@ export default function AbsensiPage() {
             )}
           </>
         ) : (
-          /* History Tab */
-          <div className="space-y-6">
-            {/* Session History List */}
-            <Card>
-              <CardHeader
-                title="Riwayat Sesi Absensi"
-                subtitle="Lihat dan export data absensi sebelumnya"
-                action={
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    leftIcon={<RefreshCw className="w-4 h-4" />}
-                    onClick={fetchSessionHistory}
-                    disabled={loadingHistory}
-                  >
-                    Refresh
-                  </Button>
-                }
-              />
-              
-              {loadingHistory ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
-                </div>
-              ) : sessionHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Tanggal</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Kelas</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Mata Pelajaran</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Kehadiran</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sessionHistory.map((session) => (
-                        <tr key={session.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            {new Date(session.created_at).toLocaleDateString('id-ID', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </td>
-                          <td className="py-3 px-4 font-medium">{session.class_name}</td>
-                          <td className="py-3 px-4">{session.subject}</td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center gap-1">
-                              <Users className="w-4 h-4 text-gray-400" />
-                              {session.total_present}/{session.total_students}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              session.status === 'active' 
-                                ? 'bg-green-100 text-green-700' 
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {session.status === 'active' ? 'Aktif' : 'Selesai'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              leftIcon={<Eye className="w-4 h-4" />}
-                              onClick={() => handleViewSession(session.id)}
-                            >
-                              Lihat
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <History className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Belum ada riwayat sesi absensi</p>
-                </div>
-              )}
-            </Card>
-
-            {/* Session Detail Modal/Card */}
-            {selectedHistorySession && (
-              <Card>
-                <CardHeader
-                  title="Detail Kehadiran"
-                  subtitle={`Sesi #${selectedHistorySession} - ${sessionHistory.find(s => s.id === selectedHistorySession)?.class_name || ''}`}
-                  action={
-                    <div className="flex gap-2">
-                      {isEditMode ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            leftIcon={savingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            onClick={handleSaveStatuses}
-                            disabled={savingStatus || Object.keys(editedStatuses).length === 0}
-                          >
-                            Simpan
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            leftIcon={<X className="w-4 h-4" />}
-                            onClick={() => {
-                              setIsEditMode(false);
-                              setEditedStatuses({});
-                            }}
-                            disabled={savingStatus}
-                          >
-                            Batal
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            leftIcon={<Edit2 className="w-4 h-4" />}
-                            onClick={() => setIsEditMode(true)}
-                          >
-                            Edit Status
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            leftIcon={<Download className="w-4 h-4" />}
-                            onClick={() => {
-                              const session = sessionHistory.find(s => s.id === selectedHistorySession);
-                              handleExportAll(allStudentAttendances, {
-                                className: session?.class_name,
-                                subject: session?.subject,
-                                date: session ? new Date(session.created_at).toLocaleDateString('id-ID') : undefined
-                              });
-                            }}
-                            disabled={allStudentAttendances.length === 0}
-                          >
-                            Export CSV
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedHistorySession(null);
-                              setHistoryAttendances([]);
-                              setAllStudentAttendances([]);
-                              setIsEditMode(false);
-                              setEditedStatuses({});
-                            }}
-                          >
-                            Tutup
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  }
-                />
-                
-                {loadingHistoryDetail ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
-                  </div>
-                ) : allStudentAttendances.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    {/* Summary */}
-                    <div className="flex gap-4 mb-4 px-4 py-2 bg-gray-50 rounded-lg">
-                      {statusOptions.filter(s => s.value !== 'belum').map(status => {
-                        const count = allStudentAttendances.filter(sa => 
-                          (editedStatuses[sa.student.id] || sa.status) === status.value
-                        ).length;
-                        return (
-                          <span key={status.value} className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${status.color}`}>
-                            {status.label}: {count}
-                          </span>
-                        );
-                      })}
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">
-                        Belum: {allStudentAttendances.filter(sa => 
-                          (editedStatuses[sa.student.id] || sa.status) === 'belum'
-                        ).length}
-                      </span>
-                    </div>
-                    
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 font-medium text-gray-600">No</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-600">NISN</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-600">Nama Siswa</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-600">Waktu</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allStudentAttendances.map((sa, index) => {
-                          const currentStatus = editedStatuses[sa.student.id] || sa.status;
-                          const statusInfo = statusOptions.find(s => s.value === currentStatus);
-                          
-                          return (
-                            <tr key={sa.student.id} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="py-3 px-4">{index + 1}</td>
-                              <td className="py-3 px-4 text-gray-500">{sa.student.nisn || '-'}</td>
-                              <td className="py-3 px-4 font-medium">{sa.student.name}</td>
-                              <td className="py-3 px-4">
-                                {isEditMode ? (
-                                  <select
-                                    value={currentStatus}
-                                    onChange={(e) => handleStatusChange(sa.student.id, e.target.value)}
-                                    className="block w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                  >
-                                    {statusOptions.filter(s => s.value !== 'belum').map(option => (
-                                      <option key={option.value} value={option.value}>
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo?.color || 'bg-gray-100 text-gray-600'}`}>
-                                    {statusInfo?.label || currentStatus}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 text-gray-500">
-                                {sa.attendance?.scanned_at 
-                                  ? new Date(sa.attendance.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-                                  : '-'
-                                }
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                    <p>Tidak ada data siswa pada sesi ini</p>
-                  </div>
-                )}
-              </Card>
-            )}
-          </div>
+          <SessionHistoryTab
+            sessions={sessionHistory}
+            loadingHistory={loadingHistory}
+            onRefresh={fetchSessionHistory}
+          />
         )}
       </div>
     </DashboardLayout>

@@ -58,3 +58,99 @@ body {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
+
+/* ===== Print-Friendly Styles ===== */
+@media print {
+  /* Hide non-essential UI elements */
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  input,
+  select,
+  [role="navigation"],
+  [data-sidebar],
+  .offline-banner {
+    display: none !important;
+  }
+
+  /* Reset page layout */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Maximize content width */
+  main,
+  .main-content,
+  [role="main"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Clean up cards for print */
+  .card,
+  [class*="rounded-xl"],
+  [class*="shadow"] {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0 !important;
+    break-inside: avoid;
+  }
+
+  /* Print-friendly tables */
+  .print-table,
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt;
+  }
+
+  .print-table th,
+  .print-table td,
+  table th,
+  table td {
+    border: 1px solid #999 !important;
+    padding: 6px 8px !important;
+    text-align: left;
+  }
+
+  .print-table thead th,
+  table thead th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Status badges: keep colors for print */
+  [class*="bg-green-100"],
+  [class*="bg-red-100"],
+  [class*="bg-yellow-100"],
+  [class*="bg-blue-100"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page break handling */
+  h1, h2, h3 {
+    break-after: avoid;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+}

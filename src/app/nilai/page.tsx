@@ -7,7 +7,7 @@ import {
   Award, 
   Search, 
   Download,
-  Filter,
+  Printer,
   Loader2,
   Users,
   TrendingUp,
@@ -121,10 +121,16 @@ export default function NilaiPage() {
             <h1 className="text-2xl font-bold text-gray-900">Nilai Siswa</h1>
             <p className="text-gray-600">Lihat dan kelola nilai ujian siswa</p>
           </div>
-          <Button variant="outline">
-            <Download className="w-5 h-5 mr-2" />
-            Export Nilai
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.print()} className="print:hidden">
+              <Printer className="w-5 h-5 mr-2" />
+              Cetak
+            </Button>
+            <Button variant="outline" className="print:hidden">
+              <Download className="w-5 h-5 mr-2" />
+              Export Nilai
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
