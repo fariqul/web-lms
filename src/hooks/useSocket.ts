@@ -20,7 +20,7 @@ interface UseSocketReturn {
 }
 
 export function useSocket({
-  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://52.63.72.178',
+  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://sma15lms.duckdns.org',
   autoConnect = true,
   auth,
 }: UseSocketOptions = {}): UseSocketReturn {

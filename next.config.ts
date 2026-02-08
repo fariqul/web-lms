@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'sma15lms.duckdns.org',
+        pathname: '/storage/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'web-lms-rowr.vercel.app',
       },
     ],
@@ -64,7 +69,7 @@ const nextConfig: NextConfig = {
 
   // Proxy API requests to avoid mixed content (HTTPS -> HTTP)
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'http://52.63.72.178';
+    const backendUrl = process.env.BACKEND_URL || 'https://sma15lms.duckdns.org';
     return [
       {
         source: '/backend-api/:path*',
