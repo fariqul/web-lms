@@ -10,6 +10,7 @@ use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\User;
+use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -436,6 +437,13 @@ class ExamController extends Controller
                 'started_at' => now(),
                 'status' => 'in_progress',
             ]);
+
+            // Broadcast: student joined exam
+            app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
+                'student_id' => $user->id,
+                'student_name' => $user->name,
+                'started_at' => now()->toISOString(),
+            ]);
         }
 
         // Get questions (shuffled if enabled)
@@ -535,6 +543,14 @@ class ExamController extends Controller
             ]
         );
 
+        // Broadcast: answer progress
+        $answeredCount = Answer::where('exam_id', $exam->id)->where('student_id', $user->id)->count();
+        app(SocketBroadcastService::class)->examAnswerProgress($exam->id, [
+            'student_id' => $user->id,
+            'answered_count' => $answeredCount,
+            'total_questions' => $exam->questions()->count(),
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => $answer->only(['id', 'question_id', 'answer', 'submitted_at']),
@@ -564,6 +580,14 @@ class ExamController extends Controller
         $result->finished_at = now();
         $result->status = 'completed';
         $result->calculateScore();
+
+        // Broadcast: student submitted
+        app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
+            'student_id' => $user->id,
+            'student_name' => $user->name,
+            'score' => $result->score,
+            'finished_at' => $result->finished_at->toISOString(),
+        ]);
 
         $response = [
             'success' => true,
@@ -627,6 +651,16 @@ class ExamController extends Controller
         $result->violation_count = $result->violations()->count();
         $result->save();
 
+        // Broadcast: violation reported
+        app(SocketBroadcastService::class)->examViolation($exam->id, [
+            'student_id' => $user->id,
+            'student_name' => $user->name,
+            'type' => $request->type,
+            'description' => $request->description,
+            'violation_count' => $result->violation_count,
+            'max_violations' => $exam->max_violations,
+        ]);
+
         // Check if max violations exceeded
         $forceSubmit = false;
         if ($exam->max_violations && $result->violation_count >= $exam->max_violations) {
@@ -676,6 +710,13 @@ class ExamController extends Controller
             'exam_id' => $exam->id,
             'image_path' => $imagePath,
             'captured_at' => now(),
+        ]);
+
+        // Broadcast: new snapshot
+        app(SocketBroadcastService::class)->examSnapshot($exam->id, [
+            'student_id' => $user->id,
+            'image_path' => $imagePath,
+            'captured_at' => now()->toISOString(),
         ]);
 
         return response()->json([

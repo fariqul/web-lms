@@ -17,8 +17,11 @@ import {
   Camera,
   Monitor,
   AlertCircle,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import api from '@/services/api';
+import { useExamSocket } from '@/hooks/useSocket';
 
 interface Student {
   id: number;
@@ -67,6 +70,10 @@ export default function MonitorUjianPage() {
   const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started'>('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
+
+  // WebSocket for real-time updates
+  const examSocket = useExamSocket(examId);
 
   const fetchData = useCallback(async () => {
     try {
@@ -97,16 +104,104 @@ export default function MonitorUjianPage() {
     fetchData();
   }, [fetchData]);
 
-  // Auto refresh every 10 seconds
+  // Auto refresh every 30 seconds (reduced since WebSocket handles real-time)
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
       fetchData();
-    }, 10000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, fetchData]);
+
+  // WebSocket event listeners
+  useEffect(() => {
+    if (!examSocket.isConnected) return;
+
+    const addEvent = (type: string, message: string) => {
+      setRealtimeEvents(prev => [{ type, message, time: new Date() }, ...prev].slice(0, 20));
+    };
+
+    // Student joined exam
+    examSocket.onStudentJoined((data: unknown) => {
+      const d = data as { student_name?: string; student_id?: number };
+      addEvent('join', `${d.student_name || 'Siswa'} mulai mengerjakan`);
+      // Update summary
+      setSummary(prev => prev ? {
+        ...prev,
+        in_progress: prev.in_progress + 1,
+        not_started: Math.max(0, prev.not_started - 1),
+      } : prev);
+      // Update participant status
+      setParticipants(prev => prev.map(p =>
+        p.student.id === d.student_id ? { ...p, status: 'in_progress' as const, started_at: new Date().toISOString() } : p
+      ));
+      setLastRefresh(new Date());
+    });
+
+    // Student submitted exam
+    examSocket.onStudentSubmitted((data: unknown) => {
+      const d = data as { student_name?: string; student_id?: number; score?: number };
+      addEvent('submit', `${d.student_name || 'Siswa'} selesai (nilai: ${d.score ?? '-'})`);
+      setSummary(prev => prev ? {
+        ...prev,
+        completed: prev.completed + 1,
+        in_progress: Math.max(0, prev.in_progress - 1),
+      } : prev);
+      setParticipants(prev => prev.map(p =>
+        p.student.id === d.student_id ? {
+          ...p,
+          status: 'completed' as const,
+          finished_at: new Date().toISOString(),
+          score: d.score ?? p.score,
+        } : p
+      ));
+      setLastRefresh(new Date());
+    });
+
+    // Violation reported
+    examSocket.onViolationReported((data: unknown) => {
+      const d = data as { student_name?: string; student_id?: number; type?: string; violation_count?: number };
+      addEvent('violation', `⚠️ ${d.student_name || 'Siswa'}: ${d.type || 'pelanggaran'} (${d.violation_count}x)`);
+      setSummary(prev => prev ? { ...prev, total_violations: prev.total_violations + 1 } : prev);
+      setParticipants(prev => prev.map(p =>
+        p.student.id === d.student_id ? { ...p, violation_count: d.violation_count ?? p.violation_count + 1 } : p
+      ));
+      setLastRefresh(new Date());
+    });
+
+    // Answer progress
+    examSocket.on(`exam.${examId}.answer-progress`, (data: unknown) => {
+      const d = data as { student_id?: number; answered_count?: number; total_questions?: number };
+      setParticipants(prev => prev.map(p =>
+        p.student.id === d.student_id ? {
+          ...p,
+          answered_count: d.answered_count ?? p.answered_count,
+          total_questions: d.total_questions ?? p.total_questions,
+        } : p
+      ));
+    });
+
+    // Snapshot uploaded
+    examSocket.on(`exam.${examId}.snapshot`, (data: unknown) => {
+      const d = data as { student_id?: number; image_path?: string; captured_at?: string };
+      setParticipants(prev => prev.map(p =>
+        p.student.id === d.student_id ? {
+          ...p,
+          latest_snapshot: { image_path: d.image_path || '', captured_at: d.captured_at || new Date().toISOString() },
+        } : p
+      ));
+    });
+
+    return () => {
+      examSocket.off(`exam.${examId}.student-joined`);
+      examSocket.off(`exam.${examId}.student-submitted`);
+      examSocket.off(`exam.${examId}.violation`);
+      examSocket.off(`exam.${examId}.answer-progress`);
+      examSocket.off(`exam.${examId}.snapshot`);
+    };
+  }, [examSocket.isConnected, examId]);
 
   const filteredParticipants = participants.filter((p) => {
     if (filter === 'all') return true;
@@ -204,6 +299,19 @@ export default function MonitorUjianPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              {examSocket.isConnected ? (
+                <span className="flex items-center gap-1 text-green-600">
+                  <Wifi className="w-4 h-4" />
+                  <span className="hidden sm:inline">Live</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-gray-400">
+                  <WifiOff className="w-4 h-4" />
+                  <span className="hidden sm:inline">Offline</span>
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
               <span>Update: {formatTime(lastRefresh.toISOString())}</span>
@@ -337,6 +445,39 @@ export default function MonitorUjianPage() {
             </button>
           ))}
         </div>
+
+        {/* Real-time Event Feed */}
+        {realtimeEvents.length > 0 && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                Aktivitas Real-time
+              </h3>
+              <button
+                onClick={() => setRealtimeEvents([])}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                Bersihkan
+              </button>
+            </div>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {realtimeEvents.map((evt, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    evt.type === 'violation' ? 'bg-red-500' :
+                    evt.type === 'submit' ? 'bg-green-500' :
+                    evt.type === 'join' ? 'bg-blue-500' : 'bg-gray-400'
+                  }`} />
+                  <span className="text-gray-600 flex-1">{evt.message}</span>
+                  <span className="text-gray-400 flex-shrink-0">
+                    {evt.time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Participants Table */}
         <Card className="overflow-hidden">

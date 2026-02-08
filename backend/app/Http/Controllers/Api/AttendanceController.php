@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\StudentDevice;
 use App\Models\DeviceSwitchRequest;
 use App\Models\SchoolNetworkSetting;
+use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -476,6 +477,15 @@ class AttendanceController extends Controller
             'user_agent' => $userAgent,
             'is_suspicious' => $isSuspicious,
             'suspicious_reason' => $suspiciousReason,
+        ]);
+
+        // Broadcast: student scanned attendance
+        app(SocketBroadcastService::class)->attendanceScanned($session->id, [
+            'student_id' => $user->id,
+            'student_name' => $user->name,
+            'status' => 'hadir',
+            'scanned_at' => now()->toISOString(),
+            'is_suspicious' => $isSuspicious,
         ]);
 
         return response()->json([

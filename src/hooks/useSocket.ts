@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 interface UseSocketOptions {
@@ -20,17 +20,18 @@ interface UseSocketReturn {
 }
 
 export function useSocket({
-  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:6001',
+  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://52.63.72.178:6001',
   autoConnect = true,
   auth,
 }: UseSocketOptions = {}): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
-  const isConnectedRef = useRef(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   const connect = useCallback(() => {
+    if (typeof window === 'undefined') return;
     if (socketRef.current?.connected) return;
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = localStorage.getItem('token');
 
     socketRef.current = io(url, {
       autoConnect: true,
@@ -39,18 +40,22 @@ export function useSocket({
         token,
       },
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     });
 
     socketRef.current.on('connect', () => {
-      isConnectedRef.current = true;
+      setIsConnected(true);
     });
 
     socketRef.current.on('disconnect', () => {
-      isConnectedRef.current = false;
+      setIsConnected(false);
     });
 
-    socketRef.current.on('error', (error) => {
-      console.error('Socket error:', error);
+    socketRef.current.on('connect_error', () => {
+      // Silently handle connection errors
+      setIsConnected(false);
     });
   }, [url, auth]);
 
@@ -58,7 +63,7 @@ export function useSocket({
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
-      isConnectedRef.current = false;
+      setIsConnected(false);
     }
   }, []);
 
@@ -88,7 +93,7 @@ export function useSocket({
 
   return {
     socket: socketRef.current,
-    isConnected: isConnectedRef.current,
+    isConnected,
     emit,
     on,
     off,
@@ -121,6 +126,14 @@ export function useExamSocket(examId: number) {
     socket.on(`exam.${examId}.violation`, callback);
   }, [socket, examId]);
 
+  const onAnswerProgress = useCallback((callback: (data: unknown) => void) => {
+    socket.on(`exam.${examId}.answer-progress`, callback);
+  }, [socket, examId]);
+
+  const onSnapshot = useCallback((callback: (data: unknown) => void) => {
+    socket.on(`exam.${examId}.snapshot`, callback);
+  }, [socket, examId]);
+
   useEffect(() => {
     joinExamRoom();
     return () => {
@@ -135,6 +148,8 @@ export function useExamSocket(examId: number) {
     onStudentJoined,
     onStudentSubmitted,
     onViolationReported,
+    onAnswerProgress,
+    onSnapshot,
   };
 }
 

@@ -56,6 +56,9 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'https://web-lms-rowr.vercel.app'),
 
+    'socket_server_url' => env('SOCKET_SERVER_URL', 'http://socket:6001'),
+    'socket_internal_secret' => env('SOCKET_INTERNAL_SECRET', 'lms-socket-secret-key-2026'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
