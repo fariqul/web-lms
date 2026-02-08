@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
 import { GraduationCap, Eye, EyeOff, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 // Demo login only available in development mode
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -119,9 +120,9 @@ export default function LoginPage() {
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600" />
                 <span className="text-sm text-gray-600">Ingat saya</span>
               </label>
-              <a href="#" className="text-sm text-blue-600 hover:underline">
+              <Link href="/lupa-password" className="text-sm text-blue-600 hover:underline">
                 Lupa password?
-              </a>
+              </Link>
             </div>
 
             <button

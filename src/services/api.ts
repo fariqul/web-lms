@@ -92,6 +92,12 @@ export const authAPI = {
     role: string;
     class_id?: number;
   }) => api.post('/register', data),
+
+  forgotPassword: (email: string) =>
+    api.post('/forgot-password', { email }),
+
+  resetPassword: (data: { token: string; email: string; password: string; password_confirmation: string }) =>
+    api.post('/reset-password', data),
 };
 
 // User API
@@ -581,4 +587,55 @@ export const urlImportAPI = {
     selected_questions?: number[];
   }) =>
     api.post('/url-import/import', data),
+};
+
+// Notification API
+export const notificationAPI = {
+  getAll: (params?: { page?: number; per_page?: number; unread_only?: boolean }) =>
+    api.get('/notifications', { params }),
+
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count'),
+
+  markAsRead: (id: number) =>
+    api.post(`/notifications/${id}/read`),
+
+  markAllAsRead: () =>
+    api.post('/notifications/read-all'),
+
+  delete: (id: number) =>
+    api.delete(`/notifications/${id}`),
+};
+
+// Progress Report API
+export const progressAPI = {
+  getStudentReport: (studentId: number, params?: { semester?: string; academic_year?: string }) =>
+    api.get(`/progress/student/${studentId}`, { params }),
+
+  getClassReport: (classId: number, params?: { semester?: string; academic_year?: string }) =>
+    api.get(`/progress/class/${classId}`, { params }),
+
+  getSemesters: () =>
+    api.get('/progress/semesters'),
+};
+
+// Export API 
+export const exportAPI = {
+  exportGrades: (params: { class_id?: number; exam_id?: number; format: 'xlsx' | 'pdf' }) =>
+    api.get('/export/grades', { params, responseType: 'blob', timeout: 120000 }),
+
+  exportAttendance: (params: { class_id?: number; month?: number; year?: number; format: 'xlsx' | 'pdf' }) =>
+    api.get('/export/attendance', { params, responseType: 'blob', timeout: 120000 }),
+
+  exportStudentReport: (studentId: number, params: { semester?: string; format: 'xlsx' | 'pdf' }) =>
+    api.get(`/export/student/${studentId}`, { params, responseType: 'blob', timeout: 120000 }),
+};
+
+// Audit Log API
+export const auditLogAPI = {
+  getAll: (params?: { page?: number; per_page?: number; user_id?: number; action?: string; date_from?: string; date_to?: string }) =>
+    api.get('/audit-logs', { params }),
+
+  getActions: () =>
+    api.get('/audit-logs/actions'),
 };

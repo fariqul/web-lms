@@ -20,8 +20,13 @@ import {
   Menu,
   X,
   Wifi,
+  Download,
+  Shield,
+  TrendingUp,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
+import { ThemeToggleSimple } from '@/components/ui/ThemeToggle';
 
 interface SidebarProps {
   children: ReactNode;
@@ -43,6 +48,7 @@ const navigation: NavItem[] = [
   { name: 'Tugas', href: '/tugas', icon: FileText, roles: ['guru'] },
   { name: 'Materi Pelajaran', href: '/materi', icon: BookOpen, roles: ['guru'] },
   { name: 'Nilai Siswa', href: '/nilai', icon: BarChart3, roles: ['guru'] },
+  { name: 'Progress Siswa', href: '/progress', icon: TrendingUp, roles: ['guru'] },
   // Siswa only
   { name: 'Scan QR Absensi', href: '/scan-qr', icon: QrCode, roles: ['siswa'] },
   { name: 'Ujian Saya', href: '/ujian-siswa', icon: GraduationCap, roles: ['siswa'] },
@@ -59,6 +65,8 @@ const navigation: NavItem[] = [
   { name: 'Manajemen Jadwal', href: '/admin/jadwal', icon: Calendar, roles: ['admin'] },
   { name: 'Jaringan Sekolah', href: '/admin/jaringan', icon: Wifi, roles: ['admin'] },
   { name: 'Statistik', href: '/admin/statistik', icon: BarChart3, roles: ['admin'] },
+  { name: 'Export Data', href: '/admin/export', icon: Download, roles: ['admin'] },
+  { name: 'Audit Log', href: '/admin/audit-log', icon: Shield, roles: ['admin'] },
   // Common
   { name: 'Pengumuman', href: '/pengumuman', icon: Bell, roles: ['admin', 'guru', 'siswa'] },
   { name: 'Akun Saya', href: '/akun', icon: Settings, roles: ['admin', 'guru', 'siswa'] },
@@ -196,6 +204,8 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
             {/* User info */}
             <div className="flex items-center gap-3">
+              <ThemeToggleSimple />
+              <NotificationDropdown />
               <span className="text-white text-sm hidden sm:block">
                 Hai, {user?.name?.split(' ')[0]}
               </span>

@@ -59,6 +59,115 @@ body {
   outline-offset: 2px;
 }
 
+/* ===== Dark Mode Styles ===== */
+.dark {
+  --background: #111827;
+  --foreground: #f3f4f6;
+  color-scheme: dark;
+}
+
+/* Dark mode base overrides */
+.dark body {
+  background: #111827;
+  color: #f3f4f6;
+}
+
+/* Cards and surfaces */
+.dark .bg-white {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #1a2332 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #111827 !important;
+}
+
+/* Text colors */
+.dark .text-gray-900 {
+  color: #f9fafb !important;
+}
+
+.dark .text-gray-800 {
+  color: #e5e7eb !important;
+}
+
+.dark .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+.dark .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+/* Borders */
+.dark .border-gray-200,
+.dark .border-gray-100 {
+  border-color: #374151 !important;
+}
+
+.dark .border-gray-300 {
+  border-color: #4b5563 !important;
+}
+
+/* Form inputs */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6b7280;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #14b8a6;
+}
+
+/* Tables */
+.dark table th {
+  background-color: #1a2332;
+  color: #d1d5db;
+}
+
+.dark table td {
+  border-color: #374151;
+}
+
+.dark tr:hover {
+  background-color: #1a2332 !important;
+}
+
+/* Shadows become more subtle in dark mode */
+.dark [class*="shadow"] {
+  --tw-shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Scrollbar in dark mode */
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
 /* ===== Print-Friendly Styles ===== */
 @media print {
   /* Hide non-essential UI elements */
