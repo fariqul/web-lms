@@ -45,7 +45,7 @@ Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Protected routes
-Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
     // Auth - All authenticated users
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);

@@ -113,6 +113,22 @@ class ProgressController extends Controller
             $subjectScores[$subject]['count']++;
         }
 
+        // Flatten exam scores from subjects
+        $examScores = [];
+        foreach ($subjectScores as $data) {
+            foreach ($data['exams'] as $exam) {
+                $examScores[] = [
+                    'exam_id' => $exam['exam_id'],
+                    'title' => $exam['exam_title'],
+                    'subject' => $data['subject'],
+                    'score' => $exam['score'],
+                    'max_score' => $exam['max_score'],
+                    'percentage' => $exam['percentage'],
+                    'date' => $exam['date'],
+                ];
+            }
+        }
+
         // Calculate averages per subject
         $subjects = [];
         foreach ($subjectScores as $subject => $data) {
@@ -120,8 +136,7 @@ class ProgressController extends Controller
             $subjects[] = [
                 'subject' => $subject,
                 'average' => $avg,
-                'exam_count' => $data['count'],
-                'exams' => $data['exams'],
+                'count' => $data['count'],
             ];
         }
 
@@ -181,34 +196,51 @@ class ProgressController extends Controller
             }
         }
 
+        // Determine trend (compare first half vs second half of exam scores)
+        $trend = 'stable';
+        if ($examResults->count() >= 4) {
+            $sorted = $examResults->sortBy(function ($r) {
+                return $r->submitted_at ?? $r->created_at;
+            })->values();
+            $half = intdiv($sorted->count(), 2);
+            $firstHalf = $sorted->take($half)->map(fn($r) => $r->percentage ?? ($r->max_score > 0 ? round(($r->total_score / $r->max_score) * 100, 2) : 0))->avg();
+            $secondHalf = $sorted->skip($half)->map(fn($r) => $r->percentage ?? ($r->max_score > 0 ? round(($r->total_score / $r->max_score) * 100, 2) : 0))->avg();
+            if ($secondHalf > $firstHalf + 2) $trend = 'up';
+            elseif ($secondHalf < $firstHalf - 2) $trend = 'down';
+        }
+
+        // Total assignments for the student's class
+        $totalAssignments = 0;
+        if ($student->class_id) {
+            $totalAssignments = \App\Models\Assignment::where('class_id', $student->class_id)->count();
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
                 'student' => [
                     'id' => $student->id,
                     'name' => $student->name,
-                    'nisn' => $student->nisn,
-                    'class' => $student->classRoom ? [
-                        'id' => $student->classRoom->id,
-                        'name' => $student->classRoom->name,
-                    ] : null,
+                    'nisn' => $student->nisn ?? '',
+                    'class_name' => $student->classRoom ? $student->classRoom->name : '-',
                 ],
-                'overall_average' => $overallAverage,
-                'ranking' => $ranking,
-                'subjects' => $subjects,
-                'attendance' => [
-                    'total' => $totalAttendance,
+                'summary' => [
+                    'average_score' => $overallAverage,
+                    'total_exams' => $examResults->count(),
+                    'attendance_rate' => $attendancePercentage,
+                    'total_assignments' => $totalAssignments,
+                    'assignments_submitted' => $totalSubmissions,
+                ],
+                'exam_scores' => $examScores,
+                'subject_averages' => $subjects,
+                'attendance_summary' => [
                     'hadir' => $presentCount,
-                    'sakit' => $sickCount,
                     'izin' => $permissionCount,
+                    'sakit' => $sickCount,
                     'alpha' => $absentCount,
-                    'percentage' => $attendancePercentage,
+                    'total_sessions' => $totalAttendance,
                 ],
-                'assignments' => [
-                    'total_submitted' => $totalSubmissions,
-                    'graded' => $gradedSubmissions->count(),
-                    'average_score' => $averageAssignment,
-                ],
+                'trend' => $trend,
             ],
         ]);
     }
@@ -313,16 +345,24 @@ class ProgressController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'class' => [
-                    'id' => $class->id,
-                    'name' => $class->name,
-                    'academic_year' => $class->academic_year,
-                ],
+                'class_name' => $class->name,
                 'total_students' => count($rankings),
                 'class_average' => count($rankings) > 0
                     ? round(collect($rankings)->avg('exam_average'), 2)
                     : 0,
-                'rankings' => $rankings,
+                'attendance_rate' => count($rankings) > 0
+                    ? round(collect($rankings)->avg('attendance_percentage'), 2)
+                    : 0,
+                'students' => collect($rankings)->map(function ($r) {
+                    return [
+                        'id' => $r['student_id'],
+                        'name' => $r['name'],
+                        'nisn' => $r['nisn'] ?? '',
+                        'average_score' => $r['exam_average'],
+                        'attendance_rate' => $r['attendance_percentage'],
+                        'rank' => $r['rank'],
+                    ];
+                })->values(),
                 'subject_averages' => $subjects,
             ],
         ]);

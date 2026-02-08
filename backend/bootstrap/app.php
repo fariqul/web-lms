@@ -27,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         
         // Enable API rate limiting
-        $middleware->throttleApi('60,1'); // 60 requests per minute
+        $middleware->throttleApi('200,1'); // 200 requests per minute
         
         $middleware->validateCsrfTokens(except: [
             'api/*',
