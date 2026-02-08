@@ -43,7 +43,7 @@ class AttendanceController extends Controller
         }
 
         $sessions = $query->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->paginate(min($request->per_page ?? 15, 100));
 
         // Add summary for each session
         $sessions->getCollection()->transform(function ($session) {
@@ -180,6 +180,16 @@ class AttendanceController extends Controller
      */
     public function update(Request $request, AttendanceSession $attendanceSession)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mengubah sesi ini',
+            ], 403);
+        }
+
         $request->validate([
             'subject' => 'sometimes|string|max:255',
             'status' => 'sometimes|in:active,closed',
@@ -208,8 +218,18 @@ class AttendanceController extends Controller
     /**
      * Close the attendance session - OPTIMIZED
      */
-    public function close(AttendanceSession $attendanceSession)
+    public function close(Request $request, AttendanceSession $attendanceSession)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menutup sesi ini',
+            ], 403);
+        }
+
         $attendanceSession->status = 'closed';
         $attendanceSession->save();
 
@@ -246,8 +266,18 @@ class AttendanceController extends Controller
     /**
      * Refresh QR token
      */
-    public function refreshToken(AttendanceSession $attendanceSession)
+    public function refreshToken(Request $request, AttendanceSession $attendanceSession)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses',
+            ], 403);
+        }
+
         if ($attendanceSession->status !== 'active') {
             return response()->json([
                 'success' => false,
@@ -270,8 +300,18 @@ class AttendanceController extends Controller
     /**
      * Get current QR token (for display)
      */
-    public function getQrToken(AttendanceSession $attendanceSession)
+    public function getQrToken(Request $request, AttendanceSession $attendanceSession)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses',
+            ], 403);
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -542,7 +582,7 @@ class AttendanceController extends Controller
             ])
             ->where('student_id', $user->id)
             ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->paginate(min($request->per_page ?? 15, 100));
 
         return response()->json([
             'success' => true,
@@ -706,6 +746,16 @@ class AttendanceController extends Controller
      */
     public function updateStudentStatus(Request $request, AttendanceSession $attendanceSession)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses',
+            ], 403);
+        }
+
         $request->validate([
             'student_id' => 'required|exists:users,id',
             'status' => 'required|in:hadir,izin,sakit,alpha',
@@ -748,6 +798,16 @@ class AttendanceController extends Controller
      */
     public function bulkUpdateStatus(Request $request, AttendanceSession $attendanceSession)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses',
+            ], 403);
+        }
+
         $request->validate([
             'updates' => 'required|array',
             'updates.*.student_id' => 'required|exists:users,id',

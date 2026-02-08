@@ -14,13 +14,16 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'password',
-        'role',
         'nisn',
         'nip',
         'class_id',
         'photo',
     ];
+
+    /**
+     * Fields that should never be mass-assigned.
+     */
+    protected $guarded_fields = ['role', 'password'];
 
     protected $hidden = [
         'password',

@@ -12,8 +12,13 @@ const nextConfig: NextConfig = {
         pathname: '/storage/**',
       },
       {
+        protocol: 'http',
+        hostname: '52.63.72.178',
+        pathname: '/storage/**',
+      },
+      {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'web-lms-rowr.vercel.app',
       },
     ],
   },
@@ -59,10 +64,11 @@ const nextConfig: NextConfig = {
 
   // Proxy API requests to avoid mixed content (HTTPS -> HTTP)
   async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || 'http://52.63.72.178';
     return [
       {
         source: '/backend-api/:path*',
-        destination: 'http://52.63.72.178/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

@@ -7,6 +7,7 @@ use App\Models\BankQuestion;
 use App\Services\PdfQuestionParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class PdfImportController extends Controller
@@ -23,7 +24,7 @@ class PdfImportController extends Controller
      */
     public function parse(Request $request)
     {
-        \Log::info('PDF Parse request', [
+        Log::info('PDF Parse request', [
             'has_file' => $request->hasFile('pdf_file'),
             'all_files' => array_keys($request->allFiles()),
             'content_type' => $request->header('Content-Type'),
@@ -111,7 +112,7 @@ class PdfImportController extends Controller
                 ],
             ], 200, [], JSON_INVALID_UTF8_SUBSTITUTE);
         } catch (\Exception $e) {
-            \Log::error('PDF Parse Error', [
+            Log::error('PDF Parse Error', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -120,11 +121,7 @@ class PdfImportController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memproses file PDF: ' . $e->getMessage(),
-                'debug' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ],
+                'message' => 'Gagal memproses file PDF',
             ], 500);
         }
     }
@@ -160,9 +157,10 @@ class PdfImportController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('URL Parse Error', ['message' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memproses URL: ' . $e->getMessage(),
+                'message' => 'Gagal memproses URL',
             ], 500);
         }
     }

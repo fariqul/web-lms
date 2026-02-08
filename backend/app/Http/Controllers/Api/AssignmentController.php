@@ -118,10 +118,26 @@ class AssignmentController extends Controller
     /**
      * Display the specified assignment
      */
-    public function show(Assignment $assignment)
+    public function show(Request $request, Assignment $assignment)
     {
-        $user = request()->user();
+        $user = $request->user();
         
+        // Students can only view assignments for their class
+        if ($user->role === 'siswa' && $assignment->class_id !== $user->class_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke tugas ini',
+            ], 403);
+        }
+
+        // Teachers can only view their own assignments
+        if ($user->role === 'guru' && $assignment->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke tugas ini',
+            ], 403);
+        }
+
         $assignment->load(['teacher:id,name', 'classRoom:id,name']);
         
         // Include submissions for teacher
@@ -256,11 +272,11 @@ class AssignmentController extends Controller
 
         $request->validate([
             'content' => 'nullable|string',
-            'file' => 'nullable|file|max:51200',
+            'file' => 'nullable|file|max:51200|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,jpg,jpeg,png',
         ]);
 
         // At least one of content or file must be provided
-        if (!$request->content && !$request->hasFile('file')) {
+        if (!$request->input('content') && !$request->hasFile('file')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Isi jawaban atau upload file',
@@ -280,7 +296,7 @@ class AssignmentController extends Controller
         $submission = AssignmentSubmission::create([
             'assignment_id' => $assignment->id,
             'student_id' => $user->id,
-            'content' => $request->content,
+            'content' => $request->input('content'),
             'file_url' => $fileUrl,
             'status' => $isLate ? 'late' : 'submitted',
             'submitted_at' => now(),

@@ -41,7 +41,7 @@ class ExamController extends Controller
         }
 
         $exams = $query->orderBy('start_time', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->paginate(min($request->per_page ?? 15, 100));
 
         // For students, add their result status using eager loaded data
         if ($user->role === 'siswa') {
@@ -105,6 +105,22 @@ class ExamController extends Controller
         $user = $request->user();
         $exam->load(['teacher:id,name', 'class:id,name']);
 
+        // Students can only view exams for their class
+        if ($user->role === 'siswa' && $exam->class_id !== $user->class_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke ujian ini',
+            ], 403);
+        }
+
+        // Teachers can only view their own exams (or admin)
+        if ($user->role === 'guru' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke ujian ini',
+            ], 403);
+        }
+
         // For teacher: include all questions with answers
         if ($user->role === 'guru' || $user->role === 'admin') {
             $exam->load(['questions' => fn($q) => $q->orderBy('order')]);
@@ -156,6 +172,16 @@ class ExamController extends Controller
      */
     public function update(Request $request, Exam $exam)
     {
+        $user = $request->user();
+
+        // Ownership check: only the creator or admin can update
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mengubah ujian ini',
+            ], 403);
+        }
+
         $request->validate([
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -169,14 +195,14 @@ class ExamController extends Controller
             'shuffle_options' => 'boolean',
             'show_result' => 'boolean',
             'max_violations' => 'sometimes|integer|min:0',
-            'status' => 'sometimes|in:draft,scheduled,active,completed',
         ]);
 
+        // Status is NOT allowed via fill to prevent manipulation
         $exam->fill($request->only([
             'title', 'description', 'class_id', 'subject', 
             'duration_minutes', 'start_time', 'end_time',
             'passing_score', 'shuffle_questions', 'shuffle_options',
-            'show_result', 'max_violations', 'status'
+            'show_result', 'max_violations'
         ]));
         $exam->save();
 
@@ -190,8 +216,18 @@ class ExamController extends Controller
     /**
      * Remove the specified exam
      */
-    public function destroy(Exam $exam)
+    public function destroy(Request $request, Exam $exam)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus ujian ini',
+            ], 403);
+        }
+
         // Check if exam has results
         if ($exam->results()->count() > 0) {
             return response()->json([
@@ -212,8 +248,18 @@ class ExamController extends Controller
     /**
      * Publish exam
      */
-    public function publish(Exam $exam)
+    public function publish(Request $request, Exam $exam)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mempublish ujian ini',
+            ], 403);
+        }
+
         if ($exam->questions()->count() === 0) {
             return response()->json([
                 'success' => false,
@@ -641,8 +687,18 @@ class ExamController extends Controller
     /**
      * Get exam results (for teacher) - OPTIMIZED
      */
-    public function results(Exam $exam)
+    public function results(Request $request, Exam $exam)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melihat hasil ujian ini',
+            ], 403);
+        }
+
         $results = ExamResult::with(['student:id,name,nisn'])
             ->where('exam_id', $exam->id)
             ->orderBy('percentage', 'desc')
@@ -673,8 +729,18 @@ class ExamController extends Controller
     /**
      * Get student result detail (for teacher) - OPTIMIZED
      */
-    public function studentResult(Exam $exam, $studentId)
+    public function studentResult(Request $request, Exam $exam, $studentId)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melihat hasil ujian ini',
+            ], 403);
+        }
+
         $result = ExamResult::with(['student:id,name,nisn', 'violations:id,exam_result_id,type,description,recorded_at'])
             ->where('exam_id', $exam->id)
             ->where('student_id', $studentId)
@@ -711,8 +777,18 @@ class ExamController extends Controller
      * Get live monitoring data - OPTIMIZED
      * Includes all students in class: not_started, in_progress, and completed
      */
-    public function monitoring(Exam $exam)
+    public function monitoring(Request $request, Exam $exam)
     {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk memonitor ujian ini',
+            ], 403);
+        }
+
         // Load exam with class info
         $exam->load('class');
         

@@ -38,7 +38,7 @@ class MaterialController extends Controller
         }
 
         // Use pagination for large datasets
-        $perPage = $request->per_page ?? 20;
+        $perPage = min($request->per_page ?? 20, 100);
         $materials = $query->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
@@ -103,8 +103,26 @@ class MaterialController extends Controller
     /**
      * Display the specified material - OPTIMIZED
      */
-    public function show(Material $material)
+    public function show(Request $request, Material $material)
     {
+        $user = $request->user();
+
+        // Students can only view materials for their class
+        if ($user->role === 'siswa' && $material->class_id !== $user->class_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke materi ini',
+            ], 403);
+        }
+
+        // Teachers can only view their own materials
+        if ($user->role === 'guru' && $material->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke materi ini',
+            ], 403);
+        }
+
         return response()->json([
             'success' => true,
             'data' => $material->load(['teacher:id,name', 'classRoom:id,name']),
@@ -193,8 +211,26 @@ class MaterialController extends Controller
     /**
      * Download material file (force download)
      */
-    public function download(Material $material)
+    public function download(Request $request, Material $material)
     {
+        $user = $request->user();
+
+        // Students can only download materials for their class
+        if ($user->role === 'siswa' && $material->class_id !== $user->class_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke materi ini',
+            ], 403);
+        }
+
+        // Teachers can only download their own materials
+        if ($user->role === 'guru' && $material->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke materi ini',
+            ], 403);
+        }
+
         if (!$material->file_url) {
             return response()->json([
                 'success' => false,

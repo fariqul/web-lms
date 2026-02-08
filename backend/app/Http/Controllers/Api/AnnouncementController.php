@@ -84,8 +84,8 @@ class AnnouncementController extends Controller
         }
 
         $announcement = Announcement::create([
-            'title' => $request->title,
-            'content' => $request->content,
+            'title' => $request->input('title'),
+            'content' => $request->input('content'),
             'priority' => $request->priority ?? 'normal',
             'target' => $target,
             'author_id' => $user->id,
@@ -104,8 +104,20 @@ class AnnouncementController extends Controller
     /**
      * Display the specified announcement
      */
-    public function show(Announcement $announcement)
+    public function show(Request $request, Announcement $announcement)
     {
+        $user = $request->user();
+
+        // Check target-based access control
+        if ($user->role !== 'admin' && $announcement->author_id !== $user->id) {
+            if ($announcement->target !== 'all' && $announcement->target !== $user->role) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses ke pengumuman ini',
+                ], 403);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $announcement->load('author:id,name,role'),
@@ -177,7 +189,7 @@ class AnnouncementController extends Controller
     public function latest(Request $request)
     {
         $user = $request->user();
-        $limit = $request->get('limit', 5);
+        $limit = min($request->get('limit', 5), 20); // Cap at 20
 
         $announcements = Announcement::with('author:id,name,role')
             ->active()

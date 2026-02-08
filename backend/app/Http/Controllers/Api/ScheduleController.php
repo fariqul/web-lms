@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\ClassRoom;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ScheduleController extends Controller
 {
@@ -153,7 +154,7 @@ class ScheduleController extends Controller
     {
         $user = $request->user();
 
-        \Log::info('mySchedule called', [
+        Log::info('mySchedule called', [
             'user_id' => $user ? $user->id : null,
             'class_id' => $user ? $user->class_id : null,
         ]);
@@ -176,7 +177,7 @@ class ScheduleController extends Controller
             })
             ->groupBy('day_of_week');
 
-        \Log::info('mySchedule response', ['count' => $schedules->count()]);
+        Log::info('mySchedule response', ['count' => $schedules->count()]);
 
         return response()->json([
             'success' => true,

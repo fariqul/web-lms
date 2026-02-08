@@ -40,7 +40,7 @@ class UserController extends Controller
         }
 
         $users = $query->orderBy('name')
-            ->paginate($request->per_page ?? 15);
+            ->paginate(min($request->per_page ?? 15, 100));
 
         return response()->json([
             'success' => true,
@@ -69,15 +69,11 @@ class UserController extends Controller
             'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'nisn' => $request->nisn,
-            'nip' => $request->nip,
-            'class_id' => $request->class_id,
-        ]);
+        $user = new User();
+        $user->fill($request->only(['name', 'email', 'nisn', 'nip', 'class_id']));
+        $user->password = Hash::make($request->password);
+        $user->role = $request->role;
+        $user->save();
 
         $user->load('classRoom:id,name');
 
