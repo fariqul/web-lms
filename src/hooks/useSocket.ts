@@ -20,7 +20,7 @@ interface UseSocketReturn {
 }
 
 export function useSocket({
-  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://52.63.72.178:6001',
+  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://52.63.72.178',
   autoConnect = true,
   auth,
 }: UseSocketOptions = {}): UseSocketReturn {
@@ -35,6 +35,7 @@ export function useSocket({
 
     socketRef.current = io(url, {
       autoConnect: true,
+      path: '/socket.io/',
       auth: {
         ...auth,
         token,
