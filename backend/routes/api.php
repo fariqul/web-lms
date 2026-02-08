@@ -16,6 +16,11 @@ use App\Http\Controllers\Api\SchoolNetworkController;
 use App\Http\Controllers\Api\BankQuestionController;
 use App\Http\Controllers\Api\PdfImportController;
 use App\Http\Controllers\Api\UrlImportController;
+use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProgressController;
+use App\Http\Controllers\Api\ExportController;
+use App\Http\Controllers\Api\AuditLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +40,10 @@ Route::get('/health', function () {
 // Public routes with rate limiting for login (prevent brute force)
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1'); // 5 attempts per minute
 
+// Password reset (public, rate limited)
+Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
+
 // Protected routes
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Auth - All authenticated users
@@ -52,7 +61,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // ============================================
     // ADMIN ONLY ROUTES
     // ============================================
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware(['role:admin', 'audit'])->group(function () {
         // User Management
         Route::apiResource('users', UserController::class);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
@@ -193,4 +202,38 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Assignments read access
     Route::get('/assignments', [AssignmentController::class, 'index']);
     Route::get('/assignments/{assignment}', [AssignmentController::class, 'show']);
+
+    // ============================================
+    // NOTIFICATIONS (All authenticated users)
+    // ============================================
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+
+    // ============================================
+    // PROGRESS REPORTS (All authenticated users)
+    // ============================================
+    Route::get('/progress/semesters', [ProgressController::class, 'semesters']);
+    Route::get('/progress/student/{studentId}', [ProgressController::class, 'studentReport']);
+    Route::get('/progress/class/{classId}', [ProgressController::class, 'classReport'])
+        ->middleware('role:admin,guru');
+
+    // ============================================
+    // EXPORT (Admin & Guru only)
+    // ============================================
+    Route::middleware('role:admin,guru')->group(function () {
+        Route::get('/export/grades', [ExportController::class, 'grades']);
+        Route::get('/export/attendance', [ExportController::class, 'attendance']);
+        Route::get('/export/student/{studentId}', [ExportController::class, 'studentReport']);
+    });
+
+    // ============================================
+    // AUDIT LOG (Admin only)
+    // ============================================
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::get('/audit-logs/actions', [AuditLogController::class, 'actions']);
+    });
 });

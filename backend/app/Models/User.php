@@ -55,6 +55,16 @@ class User extends Authenticatable
         return $this->hasMany(ExamResult::class, 'student_id');
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
     // Role helpers
     public function isAdmin(): bool
     {

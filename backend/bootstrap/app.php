@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register custom middleware aliases
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'audit' => \App\Http\Middleware\AuditLogMiddleware::class,
         ]);
         
         // Enable API rate limiting

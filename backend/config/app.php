@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'frontend_url' => env('FRONTEND_URL', 'https://web-lms-rowr.vercel.app'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
