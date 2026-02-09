@@ -15,14 +15,21 @@ class ExamResult extends Model
         'total_score',
         'max_score',
         'percentage',
+        'score',
         'status',
+        'violation_count',
+        'total_correct',
+        'total_wrong',
+        'total_answered',
         'started_at',
         'submitted_at',
+        'finished_at',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'submitted_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     public function exam()
@@ -53,7 +60,13 @@ class ExamResult extends Model
         $totalQuestions = $this->exam->questions()->count();
         if ($totalQuestions > 0) {
             $this->score = round(($this->total_correct / $totalQuestions) * 100, 2);
+            $this->percentage = $this->score;
         }
+        
+        // Calculate point-based score
+        $this->total_score = $answers->sum('score');
+        $maxScore = $this->exam->questions()->sum('points');
+        $this->max_score = $maxScore;
         
         $this->save();
     }

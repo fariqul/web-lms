@@ -20,11 +20,19 @@ class Exam extends Model
         'duration',
         'total_questions',
         'status',
+        'max_violations',
+        'shuffle_questions',
+        'shuffle_options',
+        'show_result',
+        'passing_score',
     ];
 
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'shuffle_questions' => 'boolean',
+        'shuffle_options' => 'boolean',
+        'show_result' => 'boolean',
     ];
 
     public function class()

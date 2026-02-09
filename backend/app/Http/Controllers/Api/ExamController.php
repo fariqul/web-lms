@@ -12,6 +12,7 @@ use App\Models\MonitoringSnapshot;
 use App\Models\User;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class ExamController extends Controller
@@ -130,7 +131,7 @@ class ExamController extends Controller
             if ($exam->questions) {
                 $exam->questions->transform(function ($question) {
                     // Convert options array to structured format for frontend
-                    if ($question->question_type === 'multiple_choice' && is_array($question->options)) {
+                    if ($question->type === 'multiple_choice' && is_array($question->options)) {
                         $question->options = collect($question->options)->map(function ($optText, $idx) use ($question) {
                             return [
                                 'id' => $idx + 1,
@@ -191,7 +192,8 @@ class ExamController extends Controller
             'description' => 'nullable|string',
             'class_id' => 'sometimes|exists:classes,id',
             'subject' => 'sometimes|string|max:255',
-            'duration_minutes' => 'sometimes|integer|min:1',
+            'duration' => 'sometimes|integer|min:1',
+            'duration_minutes' => 'sometimes|integer|min:1', // alias
             'start_time' => 'sometimes|date',
             'end_time' => 'sometimes|date',
             'passing_score' => 'sometimes|integer|min:0|max:100',
@@ -201,10 +203,15 @@ class ExamController extends Controller
             'max_violations' => 'sometimes|integer|min:0',
         ]);
 
+        // Map duration_minutes to duration if sent from frontend
+        if ($request->has('duration_minutes') && !$request->has('duration')) {
+            $exam->duration = $request->duration_minutes;
+        }
+
         // Status is NOT allowed via fill to prevent manipulation
         $exam->fill($request->only([
             'title', 'description', 'class_id', 'subject', 
-            'duration_minutes', 'start_time', 'end_time',
+            'duration', 'start_time', 'end_time',
             'passing_score', 'shuffle_questions', 'shuffle_options',
             'show_result', 'max_violations'
         ]));
@@ -292,7 +299,14 @@ class ExamController extends Controller
             'options.*.option_text' => 'required_if:question_type,multiple_choice|string',
             'options.*.is_correct' => 'required_if:question_type,multiple_choice|boolean',
             'points' => 'nullable|integer|min:1',
+            'image' => 'nullable|image|max:5120', // max 5MB
         ]);
+
+        // Handle image upload
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('question-images', 'public');
+        }
 
         // Convert options to old format for storage
         $optionsArray = [];
@@ -310,7 +324,8 @@ class ExamController extends Controller
         $question = Question::create([
             'exam_id' => $exam->id,
             'question_text' => $request->question_text,
-            'question_type' => $request->question_type,
+            'type' => $request->question_type,
+            'image' => $imagePath,
             'options' => $optionsArray,
             'correct_answer' => $correctAnswer,
             'points' => $request->points ?? 10,
@@ -350,12 +365,35 @@ class ExamController extends Controller
             'options' => 'sometimes|array',
             'correct_answer' => 'sometimes|string',
             'points' => 'sometimes|integer|min:1',
+            'image' => 'nullable|image|max:5120',
         ]);
 
+        // Handle image upload
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($question->image) {
+                Storage::disk('public')->delete($question->image);
+            }
+            $question->image = $request->file('image')->store('question-images', 'public');
+        }
+
+        // Handle remove image flag
+        if ($request->has('remove_image') && $request->remove_image) {
+            if ($question->image) {
+                Storage::disk('public')->delete($question->image);
+            }
+            $question->image = null;
+        }
+
         $question->fill($request->only([
-            'question_text', 'question_type', 'options', 
+            'question_text', 'type', 'options', 
             'correct_answer', 'points'
         ]));
+
+        // Also accept question_type from frontend and map to 'type'
+        if ($request->has('question_type') && !$request->has('type')) {
+            $question->type = $request->question_type;
+        }
         $question->save();
 
         return response()->json([
@@ -461,7 +499,7 @@ class ExamController extends Controller
         // Shuffle options if enabled
         if ($exam->shuffle_options) {
             $questions->transform(function ($q) {
-                if ($q->question_type === 'multiple_choice' && is_array($q->options)) {
+                if ($q->type === 'multiple_choice' && is_array($q->options)) {
                     $shuffled = $q->options;
                     shuffle($shuffled);
                     $q->options = $shuffled;
@@ -482,11 +520,11 @@ class ExamController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'exam' => $exam->only(['id', 'title', 'duration_minutes', 'max_violations']),
+                'exam' => $exam->only(['id', 'title', 'duration', 'max_violations']),
                 'result' => $result,
                 'questions' => $questions,
                 'existing_answers' => $existingAnswers,
-                'remaining_time' => $exam->duration_minutes * 60 - $result->started_at->diffInSeconds(now()),
+                'remaining_time' => $exam->duration * 60 - $result->started_at->diffInSeconds(now()),
             ],
         ]);
     }
@@ -581,6 +619,7 @@ class ExamController extends Controller
 
         // Calculate score
         $result->finished_at = now();
+        $result->submitted_at = now();
         $result->status = 'completed';
         $result->calculateScore();
 
@@ -797,7 +836,7 @@ class ExamController extends Controller
             ], 404);
         }
 
-        $answers = Answer::with('question:id,question_text,question_type,correct_answer,points')
+        $answers = Answer::with('question:id,question_text,type,correct_answer,points')
             ->where('exam_id', $exam->id)
             ->where('student_id', $studentId)
             ->get(['id', 'question_id', 'answer', 'is_correct', 'score', 'submitted_at']);

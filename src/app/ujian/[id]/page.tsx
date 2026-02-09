@@ -25,6 +25,7 @@ interface Question {
   type: 'multiple_choice' | 'essay';
   text: string;
   options?: string[];
+  image?: string | null;
 }
 
 interface ExamData {
@@ -89,6 +90,17 @@ export default function ExamTakingPage() {
   useEffect(() => {
     fetchExam();
   }, [examId]);
+
+  // Auto-start camera after exam starts and video element is rendered
+  useEffect(() => {
+    if (isStarted && !isCameraActive) {
+      // Small delay to ensure video element is in the DOM
+      const timer = setTimeout(() => {
+        startCamera();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isStarted]);
 
   const fetchExam = async () => {
     try {
@@ -175,12 +187,13 @@ export default function ExamTakingPage() {
 
       if (startData?.questions && startData.questions.length > 0) {
         // Map questions from start endpoint
-        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type: string; question_text: string; options?: string[] }, idx: number) => ({
+        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; options?: string[]; image?: string }, idx: number) => ({
           id: q.id,
           number: q.order || idx + 1,
-          type: q.question_type === 'multiple_choice' ? 'multiple_choice' : 'essay',
+          type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
           text: q.question_text,
           options: q.options || [],
+          image: q.image || null,
         }));
         setQuestions(mappedQuestions);
 
@@ -204,7 +217,8 @@ export default function ExamTakingPage() {
       }
 
       await enterFullscreen();
-      await startCamera();
+      // Camera will auto-start via useEffect after isStarted becomes true
+      // and the video element is rendered in the DOM
       setIsStarted(true);
     } catch (error) {
       console.error('Failed to start exam:', error);
@@ -376,6 +390,15 @@ export default function ExamTakingPage() {
                 <div>
                   <span className="text-sm text-gray-500">Soal {question?.number || currentQuestion + 1}</span>
                   <h2 className="text-lg font-medium text-gray-800 mt-1">{question?.text || 'Soal tidak tersedia'}</h2>
+                  {question?.image && (
+                    <div className="mt-3">
+                      <img
+                        src={question.image.startsWith('http') ? question.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`}
+                        alt="Gambar Soal"
+                        className="max-w-full max-h-80 rounded-lg border border-gray-200"
+                      />
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => handleToggleFlag(question?.number || currentQuestion + 1)}

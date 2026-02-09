@@ -15,6 +15,8 @@ import {
   FileEdit,
   Eye,
   Send,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -32,6 +34,7 @@ interface Question {
   points: number;
   order: number;
   options: Option[];
+  image?: string | null;
 }
 
 interface ExamData {
@@ -59,6 +62,9 @@ export default function EditSoalPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
     question_type: 'multiple_choice',
@@ -101,6 +107,7 @@ export default function EditSoalPage() {
             question_type: string;
             points: number;
             order: number;
+            image?: string | null;
             options?: { id: number; option_text: string; is_correct: boolean }[];
           }, index: number) => ({
             id: q.id,
@@ -108,6 +115,7 @@ export default function EditSoalPage() {
             question_type: q.question_type || 'multiple_choice',
             points: q.points || 10,
             order: q.order || index + 1,
+            image: q.image || null,
             options: q.options?.map((opt) => ({
               id: opt.id,
               text: opt.option_text,
@@ -147,18 +155,26 @@ export default function EditSoalPage() {
 
     setSaving(true);
     try {
-      const response = await api.post(`/exams/${examId}/questions`, {
-        question_text: newQuestion.question_text,
-        question_type: newQuestion.question_type,
-        points: newQuestion.points,
-        order: questions.length + 1,
-        options: newQuestion.question_type === 'multiple_choice' 
-          ? newQuestion.options.map((opt, idx) => ({
-              option_text: opt.text,
-              is_correct: opt.is_correct,
-              order: idx + 1,
-            }))
-          : [],
+      const formData = new FormData();
+      formData.append('question_text', newQuestion.question_text);
+      formData.append('question_type', newQuestion.question_type);
+      formData.append('points', String(newQuestion.points));
+      formData.append('order', String(questions.length + 1));
+      
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+
+      if (newQuestion.question_type === 'multiple_choice') {
+        newQuestion.options.forEach((opt, idx) => {
+          formData.append(`options[${idx}][option_text]`, opt.text);
+          formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+          formData.append(`options[${idx}][order]`, String(idx + 1));
+        });
+      }
+
+      const response = await api.post(`/exams/${examId}/questions`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (response.data?.data) {
@@ -225,6 +241,11 @@ export default function EditSoalPage() {
         { text: '', is_correct: false },
       ],
     });
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -339,6 +360,16 @@ export default function EditSoalPage() {
                     <div className="flex-1">
                       <p className="text-gray-800 mb-2">{question.question_text}</p>
                       
+                      {question.image && (
+                        <div className="mb-3">
+                          <img
+                            src={question.image.startsWith('http') ? question.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`}
+                            alt="Gambar Soal"
+                            className="max-w-xs max-h-40 rounded-lg border border-gray-200"
+                          />
+                        </div>
+                      )}
+                      
                       {question.question_type === 'multiple_choice' && question.options.length > 0 && (
                         <div className="space-y-1 ml-4">
                           {question.options.map((opt, optIdx) => (
@@ -436,6 +467,61 @@ export default function EditSoalPage() {
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
               placeholder="Masukkan teks soal..."
+            />
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gambar Soal (Opsional)
+            </label>
+            {imagePreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="max-w-xs max-h-48 rounded-lg border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
+              >
+                <ImagePlus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Klik untuk upload gambar</p>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG, max 5MB</p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.warning('Ukuran gambar maksimal 5MB');
+                    return;
+                  }
+                  setImageFile(file);
+                  const reader = new FileReader();
+                  reader.onloadend = () => setImagePreview(reader.result as string);
+                  reader.readAsDataURL(file);
+                }
+              }}
             />
           </div>
 

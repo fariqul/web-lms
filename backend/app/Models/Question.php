@@ -13,6 +13,7 @@ class Question extends Model
         'exam_id',
         'type',
         'question_text',
+        'image',
         'options',
         'correct_answer',
         'points',
@@ -22,6 +23,14 @@ class Question extends Model
     protected $casts = [
         'options' => 'array',
     ];
+
+    // Append question_type to JSON so frontend can use either 'type' or 'question_type'
+    protected $appends = ['question_type'];
+
+    public function getQuestionTypeAttribute(): string
+    {
+        return $this->attributes['type'] ?? 'multiple_choice';
+    }
 
     public function exam()
     {
