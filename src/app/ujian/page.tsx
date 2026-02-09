@@ -29,13 +29,23 @@ interface ClassOption {
 }
 
 const subjects = [
-  { value: 'matematika', label: 'Matematika' },
-  { value: 'fisika', label: 'Fisika' },
-  { value: 'biologi', label: 'Biologi' },
-  { value: 'kimia', label: 'Kimia' },
-  { value: 'informatika', label: 'Informatika' },
-  { value: 'bahasa_indonesia', label: 'Bahasa Indonesia' },
-  { value: 'bahasa_inggris', label: 'Bahasa Inggris' },
+  { value: 'Bahasa Indonesia', label: 'Bahasa Indonesia' },
+  { value: 'Bahasa Inggris', label: 'Bahasa Inggris' },
+  { value: 'Matematika', label: 'Matematika' },
+  { value: 'Fisika', label: 'Fisika' },
+  { value: 'Kimia', label: 'Kimia' },
+  { value: 'Biologi', label: 'Biologi' },
+  { value: 'Sejarah', label: 'Sejarah' },
+  { value: 'Sosiologi', label: 'Sosiologi' },
+  { value: 'Ekonomi', label: 'Ekonomi' },
+  { value: 'Geografi', label: 'Geografi' },
+  { value: 'PKN', label: 'PKN' },
+  { value: 'Informatika', label: 'Informatika' },
+  { value: 'Seni Budaya', label: 'Seni Budaya' },
+  { value: 'Pendidikan Agama', label: 'Pendidikan Agama' },
+  { value: 'PJOK', label: 'PJOK' },
+  { value: 'IPA', label: 'IPA' },
+  { value: 'Pengetahuan Umum', label: 'Pengetahuan Umum' },
 ];
 
 export default function UjianPage() {

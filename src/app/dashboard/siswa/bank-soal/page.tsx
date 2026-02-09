@@ -26,25 +26,37 @@ import {
 } from 'lucide-react';
 import { bankQuestionAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { SUBJECT_LIST } from '@/constants/subjects';
+import type { LucideIcon } from 'lucide-react';
 
-// Subject data with icons and colors
-const SUBJECTS = [
-  { id: 'Bahasa Indonesia', name: 'Bahasa Indonesia', icon: BookOpen, color: 'bg-red-100', iconColor: 'text-red-500' },
-  { id: 'Matematika', name: 'Matematika', icon: Calculator, color: 'bg-blue-100', iconColor: 'text-blue-500' },
-  { id: 'Biologi', name: 'Biologi', icon: Microscope, color: 'bg-green-100', iconColor: 'text-green-500' },
-  { id: 'Kimia', name: 'Kimia', icon: FlaskConical, color: 'bg-orange-100', iconColor: 'text-orange-500' },
-  { id: 'Fisika', name: 'Fisika', icon: Atom, color: 'bg-pink-100', iconColor: 'text-pink-500' },
-  { id: 'Sejarah', name: 'Sejarah', icon: Landmark, color: 'bg-amber-100', iconColor: 'text-amber-600' },
-  { id: 'Sosiologi', name: 'Sosiologi', icon: Users, color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
-  { id: 'Ekonomi', name: 'Ekonomi', icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
-  { id: 'Geografi', name: 'Geografi', icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
-  { id: 'PKN', name: 'PKN', icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
-  { id: 'Bahasa Inggris', name: 'Bahasa Inggris', icon: Languages, color: 'bg-purple-100', iconColor: 'text-purple-500' },
-  { id: 'Informatika', name: 'Informatika', icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600' },
-  { id: 'IPA', name: 'IPA', icon: Microscope, color: 'bg-teal-100', iconColor: 'text-teal-500' },
-  { id: 'Seni Budaya', name: 'Seni Budaya', icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
-  { id: 'Pengetahuan Umum', name: 'Pengetahuan Umum', icon: BookOpen, color: 'bg-gray-100', iconColor: 'text-gray-600' },
-];
+// Icon & color mapping per subject
+const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor: string }> = {
+  'Bahasa Indonesia': { icon: BookOpen, color: 'bg-red-100', iconColor: 'text-red-500' },
+  'Bahasa Inggris': { icon: Languages, color: 'bg-purple-100', iconColor: 'text-purple-500' },
+  'Matematika': { icon: Calculator, color: 'bg-blue-100', iconColor: 'text-blue-500' },
+  'Fisika': { icon: Atom, color: 'bg-pink-100', iconColor: 'text-pink-500' },
+  'Kimia': { icon: FlaskConical, color: 'bg-orange-100', iconColor: 'text-orange-500' },
+  'Biologi': { icon: Microscope, color: 'bg-green-100', iconColor: 'text-green-500' },
+  'Sejarah': { icon: Landmark, color: 'bg-amber-100', iconColor: 'text-amber-600' },
+  'Sosiologi': { icon: Users, color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+  'Ekonomi': { icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
+  'Geografi': { icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
+  'PKN': { icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
+  'Informatika': { icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600' },
+  'Seni Budaya': { icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
+  'Pendidikan Agama': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
+  'PJOK': { icon: Target, color: 'bg-lime-100', iconColor: 'text-lime-600' },
+  'IPA': { icon: Microscope, color: 'bg-teal-100', iconColor: 'text-teal-500' },
+  'Pengetahuan Umum': { icon: BookOpen, color: 'bg-gray-100', iconColor: 'text-gray-600' },
+};
+
+const SUBJECTS = SUBJECT_LIST.map(name => ({
+  id: name,
+  name,
+  icon: SUBJECT_META[name]?.icon || BookOpen,
+  color: SUBJECT_META[name]?.color || 'bg-gray-100',
+  iconColor: SUBJECT_META[name]?.iconColor || 'text-gray-500',
+}));
 
 const GRADES = [
   { value: '10', label: 'Kelas 10' },

@@ -3,12 +3,7 @@
 import React from 'react';
 import { Card, Button } from '@/components/ui';
 import { X, Loader2 } from 'lucide-react';
-
-const SUBJECTS = [
-  'Bahasa Indonesia', 'Matematika', 'Biologi', 'Kimia', 'Fisika',
-  'Sejarah', 'Sosiologi', 'Ekonomi', 'Geografi', 'PKN',
-  'Bahasa Inggris', 'Informatika', 'Seni Budaya', 'Pengetahuan Umum', 'IPA',
-];
+import { SUBJECT_LIST } from '@/constants/subjects';
 
 export interface QuestionFormData {
   question: string;
@@ -103,7 +98,7 @@ export function QuestionFormModal({
                 required
               >
                 <option value="">Pilih Mata Pelajaran</option>
-                {SUBJECTS.map(s => (
+                {SUBJECT_LIST.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>

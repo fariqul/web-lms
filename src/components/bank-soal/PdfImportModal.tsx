@@ -5,12 +5,7 @@ import { Card, Button } from '@/components/ui';
 import { X, Loader2, CheckCircle, Download, FileText, Upload, AlertCircle, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { pdfImportAPI } from '@/services/api';
-
-const SUBJECTS = [
-  'Bahasa Indonesia', 'Matematika', 'Biologi', 'Kimia', 'Fisika',
-  'Sejarah', 'Sosiologi', 'Ekonomi', 'Geografi', 'PKN',
-  'Bahasa Inggris', 'Informatika', 'Seni Budaya', 'Pengetahuan Umum', 'IPA',
-];
+import { SUBJECT_LIST } from '@/constants/subjects';
 
 interface PdfImportModalProps {
   isOpen: boolean;
@@ -212,7 +207,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
                   <select value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
                     <option value="">Pilih Mapel</option>
-                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                    {SUBJECT_LIST.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>

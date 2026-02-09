@@ -22,6 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { classAPI, materialAPI, getSecureFileUrl } from '@/services/api';
+import { SUBJECT_LIST } from '@/constants/subjects';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 
@@ -374,13 +375,20 @@ export default function MateriPage() {
       </div>
       
       <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Mata Pelajaran"
-          value={formData.subject}
-          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-          placeholder="Contoh: Informatika"
-          required
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
+          <select
+            value={formData.subject}
+            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            required
+          >
+            <option value="">Pilih Mata Pelajaran</option>
+            {SUBJECT_LIST.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
           <select
