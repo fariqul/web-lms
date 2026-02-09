@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
-import { GraduationCap, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 // Demo login only available in development mode
@@ -70,8 +71,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-4">
-            <GraduationCap className="w-12 h-12 text-blue-600" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-4 overflow-hidden">
+            <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={56} height={56} className="object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">SMA 15 Makassar</h1>
           <p className="text-blue-200">Learning Management System</p>

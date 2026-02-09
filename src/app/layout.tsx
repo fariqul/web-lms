@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: "SMA 15 Makassar LMS - Learning Management System",
   description: "Sistem Manajemen Pembelajaran SMA 15 Makassar dengan fitur Absensi QR, Ujian CBT, dan Monitoring",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo_sma15.png",
+    apple: "/logo_sma15.png",
   },
 };
 
