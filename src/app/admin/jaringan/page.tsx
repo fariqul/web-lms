@@ -15,6 +15,7 @@ import {
   Loader2,
   Globe,
   Shield,
+  RefreshCw,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -36,6 +37,12 @@ export default function JaringanSekolahPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [currentIp, setCurrentIp] = useState<string>('');
   const [isCurrentIpInNetwork, setIsCurrentIpInNetwork] = useState<boolean>(false);
+  const [checkingIp, setCheckingIp] = useState(false);
+  const [ipDebugInfo, setIpDebugInfo] = useState<{
+    raw_ip?: string;
+    x_forwarded_for?: string;
+    x_real_ip?: string;
+  }>({});
   const [deleteNetworkId, setDeleteNetworkId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
@@ -61,12 +68,22 @@ export default function JaringanSekolahPage() {
   };
 
   const checkCurrentIp = async () => {
+    setCheckingIp(true);
     try {
       const response = await api.get('/school-network-settings/test-ip');
-      setCurrentIp(response.data?.data?.ip_address || '');
-      setIsCurrentIpInNetwork(response.data?.data?.is_school_network || false);
+      const data = response.data?.data;
+      setCurrentIp(data?.ip_address || '');
+      setIsCurrentIpInNetwork(data?.is_school_network || false);
+      setIpDebugInfo({
+        raw_ip: data?.raw_ip,
+        x_forwarded_for: data?.x_forwarded_for,
+        x_real_ip: data?.x_real_ip,
+      });
     } catch (error) {
       console.error('Failed to check IP:', error);
+      toast.error('Gagal mengecek IP');
+    } finally {
+      setCheckingIp(false);
     }
   };
 
@@ -169,8 +186,25 @@ export default function JaringanSekolahPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm text-blue-600 font-medium">IP Address Anda Saat Ini</p>
-              <p className="text-xl font-bold text-blue-900">{currentIp || 'Tidak terdeteksi'}</p>
+              <p className="text-xl font-bold text-blue-900">
+                {checkingIp ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Mengecek...
+                  </span>
+                ) : (
+                  currentIp || 'Tidak terdeteksi'
+                )}
+              </p>
             </div>
+            <button
+              onClick={checkCurrentIp}
+              disabled={checkingIp}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium text-sm transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${checkingIp ? 'animate-spin' : ''}`} />
+              Tes IP
+            </button>
             <div className={`px-4 py-2 rounded-full flex items-center gap-2 ${
               isCurrentIpInNetwork 
                 ? 'bg-green-100 text-green-700' 
@@ -189,6 +223,20 @@ export default function JaringanSekolahPage() {
               )}
             </div>
           </div>
+          {/* Debug info - show raw IP details */}
+          {(ipDebugInfo.raw_ip || ipDebugInfo.x_forwarded_for || ipDebugInfo.x_real_ip) && (
+            <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-600 space-y-1">
+              {ipDebugInfo.raw_ip && (
+                <p>Raw Server IP: <span className="font-mono">{ipDebugInfo.raw_ip}</span></p>
+              )}
+              {ipDebugInfo.x_forwarded_for && (
+                <p>X-Forwarded-For: <span className="font-mono">{ipDebugInfo.x_forwarded_for}</span></p>
+              )}
+              {ipDebugInfo.x_real_ip && (
+                <p>X-Real-IP: <span className="font-mono">{ipDebugInfo.x_real_ip}</span></p>
+              )}
+            </div>
+          )}
         </Card>
 
         {/* Add/Edit Form */}

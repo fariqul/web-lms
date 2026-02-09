@@ -18,10 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
         
-        // Trust nginx reverse proxy for correct client IP detection
-        // Required for school network validation in attendance
+        // Trust ALL proxies - app is behind nginx reverse proxy in Docker
+        // This ensures $request->ip() reads X-Forwarded-For header
         $middleware->trustProxies(
-            at: ['172.16.0.0/12', '10.0.0.0/8', '192.168.0.0/16', '127.0.0.1'],
+            at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR |
                      Request::HEADER_X_FORWARDED_HOST |
                      Request::HEADER_X_FORWARDED_PORT |

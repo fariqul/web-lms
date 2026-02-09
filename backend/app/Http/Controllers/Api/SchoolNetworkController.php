@@ -105,11 +105,49 @@ class SchoolNetworkController extends Controller
     }
 
     /**
+     * Get the real client IP, with fallback to forwarded headers
+     */
+    private function getRealClientIp(Request $request): string
+    {
+        // $request->ip() should work with trustProxies, but add manual fallback
+        $ip = $request->ip();
+        
+        // If we still get a Docker/private IP, manually read forwarded headers
+        if ($this->isPrivateIp($ip)) {
+            // Try X-Forwarded-For first (may contain comma-separated list)
+            $forwarded = $request->header('X-Forwarded-For');
+            if ($forwarded) {
+                // First IP in the list is the original client IP
+                $ips = array_map('trim', explode(',', $forwarded));
+                if (!empty($ips[0]) && filter_var($ips[0], FILTER_VALIDATE_IP)) {
+                    return $ips[0];
+                }
+            }
+            
+            // Try X-Real-IP
+            $realIp = $request->header('X-Real-IP');
+            if ($realIp && filter_var($realIp, FILTER_VALIDATE_IP)) {
+                return $realIp;
+            }
+        }
+        
+        return $ip;
+    }
+
+    /**
+     * Check if an IP is a private/internal IP
+     */
+    private function isPrivateIp(string $ip): bool
+    {
+        return !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+    }
+
+    /**
      * Test if current IP is in school network
      */
     public function testCurrentIp(Request $request)
     {
-        $clientIp = $request->ip();
+        $clientIp = $this->getRealClientIp($request);
         $isSchoolNetwork = SchoolNetworkSetting::isSchoolNetwork($clientIp);
 
         return response()->json([
@@ -117,6 +155,7 @@ class SchoolNetworkController extends Controller
             'data' => [
                 'ip_address' => $clientIp,
                 'is_school_network' => $isSchoolNetwork,
+                'raw_ip' => $request->ip(),
                 'x_forwarded_for' => $request->header('X-Forwarded-For'),
                 'x_real_ip' => $request->header('X-Real-IP'),
             ],

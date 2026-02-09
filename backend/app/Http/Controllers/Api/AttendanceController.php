@@ -17,6 +17,32 @@ use Carbon\Carbon;
 class AttendanceController extends Controller
 {
     /**
+     * Get the real client IP, with fallback to forwarded headers
+     */
+    private function getRealClientIp(Request $request): string
+    {
+        $ip = $request->ip();
+        
+        // If we still get a Docker/private IP, manually read forwarded headers
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            $forwarded = $request->header('X-Forwarded-For');
+            if ($forwarded) {
+                $ips = array_map('trim', explode(',', $forwarded));
+                if (!empty($ips[0]) && filter_var($ips[0], FILTER_VALIDATE_IP)) {
+                    return $ips[0];
+                }
+            }
+            
+            $realIp = $request->header('X-Real-IP');
+            if ($realIp && filter_var($realIp, FILTER_VALIDATE_IP)) {
+                return $realIp;
+            }
+        }
+        
+        return $ip;
+    }
+
+    /**
      * Display a listing of attendance sessions - OPTIMIZED
      */
     public function index(Request $request)
@@ -338,7 +364,7 @@ class AttendanceController extends Controller
         ]);
 
         $user = $request->user();
-        $clientIp = $request->ip();
+        $clientIp = $this->getRealClientIp($request);
         $userAgent = $request->userAgent();
         $deviceId = $request->device_id ?? $this->generateDeviceId($request);
 
