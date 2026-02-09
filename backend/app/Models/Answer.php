@@ -16,12 +16,16 @@ class Answer extends Model
         'answer',
         'is_correct',
         'score',
+        'feedback',
+        'graded_by',
+        'graded_at',
         'submitted_at',
     ];
 
     protected $casts = [
         'is_correct' => 'boolean',
         'submitted_at' => 'datetime',
+        'graded_at' => 'datetime',
     ];
 
     public function student()
@@ -37,5 +41,10 @@ class Answer extends Model
     public function exam()
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    public function gradedByUser()
+    {
+        return $this->belongsTo(User::class, 'graded_by');
     }
 }

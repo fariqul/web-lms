@@ -545,9 +545,9 @@ export default function MonitorUjianPage() {
                         {participant.started_at ? formatTime(participant.started_at) : '-'}
                       </td>
                       <td className="py-3 px-4 text-center text-sm">
-                        {participant.score !== null ? (
-                          <span className={`font-medium ${participant.score >= 70 ? 'text-green-600' : 'text-red-600'}`}>
-                            {participant.score.toFixed(1)}
+                        {participant.score != null && !isNaN(Number(participant.score)) ? (
+                          <span className={`font-medium ${Number(participant.score) >= 70 ? 'text-green-600' : 'text-red-600'}`}>
+                            {Number(participant.score).toFixed(1)}
                           </span>
                         ) : (
                           <span className="text-gray-400">-</span>

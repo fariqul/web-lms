@@ -55,18 +55,23 @@ class ExamResult extends Model
 
         $this->total_answered = $answers->count();
         $this->total_correct = $answers->where('is_correct', true)->count();
-        $this->total_wrong = $this->total_answered - $this->total_correct;
+        $this->total_wrong = $answers->where('is_correct', false)->whereNotNull('is_correct')->count();
         
-        $totalQuestions = $this->exam->questions()->count();
-        if ($totalQuestions > 0) {
-            $this->score = round(($this->total_correct / $totalQuestions) * 100, 2);
-            $this->percentage = $this->score;
-        }
-        
-        // Calculate point-based score
-        $this->total_score = $answers->sum('score');
+        // Calculate point-based score (includes manually graded essays)
+        $this->total_score = $answers->sum(function ($answer) {
+            return $answer->score ?? 0;
+        });
         $maxScore = $this->exam->questions()->sum('points');
         $this->max_score = $maxScore;
+        
+        // Calculate percentage based on points
+        if ($maxScore > 0) {
+            $this->percentage = round(($this->total_score / $maxScore) * 100, 2);
+            $this->score = $this->percentage;
+        } else {
+            $this->percentage = 0;
+            $this->score = 0;
+        }
         
         $this->save();
     }

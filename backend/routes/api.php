@@ -113,6 +113,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
         Route::get('/exams/{exam}/results', [ExamController::class, 'results']);
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
+        Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
         
         // Materials Management

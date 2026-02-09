@@ -60,6 +60,7 @@ export default function EditSoalPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -192,6 +193,97 @@ export default function EditSoalPage() {
 
   const handleDeleteQuestion = (questionId: number) => {
     setDeleteQuestionId(questionId);
+  };
+
+  const handleEditQuestion = (question: Question) => {
+    setNewQuestion({
+      id: question.id,
+      question_text: question.question_text,
+      question_type: question.question_type,
+      points: question.points,
+      order: question.order,
+      options: question.question_type === 'multiple_choice' && question.options.length > 0
+        ? question.options.map(opt => ({ id: opt.id, text: opt.text, is_correct: opt.is_correct }))
+        : [
+            { text: '', is_correct: true },
+            { text: '', is_correct: false },
+            { text: '', is_correct: false },
+            { text: '', is_correct: false },
+          ],
+    });
+    // Show existing image preview
+    if (question.image) {
+      const imgUrl = question.image.startsWith('http')
+        ? question.image
+        : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`;
+      setImagePreview(imgUrl);
+    } else {
+      setImagePreview(null);
+    }
+    setImageFile(null);
+    setEditingQuestion(question.id!);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditQuestion = async () => {
+    if (!newQuestion.question_text.trim()) {
+      toast.warning('Teks soal tidak boleh kosong');
+      return;
+    }
+
+    if (newQuestion.question_type === 'multiple_choice') {
+      const hasCorrectAnswer = newQuestion.options.some(opt => opt.is_correct);
+      const hasEmptyOption = newQuestion.options.some(opt => !opt.text.trim());
+      if (!hasCorrectAnswer) {
+        toast.warning('Pilih satu jawaban yang benar');
+        return;
+      }
+      if (hasEmptyOption) {
+        toast.warning('Semua opsi harus diisi');
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('question_text', newQuestion.question_text);
+      formData.append('question_type', newQuestion.question_type);
+      formData.append('points', String(newQuestion.points));
+      formData.append('_method', 'PUT');
+
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+
+      // If image was removed (preview is null and no new file)
+      if (!imagePreview && !imageFile) {
+        formData.append('remove_image', '1');
+      }
+
+      if (newQuestion.question_type === 'multiple_choice') {
+        newQuestion.options.forEach((opt, idx) => {
+          formData.append(`options[${idx}][option_text]`, opt.text);
+          formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+          formData.append(`options[${idx}][order]`, String(idx + 1));
+        });
+      }
+
+      await api.post(`/questions/${editingQuestion}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      toast.success('Soal berhasil diupdate');
+      await fetchExamData();
+      setIsEditModalOpen(false);
+      setEditingQuestion(null);
+      resetNewQuestion();
+    } catch (error) {
+      console.error('Failed to update question:', error);
+      toast.error('Gagal mengupdate soal');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const confirmDeleteQuestion = async () => {
@@ -400,14 +492,24 @@ export default function EditSoalPage() {
                         <span>{question.points} poin</span>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteQuestion(question.id!)}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditQuestion(question)}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <FileEdit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteQuestion(question.id!)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -593,6 +695,192 @@ export default function EditSoalPage() {
                 <>
                   <Plus className="w-4 h-4 mr-2" />
                   Tambah Soal
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Question Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingQuestion(null);
+          resetNewQuestion();
+        }}
+        title="Edit Soal"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Question Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipe Soal
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editQuestionType"
+                  checked={newQuestion.question_type === 'multiple_choice'}
+                  onChange={() => setNewQuestion({ ...newQuestion, question_type: 'multiple_choice' })}
+                  className="text-teal-600"
+                />
+                <span>Pilihan Ganda</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editQuestionType"
+                  checked={newQuestion.question_type === 'essay'}
+                  onChange={() => setNewQuestion({ ...newQuestion, question_type: 'essay' })}
+                  className="text-teal-600"
+                />
+                <span>Essay</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Question Text */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Teks Soal
+            </label>
+            <textarea
+              value={newQuestion.question_text}
+              onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              placeholder="Masukkan teks soal..."
+            />
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gambar Soal (Opsional)
+            </label>
+            {imagePreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="max-w-xs max-h-48 rounded-lg border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
+              >
+                <ImagePlus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Klik untuk upload gambar</p>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG, max 5MB</p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.warning('Ukuran gambar maksimal 5MB');
+                    return;
+                  }
+                  setImageFile(file);
+                  const reader = new FileReader();
+                  reader.onloadend = () => setImagePreview(reader.result as string);
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+          </div>
+
+          {/* Points */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Poin
+            </label>
+            <input
+              type="number"
+              value={newQuestion.points}
+              onChange={(e) => setNewQuestion({ ...newQuestion, points: parseInt(e.target.value) || 10 })}
+              min={1}
+              max={100}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* Options for Multiple Choice */}
+          {newQuestion.question_type === 'multiple_choice' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pilihan Jawaban (Pilih yang benar)
+              </label>
+              <div className="space-y-3">
+                {newQuestion.options.map((option, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="editCorrectAnswer"
+                      checked={option.is_correct}
+                      onChange={() => handleCorrectAnswerChange(index)}
+                      className="text-teal-600"
+                    />
+                    <span className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full font-medium">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <input
+                      type="text"
+                      value={option.text}
+                      onChange={(e) => handleOptionChange(index, e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingQuestion(null);
+                resetNewQuestion();
+              }}
+            >
+              Batal
+            </Button>
+            <Button onClick={handleSaveEditQuestion} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Simpan Perubahan
                 </>
               )}
             </Button>

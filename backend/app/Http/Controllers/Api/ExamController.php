@@ -385,15 +385,43 @@ class ExamController extends Controller
             $question->image = null;
         }
 
-        $question->fill($request->only([
-            'question_text', 'type', 'options', 
-            'correct_answer', 'points'
-        ]));
+        if ($request->has('question_text')) {
+            $question->question_text = $request->question_text;
+        }
 
-        // Also accept question_type from frontend and map to 'type'
-        if ($request->has('question_type') && !$request->has('type')) {
+        if ($request->has('points')) {
+            $question->points = $request->points;
+        }
+
+        // Handle question_type -> type mapping
+        if ($request->has('question_type')) {
             $question->type = $request->question_type;
         }
+
+        // Handle structured options format (from frontend edit modal)
+        if ($request->has('options') && is_array($request->options)) {
+            $optionsArray = [];
+            $correctAnswer = '';
+            
+            foreach ($request->options as $opt) {
+                $optText = $opt['option_text'] ?? $opt['text'] ?? '';
+                $optionsArray[] = $optText;
+                if (!empty($opt['is_correct']) && ($opt['is_correct'] === true || $opt['is_correct'] === '1' || $opt['is_correct'] === 1)) {
+                    $correctAnswer = $optText;
+                }
+            }
+            
+            $question->options = $optionsArray;
+            if ($correctAnswer) {
+                $question->correct_answer = $correctAnswer;
+            }
+        }
+
+        // Handle direct correct_answer
+        if ($request->has('correct_answer') && !$request->has('options')) {
+            $question->correct_answer = $request->correct_answer;
+        }
+
         $question->save();
 
         return response()->json([
@@ -566,8 +594,15 @@ class ExamController extends Controller
             ], 422);
         }
 
-        // Check if answer is correct
-        $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
+        // Check if answer is correct (only auto-grade multiple choice)
+        $isCorrect = null;
+        $answerScore = 0;
+        
+        if ($question->type === 'multiple_choice') {
+            $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
+            $answerScore = $isCorrect ? $question->points : 0;
+        }
+        // Essay questions: leave is_correct=null and score=null for manual grading
 
         // Save or update answer
         $answer = Answer::updateOrCreate(
@@ -579,7 +614,7 @@ class ExamController extends Controller
             [
                 'answer' => $request->answer,
                 'is_correct' => $isCorrect,
-                'score' => $isCorrect ? $question->points : 0,
+                'score' => $question->type === 'essay' ? null : $answerScore,
                 'submitted_at' => now(),
             ]
         );
@@ -836,10 +871,10 @@ class ExamController extends Controller
             ], 404);
         }
 
-        $answers = Answer::with('question:id,question_text,type,correct_answer,points')
+        $answers = Answer::with('question:id,question_text,type,correct_answer,points,options')
             ->where('exam_id', $exam->id)
             ->where('student_id', $studentId)
-            ->get(['id', 'question_id', 'answer', 'is_correct', 'score', 'submitted_at']);
+            ->get(['id', 'question_id', 'answer', 'is_correct', 'score', 'feedback', 'graded_by', 'graded_at', 'submitted_at']);
 
         $snapshots = MonitoringSnapshot::where('exam_id', $exam->id)
             ->where('student_id', $studentId)
@@ -853,6 +888,82 @@ class ExamController extends Controller
                 'answers' => $answers,
                 'snapshots' => $snapshots,
             ],
+        ]);
+    }
+
+    /**
+     * Grade an essay answer (for teacher)
+     */
+    public function gradeAnswer(Request $request, Exam $exam, $answerId)
+    {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menilai ujian ini',
+            ], 403);
+        }
+
+        $request->validate([
+            'score' => 'required|numeric|min:0',
+            'feedback' => 'nullable|string|max:1000',
+        ]);
+
+        $answer = Answer::where('id', $answerId)
+            ->where('exam_id', $exam->id)
+            ->first();
+
+        if (!$answer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Jawaban tidak ditemukan',
+            ], 404);
+        }
+
+        $question = $answer->question;
+        
+        // Cap score to question points
+        $score = min($request->score, $question->points);
+
+        $answer->score = $score;
+        $answer->is_correct = $score > 0;
+        $answer->feedback = $request->feedback;
+        $answer->graded_by = $user->id;
+        $answer->graded_at = now();
+        $answer->save();
+
+        // Recalculate exam result
+        $examResult = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $answer->student_id)
+            ->first();
+
+        if ($examResult) {
+            $examResult->calculateScore();
+            
+            // Check if all essays are graded
+            $ungradedEssays = Answer::where('exam_id', $exam->id)
+                ->where('student_id', $answer->student_id)
+                ->whereHas('question', function ($q) {
+                    $q->where('type', 'essay');
+                })
+                ->whereNull('graded_at')
+                ->count();
+            
+            if ($ungradedEssays === 0 && $examResult->status === 'completed') {
+                $examResult->status = 'graded';
+                $examResult->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'answer' => $answer,
+                'exam_result' => $examResult,
+            ],
+            'message' => 'Nilai berhasil disimpan',
         ]);
     }
 
