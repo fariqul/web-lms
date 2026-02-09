@@ -18,6 +18,69 @@ use Carbon\Carbon;
 class ExamController extends Controller
 {
     /**
+     * Get teacher grades summary - all students with exam results
+     */
+    public function teacherGrades(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get all exams by this teacher
+        $exams = Exam::where('teacher_id', $user->id)
+            ->with('class:id,name')
+            ->get();
+        
+        $examIds = $exams->pluck('id');
+        
+        // Get all results for these exams
+        $results = ExamResult::whereIn('exam_id', $examIds)
+            ->whereIn('status', ['completed', 'graded', 'submitted'])
+            ->with('student:id,name,nisn,class_id')
+            ->get();
+        
+        // Group by student
+        $studentMap = [];
+        foreach ($results as $result) {
+            $student = $result->student;
+            if (!$student) continue;
+            
+            $sid = $student->id;
+            if (!isset($studentMap[$sid])) {
+                $studentMap[$sid] = [
+                    'id' => $sid,
+                    'student_name' => $student->name,
+                    'student_nis' => $student->nisn ?? '',
+                    'class_name' => $exams->firstWhere('id', $result->exam_id)?->class?->name ?? '',
+                    'exams' => [],
+                ];
+            }
+            
+            $exam = $exams->firstWhere('id', $result->exam_id);
+            $studentMap[$sid]['exams'][] = [
+                'exam_name' => $exam?->title ?? '',
+                'score' => $result->total_score ?? 0,
+                'max_score' => $result->max_score ?? 0,
+                'percentage' => $result->percentage ?? 0,
+                'status' => $result->status,
+                'submitted_at' => $result->submitted_at?->toISOString() ?? '',
+            ];
+        }
+        
+        // Calculate averages
+        $grades = collect($studentMap)->map(function ($student) {
+            $exams = collect($student['exams']);
+            $student['average'] = $exams->count() > 0 
+                ? round($exams->avg('percentage'), 1) 
+                : 0;
+            return $student;
+        })->values();
+        
+        return response()->json([
+            'success' => true,
+            'data' => $grades,
+        ]);
+    }
+
+    /**
      * Display a listing of exams - OPTIMIZED
      */
     public function index(Request $request)
@@ -28,8 +91,11 @@ class ExamController extends Controller
         if ($user->role === 'guru') {
             $query->where('teacher_id', $user->id);
         } elseif ($user->role === 'siswa') {
-            $query->where('class_id', $user->class_id)
-                ->whereIn('status', ['scheduled', 'active']);
+            $query->where('class_id', $user->class_id);
+            // Only filter by status if not explicitly provided
+            if (!$request->has('status')) {
+                $query->whereIn('status', ['scheduled', 'active']);
+            }
         }
 
         // Filter by status
@@ -50,7 +116,8 @@ class ExamController extends Controller
             $examIds = $exams->pluck('id');
             $myResults = ExamResult::where('student_id', $user->id)
                 ->whereIn('exam_id', $examIds)
-                ->get(['id', 'exam_id', 'status', 'total_score', 'percentage', 'submitted_at'])
+                ->get(['id', 'exam_id', 'status', 'total_score', 'max_score', 'percentage', 'score',
+                        'total_correct', 'total_wrong', 'total_answered', 'submitted_at', 'finished_at'])
                 ->keyBy('exam_id');
 
             $exams->getCollection()->transform(function ($exam) use ($myResults) {

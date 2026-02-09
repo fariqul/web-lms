@@ -115,6 +115,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
         Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
+        Route::get('/teacher-grades', [ExamController::class, 'teacherGrades']);
         
         // Materials Management
         Route::apiResource('materials', MaterialController::class);

@@ -15,6 +15,7 @@ interface GradeRecord {
   total_wrong: number;
   finished_at: string;
   passed: boolean;
+  result_status: string;
 }
 
 export default function NilaiSiswaPage() {
@@ -28,22 +29,25 @@ export default function NilaiSiswaPage() {
 
   const fetchGrades = async () => {
     try {
-      // Fetch from API - get completed exams with results
-      const response = await api.get('/exams', { params: { status: 'completed' } });
+      // Fetch all exams for the student (scheduled + active)
+      const response = await api.get('/exams');
       const rawData = response.data?.data;
       const examsData = Array.isArray(rawData) ? rawData : (rawData?.data || []);
-      // Transform exams to grade records format
+      // Filter exams that have been completed/graded by the student
       const gradesData = examsData
-        .filter((exam: { my_result?: { score?: number } }) => exam.my_result?.score !== undefined)
-        .map((exam: { id: number; title: string; subject: string; my_result?: { score?: number; total_correct?: number; total_wrong?: number; finished_at?: string } }) => ({
+        .filter((exam: { my_result?: { status?: string } }) => 
+          exam.my_result && ['completed', 'graded', 'submitted'].includes(exam.my_result.status || '')
+        )
+        .map((exam: { id: number; title: string; subject: string; my_result?: { status?: string; score?: number; percentage?: number; total_correct?: number; total_wrong?: number; finished_at?: string } }) => ({
           id: exam.id,
           exam_title: exam.title,
           subject: exam.subject,
-          score: exam.my_result?.score || 0,
+          score: exam.my_result?.percentage ?? exam.my_result?.score ?? 0,
           total_correct: exam.my_result?.total_correct || 0,
           total_wrong: exam.my_result?.total_wrong || 0,
           finished_at: exam.my_result?.finished_at || '',
-          passed: (exam.my_result?.score || 0) >= 70
+          passed: (exam.my_result?.percentage ?? exam.my_result?.score ?? 0) >= 70,
+          result_status: exam.my_result?.status || '',
         }));
       setGrades(gradesData);
       
@@ -214,13 +218,29 @@ export default function NilaiSiswaPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {grade.passed ? (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 text-sm rounded-full">
-                            Lulus
-                          </span>
+                        {grade.result_status === 'graded' ? (
+                          grade.passed ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-sm rounded-full">
+                              Lulus
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-sm rounded-full">
+                              Remedial
+                            </span>
+                          )
+                        ) : grade.result_status === 'completed' ? (
+                          grade.passed ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-sm rounded-full">
+                              Lulus
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-sm rounded-full">
+                              Remedial
+                            </span>
+                          )
                         ) : (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 text-sm rounded-full">
-                            Remedial
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">
+                            Menunggu Nilai
                           </span>
                         )}
                       </td>

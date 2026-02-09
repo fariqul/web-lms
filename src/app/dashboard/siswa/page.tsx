@@ -145,17 +145,17 @@ export default function SiswaDashboard() {
         new Date(e.start_time) > now && !e.my_result
       );
       const completed = examsData.filter((e: { my_result?: { status?: string; score?: number }; title: string; subject: string; max_score: number }) =>
-        e.my_result?.status === 'completed'
+        e.my_result && ['completed', 'graded', 'submitted'].includes(e.my_result?.status || '')
       );
 
       // Set exam results
-      const results: ExamResult[] = completed.slice(0, 6).map((e: { id: number; title: string; subject: string; max_score: number; my_result?: { score?: number; completed_at?: string } }) => ({
+      const results: ExamResult[] = completed.slice(0, 6).map((e: { id: number; title: string; subject: string; max_score: number; my_result?: { score?: number; percentage?: number; total_score?: number; completed_at?: string } }) => ({
         id: e.id,
         title: e.title,
         subject: e.subject,
-        score: e.my_result?.score,
-        max_score: e.max_score,
-        status: e.my_result?.score !== undefined && e.my_result.score >= (e.max_score * 0.6) ? 'Pass' : 'Fail',
+        score: e.my_result?.percentage ?? e.my_result?.score ?? e.my_result?.total_score,
+        max_score: e.max_score || 100,
+        status: (e.my_result?.percentage ?? e.my_result?.score ?? 0) >= 70 ? 'Pass' : 'Fail',
         completed_at: e.my_result?.completed_at,
       }));
       setExamResults(results);

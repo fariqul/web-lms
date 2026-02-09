@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { classAPI } from '@/services/api';
+import api from '@/services/api';
 
 interface StudentGrade {
   id: number;
@@ -47,7 +48,10 @@ export default function NilaiPage() {
 
   const fetchData = async () => {
     try {
-      const classesRes = await classAPI.getAll();
+      const [classesRes, gradesRes] = await Promise.all([
+        classAPI.getAll(),
+        api.get('/teacher-grades'),
+      ]);
       const classesData = classesRes.data?.data || [];
       setClasses(
         classesData.map((c: { id: number; name: string }) => ({
@@ -55,8 +59,21 @@ export default function NilaiPage() {
           label: c.name,
         }))
       );
-      // Grades would come from API
-      setGrades([]);
+      // Set grades from API
+      const gradesData = gradesRes.data?.data || [];
+      setGrades(gradesData.map((g: { id: number; student_name: string; student_nis: string; class_name: string; average: number; exams: { exam_name: string; score: number; max_score: number; percentage: number; submitted_at: string }[] }) => ({
+        id: g.id,
+        student_name: g.student_name,
+        student_nis: g.student_nis,
+        class_name: g.class_name,
+        average: g.average,
+        exams: g.exams.map(e => ({
+          exam_name: e.exam_name,
+          score: e.score,
+          max_score: e.max_score,
+          submitted_at: e.submitted_at,
+        })),
+      })));
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
