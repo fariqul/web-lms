@@ -15,7 +15,6 @@ import {
   Flag,
   Loader2,
   ArrowLeft,
-  Timer,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -54,8 +53,8 @@ export default function ExamTakingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [examNotFound, setExamNotFound] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [startingExam, setStartingExam] = useState(false);
+  const autoSubmittedRef = React.useRef(false);
 
   // Force submit handler
   const handleForceSubmit = async () => {
@@ -128,8 +127,13 @@ export default function ExamTakingPage() {
     if (!isStarted) return;
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
-        if (prev <= 0) {
-          handleSubmit();
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Auto-submit when time is up (only once)
+          if (!autoSubmittedRef.current) {
+            autoSubmittedRef.current = true;
+            autoSubmitExam();
+          }
           return 0;
         }
         return prev - 1;
@@ -137,6 +141,19 @@ export default function ExamTakingPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [isStarted]);
+
+  // Force auto-submit (no confirm dialog, just submit)
+  const autoSubmitExam = async () => {
+    setSubmitting(true);
+    try {
+      await api.post(`/exams/${examId}/finish`);
+      toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
+      router.push('/ujian-siswa?submitted=true');
+    } catch (error) {
+      console.error('Failed to auto-submit exam:', error);
+      router.push('/ujian-siswa?reason=time_up');
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -147,28 +164,8 @@ export default function ExamTakingPage() {
 
   const handleStartExam = async () => {
     setStartingExam(true);
-    
-    // Start 5-second countdown
-    setCountdown(5);
+    await actuallyStartExam();
   };
-
-  // Countdown effect
-  useEffect(() => {
-    if (countdown === null) return;
-    
-    if (countdown <= 0) {
-      // Countdown finished, actually start the exam
-      actuallyStartExam();
-      setCountdown(null);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setCountdown(prev => (prev !== null ? prev - 1 : null));
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdown]);
 
   const actuallyStartExam = async () => {
     try {
@@ -199,9 +196,10 @@ export default function ExamTakingPage() {
           setAnswers(restored);
         }
 
-        // Set remaining time from server
-        if (startData.remaining_time) {
-          setTimeRemaining(Math.max(0, Math.floor(startData.remaining_time)));
+        // Set remaining time from server (guard against negative)
+        if (startData.remaining_time !== undefined) {
+          const remaining = Math.max(1, Math.floor(startData.remaining_time));
+          setTimeRemaining(remaining);
         }
       }
 
@@ -212,7 +210,6 @@ export default function ExamTakingPage() {
       console.error('Failed to start exam:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Gagal memulai ujian. Silakan coba lagi.');
-      setCountdown(null);
       setStartingExam(false);
     }
   };
@@ -287,39 +284,6 @@ export default function ExamTakingPage() {
   const answeredCount = Object.keys(answers).length;
 
   if (!isStarted) {
-    // Countdown overlay
-    if (countdown !== null) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-          <div className="text-center">
-            <div className="mb-8">
-              <Timer className="w-16 h-16 text-teal-400 mx-auto mb-4 animate-pulse" />
-              <h2 className="text-2xl font-bold text-white mb-2">Ujian dimulai dalam</h2>
-            </div>
-            <div className="relative w-40 h-40 mx-auto mb-8">
-              <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                <circle 
-                  cx="60" cy="60" r="54" fill="none" stroke="#14b8a6" strokeWidth="8" 
-                  strokeDasharray={339.292} 
-                  strokeDashoffset={339.292 * (1 - countdown / 5)}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000 ease-linear"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-7xl font-bold text-white">{countdown}</span>
-              </div>
-            </div>
-            <div className="space-y-2 text-gray-400">
-              <p className="text-sm">Siapkan diri Anda...</p>
-              <p className="text-xs">Kamera dan fullscreen akan aktif otomatis</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <Card className="max-w-lg w-full p-6">

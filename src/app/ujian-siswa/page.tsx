@@ -6,7 +6,68 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
 import { examAPI } from '@/services/api';
 import { Exam } from '@/types';
-import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle } from 'lucide-react';
+import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer } from 'lucide-react';
+
+// Live countdown hook
+function useCountdown(targetDate: string) {
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const diff = new Date(targetDate).getTime() - Date.now();
+    return Math.max(0, Math.floor(diff / 1000));
+  });
+
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      const diff = new Date(targetDate).getTime() - Date.now();
+      const seconds = Math.max(0, Math.floor(diff / 1000));
+      setTimeLeft(seconds);
+      if (seconds <= 0) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate, timeLeft > 0]);
+
+  const days = Math.floor(timeLeft / 86400);
+  const hours = Math.floor((timeLeft % 86400) / 3600);
+  const minutes = Math.floor((timeLeft % 3600) / 60);
+  const seconds = timeLeft % 60;
+
+  return { days, hours, minutes, seconds, totalSeconds: timeLeft, isExpired: timeLeft <= 0 };
+}
+
+function CountdownDisplay({ startTime }: { startTime: string }) {
+  const { days, hours, minutes, seconds, isExpired } = useCountdown(startTime);
+
+  if (isExpired) return null;
+
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Timer className="w-4 h-4 text-blue-600" />
+        <span className="text-xs font-medium text-blue-700">Dimulai dalam</span>
+      </div>
+      <div className="flex gap-2 justify-center">
+        {days > 0 && (
+          <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+            <div className="text-lg font-bold leading-tight">{days}</div>
+            <div className="text-[10px] opacity-80">hari</div>
+          </div>
+        )}
+        <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+          <div className="text-lg font-bold leading-tight">{String(hours).padStart(2, '0')}</div>
+          <div className="text-[10px] opacity-80">jam</div>
+        </div>
+        <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+          <div className="text-lg font-bold leading-tight">{String(minutes).padStart(2, '0')}</div>
+          <div className="text-[10px] opacity-80">menit</div>
+        </div>
+        <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+          <div className="text-lg font-bold leading-tight">{String(seconds).padStart(2, '0')}</div>
+          <div className="text-[10px] opacity-80">detik</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function UjianSiswaPage() {
   const router = useRouter();
@@ -129,9 +190,16 @@ export default function UjianSiswaPage() {
                       <PlayCircle className="w-4 h-4 mr-2" />
                       {exam.my_result?.status === 'in_progress' ? 'Lanjutkan Ujian' : 'Mulai Ujian'}
                     </Button>
+                  ) : new Date() < new Date(exam.start_time) ? (
+                    <>
+                      <CountdownDisplay startTime={exam.start_time} />
+                      <Button className="w-full" variant="outline" disabled>
+                        Belum Dimulai
+                      </Button>
+                    </>
                   ) : (
                     <Button className="w-full" variant="outline" disabled>
-                      Tidak Tersedia
+                      Waktu Habis
                     </Button>
                   )}
                 </Card>
