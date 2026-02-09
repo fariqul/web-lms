@@ -433,13 +433,30 @@ class AttendanceController extends Controller
 
             if (!$existingRequest) {
                 // Create new approval request
-                DeviceSwitchRequest::create([
+                $newRequest = DeviceSwitchRequest::create([
                     'session_id' => $session->id,
                     'student_id' => $user->id,
                     'device_id' => $deviceId,
                     'previous_student_id' => $deviceUsedBy->student_id,
                     'status' => 'pending',
                 ]);
+
+                // Broadcast real-time notification to teacher
+                try {
+                    $previousStudent = User::find($deviceUsedBy->student_id);
+                    app(SocketBroadcastService::class)->deviceSwitchRequested($session->id, [
+                        'request_id' => $newRequest->id,
+                        'session_id' => $session->id,
+                        'student_name' => $user->name,
+                        'student_nisn' => $user->nisn ?? '',
+                        'previous_student_name' => $previousStudent?->name ?? 'Unknown',
+                        'previous_student_nisn' => $previousStudent?->nisn ?? '',
+                        'device_id' => $deviceId,
+                        'created_at' => $newRequest->created_at->toISOString(),
+                    ]);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to broadcast device switch request: ' . $e->getMessage());
+                }
 
                 return response()->json([
                     'success' => false,
@@ -569,6 +586,19 @@ class AttendanceController extends Controller
             'handled_at' => now(),
             'reason' => $request->reason,
         ]);
+
+        // Broadcast real-time update to attendance room
+        try {
+            app(SocketBroadcastService::class)->deviceSwitchHandled($switchRequest->session_id, [
+                'request_id' => $switchRequest->id,
+                'session_id' => $switchRequest->session_id,
+                'student_id' => $switchRequest->student_id,
+                'status' => $switchRequest->status,
+                'handled_by' => $request->user()->name,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to broadcast device switch handled: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

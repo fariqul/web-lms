@@ -174,6 +174,14 @@ export function useAttendanceSocket(sessionId: number) {
     socket.on(`attendance.${sessionId}.qr-refreshed`, callback);
   }, [socket, sessionId]);
 
+  const onDeviceSwitchRequested = useCallback((callback: (data: unknown) => void) => {
+    socket.on(`attendance.${sessionId}.device-switch-requested`, callback);
+  }, [socket, sessionId]);
+
+  const onDeviceSwitchHandled = useCallback((callback: (data: unknown) => void) => {
+    socket.on(`attendance.${sessionId}.device-switch-handled`, callback);
+  }, [socket, sessionId]);
+
   useEffect(() => {
     joinSessionRoom();
     return () => {
@@ -187,5 +195,41 @@ export function useAttendanceSocket(sessionId: number) {
     leaveSessionRoom,
     onStudentScanned,
     onQRRefreshed,
+    onDeviceSwitchRequested,
+    onDeviceSwitchHandled,
+  };
+}
+
+// Hook for listening to device switch events across multiple attendance sessions
+export function useDeviceSwitchSocket(sessionIds: number[]) {
+  const socket = useSocket();
+
+  useEffect(() => {
+    // Join all attendance session rooms
+    for (const sessionId of sessionIds) {
+      socket.emit('join-attendance', { sessionId });
+    }
+
+    return () => {
+      for (const sessionId of sessionIds) {
+        socket.emit('leave-attendance', { sessionId });
+      }
+    };
+  }, [socket, sessionIds]);
+
+  const onDeviceSwitchRequested = useCallback((callback: (data: unknown) => void) => {
+    for (const sessionId of sessionIds) {
+      socket.on(`attendance.${sessionId}.device-switch-requested`, callback);
+    }
+    return () => {
+      for (const sessionId of sessionIds) {
+        socket.off(`attendance.${sessionId}.device-switch-requested`);
+      }
+    };
+  }, [socket, sessionIds]);
+
+  return {
+    ...socket,
+    onDeviceSwitchRequested,
   };
 }

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button } from '@/components/ui';
-import { Smartphone, CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import { Smartphone, CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw, Loader2, ArrowLeft, Bell } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { useDeviceSwitchSocket } from '@/hooks/useSocket';
+import Link from 'next/link';
 
 interface DeviceSwitchRequest {
   id: number;
@@ -43,6 +45,12 @@ export default function DeviceApprovalPage() {
   const [requests, setRequests] = useState<DeviceSwitchRequest[]>([]);
   const [processing, setProcessing] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [sessionIds, setSessionIds] = useState<number[]>([]);
+  const [newRequestAlert, setNewRequestAlert] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Socket hook for real-time device switch notifications
+  const { onDeviceSwitchRequested, isConnected } = useDeviceSwitchSocket(sessionIds);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -50,6 +58,10 @@ export default function DeviceApprovalPage() {
       // Get all active sessions for current teacher
       const sessionsResponse = await api.get('/attendance-sessions/my-sessions');
       const sessions = sessionsResponse.data?.data || [];
+      
+      // Track session IDs for socket subscriptions
+      const ids = sessions.map((s: { id: number }) => s.id);
+      setSessionIds(ids);
       
       // Fetch device switch requests for all sessions
       const allRequests: DeviceSwitchRequest[] = [];
@@ -82,6 +94,46 @@ export default function DeviceApprovalPage() {
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests]);
+
+  // Listen for real-time device switch requests via socket
+  useEffect(() => {
+    if (sessionIds.length === 0) return;
+
+    const cleanup = onDeviceSwitchRequested((data: unknown) => {
+      const switchData = data as {
+        request_id: number;
+        session_id: number;
+        student_name: string;
+        student_nisn: string;
+        previous_student_name: string;
+        previous_student_nisn: string;
+        device_id: string;
+        created_at: string;
+      };
+
+      // Show toast notification
+      toast.warning(`Permintaan baru: ${switchData.student_name} menggunakan perangkat ${switchData.previous_student_name}`);
+      
+      // Flash alert
+      setNewRequestAlert(true);
+      setTimeout(() => setNewRequestAlert(false), 5000);
+
+      // Play notification sound
+      try {
+        if (!audioRef.current) {
+          audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczE0Z+p87PrHQ+HjB0nMzVwYdHGCVlk8PQtYNSJjFxm8rPr4RUK0CBAAAA');
+        }
+        audioRef.current.play().catch(() => {});
+      } catch {
+        // Audio may be blocked by browser
+      }
+
+      // Re-fetch to get complete data
+      fetchRequests();
+    });
+
+    return cleanup;
+  }, [sessionIds, onDeviceSwitchRequested, fetchRequests, toast]);
 
   const handleRequest = async (requestId: number, action: 'approve' | 'reject') => {
     setProcessing(requestId);
@@ -163,18 +215,44 @@ export default function DeviceApprovalPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Persetujuan Perangkat</h1>
-            <p className="text-gray-600">Kelola permintaan pindah perangkat dari siswa</p>
+          <div className="flex items-center gap-4">
+            <Link href="/absensi">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Persetujuan Perangkat</h1>
+              <p className="text-gray-600">Kelola permintaan pindah perangkat dari siswa</p>
+            </div>
           </div>
-          <Button
-            onClick={fetchRequests}
-            variant="outline"
-            leftIcon={<RefreshCw className="w-4 h-4" />}
-          >
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Real-time connection indicator */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+              isConnected 
+                ? 'bg-green-50 text-green-700 border border-green-200' 
+                : 'bg-gray-50 text-gray-500 border border-gray-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+              {isConnected ? 'Real-time aktif' : 'Offline'}
+            </div>
+            <Button
+              onClick={fetchRequests}
+              variant="outline"
+              leftIcon={<RefreshCw className="w-4 h-4" />}
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
+
+        {/* New request flash alert */}
+        {newRequestAlert && (
+          <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 flex items-center gap-3 animate-pulse">
+            <Bell className="w-5 h-5 text-orange-600" />
+            <p className="font-medium text-orange-800">Permintaan pindah perangkat baru masuk!</p>
+          </div>
+        )}
 
         {/* Alert for pending requests */}
         {pendingCount > 0 && (
@@ -344,6 +422,15 @@ export default function DeviceApprovalPage() {
             </p>
           </div>
         </Card>
+
+        {/* Back to Session Button */}
+        <div className="flex justify-center">
+          <Link href="/absensi">
+            <Button variant="outline" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Kembali ke Sesi Absensi
+            </Button>
+          </Link>
+        </div>
       </div>
     </DashboardLayout>
   );

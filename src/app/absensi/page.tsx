@@ -221,6 +221,22 @@ export default function AbsensiPage() {
     };
   }, [isSessionActive, currentSessionId, fetchAttendanceRecords, attendanceSocket]);
 
+  // Listen for real-time device switch requests to update pending count
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    const handleDeviceSwitch = () => {
+      // Increment pending count immediately for instant feedback
+      setPendingDeviceRequests(prev => prev + 1);
+    };
+
+    attendanceSocket.onDeviceSwitchRequested(handleDeviceSwitch);
+
+    return () => {
+      attendanceSocket.off(`attendance.${currentSessionId}.device-switch-requested`);
+    };
+  }, [currentSessionId, attendanceSocket]);
+
   // Timer countdown
   useEffect(() => {
     let interval: NodeJS.Timeout;

@@ -128,6 +128,30 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * New device switch request created (student used another student's device).
+     */
+    public function deviceSwitchRequested(int $sessionId, array $requestData): bool
+    {
+        return $this->broadcast(
+            "attendance.{$sessionId}.device-switch-requested",
+            $requestData,
+            "attendance.{$sessionId}"
+        );
+    }
+
+    /**
+     * Device switch request handled (approved/rejected by teacher).
+     */
+    public function deviceSwitchHandled(int $sessionId, array $handleData): bool
+    {
+        return $this->broadcast(
+            "attendance.{$sessionId}.device-switch-handled",
+            $handleData,
+            "attendance.{$sessionId}"
+        );
+    }
+
     // ─── Notification Events ────────────────────────────────────
 
     /**
