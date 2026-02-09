@@ -14,6 +14,8 @@ import {
   Maximize,
   Flag,
   Loader2,
+  ArrowLeft,
+  Timer,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -51,6 +53,9 @@ export default function ExamTakingPage() {
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [examNotFound, setExamNotFound] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [startingExam, setStartingExam] = useState(false);
 
   // Force submit handler
   const handleForceSubmit = async () => {
@@ -60,10 +65,10 @@ export default function ExamTakingPage() {
         answers,
         time_spent: (exam?.duration || 90) * 60 - timeRemaining,
       });
-      router.push('/ujian?reason=force_submit');
+      router.push('/ujian-siswa?reason=force_submit');
     } catch (error) {
       console.error('Failed to submit exam:', error);
-      router.push('/ujian');
+      router.push('/ujian-siswa');
     }
   };
 
@@ -92,27 +97,28 @@ export default function ExamTakingPage() {
       const examData = response.data?.data;
       
       if (examData) {
+        const questionsList = examData.questions || [];
         setExam({
           id: examData.id,
           title: examData.title,
           subject: examData.subject || 'Ujian',
-          duration: examData.duration || 90,
-          totalQuestions: examData.questions?.length || 0,
-          questions: examData.questions || [],
+          duration: examData.duration_minutes || examData.duration || 90,
+          totalQuestions: examData.total_questions || examData.questions_count || questionsList.length || 0,
+          questions: questionsList,
         });
-        setQuestions(examData.questions || []);
-        setTimeRemaining((examData.duration || 90) * 60);
+        // Only set questions if they're actually returned (guru/admin)
+        // For students, questions come from the /start endpoint
+        if (questionsList.length > 0) {
+          setQuestions(questionsList);
+        }
+        setTimeRemaining((examData.duration_minutes || examData.duration || 90) * 60);
+        setExamNotFound(false);
+      } else {
+        setExamNotFound(true);
       }
     } catch (error) {
       console.error('Failed to fetch exam:', error);
-      setExam({
-        id: examId,
-        title: 'Ujian',
-        subject: 'Mata Pelajaran',
-        duration: 90,
-        totalQuestions: 0,
-        questions: [],
-      });
+      setExamNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -140,15 +146,74 @@ export default function ExamTakingPage() {
   };
 
   const handleStartExam = async () => {
+    setStartingExam(true);
+    
+    // Start 5-second countdown
+    setCountdown(5);
+  };
+
+  // Countdown effect
+  useEffect(() => {
+    if (countdown === null) return;
+    
+    if (countdown <= 0) {
+      // Countdown finished, actually start the exam
+      actuallyStartExam();
+      setCountdown(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  const actuallyStartExam = async () => {
     try {
-      // Call API to start exam and create exam result
-      await api.post(`/exams/${examId}/start`);
+      // Call API to start exam — this returns questions for students
+      const response = await api.post(`/exams/${examId}/start`);
+      const startData = response.data?.data;
+
+      if (startData?.questions && startData.questions.length > 0) {
+        // Map questions from start endpoint
+        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type: string; question_text: string; options?: string[] }, idx: number) => ({
+          id: q.id,
+          number: q.order || idx + 1,
+          type: q.question_type === 'multiple_choice' ? 'multiple_choice' : 'essay',
+          text: q.question_text,
+          options: q.options || [],
+        }));
+        setQuestions(mappedQuestions);
+
+        // Restore existing answers if any
+        if (startData.existing_answers) {
+          const restored: Record<number, string> = {};
+          Object.entries(startData.existing_answers).forEach(([qId, ans]) => {
+            const answer = ans as { answer?: string };
+            if (answer?.answer) {
+              restored[Number(qId)] = answer.answer;
+            }
+          });
+          setAnswers(restored);
+        }
+
+        // Set remaining time from server
+        if (startData.remaining_time) {
+          setTimeRemaining(Math.max(0, Math.floor(startData.remaining_time)));
+        }
+      }
+
       await enterFullscreen();
       await startCamera();
       setIsStarted(true);
     } catch (error) {
       console.error('Failed to start exam:', error);
-      toast.error('Gagal memulai ujian. Silakan coba lagi.');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Gagal memulai ujian. Silakan coba lagi.');
+      setCountdown(null);
+      setStartingExam(false);
     }
   };
 
@@ -186,7 +251,7 @@ export default function ExamTakingPage() {
     setSubmitting(true);
     try {
       await api.post(`/exams/${examId}/finish`);
-      router.push('/ujian?submitted=true');
+      router.push('/ujian-siswa?submitted=true');
     } catch (error) {
       console.error('Failed to submit exam:', error);
       toast.error('Gagal mengumpulkan ujian. Coba lagi.');
@@ -202,14 +267,17 @@ export default function ExamTakingPage() {
     );
   }
 
-  if (!exam || questions.length === 0) {
+  if (!exam || examNotFound) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <Card className="max-w-lg w-full p-6 text-center">
           <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Ujian Tidak Tersedia</h2>
-          <p className="text-gray-600 mb-4">Ujian ini tidak ditemukan atau belum memiliki soal.</p>
-          <Button onClick={() => router.push('/ujian')}>Kembali ke Daftar Ujian</Button>
+          <p className="text-gray-600 mb-4">Ujian ini tidak ditemukan atau Anda tidak memiliki akses.</p>
+          <Button onClick={() => router.push('/ujian-siswa')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali ke Daftar Ujian
+          </Button>
         </Card>
       </div>
     );
@@ -219,6 +287,39 @@ export default function ExamTakingPage() {
   const answeredCount = Object.keys(answers).length;
 
   if (!isStarted) {
+    // Countdown overlay
+    if (countdown !== null) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+          <div className="text-center">
+            <div className="mb-8">
+              <Timer className="w-16 h-16 text-teal-400 mx-auto mb-4 animate-pulse" />
+              <h2 className="text-2xl font-bold text-white mb-2">Ujian dimulai dalam</h2>
+            </div>
+            <div className="relative w-40 h-40 mx-auto mb-8">
+              <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+                <circle 
+                  cx="60" cy="60" r="54" fill="none" stroke="#14b8a6" strokeWidth="8" 
+                  strokeDasharray={339.292} 
+                  strokeDashoffset={339.292 * (1 - countdown / 5)}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000 ease-linear"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-7xl font-bold text-white">{countdown}</span>
+              </div>
+            </div>
+            <div className="space-y-2 text-gray-400">
+              <p className="text-sm">Siapkan diri Anda...</p>
+              <p className="text-xs">Kamera dan fullscreen akan aktif otomatis</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <Card className="max-w-lg w-full p-6">
@@ -246,10 +347,25 @@ export default function ExamTakingPage() {
                 <li>• Pastikan koneksi internet stabil</li>
               </ul>
             </div>
-            <Button onClick={handleStartExam} fullWidth>
-              <Maximize className="w-5 h-5 mr-2" />
-              Mulai Ujian
-            </Button>
+            <div className="space-y-3">
+              <Button onClick={handleStartExam} fullWidth disabled={startingExam}>
+                {startingExam ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Maximize className="w-5 h-5 mr-2" />
+                )}
+                {startingExam ? 'Mempersiapkan...' : 'Mulai Ujian'}
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => router.push('/ujian-siswa')}
+                disabled={startingExam}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Kembali ke Daftar Ujian
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

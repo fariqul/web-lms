@@ -144,8 +144,11 @@ class ExamController extends Controller
             }
         }
 
-        // For students: include questions only if exam is active
+        // For students: include questions count and result, but not questions content
         if ($user->role === 'siswa') {
+            // Load question count so frontend knows how many questions
+            $exam->loadCount('questions');
+
             $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
                 ->first(['id', 'status', 'total_score', 'percentage', 'started_at', 'submitted_at']);
