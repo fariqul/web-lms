@@ -134,11 +134,11 @@ export default function DashboardLayout({ children }: SidebarProps) {
         {/* Logo & Header */}
         <div className="p-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden">
-              <Image src="/logo_sma15.png" alt="Logo SMA 15" width={36} height={36} className="object-contain" />
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 p-1">
+              <Image src="/logo_sma15.png" alt="Logo SMA 15" width={32} height={32} className="object-contain" />
             </div>
-            <div className="text-white">
-              <h1 className="font-bold text-lg leading-tight">SMA 15 Makassar LMS</h1>
+            <div className="text-white min-w-0">
+              <h1 className="font-bold text-lg leading-tight">SMA 15 Makassar</h1>
               <p className="text-xs opacity-80">{getRoleLabel()}</p>
             </div>
           </div>
