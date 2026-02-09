@@ -21,7 +21,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
-import { classAPI, materialAPI } from '@/services/api';
+import { classAPI, materialAPI, getSecureFileUrl } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 
@@ -284,8 +284,42 @@ export default function MateriPage() {
     setShowEditModal(true);
   };
 
-  const openFile = (material: Material) => {
-    if (material.file_url) {
+  const openFile = async (material: Material) => {
+    if (!material.file_url) return;
+    
+    if (material.type === 'link') {
+      window.open(material.file_url, '_blank');
+      return;
+    }
+
+    try {
+      const response = await materialAPI.download(material.id);
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from Content-Disposition header or use material title
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = material.title;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match) filename = match[1].replace(/['"]/g, '');
+      } else {
+        // Infer extension from file_url
+        const ext = material.file_url.split('.').pop()?.split('?')[0];
+        if (ext && !filename.endsWith(`.${ext}`)) {
+          filename = `${filename}.${ext}`;
+        }
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // Fallback: open in new tab
       window.open(material.file_url, '_blank');
     }
   };
@@ -761,7 +795,7 @@ export default function MateriPage() {
                       {selectedMaterial.type === 'link' ? 'URL' : 'File'}
                     </p>
                     <a 
-                      href={selectedMaterial.file_url} 
+                      href={selectedMaterial.type === 'link' ? selectedMaterial.file_url : getSecureFileUrl(selectedMaterial.file_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-teal-600 hover:underline break-all text-sm"

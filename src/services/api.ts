@@ -2,6 +2,18 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+/**
+ * Convert storage URLs to use HTTPS backend domain.
+ * Handles old records that stored http://52.63.72.178/storage/... URLs.
+ */
+export function getSecureFileUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  // Replace old HTTP backend URL with HTTPS domain
+  return url
+    .replace('http://52.63.72.178', 'https://sma15lms.duckdns.org')
+    .replace('http://localhost:8000', 'https://sma15lms.duckdns.org');
+}
+
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

@@ -22,7 +22,7 @@ import {
   Download,
   Star
 } from 'lucide-react';
-import { classAPI, assignmentAPI } from '@/services/api';
+import { classAPI, assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 
@@ -723,7 +723,7 @@ export default function TugasGuruPage() {
                             )}
                             {submission.file_url && (
                               <a 
-                                href={submission.file_url}
+                                href={getSecureFileUrl(submission.file_url)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"

@@ -19,7 +19,7 @@ import {
   Send,
   Eye
 } from 'lucide-react';
-import { assignmentAPI } from '@/services/api';
+import { assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 
 interface Assignment {
@@ -445,7 +445,7 @@ export default function TugasSiswaPage() {
                   </div>
                   {selectedAssignment.attachment_url && (
                     <a 
-                      href={selectedAssignment.attachment_url}
+                      href={getSecureFileUrl(selectedAssignment.attachment_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"
@@ -601,7 +601,7 @@ export default function TugasSiswaPage() {
                     )}
                     {selectedAssignment.my_submission.file_url && (
                       <a 
-                        href={selectedAssignment.my_submission.file_url}
+                        href={getSecureFileUrl(selectedAssignment.my_submission.file_url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"

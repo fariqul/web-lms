@@ -226,7 +226,8 @@ export default function MateriSiswaPage() {
                       } else {
                         try {
                           const response = await materialAPI.download(material.id);
-                          const blob = new Blob([response.data]);
+                          const contentType = response.headers['content-type'] || 'application/octet-stream';
+                          const blob = new Blob([response.data], { type: contentType });
                           const url = window.URL.createObjectURL(blob);
                           const link = document.createElement('a');
                           link.href = url;
@@ -236,6 +237,12 @@ export default function MateriSiswaPage() {
                           if (contentDisposition) {
                             const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
                             if (match) filename = match[1].replace(/['"]/g, '');
+                          } else {
+                            // Infer extension from file_url
+                            const ext = material.file_url?.split('.').pop()?.split('?')[0];
+                            if (ext && !filename.endsWith(`.${ext}`)) {
+                              filename = `${filename}.${ext}`;
+                            }
                           }
                           link.setAttribute('download', filename);
                           document.body.appendChild(link);
