@@ -117,6 +117,8 @@ class SchoolNetworkController extends Controller
             'data' => [
                 'ip_address' => $clientIp,
                 'is_school_network' => $isSchoolNetwork,
+                'x_forwarded_for' => $request->header('X-Forwarded-For'),
+                'x_real_ip' => $request->header('X-Real-IP'),
             ],
         ]);
     }

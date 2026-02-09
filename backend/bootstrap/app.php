@@ -18,6 +18,17 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
         
+        // Trust nginx reverse proxy for correct client IP detection
+        // Required for school network validation in attendance
+        $middleware->trustProxies(
+            at: ['172.16.0.0/12', '10.0.0.0/8', '192.168.0.0/16', '127.0.0.1'],
+            headers: Request::HEADER_X_FORWARDED_FOR |
+                     Request::HEADER_X_FORWARDED_HOST |
+                     Request::HEADER_X_FORWARDED_PORT |
+                     Request::HEADER_X_FORWARDED_PROTO |
+                     Request::HEADER_X_FORWARDED_AWS_ELB,
+        );
+        
         $middleware->statefulApi();
         
         // Register custom middleware aliases

@@ -380,8 +380,9 @@ class AttendanceController extends Controller
             if (!SchoolNetworkSetting::isSchoolNetwork($clientIp)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Absensi hanya dapat dilakukan melalui jaringan WiFi sekolah',
+                    'message' => "Absensi hanya dapat dilakukan melalui jaringan WiFi sekolah. IP Anda: {$clientIp}",
                     'error_code' => 'NETWORK_NOT_ALLOWED',
+                    'detected_ip' => $clientIp,
                 ], 422);
             }
         }
