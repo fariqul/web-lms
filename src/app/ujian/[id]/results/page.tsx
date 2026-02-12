@@ -217,7 +217,7 @@ export default function ExamResultsPage() {
 
   const avgScore = summary?.average_score ?? 0;
   const passedCount = summary?.passed ?? 0;
-  const failedCount = (summary?.completed ?? 0) - passedCount;
+  const failedCount = (summary?.completed ?? 0) - passedCount + (summary?.missed ?? 0);
 
   return (
     <DashboardLayout>
