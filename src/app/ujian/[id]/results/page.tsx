@@ -71,7 +71,18 @@ export default function ExamResultsPage() {
       const data = response.data?.data;
       if (data) {
         setResults(data.results || []);
-        setSummary(data.summary || null);
+        const s = data.summary;
+        if (s) {
+          setSummary({
+            total_students: Number(s.total_students) || 0,
+            completed: Number(s.completed) || 0,
+            in_progress: Number(s.in_progress) || 0,
+            average_score: s.average_score != null ? Number(s.average_score) : null,
+            highest_score: s.highest_score != null ? Number(s.highest_score) : null,
+            lowest_score: s.lowest_score != null ? Number(s.lowest_score) : null,
+            passed: Number(s.passed) || 0,
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
