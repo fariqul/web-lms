@@ -14,7 +14,7 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -25,13 +25,8 @@ export default function LoginPage() {
     setError('');
     
     // Client-side validation
-    if (!email || !password) {
-      setError('Email dan password harus diisi');
-      return;
-    }
-    
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Format email tidak valid');
+    if (!loginId || !password) {
+      setError('Email/NIS dan password harus diisi');
       return;
     }
     
@@ -43,10 +38,10 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(loginId, password);
       router.push('/dashboard');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Email atau password salah';
+      const errorMessage = err instanceof Error ? err.message : 'Email/NIS atau password salah';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -58,11 +53,11 @@ export default function LoginPage() {
     if (!isDevelopment) return;
     
     const demoCredentials = {
-      admin: { email: 'admin@sma15mks.sch.id', password: 'Password123' },
-      guru: { email: 'guru@sma15mks.sch.id', password: 'Password123' },
-      siswa: { email: 'siswa@sma15mks.sch.id', password: 'Password123' },
+      admin: { login: 'admin@sma15mks.sch.id', password: 'Password123' },
+      guru: { login: 'guru@sma15mks.sch.id', password: 'Password123' },
+      siswa: { login: 'siswa@sma15mks.sch.id', password: 'Password123' },
     };
-    setEmail(demoCredentials[role].email);
+    setLoginId(demoCredentials[role].login);
     setPassword(demoCredentials[role].password);
   };
 
@@ -90,11 +85,11 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              type="email"
-              label="Email"
-              placeholder="Masukkan email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              label="Email / NIS"
+              placeholder="Masukkan email atau NIS"
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
               required
             />
 

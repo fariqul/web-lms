@@ -17,15 +17,23 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'login' => 'required|string',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $loginField = $request->login;
+
+        // Determine if login is email or NISN
+        if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
+            $user = User::where('email', $loginField)->first();
+        } else {
+            // Treat as NISN for student login
+            $user = User::where('nisn', $loginField)->first();
+        }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Email atau password salah.'],
+                'login' => ['Email/NIS atau password salah.'],
             ]);
         }
 

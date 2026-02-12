@@ -88,8 +88,8 @@ export default api;
 
 // Auth API
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post('/login', { email, password }),
+  login: (login: string, password: string) =>
+    api.post('/login', { login, password }),
   
   logout: () =>
     api.post('/logout'),
