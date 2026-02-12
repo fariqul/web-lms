@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react';
+import Link from 'next/link';
 import clsx from 'clsx';
 
 interface CardProps {
@@ -22,9 +23,9 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
     <Component
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={clsx(
-        'bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]',
+        'bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]',
         paddingClasses[padding],
-        onClick && 'cursor-pointer text-left w-full hover:border-slate-200 hover:shadow-[var(--shadow-md)] transition-shadow duration-200',
+        onClick && 'cursor-pointer text-left w-full hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-[var(--shadow-md)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 active:scale-[0.99]',
         className
       )}
     >
@@ -44,8 +45,8 @@ export function CardHeader({ title, subtitle, action, className }: CardHeaderPro
   return (
     <div className={clsx('flex items-center justify-between mb-4', className)}>
       <div>
-        <h3 className="font-semibold text-slate-800">{title}</h3>
-        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+        {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -109,31 +110,43 @@ export function QuickActionCard({
   badge,
 }: QuickActionCardProps) {
   const colorClasses = {
-    blue: 'bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-100',
-    green: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100',
-    orange: 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100',
-    teal: 'bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-100',
+    blue: 'bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-100 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-900 dark:hover:bg-sky-900/50',
+    green: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900 dark:hover:bg-emerald-900/50',
+    orange: 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900 dark:hover:bg-amber-900/50',
+    teal: 'bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-100 dark:bg-teal-950/50 dark:text-teal-400 dark:border-teal-900 dark:hover:bg-teal-900/50',
   };
 
-  const Component = href ? 'a' : 'button';
-  const props = href ? { href } : { onClick, type: 'button' as const };
+  const sharedClasses = clsx(
+    'flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 active:scale-[0.97]',
+    colorClasses[color]
+  );
 
-  return (
-    <Component
-      {...props}
-      className={clsx(
-        'flex flex-col items-center justify-center p-4 rounded-2xl transition-colors duration-150 relative',
-        colorClasses[color]
-      )}
-    >
-      {badge && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center">
-          {badge}
-        </span>
-      )}
+  const badgeEl = badge ? (
+    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center font-medium">
+      {badge}
+    </span>
+  ) : null;
+
+  const content = (
+    <>
+      {badgeEl}
       <div className="w-12 h-12 flex items-center justify-center mb-2">{icon}</div>
       <span className="text-sm font-medium text-center">{title}</span>
-    </Component>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={sharedClasses}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={sharedClasses}>
+      {content}
+    </button>
   );
 }
 
@@ -158,23 +171,23 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:hover:bg-slate-800">
       {icon && (
         <div
           className={clsx(
             'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-            iconColor || 'bg-teal-50 text-teal-600'
+            iconColor || 'bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400'
           )}
         >
           {icon}
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-slate-800 truncate">{title}</p>
-        {subtitle && <p className="text-sm text-slate-500 truncate">{subtitle}</p>}
+        <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{title}</p>
+        {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>}
       </div>
       {badge && (
-        <span className={clsx('text-xs px-2 py-1 rounded-full flex-shrink-0', badgeColors[badge.color])}>
+        <span className={clsx('text-xs px-2 py-1 rounded-full flex-shrink-0 font-medium', badgeColors[badge.color])}>
           {badge.text}
         </span>
       )}

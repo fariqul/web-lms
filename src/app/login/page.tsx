@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -113,7 +114,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium">
+              <div className="mb-5 p-3.5 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium" role="alert">
                 {error}
               </div>
             )}
@@ -140,7 +141,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[34px] text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+                  className="absolute right-3 top-[34px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg transition-colors cursor-pointer"
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -148,29 +149,25 @@ export default function LoginPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" name="rememberMe" />
-                  <span className="text-sm text-slate-600">Ingat saya</span>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-600 cursor-pointer focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2" name="rememberMe" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Ingat saya</span>
                 </label>
-                <Link href="/lupa-password" className="text-sm text-teal-600 hover:text-teal-700 font-medium">
+                <Link href="/lupa-password" className="text-sm text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 font-medium transition-colors">
                   Lupa password?
                 </Link>
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-3 px-4 bg-teal-600 text-white font-semibold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+                isLoading={isLoading}
+                loadingText="Memproses…"
+                fullWidth
+                size="lg"
+                className="shadow-sm"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Memproses…</span>
-                  </>
-                ) : (
-                  'Masuk'
-                )}
-              </button>
+                Masuk
+              </Button>
             </form>
 
             {/* Demo Login Buttons - ONLY IN DEVELOPMENT */}
@@ -184,21 +181,21 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => handleDemoLogin('admin')}
-                    className="flex-1 py-2 px-3 text-xs font-semibold bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors border border-amber-100"
+                    className="flex-1 py-2 px-3 text-xs font-semibold bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors border border-amber-100 cursor-pointer active:scale-[0.97]"
                   >
                     Admin
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDemoLogin('guru')}
-                    className="flex-1 py-2 px-3 text-xs font-semibold bg-teal-50 text-teal-700 rounded-xl hover:bg-teal-100 transition-colors border border-teal-100"
+                    className="flex-1 py-2 px-3 text-xs font-semibold bg-teal-50 text-teal-700 rounded-xl hover:bg-teal-100 transition-colors border border-teal-100 cursor-pointer active:scale-[0.97]"
                   >
                     Guru
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDemoLogin('siswa')}
-                    className="flex-1 py-2 px-3 text-xs font-semibold bg-sky-50 text-sky-700 rounded-xl hover:bg-sky-100 transition-colors border border-sky-100"
+                    className="flex-1 py-2 px-3 text-xs font-semibold bg-sky-50 text-sky-700 rounded-xl hover:bg-sky-100 transition-colors border border-sky-100 cursor-pointer active:scale-[0.97]"
                   >
                     Siswa
                   </button>

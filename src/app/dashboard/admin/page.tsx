@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, StatCard, QuickActionCard, MultiBarChart } from '@/components/ui';
+import { Card, CardHeader, StatCard, QuickActionCard, MultiBarChart, DashboardSkeleton } from '@/components/ui';
 import {
   Users,
   GraduationCap,
@@ -188,9 +188,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-        </div>
+        <DashboardSkeleton />
       </DashboardLayout>
     );
   }
@@ -199,7 +197,7 @@ export default function AdminDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <QuickActionCard
             icon={<Users className="w-8 h-8" />}
             title="Kelola Pengguna"
@@ -222,8 +220,8 @@ export default function AdminDashboard() {
 
         {/* Statistics */}
         <div>
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Statistik Pengguna</h3>
-          <div className="grid grid-cols-3 gap-4">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Statistik Pengguna</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
               value={stats.totalStudents}
               label="Siswa Aktif"
@@ -251,7 +249,7 @@ export default function AdminDashboard() {
                 {activities.map((activity, index) => {
                   const { icon, color } = getActivityIcon(activity.type);
                   return (
-                    <div key={index} className="flex items-center gap-3">
+                    <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
                         {icon}
                       </div>
@@ -335,18 +333,18 @@ export default function AdminDashboard() {
             />
             
             {/* Summary Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-teal-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-teal-600">{teacherRecap.summary.total_teachers_scheduled}</p>
-                <p className="text-sm text-teal-700">Guru Terjadwal</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{teacherRecap.summary.total_teachers_scheduled}</p>
+                <p className="text-sm text-teal-700 dark:text-teal-300">Guru Terjadwal</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">{teacherRecap.summary.teachers_teaching}</p>
-                <p className="text-sm text-green-700">Sudah Mengajar</p>
+              <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{teacherRecap.summary.teachers_teaching}</p>
+                <p className="text-sm text-green-700 dark:text-green-300">Sudah Mengajar</p>
               </div>
-              <div className="bg-red-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-red-600">{teacherRecap.summary.teachers_with_missed}</p>
-                <p className="text-sm text-red-700">Tidak Mengajar</p>
+              <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{teacherRecap.summary.teachers_with_missed}</p>
+                <p className="text-sm text-red-700 dark:text-red-300">Tidak Mengajar</p>
               </div>
             </div>
 
@@ -373,7 +371,7 @@ export default function AdminDashboard() {
                       onClick={() => setExpandedTeacher(
                         expandedTeacher === teacher.teacher_id ? null : teacher.teacher_id
                       )}
-                      className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -407,11 +405,11 @@ export default function AdminDashboard() {
                       <div className="border-t border-slate-200 bg-slate-50 p-4">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-left text-slate-500">
-                              <th className="pb-2">Kelas</th>
-                              <th className="pb-2">Mata Pelajaran</th>
-                              <th className="pb-2">Jam</th>
-                              <th className="pb-2 text-center">Status</th>
+                            <tr className="text-left text-slate-500 dark:text-slate-400">
+                              <th scope="col" className="pb-2">Kelas</th>
+                              <th scope="col" className="pb-2">Mata Pelajaran</th>
+                              <th scope="col" className="pb-2">Jam</th>
+                              <th scope="col" className="pb-2 text-center">Status</th>
                             </tr>
                           </thead>
                           <tbody>

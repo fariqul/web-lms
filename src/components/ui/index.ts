@@ -5,3 +5,4 @@ export { SimpleBarChart, MultiBarChart, SimpleLineChart, SimplePieChart, Attenda
 export { Modal, ConfirmDialog } from './Modal';
 export { Table, Pagination } from './Table';
 export { ToastProvider, useToast } from './Toast';
+export { Skeleton, DashboardSkeleton, TableSkeleton } from './Skeleton';

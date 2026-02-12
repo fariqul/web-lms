@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, StatCard, QuickActionCard, AttendanceChart } from '@/components/ui';
+import { Card, CardHeader, StatCard, QuickActionCard, AttendanceChart, DashboardSkeleton } from '@/components/ui';
 import {
   QrCode,
   FileText,
@@ -165,9 +165,7 @@ export default function GuruDashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
-        </div>
+        <DashboardSkeleton />
       </DashboardLayout>
     );
   }
@@ -177,8 +175,8 @@ export default function GuruDashboard() {
       <div className="space-y-6">
         {/* Welcome */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Selamat Datang, {user?.name?.split(' ')[0]}!</h1>
-          <p className="text-slate-600">Kelola absensi dan ujian Anda di sini</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Selamat Datang, {user?.name?.split(' ')[0]}!</h1>
+          <p className="text-slate-600 dark:text-slate-400">Kelola absensi dan ujian Anda di sini</p>
         </div>
 
         {/* Notification Banner for Announcements */}
@@ -194,9 +192,9 @@ export default function GuruDashboard() {
                 </p>
                 <p className="text-sm text-teal-700">Jangan lewatkan informasi penting</p>
               </div>
-              <Link 
+              <Link
                 href="/pengumuman"
-                className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors"
+                className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors cursor-pointer"
               >
                 Lihat Semua
               </Link>
@@ -205,7 +203,7 @@ export default function GuruDashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <QuickActionCard
             icon={<QrCode className="w-8 h-8" />}
             title="Buat Sesi Absensi"
@@ -227,7 +225,7 @@ export default function GuruDashboard() {
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             value={stats.totalExams}
             label="Total Ujian"
@@ -251,7 +249,7 @@ export default function GuruDashboard() {
             <CardHeader 
               title="Jadwal Hari Ini" 
               action={
-                <Link href="/jadwal" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
+                <Link href="/jadwal" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
                   Lihat Semua <ChevronRight className="w-4 h-4" />
                 </Link>
               }
@@ -259,13 +257,13 @@ export default function GuruDashboard() {
             {schedule.length > 0 ? (
               <div className="space-y-3">
                 {schedule.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                    <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-teal-600" />
+                  <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/50 rounded-lg flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-slate-900">{item.subject}</p>
-                      <p className="text-sm text-slate-500">{item.class_room?.name || '-'}</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">{item.subject}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{item.class_room?.name || '-'}</p>
                     </div>
                     <span className="text-sm font-medium text-teal-600">{formatTime(item.start_time)}</span>
                   </div>
@@ -284,7 +282,7 @@ export default function GuruDashboard() {
             <CardHeader 
               title="Statistik Kehadiran Minggu Ini" 
               action={
-                <Link href="/nilai" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
+                <Link href="/nilai" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
                   Detail <ChevronRight className="w-4 h-4" />
                 </Link>
               }
@@ -298,7 +296,7 @@ export default function GuruDashboard() {
           <CardHeader 
             title="Hasil Ujian Terbaru" 
             action={
-              <Link href="/nilai" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
+              <Link href="/nilai" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
                 Lihat Semua <ChevronRight className="w-4 h-4" />
               </Link>
             }
@@ -317,7 +315,7 @@ export default function GuruDashboard() {
           <CardHeader 
             title="Pengumuman Terbaru" 
             action={
-              <Link href="/pengumuman" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
+              <Link href="/pengumuman" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
                 Lihat Semua <ChevronRight className="w-4 h-4" />
               </Link>
             }
@@ -349,7 +347,7 @@ export default function GuruDashboard() {
                       </div>
                       <p className="text-sm text-slate-500 line-clamp-1 mt-1">{announcement.content}</p>
                       <p className="text-xs text-slate-400 mt-1">
-                        {announcement.author?.name} • {formatAnnouncementDate(announcement.created_at)}
+                        {announcement.author?.name} â€¢ {formatAnnouncementDate(announcement.created_at)}
                       </p>
                     </div>
                   </div>

@@ -51,27 +51,27 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   };
 
   const bgColors = {
-    success: 'bg-white border-l-4 border-l-emerald-500 border-slate-100',
-    error: 'bg-white border-l-4 border-l-red-500 border-slate-100',
-    warning: 'bg-white border-l-4 border-l-amber-500 border-slate-100',
-    info: 'bg-white border-l-4 border-l-sky-500 border-slate-100',
+    success: 'bg-white dark:bg-slate-800 border-l-4 border-l-emerald-500 border-slate-100 dark:border-slate-700',
+    error: 'bg-white dark:bg-slate-800 border-l-4 border-l-red-500 border-slate-100 dark:border-slate-700',
+    warning: 'bg-white dark:bg-slate-800 border-l-4 border-l-amber-500 border-slate-100 dark:border-slate-700',
+    info: 'bg-white dark:bg-slate-800 border-l-4 border-l-sky-500 border-slate-100 dark:border-slate-700',
   };
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 border rounded-xl shadow-lg transition-opacity duration-300 max-w-sm w-full ${bgColors[toast.type]} ${
-        isExiting ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
+      className={`flex items-start gap-3 p-4 border rounded-xl shadow-lg max-w-sm w-full animate-toastIn ${bgColors[toast.type]} ${
+        isExiting ? 'opacity-0 translate-x-4 transition-all duration-300' : 'opacity-100 translate-x-0 transition-all duration-300'
       }`}
       role="alert"
     >
       {icons[toast.type]}
-      <p className="text-sm text-slate-800 flex-1 pt-0.5">{toast.message}</p>
+      <p className="text-sm text-slate-800 dark:text-slate-200 flex-1 pt-0.5">{toast.message}</p>
       <button
         onClick={() => {
           setIsExiting(true);
           setTimeout(() => onRemove(toast.id), 300);
         }}
-        className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0 cursor-pointer rounded-lg p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
         aria-label="Tutup notifikasi"
       >
         <X className="w-4 h-4" />
@@ -101,7 +101,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed top-[72px] sm:top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none" aria-live="polite">
         {toasts.map((toast) => (
           <div key={toast.id} className="pointer-events-auto">
             <ToastItem toast={toast} onRemove={removeToast} />

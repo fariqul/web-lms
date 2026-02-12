@@ -118,8 +118,9 @@ export default function DashboardLayout({ children }: SidebarProps) {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden cursor-pointer"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
@@ -148,15 +149,16 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
           {/* Mobile close button */}
           <button
-            className="absolute top-5 right-4 lg:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="absolute top-5 right-4 lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Tutup menu navigasi"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="mt-2 px-3 flex-1 overflow-y-auto pb-4" style={{ maxHeight: 'calc(100vh - 145px)' }}>
+        <nav className="mt-2 px-3 flex-1 overflow-y-auto pb-4" aria-label="Menu utama" style={{ maxHeight: 'calc(100vh - 145px)' }}>
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">Menu</p>
           {filteredNavigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -165,10 +167,10 @@ export default function DashboardLayout({ children }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 className={clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-colors duration-150 group',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset',
                   isActive
                     ? 'bg-teal-500/10 text-teal-400'
-                    : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                    : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
@@ -184,7 +186,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
         <div className="p-3 border-t border-white/[0.06]">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
           >
             <LogOut className="w-[18px] h-[18px]" />
             <span className="text-[13px] font-medium">Log Out</span>
@@ -199,8 +201,9 @@ export default function DashboardLayout({ children }: SidebarProps) {
           <div className="flex items-center justify-between px-4 lg:px-6 h-[60px]">
             {/* Mobile menu button */}
             <button
-              className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
               onClick={() => setSidebarOpen(true)}
+              aria-label="Buka menu navigasi"
             >
               <Menu className="w-5 h-5" />
             </button>

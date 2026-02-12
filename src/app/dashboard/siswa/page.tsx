@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/layouts';
-import { Card } from '@/components/ui';
+import { Card, DashboardSkeleton } from '@/components/ui';
 import {
   QrCode,
   FileText,
@@ -304,10 +304,7 @@ export default function SiswaDashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="w-7 h-7 animate-spin text-teal-500" />
-          <p className="text-sm text-slate-400">Memuat dashboard...</p>
-        </div>
+        <DashboardSkeleton />
       </DashboardLayout>
     );
   }
@@ -331,10 +328,10 @@ export default function SiswaDashboard() {
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold text-slate-900 truncate">
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">
                 Halo, {user?.name?.split(' ')[0]}! 👋
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 {user?.class?.name || 'Siswa'} &middot; NISN {user?.nisn || '-'}
               </p>
             </div>
@@ -367,14 +364,14 @@ export default function SiswaDashboard() {
             <Link
               key={action.href}
               href={action.href}
-              className="group relative flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] hover:shadow-md hover:border-slate-200 transition-all duration-200"
+              className="group relative flex items-center gap-3 p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)] hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all duration-200 cursor-pointer"
             >
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-sm`}>
                 <action.icon className="w-5 h-5 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">{action.label}</p>
-                <p className="text-[11px] text-slate-400">{action.sub}</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{action.label}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">{action.sub}</p>
               </div>
               {action.badge ? (
                 <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">

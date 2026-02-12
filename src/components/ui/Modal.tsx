@@ -3,6 +3,7 @@
 import React, { ReactNode, useEffect, useRef, useId } from 'react';
 import clsx from 'clsx';
 import { X } from 'lucide-react';
+import { Button } from './Button';
 
 interface ModalProps {
   isOpen: boolean;
@@ -105,7 +106,7 @@ export function Modal({
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Overlay */}
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -118,19 +119,19 @@ export function Modal({
           aria-labelledby={title ? titleId : undefined}
           tabIndex={-1}
           className={clsx(
-            'relative w-full bg-white rounded-2xl shadow-2xl transform transition-shadow outline-none border border-slate-100',
+            'relative w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl outline-none border border-slate-100 dark:border-slate-700 animate-scaleIn',
             sizeClasses[size]
           )}
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              {title && <h3 id={titleId} className="text-lg font-bold text-slate-800">{title}</h3>}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+              {title && <h3 id={titleId} className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h3>}
               {showCloseButton && (
                 <button
                   onClick={onClose}
                   aria-label="Tutup dialog"
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -169,35 +170,27 @@ export function ConfirmDialog({
   variant = 'danger',
   isLoading = false,
 }: ConfirmDialogProps) {
-  const variantColors = {
-    danger: 'bg-red-600 hover:bg-red-700',
-    warning: 'bg-yellow-600 hover:bg-yellow-700',
-    info: 'bg-teal-600 hover:bg-teal-700',
-  };
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm" showCloseButton={false}>
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-slate-800 mb-2">{title}</h3>
-        <p className="text-slate-600 mb-6">{message}</p>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">{title}</h3>
+        <p className="text-slate-600 dark:text-slate-400 mb-6">{message}</p>
         <div className="flex gap-3 justify-center">
-          <button
+          <Button
+            variant="outline"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
           >
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={variant === 'danger' ? 'danger' : variant === 'warning' ? 'secondary' : 'primary'}
             onClick={onConfirm}
-            disabled={isLoading}
-            className={clsx(
-              'px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50',
-              variantColors[variant]
-            )}
+            isLoading={isLoading}
+            loadingText="Memproses…"
           >
-            {isLoading ? 'Loading…' : confirmText}
-          </button>
+            {confirmText}
+          </Button>
         </div>
       </div>
     </Modal>
