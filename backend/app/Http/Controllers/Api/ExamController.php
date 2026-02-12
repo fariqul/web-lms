@@ -37,8 +37,22 @@ class ExamController extends Controller
             ->with('student:id,name,nisn,class_id')
             ->get();
         
+        // Get all assignments by this teacher
+        $assignments = \App\Models\Assignment::where('teacher_id', $user->id)
+            ->with('classRoom:id,name')
+            ->get();
+        
+        $assignmentIds = $assignments->pluck('id');
+        
+        // Get all assignment submissions
+        $submissions = \App\Models\AssignmentSubmission::whereIn('assignment_id', $assignmentIds)
+            ->with('student:id,name,nisn,class_id')
+            ->get();
+        
         // Group by student
         $studentMap = [];
+        
+        // Process exam results
         foreach ($results as $result) {
             $student = $result->student;
             if (!$student) continue;
@@ -51,12 +65,15 @@ class ExamController extends Controller
                     'student_nis' => $student->nisn ?? '',
                     'class_name' => $exams->firstWhere('id', $result->exam_id)?->class?->name ?? '',
                     'exams' => [],
+                    'assignments' => [],
                 ];
             }
             
             $exam = $exams->firstWhere('id', $result->exam_id);
             $studentMap[$sid]['exams'][] = [
+                'result_id' => $result->id,
                 'exam_name' => $exam?->title ?? '',
+                'subject' => $exam?->subject ?? '',
                 'score' => $result->total_score ?? 0,
                 'max_score' => $result->max_score ?? 0,
                 'percentage' => $result->percentage ?? 0,
@@ -65,18 +82,103 @@ class ExamController extends Controller
             ];
         }
         
+        // Process assignment submissions
+        foreach ($submissions as $submission) {
+            $student = $submission->student;
+            if (!$student) continue;
+            
+            $sid = $student->id;
+            if (!isset($studentMap[$sid])) {
+                $studentMap[$sid] = [
+                    'id' => $sid,
+                    'student_name' => $student->name,
+                    'student_nis' => $student->nisn ?? '',
+                    'class_name' => $assignments->firstWhere('id', $submission->assignment_id)?->classRoom?->name ?? '',
+                    'exams' => [],
+                    'assignments' => [],
+                ];
+            }
+            
+            $assignment = $assignments->firstWhere('id', $submission->assignment_id);
+            $studentMap[$sid]['assignments'][] = [
+                'submission_id' => $submission->id,
+                'assignment_name' => $assignment?->title ?? '',
+                'subject' => $assignment?->subject ?? '',
+                'score' => $submission->score,
+                'max_score' => $assignment?->max_score ?? 100,
+                'percentage' => ($assignment?->max_score > 0 && $submission->score !== null)
+                    ? round(($submission->score / $assignment->max_score) * 100, 1)
+                    : null,
+                'status' => $submission->status,
+                'submitted_at' => $submission->submitted_at?->toISOString() ?? '',
+            ];
+        }
+        
         // Calculate averages
         $grades = collect($studentMap)->map(function ($student) {
             $exams = collect($student['exams']);
-            $student['average'] = $exams->count() > 0 
+            $assignments = collect($student['assignments']);
+            
+            $student['exam_average'] = $exams->count() > 0 
                 ? round($exams->avg('percentage'), 1) 
                 : 0;
+            
+            $gradedAssignments = $assignments->whereNotNull('percentage');
+            $student['assignment_average'] = $gradedAssignments->count() > 0 
+                ? round($gradedAssignments->avg('percentage'), 1) 
+                : 0;
+            
+            // Combined average (exam + assignment)
+            $allPercentages = $exams->pluck('percentage')
+                ->merge($gradedAssignments->pluck('percentage'));
+            $student['average'] = $allPercentages->count() > 0 
+                ? round($allPercentages->avg(), 1) 
+                : 0;
+            
             return $student;
         })->values();
         
         return response()->json([
             'success' => true,
             'data' => $grades,
+        ]);
+    }
+
+    /**
+     * Update exam result score (teacher can edit)
+     */
+    public function updateResultScore(Request $request, $resultId)
+    {
+        $user = $request->user();
+        
+        $result = ExamResult::with('exam')->findOrFail($resultId);
+        
+        // Only the teacher who owns the exam or admin can edit
+        if ($user->role !== 'admin' && $result->exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+        
+        $request->validate([
+            'score' => 'required|numeric|min:0',
+        ]);
+        
+        $maxScore = $result->max_score ?: 100;
+        $newScore = min($request->score, $maxScore);
+        $percentage = round(($newScore / $maxScore) * 100, 1);
+        
+        $result->update([
+            'total_score' => $newScore,
+            'percentage' => $percentage,
+            'status' => 'graded',
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Nilai berhasil diperbarui',
+            'data' => $result,
         ]);
     }
 
