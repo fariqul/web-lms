@@ -71,8 +71,8 @@ export default function LoginPage() {
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-md text-center">
-          <div className="inline-flex items-center justify-center w-24 h-24 mb-8 overflow-hidden">
-            <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={96} height={96} className="object-contain drop-shadow-lg" />
+          <div className="inline-flex items-center justify-center w-28 h-28 mb-8">
+            <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={112} height={112} className="object-contain w-full h-full drop-shadow-lg" />
           </div>
           <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">SMA 15 Makassar</h1>
           <p className="text-lg text-slate-400 font-medium">Learning Management System</p>
@@ -98,8 +98,8 @@ export default function LoginPage() {
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 overflow-hidden">
-              <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={64} height={64} className="object-contain drop-shadow-md" />
+            <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
+              <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={80} height={80} className="object-contain w-full h-full drop-shadow-md" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">SMA 15 Makassar</h1>
             <p className="text-slate-500 text-sm mt-1">Learning Management System</p>
