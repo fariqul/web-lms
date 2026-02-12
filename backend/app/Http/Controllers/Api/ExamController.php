@@ -987,7 +987,23 @@ class ExamController extends Controller
             ], 403);
         }
 
-        // Get all exam results
+        $examEnded = $exam->end_time && now()->greaterThan($exam->end_time);
+
+        // Auto-submit any in_progress results if exam time has ended
+        if ($examEnded) {
+            $expiredResults = ExamResult::where('exam_id', $exam->id)
+                ->where('status', 'in_progress')
+                ->get();
+
+            foreach ($expiredResults as $expiredResult) {
+                $expiredResult->status = 'completed';
+                $expiredResult->finished_at = $exam->end_time;
+                $expiredResult->submitted_at = $exam->end_time;
+                $expiredResult->calculateScore();
+            }
+        }
+
+        // Get all exam results (refresh after auto-submit)
         $results = ExamResult::with(['student:id,name,nisn'])
             ->where('exam_id', $exam->id)
             ->get();
@@ -1007,12 +1023,15 @@ class ExamController extends Controller
             $allEntries[] = $r;
         }
 
+        // Determine status for students who never started
+        $notStartedStatus = $examEnded ? 'missed' : 'not_started';
+
         foreach ($allStudents as $student) {
             $allEntries[] = [
                 'id' => null,
                 'student_id' => $student->id,
                 'exam_id' => $exam->id,
-                'status' => 'not_started',
+                'status' => $notStartedStatus,
                 'total_score' => 0,
                 'max_score' => 0,
                 'percentage' => 0,
@@ -1035,12 +1054,15 @@ class ExamController extends Controller
         // Calculate summary
         $finished = $results->whereIn('status', ['completed', 'graded', 'submitted']);
         $inProgress = $results->where('status', 'in_progress');
+        $missedCount = $notStartedStatus === 'missed' ? $allStudents->count() : 0;
+        $notStartedCount = $notStartedStatus === 'not_started' ? $allStudents->count() : 0;
 
         $summary = [
             'total_students' => count($allEntries),
             'completed' => $finished->count(),
             'in_progress' => $inProgress->count(),
-            'not_started' => $allStudents->count(),
+            'not_started' => $notStartedCount,
+            'missed' => $missedCount,
             'average_score' => $finished->count() > 0 ? $finished->avg('percentage') : null,
             'highest_score' => $finished->count() > 0 ? $finished->max('percentage') : null,
             'lowest_score' => $finished->count() > 0 ? $finished->min('percentage') : null,
@@ -1055,6 +1077,7 @@ class ExamController extends Controller
                     'title' => $exam->title,
                     'subject' => $exam->subject,
                     'passing_score' => $exam->passing_score,
+                    'end_time' => $exam->end_time,
                 ],
                 'results' => $allEntries,
                 'summary' => $summary,

@@ -49,6 +49,7 @@ interface ResultSummary {
   completed: number;
   in_progress: number;
   not_started: number;
+  missed: number;
   average_score: number | null;
   highest_score: number | null;
   lowest_score: number | null;
@@ -60,6 +61,7 @@ interface ExamInfo {
   title: string;
   subject: string;
   passing_score: number;
+  end_time: string | null;
 }
 
 export default function ExamResultsPage() {
@@ -98,6 +100,7 @@ export default function ExamResultsPage() {
             completed: Number(s.completed) || 0,
             in_progress: Number(s.in_progress) || 0,
             not_started: Number(s.not_started) || 0,
+            missed: Number(s.missed) || 0,
             average_score: s.average_score != null ? Number(s.average_score) : null,
             highest_score: s.highest_score != null ? Number(s.highest_score) : null,
             lowest_score: s.lowest_score != null ? Number(s.lowest_score) : null,
@@ -129,9 +132,9 @@ export default function ExamResultsPage() {
     })
     .sort((a, b) => {
       if (sortBy === 'name') return (a.student?.name || '').localeCompare(b.student?.name || '');
-      // not_started goes to bottom
-      if (a.status === 'not_started' && b.status !== 'not_started') return 1;
-      if (b.status === 'not_started' && a.status !== 'not_started') return -1;
+      // not_started and missed go to bottom
+      if ((a.status === 'not_started' || a.status === 'missed') && b.status !== 'not_started' && b.status !== 'missed') return 1;
+      if ((b.status === 'not_started' || b.status === 'missed') && a.status !== 'not_started' && a.status !== 'missed') return -1;
       return b.percentage - a.percentage;
     });
 
@@ -185,6 +188,12 @@ export default function ExamResultsPage() {
         return (
           <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
             Belum Mulai
+          </span>
+        );
+      case 'missed':
+        return (
+          <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full">
+            Tidak Mengerjakan
           </span>
         );
       default:
@@ -249,7 +258,7 @@ export default function ExamResultsPage() {
                   <p className="text-sm text-gray-500">Total Peserta</p>
                   <p className="text-xl font-bold text-gray-900">{summary.total_students}</p>
                   <p className="text-xs text-gray-400">
-                    {summary.completed} selesai · {summary.in_progress} mengerjakan · {summary.not_started} belum
+                    {summary.completed} selesai · {summary.in_progress} mengerjakan · {summary.not_started + summary.missed} belum
                   </p>
                 </div>
               </div>
@@ -319,6 +328,7 @@ export default function ExamResultsPage() {
             <option value="completed">Selesai</option>
             <option value="in_progress">Mengerjakan</option>
             <option value="not_started">Belum Mulai</option>
+            <option value="missed">Tidak Mengerjakan</option>
           </select>
           <select
             value={sortBy}
@@ -419,7 +429,7 @@ export default function ExamResultsPage() {
                         {formatDate(result.finished_at || result.submitted_at)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center print:hidden">
-                        {result.status !== 'not_started' ? (
+                        {result.status !== 'not_started' && result.status !== 'missed' ? (
                           <Link href={`/ujian/${examId}/hasil/${result.student_id}`}>
                             <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg" title="Lihat detail">
                               <Eye className="w-4 h-4" />
