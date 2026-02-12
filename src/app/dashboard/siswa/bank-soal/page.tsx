@@ -33,11 +33,11 @@ import type { LucideIcon } from 'lucide-react';
 const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor: string }> = {
   'Bahasa Indonesia': { icon: BookOpen, color: 'bg-red-100', iconColor: 'text-red-500' },
   'Bahasa Inggris': { icon: Languages, color: 'bg-purple-100', iconColor: 'text-purple-500' },
-  'Matematika': { icon: Calculator, color: 'bg-teal-50', iconColor: 'text-teal-500' },
+  'Matematika': { icon: Calculator, color: 'bg-sky-50', iconColor: 'text-sky-500' },
   'Fisika': { icon: Atom, color: 'bg-pink-100', iconColor: 'text-pink-500' },
   'Kimia': { icon: FlaskConical, color: 'bg-orange-100', iconColor: 'text-orange-500' },
   'Biologi': { icon: Microscope, color: 'bg-green-100', iconColor: 'text-green-500' },
-  'Sejarah': { icon: Landmark, color: 'bg-amber-100', iconColor: 'text-amber-600' },
+  'Sejarah': { icon: Landmark, color: 'bg-amber-100', iconColor: 'text-orange-500' },
   'Sosiologi': { icon: Users, color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
   'Ekonomi': { icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
   'Geografi': { icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
@@ -46,7 +46,7 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor:
   'Seni Budaya': { icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
   'Pendidikan Agama': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
   'PJOK': { icon: Target, color: 'bg-lime-100', iconColor: 'text-lime-600' },
-  'IPA': { icon: Microscope, color: 'bg-teal-100', iconColor: 'text-teal-500' },
+  'IPA': { icon: Microscope, color: 'bg-sky-100', iconColor: 'text-sky-500' },
   'Pengetahuan Umum': { icon: BookOpen, color: 'bg-slate-100', iconColor: 'text-slate-600' },
 };
 
@@ -149,7 +149,7 @@ export default function SiswaBankSoalPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -167,7 +167,7 @@ export default function SiswaBankSoalPage() {
           <select
             value={selectedGrade}
             onChange={(e) => setSelectedGrade(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 font-medium"
+            className="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
           >
             {GRADES.map(grade => (
               <option key={grade.value} value={grade.value}>{grade.label}</option>
@@ -184,7 +184,7 @@ export default function SiswaBankSoalPage() {
             return (
               <Card
                 key={subject.id}
-                className={`p-4 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition duration-200 border-2 border-transparent hover:border-teal-200 ${questionCount === 0 ? 'opacity-60' : ''}`}
+                className={`p-4 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition duration-200 border-2 border-transparent hover:border-sky-200 ${questionCount === 0 ? 'opacity-60' : ''}`}
                 onClick={() => handleSubjectClick(subject.id)}
               >
                 <div className="flex items-center gap-4">
@@ -215,7 +215,7 @@ export default function SiswaBankSoalPage() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-          <Card className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+          <Card className="p-4 bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                 <Target className="w-6 h-6" />
@@ -226,7 +226,7 @@ export default function SiswaBankSoalPage() {
               </div>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+          <Card className="p-4 bg-gradient-to-br from-cyan-500 to-cyan-600 text-white">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                 <Clock className="w-6 h-6" />
@@ -288,22 +288,22 @@ export default function SiswaBankSoalPage() {
                 {/* Belajar Mode */}
                 <button
                   onClick={() => handleModeSelect('belajar')}
-                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-teal-400 hover:bg-teal-50 transition-colors group text-left"
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-sky-50 transition-colors group text-left"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center group-hover:bg-teal-200 transition-colors">
-                      <BookMarked className="w-6 h-6 text-teal-500" />
+                    <div className="w-12 h-12 rounded-xl bg-sky-100 flex items-center justify-center group-hover:bg-teal-200 transition-colors">
+                      <BookMarked className="w-6 h-6 text-sky-500" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-slate-900">Mode Belajar</h4>
                       <p className="text-sm text-slate-500">Belajar santai dengan pembahasan</p>
                     </div>
-                    <Play className="w-5 h-5 text-slate-400 group-hover:text-teal-500" />
+                    <Play className="w-5 h-5 text-slate-400 group-hover:text-sky-500" />
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <span className="px-2 py-1 bg-teal-100 text-teal-600 text-xs rounded-full">Tanpa Timer</span>
-                    <span className="px-2 py-1 bg-teal-100 text-teal-600 text-xs rounded-full">Pembahasan</span>
-                    <span className="px-2 py-1 bg-teal-100 text-teal-600 text-xs rounded-full">Bookmark</span>
+                    <span className="px-2 py-1 bg-sky-100 text-sky-500 text-xs rounded-full">Tanpa Timer</span>
+                    <span className="px-2 py-1 bg-sky-100 text-sky-500 text-xs rounded-full">Pembahasan</span>
+                    <span className="px-2 py-1 bg-sky-100 text-sky-500 text-xs rounded-full">Bookmark</span>
                   </div>
                 </button>
               </div>

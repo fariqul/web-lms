@@ -163,7 +163,7 @@ export default function PengumumanPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -203,14 +203,14 @@ export default function PengumumanPage() {
                   <div className="flex items-start gap-4 flex-1">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       announcement.priority === 'urgent' ? 'bg-red-100' : 
-                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-teal-50'
+                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-sky-50'
                     }`}>
                       {announcement.priority !== 'normal' ? (
                         <Megaphone className={`w-6 h-6 ${
                           announcement.priority === 'urgent' ? 'text-red-600' : 'text-orange-600'
                         }`} />
                       ) : (
-                        <Bell className="w-6 h-6 text-teal-600" />
+                        <Bell className="w-6 h-6 text-sky-500" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -229,8 +229,8 @@ export default function PengumumanPage() {
                           announcement.target === 'all' 
                             ? 'bg-slate-100 text-slate-700'
                             : announcement.target === 'guru'
-                            ? 'bg-teal-100 text-teal-700'
-                            : 'bg-teal-50 text-teal-700'
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-sky-50 text-sky-700'
                         }`}>
                           {getTargetLabel(announcement.target)}
                         </span>
@@ -255,7 +255,7 @@ export default function PengumumanPage() {
                     {canCreate && (user?.role === 'admin' || announcement.author?.id === user?.id) && (
                       <>
                         <button 
-                          className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg"
+                          className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg"
                           onClick={() => handleOpenModal(announcement)}
                         >
                           <Edit2 className="w-4 h-4" />
@@ -309,7 +309,7 @@ export default function PengumumanPage() {
                       <select
                         value={formData.target}
                         onChange={(e) => setFormData({ ...formData, target: e.target.value as 'all' | 'guru' | 'siswa' })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="all">Semua</option>
                         <option value="guru">Guru</option>
@@ -322,7 +322,7 @@ export default function PengumumanPage() {
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="normal">Normal</option>
                       <option value="important">Penting</option>
@@ -381,8 +381,8 @@ export default function PengumumanPage() {
                     selectedAnnouncement.target === 'all' 
                       ? 'bg-slate-100 text-slate-700'
                       : selectedAnnouncement.target === 'guru'
-                      ? 'bg-teal-100 text-teal-700'
-                      : 'bg-teal-50 text-teal-700'
+                      ? 'bg-sky-100 text-sky-700'
+                      : 'bg-sky-50 text-sky-700'
                   }`}>
                     {getTargetLabel(selectedAnnouncement.target)}
                   </span>

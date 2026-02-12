@@ -65,7 +65,7 @@ export default function RiwayatAbsensiPage() {
       case 'hadir':
         return { label: 'Hadir', color: 'bg-green-100 text-green-700', icon: CheckCircle };
       case 'izin':
-        return { label: 'Izin', color: 'bg-teal-50 text-teal-700', icon: Clock };
+        return { label: 'Izin', color: 'bg-sky-50 text-sky-700', icon: Clock };
       case 'sakit':
         return { label: 'Sakit', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle };
       case 'alpha':
@@ -102,7 +102,7 @@ export default function RiwayatAbsensiPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-teal-600">{attendancePercentage}%</p>
+            <p className="text-3xl font-bold text-sky-500">{attendancePercentage}%</p>
             <p className="text-sm text-slate-600">Kehadiran</p>
           </Card>
           <Card className="p-4 text-center">
@@ -110,7 +110,7 @@ export default function RiwayatAbsensiPage() {
             <p className="text-sm text-slate-600">Hadir</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-teal-600">{stats.izin}</p>
+            <p className="text-3xl font-bold text-sky-500">{stats.izin}</p>
             <p className="text-sm text-slate-600">Izin</p>
           </Card>
           <Card className="p-4 text-center">

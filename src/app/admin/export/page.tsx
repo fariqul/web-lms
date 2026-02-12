@@ -111,7 +111,7 @@ export default function ExportPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );

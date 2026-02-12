@@ -2,28 +2,32 @@
 
 :root {
   /* ─── Color System ─── */
-  --primary: #0d9488;
-  --primary-hover: #0f766e;
-  --primary-light: #ccfbf1;
-  --primary-50: #f0fdfa;
-  --accent: #f59e0b;
-  --accent-hover: #d97706;
+  --primary: #1E40AF;
+  --primary-hover: #1E3A8A;
+  --primary-light: #DBEAFE;
+  --primary-50: #EFF6FF;
+  --secondary: #06B6D4;
+  --secondary-hover: #0891B2;
+  --accent: #FB923C;
+  --accent-hover: #F97316;
+  --link: #0EA5E9;
+  --link-hover: #0284C7;
 
   /* Surfaces */
-  --surface: #f8f9fb;
+  --surface: #F5F7FA;
   --surface-card: #ffffff;
   --surface-elevated: #ffffff;
 
   /* Text */
-  --foreground: #1e293b;
-  --foreground-muted: #64748b;
-  --foreground-subtle: #94a3b8;
+  --foreground: #1F2937;
+  --foreground-muted: #6B7280;
+  --foreground-subtle: #9CA3AF;
 
   /* Sidebar */
-  --sidebar: #0f172a;
-  --sidebar-hover: #1e293b;
-  --sidebar-active: rgba(13, 148, 136, 0.15);
-  --sidebar-text: #cbd5e1;
+  --sidebar: #0F172A;
+  --sidebar-hover: #1E293B;
+  --sidebar-active: rgba(30, 64, 175, 0.15);
+  --sidebar-text: #F8FAFC;
   --sidebar-text-active: #ffffff;
 
   /* Borders */
@@ -34,7 +38,7 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 3px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.04), 0 4px 6px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 4px 6px -2px rgba(0, 0, 0, 0.03), 0 10px 15px -3px rgba(0, 0, 0, 0.06);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
 
   /* Radii */
   --radius-sm: 8px;
@@ -51,7 +55,9 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
   --color-accent: var(--accent);
+  --color-link: var(--link);
   --font-sans: var(--font-jakarta);
 }
 
@@ -350,12 +356,32 @@ body {
 }
 
 .dark .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.1) !important;
+  background-color: rgba(30, 64, 175, 0.1) !important;
+}
+
+.dark .bg-orange-50 {
+  background-color: rgba(251, 146, 60, 0.1) !important;
+}
+
+.dark .bg-cyan-50 {
+  background-color: rgba(6, 182, 212, 0.1) !important;
 }
 
 /* Colored 100-level backgrounds */
 .dark .bg-teal-100 {
   background-color: rgba(20, 184, 166, 0.15) !important;
+}
+
+.dark .bg-sky-100 {
+  background-color: rgba(14, 165, 233, 0.15) !important;
+}
+
+.dark .bg-blue-100 {
+  background-color: rgba(30, 64, 175, 0.15) !important;
+}
+
+.dark .bg-cyan-100 {
+  background-color: rgba(6, 182, 212, 0.15) !important;
 }
 
 .dark .bg-green-100 {
@@ -379,21 +405,37 @@ body {
 }
 
 /* Gradient from-* overrides */
-.dark .from-teal-50 {
-  --tw-gradient-from: rgba(20, 184, 166, 0.1) !important;
+.dark .from-teal-50,
+.dark .from-sky-50 {
+  --tw-gradient-from: rgba(14, 165, 233, 0.1) !important;
 }
 
-.dark .to-emerald-50 {
+.dark .to-emerald-50,
+.dark .to-sky-50 {
   --tw-gradient-to: rgba(16, 185, 129, 0.1) !important;
 }
 
 /* Border overrides for colored borders */
-.dark .border-teal-200 {
-  border-color: rgba(20, 184, 166, 0.3) !important;
+.dark .border-teal-200,
+.dark .border-sky-200 {
+  border-color: rgba(14, 165, 233, 0.3) !important;
 }
 
-.dark .border-amber-200 {
-  border-color: rgba(245, 158, 11, 0.3) !important;
+.dark .border-sky-300 {
+  border-color: rgba(14, 165, 233, 0.4) !important;
+}
+
+.dark .border-amber-200,
+.dark .border-orange-200 {
+  border-color: rgba(251, 146, 60, 0.3) !important;
+}
+
+.dark .border-orange-100 {
+  border-color: rgba(251, 146, 60, 0.2) !important;
+}
+
+.dark .border-blue-100 {
+  border-color: rgba(30, 64, 175, 0.2) !important;
 }
 
 .dark .border-red-200 {
@@ -432,7 +474,7 @@ body {
 .dark input:focus,
 .dark select:focus,
 .dark textarea:focus {
-  border-color: #14b8a6;
+  border-color: #0ea5e9;
 }
 
 /* Tables */

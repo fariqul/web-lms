@@ -67,9 +67,9 @@ export default function LupaPasswordPage() {
               <p className="text-slate-600 mb-4">
                 Permintaan reset password untuk <strong>{email}</strong> telah dikirim ke admin.
               </p>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6 text-left">
+              <div className="bg-sky-50 border border-sky-200 rounded-lg p-4 mb-6 text-left">
                 <p className="text-sm text-teal-800 font-medium mb-1">Langkah selanjutnya:</p>
-                <ul className="text-sm text-teal-700 space-y-1 list-disc list-inside">
+                <ul className="text-sm text-sky-700 space-y-1 list-disc list-inside">
                   <li>Admin akan mereset password Anda</li>
                   {contactValue && (
                     <li>
@@ -83,7 +83,7 @@ export default function LupaPasswordPage() {
               </div>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium"
+                className="inline-flex items-center gap-2 text-sky-500 hover:text-sky-700 font-medium"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Kembali ke halaman login
@@ -115,7 +115,7 @@ export default function LupaPasswordPage() {
                       placeholder="Email yang digunakan untuk login"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -133,7 +133,7 @@ export default function LupaPasswordPage() {
                       placeholder="Nama lengkap Anda"
                       value={nama}
                       onChange={(e) => setNama(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -160,7 +160,7 @@ export default function LupaPasswordPage() {
                       onClick={() => setContactType('email')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         contactType === 'email'
-                          ? 'border-teal-500 bg-teal-50 text-teal-700'
+                          ? 'border-blue-500 bg-sky-50 text-sky-700'
                           : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -182,7 +182,7 @@ export default function LupaPasswordPage() {
                       }
                       value={contactValue}
                       onChange={(e) => setContactValue(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
@@ -193,7 +193,7 @@ export default function LupaPasswordPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 px-4 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 bg-blue-800 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <>
@@ -209,7 +209,7 @@ export default function LupaPasswordPage() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                  className="inline-flex items-center gap-2 text-sm text-sky-500 hover:text-sky-700 font-medium"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Kembali ke halaman login

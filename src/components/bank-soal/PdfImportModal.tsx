@@ -126,8 +126,8 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
             {(['upload', 'preview', 'importing'] as const).map((s, i) => (
               <React.Fragment key={s}>
                 {i > 0 && <div className="w-8 h-0.5 bg-slate-200" />}
-                <div className={`flex items-center gap-2 ${step === s ? 'text-teal-600' : 'text-slate-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === s ? 'bg-teal-100 text-teal-600' : 'bg-slate-100'}`}>{i + 1}</div>
+                <div className={`flex items-center gap-2 ${step === s ? 'text-sky-500' : 'text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === s ? 'bg-sky-100 text-sky-500' : 'bg-slate-100'}`}>{i + 1}</div>
                   <span className="text-sm font-medium">{s === 'upload' ? 'Upload' : s === 'preview' ? 'Preview' : 'Import'}</span>
                 </div>
               </React.Fragment>
@@ -139,11 +139,11 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">File PDF Soal <span className="text-red-500">*</span></label>
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-teal-400 transition-colors">
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
                   <input type="file" accept=".pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) setFormData(prev => ({ ...prev, file: f })); }} className="hidden" id="pdf-file-input" />
                   <label htmlFor="pdf-file-input" className="cursor-pointer">
                     {formData.file ? (
-                      <div className="flex items-center justify-center gap-2 text-teal-600"><FileText className="w-8 h-8" /><span className="font-medium">{formData.file.name}</span></div>
+                      <div className="flex items-center justify-center gap-2 text-sky-500"><FileText className="w-8 h-8" /><span className="font-medium">{formData.file.name}</span></div>
                     ) : (
                       <><Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" /><p className="text-slate-600">Klik untuk upload atau drag & drop</p><p className="text-sm text-slate-400">PDF maksimal 10MB</p></>
                     )}
@@ -165,7 +165,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Format Soal</label>
-                <select value={formData.format} onChange={(e) => setFormData({ ...formData, format: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+                <select value={formData.format} onChange={(e) => setFormData({ ...formData, format: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                   <option value="general">Otomatis (Auto-detect)</option>
                   <option value="utbk">UTBK/SBMPTN (5 opsi A-E)</option>
                   <option value="snbt">SNBT (5 opsi A-E)</option>
@@ -205,26 +205,26 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
-                  <select value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+                  <select value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <option value="">Pilih Mapel</option>
                     {SUBJECT_LIST.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kelas</label>
-                  <select value={formData.grade_level} onChange={(e) => setFormData({ ...formData, grade_level: e.target.value as '10' | '11' | '12' })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+                  <select value={formData.grade_level} onChange={(e) => setFormData({ ...formData, grade_level: e.target.value as '10' | '11' | '12' })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <option value="10">Kelas 10</option><option value="11">Kelas 11</option><option value="12">Kelas 12</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kesulitan</label>
-                  <select value={formData.difficulty} onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+                  <select value={formData.difficulty} onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' })} className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <option value="mudah">Mudah</option><option value="sedang">Sedang</option><option value="sulit">Sulit</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Sumber</label>
-                  <input type="text" value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} placeholder="Contoh: UTBK 2024" className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500" />
+                  <input type="text" value={formData.source} onChange={(e) => setFormData({ ...formData, source: e.target.value })} placeholder="Contoh: UTBK 2024" className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
                 </div>
               </div>
               <div>
@@ -269,7 +269,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
           {/* Step 3: Importing */}
           {step === 'importing' && (
             <div className="text-center py-8">
-              <Loader2 className="w-12 h-12 animate-spin text-teal-500 mx-auto mb-4" />
+              <Loader2 className="w-12 h-12 animate-spin text-sky-500 mx-auto mb-4" />
               <p className="text-slate-600">Mengimpor soal ke database…</p>
             </div>
           )}

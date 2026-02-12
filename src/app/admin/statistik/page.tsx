@@ -88,7 +88,7 @@ export default function AdminStatistikPage() {
   };
 
   const statCards = [
-    { label: 'Total Pengguna', value: stats.totalUsers, icon: Users, color: 'bg-teal-500' },
+    { label: 'Total Pengguna', value: stats.totalUsers, icon: Users, color: 'bg-cyan-500' },
     { label: 'Total Siswa', value: stats.totalStudents, icon: GraduationCap, color: 'bg-green-500' },
     { label: 'Total Guru', value: stats.totalTeachers, icon: UserCheck, color: 'bg-purple-500' },
     { label: 'Total Kelas', value: stats.totalClasses, icon: BookOpen, color: 'bg-orange-500' },
@@ -172,8 +172,8 @@ export default function AdminStatistikPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-teal-600" />
+              <div className="w-10 h-10 bg-sky-50 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-sky-500" />
               </div>
               <h3 className="font-semibold text-slate-900">Jadwal Hari Ini</h3>
             </div>
@@ -207,7 +207,7 @@ export default function AdminStatistikPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Rata-rata Nilai Ujian</span>
-                <span className="font-semibold text-teal-600">{academicPerformance.avg_score}</span>
+                <span className="font-semibold text-sky-500">{academicPerformance.avg_score}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Tingkat Kelulusan</span>

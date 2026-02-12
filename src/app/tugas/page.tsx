@@ -328,7 +328,7 @@ export default function TugasGuruPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -374,7 +374,7 @@ export default function TugasGuruPage() {
             placeholder="Cari tugas…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
 
@@ -382,8 +382,8 @@ export default function TugasGuruPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-teal-600" />
+              <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Tugas</p>
@@ -433,11 +433,11 @@ export default function TugasGuruPage() {
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                     assignment.status === 'closed' ? 'bg-slate-100' :
-                    isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-teal-100'
+                    isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-sky-100'
                   }`}>
                     <ClipboardList className={`w-5 h-5 ${
                       assignment.status === 'closed' ? 'text-slate-500' :
-                      isOverdue(assignment.deadline) ? 'text-red-500' : 'text-teal-500'
+                      isOverdue(assignment.deadline) ? 'text-red-500' : 'text-sky-500'
                     }`} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -446,7 +446,7 @@ export default function TugasGuruPage() {
                         <h3 className="font-semibold text-slate-900">{assignment.title}</h3>
                         <p className="text-sm text-slate-500 mt-1 line-clamp-2">{assignment.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                             {assignment.subject}
                           </span>
                           <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
@@ -464,14 +464,14 @@ export default function TugasGuruPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleViewSubmissions(assignment)}
-                          className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                           title="Lihat Pengumpulan"
                         >
                           <Users className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => handleEdit(assignment)}
-                          className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
@@ -548,7 +548,7 @@ export default function TugasGuruPage() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Instruksi atau deskripsi tugas"
                     rows={4}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
@@ -558,7 +558,7 @@ export default function TugasGuruPage() {
                     <select
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     >
                       <option value="">Pilih Mata Pelajaran</option>
@@ -572,7 +572,7 @@ export default function TugasGuruPage() {
                     <select
                       value={formData.class_id}
                       onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     >
                       <option value="">Pilih Kelas</option>
@@ -590,7 +590,7 @@ export default function TugasGuruPage() {
                       type="datetime-local"
                       value={formData.deadline}
                       onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -610,7 +610,7 @@ export default function TugasGuruPage() {
                   </label>
                   <div 
                     className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-                      ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-slate-300 hover:border-teal-500'}`}
+                      ${selectedFile ? 'border-blue-500 bg-sky-50' : 'border-slate-300 hover:border-blue-500'}`}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <input
@@ -621,7 +621,7 @@ export default function TugasGuruPage() {
                     />
                     {selectedFile ? (
                       <div className="flex items-center justify-center gap-2">
-                        <FileText className="w-5 h-5 text-teal-500" />
+                        <FileText className="w-5 h-5 text-sky-500" />
                         <span className="text-sm text-slate-700">{selectedFile.name}</span>
                         <button 
                           type="button"
@@ -715,7 +715,7 @@ export default function TugasGuruPage() {
                               <span className={`px-2 py-1 text-xs rounded-full ${
                                 submission.status === 'graded' ? 'bg-green-100 text-green-700' :
                                 submission.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                'bg-teal-50 text-teal-700'
+                                'bg-sky-50 text-sky-700'
                               }`}>
                                 {submission.status === 'graded' ? 'Sudah Dinilai' :
                                  submission.status === 'late' ? 'Terlambat' : 'Menunggu Penilaian'}
@@ -734,7 +734,7 @@ export default function TugasGuruPage() {
                                 href={getSecureFileUrl(submission.file_url)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"
+                                className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
                               >
                                 <Download className="w-4 h-4" />
                                 Download File
@@ -744,7 +744,7 @@ export default function TugasGuruPage() {
                           <div className="text-right">
                             {submission.status === 'graded' ? (
                               <div>
-                                <p className="text-2xl font-bold text-teal-600">
+                                <p className="text-2xl font-bold text-sky-500">
                                   {submission.score}
                                 </p>
                                 <p className="text-xs text-slate-500">
@@ -806,7 +806,7 @@ export default function TugasGuruPage() {
                     onChange={(e) => setGradeData({ ...gradeData, score: e.target.value })}
                     min="0"
                     max={selectedAssignment.max_score}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -820,7 +820,7 @@ export default function TugasGuruPage() {
                     onChange={(e) => setGradeData({ ...gradeData, feedback: e.target.value })}
                     placeholder="Berikan komentar atau feedback"
                     rows={3}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 

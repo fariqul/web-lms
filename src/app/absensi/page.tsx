@@ -486,7 +486,7 @@ export default function AbsensiPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -519,7 +519,7 @@ export default function AbsensiPage() {
             onClick={() => setActiveTab('create')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'create'
-                ? 'border-teal-500 text-teal-600'
+                ? 'border-blue-500 text-sky-500'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -530,7 +530,7 @@ export default function AbsensiPage() {
             onClick={() => setActiveTab('manual')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'manual'
-                ? 'border-teal-500 text-teal-600'
+                ? 'border-blue-500 text-sky-500'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -541,7 +541,7 @@ export default function AbsensiPage() {
             onClick={() => setActiveTab('history')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'history'
-                ? 'border-teal-500 text-teal-600'
+                ? 'border-blue-500 text-sky-500'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -584,7 +584,7 @@ export default function AbsensiPage() {
                         type="checkbox"
                         checked={requireSchoolNetwork}
                         onChange={(e) => setRequireSchoolNetwork(e.target.checked)}
-                        className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                        className="w-4 h-4 text-sky-500 border-slate-300 rounded focus:ring-blue-500"
                       />
                       <div>
                         <span className="text-sm font-medium text-slate-700">Wajibkan WiFi Sekolah</span>
@@ -603,9 +603,9 @@ export default function AbsensiPage() {
           ) : (
             <div className="space-y-6">
               {/* Active Session Info */}
-              <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-                <div className="flex items-center gap-2 text-teal-700 mb-2">
-                  <span className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
+              <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-sky-700 mb-2">
+                  <span className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
                   <span className="font-medium">Sesi Aktif</span>
                 </div>
                 <p className="text-slate-700">
@@ -645,9 +645,9 @@ export default function AbsensiPage() {
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-teal-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-teal-600">{attendanceRecords.length}</p>
-                  <p className="text-sm text-teal-700">Sudah Absen</p>
+                <div className="bg-sky-50 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-sky-500">{attendanceRecords.length}</p>
+                  <p className="text-sm text-sky-700">Sudah Absen</p>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-4 text-center">
                   <p className="text-2xl font-bold text-slate-600">{totalStudents - attendanceRecords.length}</p>

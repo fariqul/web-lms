@@ -327,7 +327,7 @@ export default function MateriPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'document': return <FileText className="w-5 h-5 text-teal-500" />;
+      case 'document': return <FileText className="w-5 h-5 text-sky-500" />;
       case 'video': return <Video className="w-5 h-5 text-red-500" />;
       case 'link': return <LinkIcon className="w-5 h-5 text-green-500" />;
       default: return <BookOpen className="w-5 h-5 text-slate-500" />;
@@ -370,7 +370,7 @@ export default function MateriPage() {
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Deskripsi singkat materi"
           rows={3}
-          className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+          className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
         />
       </div>
       
@@ -380,7 +380,7 @@ export default function MateriPage() {
           <select
             value={formData.subject}
             onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             required
           >
             <option value="">Pilih Mata Pelajaran</option>
@@ -394,7 +394,7 @@ export default function MateriPage() {
           <select
             value={formData.class_id}
             onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             required
           >
             <option value="">Pilih Kelas</option>
@@ -414,7 +414,7 @@ export default function MateriPage() {
             setSelectedFile(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
           }}
-          className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+          className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
         >
           <option value="document">Dokumen (PDF, Word, dll)</option>
           <option value="video">Video</option>
@@ -430,7 +430,7 @@ export default function MateriPage() {
           </label>
           <div 
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
-              ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-slate-300 hover:border-teal-500'}`}
+              ${selectedFile ? 'border-blue-500 bg-sky-50' : 'border-slate-300 hover:border-blue-500'}`}
             onClick={() => fileInputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -447,7 +447,7 @@ export default function MateriPage() {
             
             {selectedFile ? (
               <div className="flex items-center justify-center gap-3">
-                <CheckCircle className="w-8 h-8 text-teal-500" />
+                <CheckCircle className="w-8 h-8 text-sky-500" />
                 <div className="text-left">
                   <p className="font-medium text-slate-900">{selectedFile.name}</p>
                   <p className="text-sm text-slate-500">
@@ -497,7 +497,7 @@ export default function MateriPage() {
               value={formData.file_url}
               onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
               placeholder="https://example.com/materi"
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               required
             />
           </div>
@@ -544,7 +544,7 @@ export default function MateriPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -585,7 +585,7 @@ export default function MateriPage() {
             placeholder="Cari materi…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
 
@@ -593,8 +593,8 @@ export default function MateriPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-teal-600" />
+              <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Materi</p>
@@ -653,13 +653,13 @@ export default function MateriPage() {
                         <h3 className="font-semibold text-slate-900">{material.title}</h3>
                         <p className="text-sm text-slate-500 mt-1">{material.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                             {material.subject}
                           </span>
                           <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
                             {material.class_room?.name || '-'}
                           </span>
-                          <span className="px-2 py-1 bg-teal-50 text-teal-600 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-sky-50 text-sky-500 text-xs rounded-full">
                             {getTypeLabel(material.type)}
                           </span>
                         </div>
@@ -668,7 +668,7 @@ export default function MateriPage() {
                         {material.file_url && (
                           <button
                             onClick={() => openFile(material)}
-                            className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                            className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                             title={material.type === 'link' ? 'Buka Link' : 'Download/Lihat'}
                           >
                             {material.type === 'link' ? (
@@ -680,7 +680,7 @@ export default function MateriPage() {
                         )}
                         <button
                           onClick={() => setSelectedMaterial(material)}
-                          className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                           title="Detail"
                         >
                           <Eye className="w-4 h-4" />
@@ -689,7 +689,7 @@ export default function MateriPage() {
                           <>
                             <button 
                               onClick={() => handleEdit(material)}
-                              className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                               title="Edit"
                             >
                               <Edit className="w-4 h-4" />
@@ -806,7 +806,7 @@ export default function MateriPage() {
                       href={selectedMaterial.type === 'link' ? selectedMaterial.file_url : getSecureFileUrl(selectedMaterial.file_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-teal-600 hover:underline break-all text-sm"
+                      className="text-sky-500 hover:underline break-all text-sm"
                     >
                       {selectedMaterial.file_url}
                     </a>

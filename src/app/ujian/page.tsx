@@ -222,7 +222,7 @@ export default function UjianPage() {
 
     if (exam.status === 'scheduled') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-50 text-teal-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-700 rounded-full text-xs">
           <Clock className="w-3 h-3" />
           Terjadwal
         </span>
@@ -245,7 +245,7 @@ export default function UjianPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -276,12 +276,12 @@ export default function UjianPage() {
               upcomingExams.map((exam) => (
                 <div
                   key={exam.id}
-                  className="border border-slate-200 rounded-xl p-4 hover:border-teal-300 transition-colors"
+                  className="border border-slate-200 rounded-xl p-4 hover:border-sky-300 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
-                        <FileEdit className="w-6 h-6 text-teal-600" />
+                      <div className="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center">
+                        <FileEdit className="w-6 h-6 text-sky-500" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-slate-800">{exam.title}</h3>

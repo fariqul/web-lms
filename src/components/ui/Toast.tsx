@@ -47,7 +47,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     success: <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />,
     error: <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />,
     warning: <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />,
-    info: <Info className="w-5 h-5 text-teal-500 flex-shrink-0" />,
+    info: <Info className="w-5 h-5 text-sky-500 flex-shrink-0" />,
   };
 
   const bgColors = {

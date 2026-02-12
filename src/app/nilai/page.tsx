@@ -205,7 +205,7 @@ export default function NilaiPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -244,7 +244,7 @@ export default function NilaiPage() {
               onClick={() => setViewTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 viewTab === tab.key
-                  ? 'bg-white text-teal-700 shadow-sm'
+                  ? 'bg-white text-sky-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -258,8 +258,8 @@ export default function NilaiPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                <Users className="w-5 h-5 text-teal-600" />
+              <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                <Users className="w-5 h-5 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Siswa</p>
@@ -297,8 +297,8 @@ export default function NilaiPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                <Award className="w-5 h-5 text-teal-600" />
+              <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+                <Award className="w-5 h-5 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Rata-rata Gabungan</p>
@@ -339,7 +339,7 @@ export default function NilaiPage() {
               placeholder="Cari nama atau NIS siswa…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               aria-label="Cari nama atau NIS siswa"
               name="searchNilai"
             />
@@ -347,7 +347,7 @@ export default function NilaiPage() {
           <select
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             aria-label="Filter kelas"
             name="filterClass"
           >
@@ -474,7 +474,7 @@ export default function NilaiPage() {
                           <td className="px-4 py-4 whitespace-nowrap text-center">
                             <button
                               onClick={() => setExpandedStudent(expandedStudent === grade.id ? null : grade.id)}
-                              className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                               aria-label={expandedStudent === grade.id ? 'Tutup detail nilai' : 'Lihat detail nilai'}
                             >
                               {expandedStudent === grade.id ? (
@@ -521,7 +521,7 @@ export default function NilaiPage() {
                                                       type="number"
                                                       value={editScore}
                                                       onChange={(e) => setEditScore(e.target.value)}
-                                                      className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-teal-500"
+                                                      className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
                                                       min="0"
                                                       max={exam.max_score}
                                                     />
@@ -554,7 +554,7 @@ export default function NilaiPage() {
                                                         setEditScore(exam.score.toString());
                                                         setEditingAssignment(null);
                                                       }}
-                                                      className="p-1 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"
+                                                      className="p-1 text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded"
                                                       title="Edit nilai"
                                                     >
                                                       <Pencil className="w-3.5 h-3.5" />
@@ -600,7 +600,7 @@ export default function NilaiPage() {
                                                       type="number"
                                                       value={editScore}
                                                       onChange={(e) => setEditScore(e.target.value)}
-                                                      className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-teal-500"
+                                                      className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
                                                       min="0"
                                                       max={assignment.max_score}
                                                     />
@@ -639,7 +639,7 @@ export default function NilaiPage() {
                                                         setEditScore(assignment.score?.toString() || '');
                                                         setEditingExam(null);
                                                       }}
-                                                      className="p-1 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded"
+                                                      className="p-1 text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded"
                                                       title="Edit nilai"
                                                       aria-label="Edit nilai tugas"
                                                     >

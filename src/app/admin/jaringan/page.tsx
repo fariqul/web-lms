@@ -158,7 +158,7 @@ export default function JaringanSekolahPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -179,13 +179,13 @@ export default function JaringanSekolahPage() {
         </div>
 
         {/* Current IP Info */}
-        <Card className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 border-teal-200">
+        <Card className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 border-sky-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
               <Globe className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-teal-600 font-medium">IP Address Anda Saat Ini</p>
+              <p className="text-sm text-sky-500 font-medium">IP Address Anda Saat Ini</p>
               <p className="text-xl font-bold text-teal-900">
                 {checkingIp ? (
                   <span className="flex items-center gap-2">
@@ -200,7 +200,7 @@ export default function JaringanSekolahPage() {
             <button
               onClick={checkCurrentIp}
               disabled={checkingIp}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 flex items-center gap-2 font-medium text-sm transition-colors"
+              className="px-4 py-2 bg-blue-800 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 flex items-center gap-2 font-medium text-sm transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${checkingIp ? 'animate-spin' : ''}`} />
               Tes IP
@@ -225,7 +225,7 @@ export default function JaringanSekolahPage() {
           </div>
           {/* Debug info - show raw IP details */}
           {(ipDebugInfo.raw_ip || ipDebugInfo.x_forwarded_for || ipDebugInfo.x_real_ip) && (
-            <div className="mt-3 pt-3 border-t border-teal-200 text-xs text-teal-600 space-y-1">
+            <div className="mt-3 pt-3 border-t border-sky-200 text-xs text-sky-500 space-y-1">
               {ipDebugInfo.raw_ip && (
                 <p>Raw Server IP: <span className="font-mono">{ipDebugInfo.raw_ip}</span></p>
               )}
@@ -289,7 +289,7 @@ export default function JaringanSekolahPage() {
                 id="is_active"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4 text-teal-600 border-slate-300 rounded"
+                className="w-4 h-4 text-sky-500 border-slate-300 rounded"
               />
               <label htmlFor="is_active" className="text-sm text-slate-700">
                 Aktifkan jaringan ini
@@ -311,7 +311,7 @@ export default function JaringanSekolahPage() {
         <Card className="overflow-hidden">
           <div className="p-4 border-b bg-slate-50">
             <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-teal-600" />
+              <Shield className="w-5 h-5 text-sky-500" />
               Daftar Jaringan yang Diizinkan
             </h3>
           </div>
@@ -358,7 +358,7 @@ export default function JaringanSekolahPage() {
                     </button>
                     <button
                       onClick={() => handleEdit(network)}
-                      className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg"
+                      className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg"
                       aria-label="Edit jaringan"
                     >
                       <Edit className="w-4 h-4" />

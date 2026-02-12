@@ -26,10 +26,10 @@ const typeIcons: Record<string, React.ElementType> = {
 };
 
 const typeColors: Record<string, string> = {
-  info: 'text-teal-500 bg-teal-50',
+  info: 'text-sky-500 bg-sky-50',
   warning: 'text-yellow-500 bg-yellow-50',
   exam: 'text-purple-500 bg-purple-50',
-  attendance: 'text-teal-500 bg-teal-50',
+  attendance: 'text-sky-500 bg-sky-50',
   assignment: 'text-orange-500 bg-orange-50',
   announcement: 'text-indigo-500 bg-indigo-50',
   system: 'text-slate-500 bg-slate-50',
@@ -189,7 +189,7 @@ export function NotificationDropdown() {
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1"
+                className="text-xs text-sky-500 hover:text-sky-700 font-medium flex items-center gap-1"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 Tandai semua dibaca
@@ -229,7 +229,7 @@ export function NotificationDropdown() {
                         type="button"
                         key={notif.id}
                         onClick={() => handleViewDetail(notif)}
-                        className={`flex gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer w-full text-left ${!notif.read_at ? 'bg-teal-50/40' : ''}`}
+                        className={`flex gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer w-full text-left ${!notif.read_at ? 'bg-sky-50/40' : ''}`}
                       >
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
                           <Icon className="w-4 h-4" />
@@ -245,7 +245,7 @@ export function NotificationDropdown() {
                           {!notif.read_at && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
-                              className="p-1 text-slate-400 hover:text-teal-600 rounded"
+                              className="p-1 text-slate-400 hover:text-sky-500 rounded"
                               title="Tandai dibaca"
                               aria-label="Tandai dibaca"
                             >
@@ -272,7 +272,7 @@ export function NotificationDropdown() {
                 <div className="px-4 py-2 border-t border-slate-100 text-center">
                   <button
                     onClick={() => { setOpen(false); window.location.href = '/pengumuman'; }}
-                    className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                    className="text-xs text-sky-500 hover:text-sky-700 font-medium"
                   >
                     Lihat semua pengumuman →
                   </button>
@@ -361,8 +361,8 @@ function NotificationDetail({
             )}
 
             {/* Action Hint */}
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-              <p className="text-xs text-teal-700">
+            <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
+              <p className="text-xs text-sky-700">
                 <strong>Langkah:</strong> Buka menu <strong>Kelola Akun</strong> → cari user → klik <strong>Reset Password</strong> → hubungi user via kontak di atas.
               </p>
             </div>

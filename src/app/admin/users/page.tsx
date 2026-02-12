@@ -204,8 +204,8 @@ export default function AdminUsersPage() {
           item.role === 'admin'
             ? 'bg-orange-100 text-orange-700'
             : item.role === 'guru'
-            ? 'bg-teal-100 text-teal-700'
-            : 'bg-teal-50 text-teal-700'
+            ? 'bg-sky-100 text-sky-700'
+            : 'bg-sky-50 text-sky-700'
         }`}>
           {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
         </span>
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => handleOpenModal(item)}
-            className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+            className="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg transition-colors"
             title="Edit"
             aria-label="Edit pengguna"
           >
@@ -345,7 +345,7 @@ export default function AdminUsersPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
                 />
                 <button
@@ -441,11 +441,11 @@ export default function AdminUsersPage() {
             </div>
           ) : (
             <>
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                <p className="text-sm text-teal-700">
+              <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                <p className="text-sm text-sky-700">
                   Reset password untuk: <strong>{selectedUser?.name}</strong>
                 </p>
-                <p className="text-xs text-teal-500 mt-1">{selectedUser?.email}</p>
+                <p className="text-xs text-sky-500 mt-1">{selectedUser?.email}</p>
               </div>
 
               <div className="w-full">
@@ -457,7 +457,7 @@ export default function AdminUsersPage() {
                     onChange={(e) => setResetPasswordData({ ...resetPasswordData, password: e.target.value })}
                     required
                     minLength={8}
-                    className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
                   />
                   <button

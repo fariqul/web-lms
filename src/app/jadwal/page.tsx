@@ -74,7 +74,7 @@ export default function JadwalPage() {
 
   const getSubjectColor = (subject: string) => {
     const colors: Record<string, string> = {
-      'Matematika': 'bg-teal-50 text-teal-700 border-teal-200',
+      'Matematika': 'bg-sky-50 text-sky-700 border-sky-200',
       'Fisika': 'bg-purple-100 text-purple-700 border-purple-200',
       'Kimia': 'bg-green-100 text-green-700 border-green-200',
       'Biologi': 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -82,7 +82,7 @@ export default function JadwalPage() {
       'Bahasa Inggris': 'bg-indigo-100 text-indigo-700 border-indigo-200',
       'Sejarah': 'bg-yellow-100 text-yellow-700 border-yellow-200',
       'Ekonomi': 'bg-orange-100 text-orange-700 border-orange-200',
-      'Olahraga': 'bg-teal-100 text-teal-700 border-teal-200',
+      'Olahraga': 'bg-sky-100 text-sky-700 border-sky-200',
       'Seni Budaya': 'bg-pink-100 text-pink-700 border-pink-200',
       'Informatika': 'bg-cyan-100 text-cyan-700 border-cyan-200',
     };
@@ -93,7 +93,7 @@ export default function JadwalPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -120,13 +120,13 @@ export default function JadwalPage() {
                 onClick={() => setSelectedDay(dayNum)}
                 className={`relative px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   selectedDay === dayNum
-                    ? 'bg-teal-500 text-white'
+                    ? 'bg-cyan-500 text-white'
                     : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                 }`}
               >
                 {day}
                 {hasSchedule && selectedDay !== dayNum && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-teal-500 rounded-full" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-cyan-500 rounded-full" />
                 )}
               </button>
             );
@@ -190,12 +190,12 @@ export default function JadwalPage() {
                   <div 
                     key={day} 
                     className={`text-center p-2 rounded-lg cursor-pointer transition-colors ${
-                      selectedDay === index + 1 ? 'bg-teal-100' : 'bg-slate-50 hover:bg-slate-100'
+                      selectedDay === index + 1 ? 'bg-sky-100' : 'bg-slate-50 hover:bg-slate-100'
                     }`}
                     onClick={() => setSelectedDay(index + 1)}
                   >
                     <p className="text-xs font-medium text-slate-500">{day.slice(0, 3)}</p>
-                    <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-teal-600' : 'text-slate-300'}`}>
+                    <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-sky-500' : 'text-slate-300'}`}>
                       {daySchedules.length}
                     </p>
                     <p className="text-xs text-slate-400">mata pelajaran</p>

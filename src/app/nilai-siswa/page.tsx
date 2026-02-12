@@ -106,14 +106,14 @@ export default function NilaiSiswaPage() {
 
   const getScoreColor = (score: number) => {
     if (score >= 85) return 'text-green-600';
-    if (score >= 70) return 'text-teal-600';
+    if (score >= 70) return 'text-sky-500';
     if (score >= 55) return 'text-yellow-600';
     return 'text-red-600';
   };
 
   const getScoreBg = (score: number) => {
     if (score >= 85) return 'bg-green-100';
-    if (score >= 70) return 'bg-teal-50';
+    if (score >= 70) return 'bg-sky-50';
     if (score >= 55) return 'bg-yellow-100';
     return 'bg-red-100';
   };
@@ -138,7 +138,7 @@ export default function NilaiSiswaPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -162,8 +162,8 @@ export default function NilaiSiswaPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-teal-600" />
+              <div className="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-600">Rata-rata Gabungan</p>
@@ -174,8 +174,8 @@ export default function NilaiSiswaPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                <BookCheck className="w-6 h-6 text-teal-600" />
+              <div className="w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center">
+                <BookCheck className="w-6 h-6 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-600">Rata-rata Ujian</p>
@@ -219,7 +219,7 @@ export default function NilaiSiswaPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? 'bg-white text-teal-700 shadow-sm'
+                  ? 'bg-white text-sky-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -233,7 +233,7 @@ export default function NilaiSiswaPage() {
         {(activeTab === 'ujian' || activeTab === 'gabungan') && (
           <Card className="overflow-hidden">
             <div className="p-4 border-b flex items-center gap-2">
-              <BookCheck className="w-5 h-5 text-teal-600" />
+              <BookCheck className="w-5 h-5 text-sky-500" />
               <h2 className="text-lg font-semibold text-slate-900">Nilai Ujian</h2>
               <span className="text-sm text-slate-500">({examGrades.length})</span>
             </div>
@@ -263,7 +263,7 @@ export default function NilaiSiswaPage() {
                           <div className="font-medium text-slate-900">{grade.exam_title}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-sm rounded-full">{grade.subject}</span>
+                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-sm rounded-full">{grade.subject}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {grade.total_correct === 0 && grade.total_wrong === 0 ? (

@@ -40,27 +40,27 @@ function CountdownDisplay({ startTime }: { startTime: string }) {
   if (isExpired) return null;
 
   return (
-    <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mb-4">
+    <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4">
       <div className="flex items-center gap-2 mb-2">
-        <Timer className="w-4 h-4 text-teal-600" />
-        <span className="text-xs font-medium text-teal-700">Dimulai dalam</span>
+        <Timer className="w-4 h-4 text-sky-500" />
+        <span className="text-xs font-medium text-sky-700">Dimulai dalam</span>
       </div>
       <div className="flex gap-2 justify-center">
         {days > 0 && (
-          <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+          <div className="bg-blue-800 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
             <div className="text-lg font-bold leading-tight">{days}</div>
             <div className="text-[10px] opacity-80">hari</div>
           </div>
         )}
-        <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+        <div className="bg-blue-800 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
           <div className="text-lg font-bold leading-tight">{String(hours).padStart(2, '0')}</div>
           <div className="text-[10px] opacity-80">jam</div>
         </div>
-        <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+        <div className="bg-blue-800 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
           <div className="text-lg font-bold leading-tight">{String(minutes).padStart(2, '0')}</div>
           <div className="text-[10px] opacity-80">menit</div>
         </div>
-        <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+        <div className="bg-blue-800 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
           <div className="text-lg font-bold leading-tight">{String(seconds).padStart(2, '0')}</div>
           <div className="text-[10px] opacity-80">detik</div>
         </div>
@@ -107,7 +107,7 @@ export default function UjianSiswaPage() {
     if (resultStatus === 'in_progress') {
       return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 text-yellow-700', icon: PlayCircle };
     }
-    return { label: 'Tersedia', color: 'bg-teal-50 text-teal-700', icon: PlayCircle };
+    return { label: 'Tersedia', color: 'bg-sky-50 text-sky-700', icon: PlayCircle };
   };
 
   const canStartExam = (exam: Exam) => {
@@ -161,8 +161,8 @@ export default function UjianSiswaPage() {
               return (
                 <Card key={exam.id} className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center">
-                      <GraduationCap className="w-6 h-6 text-teal-600" />
+                    <div className="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center">
+                      <GraduationCap className="w-6 h-6 text-sky-500" />
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${status.color}`}>
                       <StatusIcon className="w-3 h-3" />

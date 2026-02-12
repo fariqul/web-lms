@@ -146,8 +146,8 @@ export default function AkunPage() {
   const getRoleBadgeColor = () => {
     switch (user?.role) {
       case 'admin': return 'bg-orange-100 text-orange-700';
-      case 'guru': return 'bg-teal-100 text-teal-700';
-      case 'siswa': return 'bg-teal-50 text-teal-700';
+      case 'guru': return 'bg-sky-100 text-sky-700';
+      case 'siswa': return 'bg-sky-50 text-sky-700';
       default: return 'bg-slate-100 text-slate-700';
     }
   };
@@ -174,7 +174,7 @@ export default function AkunPage() {
           <div className="flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
                 {previewPhoto ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={previewPhoto} alt="Preview" className="w-full h-full object-cover" />

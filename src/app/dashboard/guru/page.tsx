@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -150,7 +150,7 @@ export default function GuruDashboard() {
     switch (priority) {
       case 'urgent': return 'bg-red-100 text-red-700 border-red-200';
       case 'important': return 'bg-orange-100 text-orange-700 border-orange-200';
-      default: return 'bg-teal-50 text-teal-700 border-teal-200';
+      default: return 'bg-sky-50 text-sky-700 border-sky-200';
     }
   };
 
@@ -181,20 +181,20 @@ export default function GuruDashboard() {
 
         {/* Notification Banner for Announcements */}
         {newAnnouncementsCount > 0 && (
-          <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl">
+          <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-sky-200 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-teal-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-blue-800 rounded-lg flex items-center justify-center">
                 <Megaphone className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-teal-900">
+                <p className="font-medium text-sky-900">
                   Ada {newAnnouncementsCount} pengumuman baru minggu ini!
                 </p>
-                <p className="text-sm text-teal-700">Jangan lewatkan informasi penting</p>
+                <p className="text-sm text-sky-700">Jangan lewatkan informasi penting</p>
               </div>
               <Link
                 href="/pengumuman"
-                className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium hover:bg-blue-900 transition-colors cursor-pointer"
               >
                 Lihat Semua
               </Link>
@@ -249,7 +249,7 @@ export default function GuruDashboard() {
             <CardHeader 
               title="Jadwal Hari Ini" 
               action={
-                <Link href="/jadwal" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
+                <Link href="/jadwal" className="text-sky-500 dark:text-sky-400 text-sm font-medium hover:text-sky-600 dark:hover:text-sky-300 flex items-center gap-1 transition-colors cursor-pointer">
                   Lihat Semua <ChevronRight className="w-4 h-4" />
                 </Link>
               }
@@ -258,14 +258,14 @@ export default function GuruDashboard() {
               <div className="space-y-3">
                 {schedule.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/50 rounded-lg flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    <div className="w-10 h-10 bg-sky-100 dark:bg-sky-900/50 rounded-lg flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-sky-500 dark:text-sky-400" />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-slate-900 dark:text-slate-100">{item.subject}</p>
                       <p className="text-sm text-slate-500 dark:text-slate-400">{item.class_room?.name || '-'}</p>
                     </div>
-                    <span className="text-sm font-medium text-teal-600">{formatTime(item.start_time)}</span>
+                    <span className="text-sm font-medium text-sky-500">{formatTime(item.start_time)}</span>
                   </div>
                 ))}
               </div>
@@ -282,7 +282,7 @@ export default function GuruDashboard() {
             <CardHeader 
               title="Statistik Kehadiran Minggu Ini" 
               action={
-                <Link href="/nilai" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
+                <Link href="/nilai" className="text-sky-500 dark:text-sky-400 text-sm font-medium hover:text-sky-600 dark:hover:text-sky-300 flex items-center gap-1 transition-colors cursor-pointer">
                   Detail <ChevronRight className="w-4 h-4" />
                 </Link>
               }
@@ -296,7 +296,7 @@ export default function GuruDashboard() {
           <CardHeader 
             title="Hasil Ujian Terbaru" 
             action={
-              <Link href="/nilai" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
+              <Link href="/nilai" className="text-sky-500 dark:text-sky-400 text-sm font-medium hover:text-sky-600 dark:hover:text-sky-300 flex items-center gap-1 transition-colors cursor-pointer">
                 Lihat Semua <ChevronRight className="w-4 h-4" />
               </Link>
             }
@@ -304,7 +304,7 @@ export default function GuruDashboard() {
           <div className="text-center py-8 text-slate-500">
             <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300" />
             <p>Belum ada hasil ujian</p>
-            <Link href="/ujian" className="text-teal-600 hover:underline text-sm mt-2 inline-block">
+            <Link href="/ujian" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
               Buat Ujian Pertama
             </Link>
           </div>
@@ -315,7 +315,7 @@ export default function GuruDashboard() {
           <CardHeader 
             title="Pengumuman Terbaru" 
             action={
-              <Link href="/pengumuman" className="text-teal-600 dark:text-teal-400 text-sm font-medium hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1 transition-colors cursor-pointer">
+              <Link href="/pengumuman" className="text-sky-500 dark:text-sky-400 text-sm font-medium hover:text-sky-600 dark:hover:text-sky-300 flex items-center gap-1 transition-colors cursor-pointer">
                 Lihat Semua <ChevronRight className="w-4 h-4" />
               </Link>
             }
@@ -331,11 +331,11 @@ export default function GuruDashboard() {
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       announcement.priority === 'urgent' ? 'bg-red-100' :
-                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-teal-100'
+                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-sky-100'
                     }`}>
                       <Megaphone className={`w-5 h-5 ${
                         announcement.priority === 'urgent' ? 'text-red-600' :
-                        announcement.priority === 'important' ? 'text-orange-600' : 'text-teal-600'
+                        announcement.priority === 'important' ? 'text-orange-600' : 'text-sky-500'
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -347,7 +347,7 @@ export default function GuruDashboard() {
                       </div>
                       <p className="text-sm text-slate-500 line-clamp-1 mt-1">{announcement.content}</p>
                       <p className="text-xs text-slate-400 mt-1">
-                        {announcement.author?.name} â€¢ {formatAnnouncementDate(announcement.created_at)}
+                        {announcement.author?.name} • {formatAnnouncementDate(announcement.created_at)}
                       </p>
                     </div>
                   </div>
@@ -358,7 +358,7 @@ export default function GuruDashboard() {
             <div className="text-center py-8 text-slate-500">
               <Megaphone className="w-12 h-12 mx-auto mb-2 text-slate-300" />
               <p>Belum ada pengumuman</p>
-              <Link href="/pengumuman" className="text-teal-600 hover:underline text-sm mt-2 inline-block">
+              <Link href="/pengumuman" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
                 Buat Pengumuman
               </Link>
             </div>

@@ -8,7 +8,7 @@ import api from '@/services/api';
 
 const statusOptions = [
   { value: 'hadir', label: 'Hadir', color: 'bg-green-100 text-green-700' },
-  { value: 'izin', label: 'Izin', color: 'bg-teal-50 text-teal-700' },
+  { value: 'izin', label: 'Izin', color: 'bg-sky-50 text-sky-700' },
   { value: 'sakit', label: 'Sakit', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'alpha', label: 'Alpha', color: 'bg-red-100 text-red-700' },
   { value: 'belum', label: 'Belum Absen', color: 'bg-slate-100 text-slate-600' },
@@ -145,7 +145,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
         />
         {loadingHistory ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
+            <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
           </div>
         ) : sessions.length > 0 ? (
           <div className="overflow-x-auto">
@@ -245,7 +245,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
           />
           {loadingDetail ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
+              <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
             </div>
           ) : allStudents.length > 0 ? (
             <div className="overflow-x-auto">
@@ -287,7 +287,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                             <select
                               value={currentStatus}
                               onChange={(e) => handleStatusChange(sa.student.id, e.target.value)}
-                              className="block w-full px-2 py-1 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              className="block w-full px-2 py-1 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               {statusOptions.filter(s => s.value !== 'belum').map(option => (
                                 <option key={option.value} value={option.value}>{option.label}</option>

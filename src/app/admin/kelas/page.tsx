@@ -137,7 +137,7 @@ export default function AdminKelasPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleOpenModal(item)}
-            className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+            className="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg transition-colors"
             aria-label="Edit kelas"
           >
             <Edit2 className="w-4 h-4" />
@@ -174,7 +174,7 @@ export default function AdminKelasPage() {
             <p className="text-sm text-slate-500">Total Kelas</p>
           </Card>
           <Card className="text-center">
-            <p className="text-3xl font-bold text-teal-600">{totalStudents}</p>
+            <p className="text-3xl font-bold text-sky-500">{totalStudents}</p>
             <p className="text-sm text-slate-500">Total Siswa</p>
           </Card>
           <Card className="text-center">

@@ -28,12 +28,12 @@ export function Button({
     'inline-flex items-center justify-center font-semibold rounded-xl cursor-pointer transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.97]';
 
   const variantClasses = {
-    primary: 'bg-teal-600 text-white hover:bg-teal-700 focus-visible:ring-teal-500 shadow-sm hover:shadow-md',
-    secondary: 'bg-slate-700 text-white hover:bg-slate-800 focus-visible:ring-slate-500 shadow-sm hover:shadow-md',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm hover:shadow-md',
+    primary: 'bg-blue-800 text-white hover:bg-blue-900 focus-visible:ring-blue-500 shadow-sm hover:shadow-md',
+    secondary: 'bg-cyan-500 text-white hover:bg-cyan-600 focus-visible:ring-cyan-400 shadow-sm hover:shadow-md',
+    danger: 'bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500 shadow-sm hover:shadow-md',
     success: 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500 shadow-sm hover:shadow-md',
     outline:
-      'border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus-visible:ring-teal-500 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800',
+      'border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus-visible:ring-blue-500 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800',
     ghost: 'text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400 dark:text-slate-400 dark:hover:bg-slate-800',
   };
 
@@ -108,9 +108,9 @@ export function IconButton({
   ...props
 }: IconButtonProps) {
   const variantClasses = {
-    primary: 'bg-teal-600 text-white hover:bg-teal-700',
-    secondary: 'bg-slate-700 text-white hover:bg-slate-800',
-    danger: 'bg-red-600 text-white hover:bg-red-700',
+    primary: 'bg-blue-800 text-white hover:bg-blue-900',
+    secondary: 'bg-cyan-500 text-white hover:bg-cyan-600',
+    danger: 'bg-red-500 text-white hover:bg-red-600',
     ghost: 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800',
   };
 
@@ -123,7 +123,7 @@ export function IconButton({
   return (
     <button
       className={clsx(
-        'rounded-xl cursor-pointer transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-500 active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
+        'rounded-xl cursor-pointer transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
         variantClasses[variant],
         sizeClasses[size],
         className

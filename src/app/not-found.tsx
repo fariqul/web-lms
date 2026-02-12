@@ -6,8 +6,8 @@ export default function NotFound() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8 text-center">
-        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileQuestion className="w-8 h-8 text-teal-500" />
+        <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileQuestion className="w-8 h-8 text-sky-500" />
         </div>
         <h2 className="text-4xl font-bold text-slate-900 mb-2">404</h2>
         <h3 className="text-lg font-semibold text-slate-700 mb-2">Halaman Tidak Ditemukan</h3>
@@ -17,7 +17,7 @@ export default function NotFound() {
         <div className="flex gap-3 justify-center">
           <a
             href="/dashboard"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors font-medium text-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-800 text-white rounded-xl hover:bg-teal-700 transition-colors font-medium text-sm"
           >
             <Home className="w-4 h-4" />
             Dashboard

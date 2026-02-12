@@ -129,7 +129,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
             className={clsx(
               'px-3 py-1 text-sm rounded-lg border transition-colors',
               page === currentPage
-                ? 'bg-teal-600 text-white border-teal-600'
+                ? 'bg-blue-800 text-white border-teal-600'
                 : 'hover:bg-slate-50'
             )}
           >

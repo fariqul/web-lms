@@ -68,8 +68,8 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden items-center justify-center p-12">
         {/* Decorative elements */}
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-md text-center">
           <div className="inline-flex items-center justify-center w-28 h-28 mb-8">
@@ -79,11 +79,11 @@ export default function LoginPage() {
           <p className="text-lg text-slate-400 font-medium">Learning Management System</p>
           <div className="mt-10 grid grid-cols-3 gap-4">
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
-              <p className="text-2xl font-bold text-teal-400">QR</p>
+              <p className="text-2xl font-bold text-cyan-400">QR</p>
               <p className="text-xs text-slate-400 mt-1">Absensi Digital</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
-              <p className="text-2xl font-bold text-emerald-400">CBT</p>
+              <p className="text-2xl font-bold text-blue-400">CBT</p>
               <p className="text-xs text-slate-400 mt-1">Ujian Online</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
@@ -150,10 +150,10 @@ export default function LoginPage() {
 
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-600 cursor-pointer focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2" name="rememberMe" />
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-800 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" name="rememberMe" />
                   <span className="text-sm text-slate-600 dark:text-slate-400">Ingat saya</span>
                 </label>
-                <Link href="/lupa-password" className="text-sm text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 font-medium transition-colors">
+                <Link href="/lupa-password" className="text-sm text-sky-500 hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300 font-medium transition-colors">
                   Lupa password?
                 </Link>
               </div>
@@ -174,21 +174,21 @@ export default function LoginPage() {
             {isDevelopment && (
               <div className="mt-6 pt-6 border-t border-slate-100">
                 <p className="text-sm text-slate-500 text-center mb-3">
-                  <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-lg text-xs font-semibold border border-amber-100">DEV</span>
+                  <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded-lg text-xs font-semibold border border-orange-100">DEV</span>
                   {' '}Demo Login
                 </p>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => handleDemoLogin('admin')}
-                    className="flex-1 py-2 px-3 text-xs font-semibold bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors border border-amber-100 cursor-pointer active:scale-[0.97]"
+                    className="flex-1 py-2 px-3 text-xs font-semibold bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-colors border border-orange-100 cursor-pointer active:scale-[0.97]"
                   >
                     Admin
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDemoLogin('guru')}
-                    className="flex-1 py-2 px-3 text-xs font-semibold bg-teal-50 text-teal-700 rounded-xl hover:bg-teal-100 transition-colors border border-teal-100 cursor-pointer active:scale-[0.97]"
+                    className="flex-1 py-2 px-3 text-xs font-semibold bg-cyan-50 text-cyan-700 rounded-xl hover:bg-cyan-100 transition-colors border border-cyan-100 cursor-pointer active:scale-[0.97]"
                   >
                     Guru
                   </button>

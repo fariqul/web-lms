@@ -52,7 +52,7 @@ export function QuestionCard({ question, index, onEdit, onDelete, onDuplicate }:
                 </div>
               )}
               <div className="flex flex-wrap gap-2 mt-3">
-                <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                   {question.subject}
                 </span>
                 {question.class_name && (
@@ -63,7 +63,7 @@ export function QuestionCard({ question, index, onEdit, onDelete, onDuplicate }:
                 <span className={`px-2 py-1 text-xs rounded-full ${diff.color}`}>
                   {diff.label}
                 </span>
-                <span className="px-2 py-1 bg-teal-50 text-teal-600 text-xs rounded-full">
+                <span className="px-2 py-1 bg-sky-50 text-sky-500 text-xs rounded-full">
                   {question.type === 'pilihan_ganda' ? 'Pilihan Ganda' : 'Essay'}
                 </span>
               </div>
@@ -71,14 +71,14 @@ export function QuestionCard({ question, index, onEdit, onDelete, onDuplicate }:
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => onDuplicate(question)}
-                className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                 title="Duplikat"
               >
                 <Copy className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onEdit(question)}
-                className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                 title="Edit"
               >
                 <Edit className="w-4 h-4" />

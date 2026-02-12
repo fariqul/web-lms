@@ -202,7 +202,7 @@ export default function TugasSiswaPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -242,7 +242,7 @@ export default function TugasSiswaPage() {
             placeholder="Cari tugas…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             aria-label="Cari tugas"
             name="searchTugas"
           />
@@ -254,7 +254,7 @@ export default function TugasSiswaPage() {
             onClick={() => setActiveTab('pending')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'pending'
-                ? 'border-teal-500 text-teal-600'
+                ? 'border-blue-500 text-sky-500'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -272,7 +272,7 @@ export default function TugasSiswaPage() {
             onClick={() => setActiveTab('submitted')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'submitted'
-                ? 'border-teal-500 text-teal-600'
+                ? 'border-blue-500 text-sky-500'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -280,7 +280,7 @@ export default function TugasSiswaPage() {
               <Send className="w-4 h-4" />
               Menunggu Nilai
               {submittedCount > 0 && (
-                <span className="px-2 py-0.5 bg-teal-50 text-teal-700 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-sky-50 text-sky-700 rounded-full text-xs">
                   {submittedCount}
                 </span>
               )}
@@ -290,7 +290,7 @@ export default function TugasSiswaPage() {
             onClick={() => setActiveTab('graded')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'graded'
-                ? 'border-teal-500 text-teal-600'
+                ? 'border-blue-500 text-sky-500'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -323,13 +323,13 @@ export default function TugasSiswaPage() {
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                     assignment.my_submission?.status === 'graded' ? 'bg-green-100' :
-                    assignment.has_submitted ? 'bg-teal-50' :
+                    assignment.has_submitted ? 'bg-sky-50' :
                     isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-orange-100'
                   }`}>
                     {assignment.my_submission?.status === 'graded' ? (
                       <CheckCircle className="w-5 h-5 text-green-500" />
                     ) : assignment.has_submitted ? (
-                      <Send className="w-5 h-5 text-teal-500" />
+                      <Send className="w-5 h-5 text-sky-500" />
                     ) : isOverdue(assignment.deadline) ? (
                       <AlertTriangle className="w-5 h-5 text-red-500" />
                     ) : (
@@ -342,7 +342,7 @@ export default function TugasSiswaPage() {
                         <h3 className="font-semibold text-slate-900">{assignment.title}</h3>
                         <p className="text-sm text-slate-500 mt-1 line-clamp-2">{assignment.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                             {assignment.subject}
                           </span>
                           <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
@@ -358,7 +358,7 @@ export default function TugasSiswaPage() {
                       <div className="flex flex-col items-end gap-2">
                         {assignment.my_submission?.status === 'graded' ? (
                           <div className="text-center">
-                            <p className="text-2xl font-bold text-teal-600">
+                            <p className="text-2xl font-bold text-sky-500">
                               {assignment.my_submission.score}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -368,7 +368,7 @@ export default function TugasSiswaPage() {
                         ) : assignment.has_submitted ? (
                           <button
                             onClick={() => handleViewDetail(assignment)}
-                            className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                            className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                             aria-label="Lihat detail tugas"
                           >
                             <Eye className="w-5 h-5" />
@@ -452,7 +452,7 @@ export default function TugasSiswaPage() {
                       href={getSecureFileUrl(selectedAssignment.attachment_url)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"
+                      className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
                     >
                       <Download className="w-4 h-4" />
                       Download Lampiran Tugas
@@ -485,7 +485,7 @@ export default function TugasSiswaPage() {
                       onChange={(e) => setSubmitContent(e.target.value)}
                       placeholder="Tulis jawaban atau penjelasan di sini…"
                       rows={5}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
 
@@ -495,7 +495,7 @@ export default function TugasSiswaPage() {
                     </label>
                     <div 
                       className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-                        ${submitFile ? 'border-teal-500 bg-teal-50' : 'border-slate-300 hover:border-teal-500'}`}
+                        ${submitFile ? 'border-blue-500 bg-sky-50' : 'border-slate-300 hover:border-blue-500'}`}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <input
@@ -506,7 +506,7 @@ export default function TugasSiswaPage() {
                       />
                       {submitFile ? (
                         <div className="flex items-center justify-center gap-2">
-                          <FileText className="w-5 h-5 text-teal-500" />
+                          <FileText className="w-5 h-5 text-sky-500" />
                           <span className="text-sm text-slate-700">{submitFile.name}</span>
                           <button 
                             type="button"
@@ -612,7 +612,7 @@ export default function TugasSiswaPage() {
                         href={getSecureFileUrl(selectedAssignment.my_submission.file_url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-teal-600 hover:underline mt-2"
+                        className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
                       >
                         <Download className="w-4 h-4" />
                         Download File Jawaban

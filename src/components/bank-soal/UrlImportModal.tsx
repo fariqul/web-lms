@@ -123,10 +123,10 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
           {/* Step 1: Input URL */}
           {step === 'input' && (
             <div className="space-y-4">
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+              <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-teal-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-teal-700">
+                  <AlertCircle className="w-5 h-5 text-sky-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-sky-700">
                     <p className="font-medium">Cara Penggunaan:</p>
                     <ol className="list-decimal ml-4 mt-1 space-y-1">
                       <li>Buka <a href="https://utbk.or.id" target="_blank" rel="noopener noreferrer" className="underline">utbk.or.id</a></li>
@@ -138,7 +138,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">URL Artikel Soal</label>
-                <input type="url" value={formData.url} onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://utbk.or.id/soal-…" className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500" />
+                <input type="url" value={formData.url} onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://utbk.or.id/soal-…" className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
               </div>
               <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={handleClose}>Batal</Button>
@@ -161,14 +161,14 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Mata Pelajaran <span className="text-red-500">*</span></label>
-                  <select value={formData.subject} onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))} className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500" required>
+                  <select value={formData.subject} onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))} className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" required>
                     <option value="">Pilih Mata Pelajaran</option>
                     {SUBJECT_LIST.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Tingkat Kesulitan</label>
-                  <select value={formData.difficulty} onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' }))} className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
+                  <select value={formData.difficulty} onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' }))} className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <option value="mudah">Mudah</option><option value="sedang">Sedang</option><option value="sulit">Sulit</option>
                   </select>
                 </div>
@@ -176,15 +176,15 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-slate-700">Pilih Soal untuk Diimport</label>
-                  <button type="button" onClick={toggleAll} className="text-sm text-teal-600 hover:text-teal-700">
+                  <button type="button" onClick={toggleAll} className="text-sm text-sky-500 hover:text-sky-700">
                     {selectedQuestions.length === previewResult.questions.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
                   </button>
                 </div>
                 <div className="border rounded-lg max-h-64 overflow-y-auto divide-y">
                   {previewResult.questions.map((q) => (
-                    <div key={q.number} className={`p-3 cursor-pointer hover:bg-slate-50 ${selectedQuestions.includes(q.number) ? 'bg-teal-50' : ''}`} onClick={() => toggleQuestion(q.number)}>
+                    <div key={q.number} className={`p-3 cursor-pointer hover:bg-slate-50 ${selectedQuestions.includes(q.number) ? 'bg-sky-50' : ''}`} onClick={() => toggleQuestion(q.number)}>
                       <div className="flex items-start gap-3">
-                        <input type="checkbox" checked={selectedQuestions.includes(q.number)} onChange={() => toggleQuestion(q.number)} className="mt-1 w-4 h-4 text-teal-600 rounded focus:ring-teal-500" />
+                        <input type="checkbox" checked={selectedQuestions.includes(q.number)} onChange={() => toggleQuestion(q.number)} className="mt-1 w-4 h-4 text-sky-500 rounded focus:ring-blue-500" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-slate-900 line-clamp-2"><span className="font-medium">#{q.number}.</span> {q.question}</p>
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -218,7 +218,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
           {/* Step 3: Importing */}
           {step === 'importing' && (
             <div className="text-center py-8">
-              <Loader2 className="w-12 h-12 animate-spin text-teal-500 mx-auto mb-4" />
+              <Loader2 className="w-12 h-12 animate-spin text-sky-500 mx-auto mb-4" />
               <p className="text-slate-600">Mengimpor soal ke database…</p>
             </div>
           )}

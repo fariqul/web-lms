@@ -98,13 +98,13 @@ export default function DashboardLayout({ children }: SidebarProps) {
   const getRoleAccent = () => {
     switch (user?.role) {
       case 'admin':
-        return 'bg-amber-500';
+        return 'bg-orange-400';
       case 'guru':
-        return 'bg-teal-500';
+        return 'bg-cyan-500';
       case 'siswa':
         return 'bg-sky-500';
       default:
-        return 'bg-teal-500';
+        return 'bg-blue-800';
     }
   };
 
@@ -167,16 +167,16 @@ export default function DashboardLayout({ children }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 className={clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset',
                   isActive
-                    ? 'bg-teal-500/10 text-teal-400'
+                    ? 'bg-blue-800/20 text-sky-400 border-l-2 border-sky-500 -ml-px pl-[11px]'
                     : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-sky-500' : 'text-slate-500 group-hover:text-slate-300')} />
                 <span className="text-[13px] font-medium">{item.name}</span>
-                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />}
               </Link>
             );
           })}
@@ -220,7 +220,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
                   <p className="text-sm font-semibold text-slate-800 dark:text-white leading-tight">{user?.name?.split(' ')[0]}</p>
                   <p className="text-[11px] text-slate-400 capitalize">{user?.role}</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-700 to-cyan-500 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-sm">
                   {(user?.photo || user?.avatar) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

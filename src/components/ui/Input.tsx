@@ -1,4 +1,4 @@
-import React, { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, forwardRef, useId } from 'react';
+﻿import React, { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, forwardRef, useId } from 'react';
 import clsx from 'clsx';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -43,7 +43,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={describedBy}
             className={clsx(
               'w-full rounded-xl border transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
               'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400',
               'placeholder:text-slate-400 dark:placeholder:text-slate-500',
               'dark:bg-slate-800 dark:text-slate-100',
@@ -106,7 +106,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-describedby={describedBy}
           className={clsx(
             'w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
             'disabled:bg-slate-50 disabled:cursor-not-allowed',
             'placeholder:text-slate-400 dark:placeholder:text-slate-500',
             'dark:bg-slate-800 dark:text-slate-100',
@@ -158,7 +158,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             aria-describedby={error ? errorId : undefined}
             className={clsx(
               'w-full rounded-xl border px-4 py-2.5 pr-10 text-sm transition-all duration-200 cursor-pointer',
-              'focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
               'disabled:bg-slate-50 disabled:cursor-not-allowed',
               'appearance-none bg-white dark:bg-slate-800 dark:text-slate-100',
               error ? 'border-red-400' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500',
@@ -211,8 +211,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             id={checkboxId}
             type="checkbox"
             className={clsx(
-              'w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-600 cursor-pointer',
-              'focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2',
+              'w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-800 cursor-pointer',
+              'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
               'disabled:cursor-not-allowed disabled:opacity-50',
               className
             )}

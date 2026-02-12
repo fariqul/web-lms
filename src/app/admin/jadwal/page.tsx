@@ -186,7 +186,7 @@ export default function AdminJadwalPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -214,7 +214,7 @@ export default function AdminJadwalPage() {
               onClick={() => setSelectedDay(index + 1)}
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 selectedDay === index + 1
-                  ? 'bg-teal-500 text-white'
+                  ? 'bg-cyan-500 text-white'
                   : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
             >
@@ -270,7 +270,7 @@ export default function AdminJadwalPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-teal-100 text-teal-700 text-sm rounded-full">
+                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-sm rounded-full">
                             {schedule.subject}
                           </span>
                         </td>
@@ -293,7 +293,7 @@ export default function AdminJadwalPage() {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleEdit(schedule)}
-                              className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                               aria-label="Edit jadwal"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -333,7 +333,7 @@ export default function AdminJadwalPage() {
                   <select
                     value={formData.day_of_week}
                     onChange={(e) => setFormData({ ...formData, day_of_week: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     required
                   >
                     {DAYS.map((day, index) => (
@@ -348,7 +348,7 @@ export default function AdminJadwalPage() {
                     <select
                       value={formData.class_id}
                       onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     >
                       <option value="">Pilih Kelas</option>
@@ -371,7 +371,7 @@ export default function AdminJadwalPage() {
                   <select
                     value={formData.teacher_id}
                     onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     required
                   >
                     <option value="">Pilih Guru</option>
@@ -394,7 +394,7 @@ export default function AdminJadwalPage() {
                     <select
                       value={formData.start_time}
                       onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     >
                       <option value="">Pilih Waktu</option>
@@ -408,7 +408,7 @@ export default function AdminJadwalPage() {
                     <select
                       value={formData.end_time}
                       onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       required
                     >
                       <option value="">Pilih Waktu</option>

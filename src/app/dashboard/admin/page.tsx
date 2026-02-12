@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -140,9 +140,9 @@ export default function AdminDashboard() {
       case 'attendance':
         return { icon: <FolderOpen className="w-4 h-4" />, color: 'bg-yellow-100 text-yellow-600' };
       case 'exam':
-        return { icon: <FileEdit className="w-4 h-4" />, color: 'bg-orange-100 text-orange-600' };
+        return { icon: <FileEdit className="w-4 h-4" />, color: 'bg-orange-100 text-orange-500' };
       default:
-        return { icon: <UserPlus className="w-4 h-4" />, color: 'bg-teal-50 text-teal-600' };
+        return { icon: <UserPlus className="w-4 h-4" />, color: 'bg-cyan-50 text-cyan-500' };
     }
   };
 
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
               action={
                 <Link
                   href="/admin/statistik"
-                  className="text-orange-600 text-sm font-medium hover:underline flex items-center gap-1"
+                  className="text-sky-500 text-sm font-medium hover:underline flex items-center gap-1"
                 >
                   Lihat Selengkapnya
                   <ChevronRight className="w-4 h-4" />
@@ -284,13 +284,13 @@ export default function AdminDashboard() {
             />
             <div className="flex items-center justify-center">
               <div className="text-center">
-                <p className="text-4xl font-bold text-teal-600">{stats.totalStudents}</p>
+                <p className="text-4xl font-bold text-blue-800">{stats.totalStudents}</p>
                 <p className="text-sm text-slate-500">Total Siswa Terdaftar</p>
                 <div className="flex gap-1 mt-2 justify-center">
                   {[35, 28, 42, 30, 45, 38, 32].map((height, i) => (
                     <div
                       key={i}
-                      className="w-3 bg-gradient-to-t from-teal-300 to-teal-500 rounded"
+                      className="w-3 bg-gradient-to-t from-blue-300 to-blue-600 rounded"
                       style={{ height: `${height}px` }}
                     />
                   ))}
@@ -334,9 +334,9 @@ export default function AdminDashboard() {
             
             {/* Summary Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{teacherRecap.summary.total_teachers_scheduled}</p>
-                <p className="text-sm text-teal-700 dark:text-teal-300">Guru Terjadwal</p>
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-blue-800 dark:text-blue-400">{teacherRecap.summary.total_teachers_scheduled}</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">Guru Terjadwal</p>
               </div>
               <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">{teacherRecap.summary.teachers_teaching}</p>
@@ -371,7 +371,7 @@ export default function AdminDashboard() {
                       onClick={() => setExpandedTeacher(
                         expandedTeacher === teacher.teacher_id ? null : teacher.teacher_id
                       )}
-                      className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset rounded-lg"
+                      className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${

@@ -177,7 +177,7 @@ export default function ProgressPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -241,7 +241,7 @@ export default function ProgressPage() {
 
         {loadingReport && (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
           </div>
         )}
 
@@ -252,8 +252,8 @@ export default function ProgressPage() {
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-sky-500" />
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Jumlah Siswa</p>
@@ -263,8 +263,8 @@ export default function ProgressPage() {
               </Card>
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-sky-500" />
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Rata-rata Kelas</p>
@@ -386,12 +386,12 @@ export default function ProgressPage() {
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Card className="p-4 text-center">
-                <GraduationCap className="w-6 h-6 text-teal-500 mx-auto mb-2" />
+                <GraduationCap className="w-6 h-6 text-sky-500 mx-auto mb-2" />
                 <p className={`text-2xl font-bold ${getScoreColor(Number(studentReport.summary.average_score ?? 0))}`}>{Number(studentReport.summary.average_score ?? 0).toFixed(1)}</p>
                 <p className="text-xs text-slate-500">Rata-rata Nilai</p>
               </Card>
               <Card className="p-4 text-center">
-                <ClipboardList className="w-6 h-6 text-teal-500 mx-auto mb-2" />
+                <ClipboardList className="w-6 h-6 text-sky-500 mx-auto mb-2" />
                 <p className="text-2xl font-bold text-slate-900">{Number(studentReport.summary.attendance_rate ?? 0).toFixed(0)}%</p>
                 <p className="text-xs text-slate-500">Kehadiran</p>
               </Card>
@@ -432,7 +432,7 @@ export default function ProgressPage() {
                           </td>
                           <td className="py-3 px-4">{sa.count}</td>
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 text-green-700' : Number(sa.average) >= 80 ? 'bg-teal-50 text-teal-700' : Number(sa.average) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 text-green-700' : Number(sa.average) >= 80 ? 'bg-sky-50 text-sky-700' : Number(sa.average) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
                               {Number(sa.average) >= 90 ? 'A' : Number(sa.average) >= 80 ? 'B' : Number(sa.average) >= 70 ? 'C' : 'D'}
                             </span>
                           </td>
@@ -456,8 +456,8 @@ export default function ProgressPage() {
                   <p className="text-lg font-bold text-green-600">{studentReport.attendance_summary.hadir}</p>
                   <p className="text-xs text-slate-500">Hadir</p>
                 </div>
-                <div className="text-center p-3 bg-teal-50 rounded-lg">
-                  <p className="text-lg font-bold text-teal-600">{studentReport.attendance_summary.izin}</p>
+                <div className="text-center p-3 bg-sky-50 rounded-lg">
+                  <p className="text-lg font-bold text-sky-500">{studentReport.attendance_summary.izin}</p>
                   <p className="text-xs text-slate-500">Izin</p>
                 </div>
                 <div className="text-center p-3 bg-yellow-50 rounded-lg">

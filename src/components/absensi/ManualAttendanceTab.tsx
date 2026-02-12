@@ -29,7 +29,7 @@ interface StudentStatus {
 
 const statusOptions = [
   { value: 'hadir', label: 'Hadir', color: 'bg-green-100 text-green-700 border-green-300' },
-  { value: 'izin', label: 'Izin', color: 'bg-teal-50 text-teal-700 border-teal-300' },
+  { value: 'izin', label: 'Izin', color: 'bg-sky-50 text-sky-700 border-sky-300' },
   { value: 'sakit', label: 'Sakit', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
   { value: 'alpha', label: 'Alpa', color: 'bg-red-100 text-red-700 border-red-300' },
 ];
@@ -218,7 +218,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
             {loading && (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
               </div>
             )}
 
@@ -244,9 +244,9 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                     <p className="text-xl font-bold text-green-600">{summary.hadir}</p>
                     <p className="text-xs text-green-700">Hadir</p>
                   </div>
-                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-center">
-                    <p className="text-xl font-bold text-teal-600">{summary.izin}</p>
-                    <p className="text-xs text-teal-700">Izin</p>
+                  <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-sky-500">{summary.izin}</p>
+                    <p className="text-xs text-sky-700">Izin</p>
                   </div>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                     <p className="text-xl font-bold text-yellow-600">{summary.sakit}</p>
@@ -266,7 +266,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                     placeholder="Cari nama siswa…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -301,7 +301,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                                   currentStatus === opt.value
                                     ? `${opt.color} ring-2 ring-offset-1 ${
                                         opt.value === 'hadir' ? 'ring-green-400' :
-                                        opt.value === 'izin' ? 'ring-teal-400' :
+                                        opt.value === 'izin' ? 'ring-blue-400' :
                                         opt.value === 'sakit' ? 'ring-yellow-400' :
                                         'ring-red-400'
                                       }`
@@ -368,7 +368,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
             </p>
             <div className="flex justify-center gap-4 mb-6">
               <span className="text-green-600 font-medium">{summary.hadir} Hadir</span>
-              <span className="text-teal-600 font-medium">{summary.izin} Izin</span>
+              <span className="text-sky-500 font-medium">{summary.izin} Izin</span>
               <span className="text-yellow-600 font-medium">{summary.sakit} Sakit</span>
               <span className="text-red-600 font-medium">{summary.alpha} Alpa</span>
             </div>

@@ -67,7 +67,7 @@ export default function MateriSiswaPage() {
       case 'video':
         return <Play className="w-5 h-5 text-red-500" />;
       case 'document':
-        return <FileText className="w-5 h-5 text-teal-500" />;
+        return <FileText className="w-5 h-5 text-sky-500" />;
       case 'link':
         return <LinkIcon className="w-5 h-5 text-green-500" />;
       default:
@@ -87,7 +87,7 @@ export default function MateriSiswaPage() {
   const getTypeBg = (type: string) => {
     switch (type) {
       case 'video': return 'bg-red-100';
-      case 'document': return 'bg-teal-50';
+      case 'document': return 'bg-sky-50';
       case 'link': return 'bg-green-100';
       default: return 'bg-slate-100';
     }
@@ -97,7 +97,7 @@ export default function MateriSiswaPage() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
         </div>
       </DashboardLayout>
     );
@@ -115,8 +115,8 @@ export default function MateriSiswaPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-teal-600" />
+              <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-sky-500" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Materi</p>
@@ -161,13 +161,13 @@ export default function MateriSiswaPage() {
               placeholder="Cari materi…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           >
             <option value="all">Semua Mata Pelajaran</option>
             {subjects.filter(s => s !== 'all').map(subject => (
@@ -198,7 +198,7 @@ export default function MateriSiswaPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-4">
-                  <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                  <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                     {material.subject}
                   </span>
                   <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
@@ -218,7 +218,7 @@ export default function MateriSiswaPage() {
                 </div>
 
                 <button
-                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-blue-800 transition-colors"
                   onClick={async () => {
                     if (material.file_url) {
                       if (material.type === 'link') {

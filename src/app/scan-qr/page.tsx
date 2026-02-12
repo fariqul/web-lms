@@ -333,7 +333,7 @@ export default function ScanQRPage() {
                     value={manualToken}
                     onChange={(e) => setManualToken(e.target.value)}
                     placeholder="Masukkan token dari QR…"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     disabled={status === 'processing'}
                     name="manualToken"
                     autoComplete="off"
@@ -382,25 +382,25 @@ export default function ScanQRPage() {
           <CardHeader title="Petunjuk" />
           <ul className="space-y-2 text-sm text-slate-600">
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
                 1
               </span>
               <span>Pastikan Anda berada di dalam ruangan kelas</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
                 2
               </span>
               <span>Klik <strong>&quot;Mulai Scan QR Code&quot;</strong> untuk mengaktifkan kamera</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
                 3
               </span>
               <span>Arahkan kamera ke QR Code yang ditampilkan guru</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
                 4
               </span>
               <span>QR Code akan otomatis ter-scan dan absensi langsung tercatat</span>

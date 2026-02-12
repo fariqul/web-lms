@@ -25,7 +25,7 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
       className={clsx(
         'bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]',
         paddingClasses[padding],
-        onClick && 'cursor-pointer text-left w-full hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-[var(--shadow-md)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 active:scale-[0.99]',
+        onClick && 'cursor-pointer text-left w-full hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-[var(--shadow-md)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.99]',
         className
       )}
     >
@@ -66,11 +66,11 @@ interface StatCardProps {
 
 export function StatCard({ value, label, icon, color = 'blue', trend }: StatCardProps) {
   const colorClasses = {
-    blue: 'from-sky-500 to-teal-600',
-    green: 'from-emerald-500 to-teal-600',
-    orange: 'from-amber-500 to-orange-600',
-    red: 'from-rose-500 to-red-600',
-    teal: 'from-teal-500 to-emerald-600',
+    blue: 'from-blue-800 to-blue-900',
+    green: 'from-emerald-500 to-emerald-600',
+    orange: 'from-orange-400 to-orange-500',
+    red: 'from-red-500 to-red-600',
+    teal: 'from-cyan-500 to-cyan-600',
     purple: 'from-violet-500 to-purple-600',
   };
 
@@ -112,12 +112,12 @@ export function QuickActionCard({
   const colorClasses = {
     blue: 'bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-100 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-900 dark:hover:bg-sky-900/50',
     green: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900 dark:hover:bg-emerald-900/50',
-    orange: 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900 dark:hover:bg-amber-900/50',
-    teal: 'bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-100 dark:bg-teal-950/50 dark:text-teal-400 dark:border-teal-900 dark:hover:bg-teal-900/50',
+    orange: 'bg-orange-50 text-orange-500 hover:bg-orange-100 border border-orange-100 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-900 dark:hover:bg-orange-900/50',
+    teal: 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900 dark:hover:bg-blue-900/50',
   };
 
   const sharedClasses = clsx(
-    'flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 active:scale-[0.97]',
+    'flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.97]',
     colorClasses[color]
   );
 
@@ -167,7 +167,7 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
     green: 'bg-green-100 text-green-700',
     red: 'bg-red-100 text-red-700',
     yellow: 'bg-yellow-100 text-yellow-700',
-    blue: 'bg-teal-50 text-teal-700',
+    blue: 'bg-sky-50 text-sky-700',
   };
 
   return (
@@ -176,7 +176,7 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
         <div
           className={clsx(
             'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-            iconColor || 'bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400'
+            iconColor || 'bg-sky-50 text-sky-500 dark:bg-sky-950/50 dark:text-sky-400'
           )}
         >
           {icon}

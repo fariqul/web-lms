@@ -59,7 +59,7 @@ export function QuestionFormModal({
               onChange={(e) => onFormChange({ ...formData, question: e.target.value })}
               placeholder="Tuliskan pertanyaan…"
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               required
             />
           </div>
@@ -69,7 +69,7 @@ export function QuestionFormModal({
               <select
                 value={formData.type}
                 onChange={(e) => onFormChange({ ...formData, type: e.target.value as 'pilihan_ganda' | 'essay' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               >
                 <option value="pilihan_ganda">Pilihan Ganda</option>
                 <option value="essay">Essay</option>
@@ -80,7 +80,7 @@ export function QuestionFormModal({
               <select
                 value={formData.difficulty}
                 onChange={(e) => onFormChange({ ...formData, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               >
                 <option value="mudah">Mudah</option>
                 <option value="sedang">Sedang</option>
@@ -94,7 +94,7 @@ export function QuestionFormModal({
               <select
                 value={formData.subject}
                 onChange={(e) => onFormChange({ ...formData, subject: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 required
               >
                 <option value="">Pilih Mata Pelajaran</option>
@@ -108,7 +108,7 @@ export function QuestionFormModal({
               <select
                 value={formData.grade_level}
                 onChange={(e) => onFormChange({ ...formData, grade_level: e.target.value as '10' | '11' | '12' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 required
               >
                 <option value="10">Kelas 10</option>
@@ -122,7 +122,7 @@ export function QuestionFormModal({
             <select
               value={formData.class_id}
               onChange={(e) => onFormChange({ ...formData, class_id: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="">Semua Kelas</option>
               {classes.map(c => (
@@ -150,7 +150,7 @@ export function QuestionFormModal({
                           onFormChange({ ...formData, options: newOptions });
                         }}
                         placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
-                        className="flex-1 px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                        className="flex-1 px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     </div>
                   ))}
@@ -161,7 +161,7 @@ export function QuestionFormModal({
                 <select
                   value={formData.correct_answer}
                   onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   required
                 >
                   <option value="">Pilih jawaban benar</option>
@@ -183,7 +183,7 @@ export function QuestionFormModal({
                 onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
                 placeholder="Tuliskan kunci jawaban atau pedoman penilaian…"
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
           )}
@@ -195,7 +195,7 @@ export function QuestionFormModal({
               onChange={(e) => onFormChange({ ...formData, explanation: e.target.value })}
               placeholder="Tuliskan pembahasan untuk soal ini…"
               rows={2}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
 

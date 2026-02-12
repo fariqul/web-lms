@@ -204,7 +204,7 @@ export default function DeviceApprovalPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+          <Loader2 className="w-8 h-8 text-sky-500 animate-spin" />
         </div>
       </DashboardLayout>
     );
@@ -282,14 +282,14 @@ export default function DeviceApprovalPage() {
               onClick={() => setFilter(tab.key as typeof filter)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 filter === tab.key
-                  ? 'border-teal-500 text-teal-600'
+                  ? 'border-blue-500 text-sky-500'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab.label}
               {tab.count > 0 && (
                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  filter === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600'
+                  filter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'
                 }`}>
                   {tab.count}
                 </span>

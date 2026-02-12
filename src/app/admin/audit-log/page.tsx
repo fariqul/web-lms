@@ -30,19 +30,19 @@ interface AuditLog {
 
 const actionLabels: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   'user.create': { label: 'Buat User', color: 'bg-green-100 text-green-700', icon: UserPlus },
-  'user.update': { label: 'Edit User', color: 'bg-teal-50 text-teal-700', icon: Edit },
+  'user.update': { label: 'Edit User', color: 'bg-sky-50 text-sky-700', icon: Edit },
   'user.delete': { label: 'Hapus User', color: 'bg-red-100 text-red-700', icon: UserMinus },
   'user.reset_password': { label: 'Reset Password', color: 'bg-yellow-100 text-yellow-700', icon: Key },
   'class.create': { label: 'Buat Kelas', color: 'bg-green-100 text-green-700', icon: UserPlus },
-  'class.update': { label: 'Edit Kelas', color: 'bg-teal-50 text-teal-700', icon: Edit },
+  'class.update': { label: 'Edit Kelas', color: 'bg-sky-50 text-sky-700', icon: Edit },
   'class.delete': { label: 'Hapus Kelas', color: 'bg-red-100 text-red-700', icon: Trash2 },
   'exam.create': { label: 'Buat Ujian', color: 'bg-green-100 text-green-700', icon: FileText },
-  'exam.update': { label: 'Edit Ujian', color: 'bg-teal-50 text-teal-700', icon: Edit },
+  'exam.update': { label: 'Edit Ujian', color: 'bg-sky-50 text-sky-700', icon: Edit },
   'exam.delete': { label: 'Hapus Ujian', color: 'bg-red-100 text-red-700', icon: Trash2 },
-  'attendance.start': { label: 'Mulai Absensi', color: 'bg-teal-100 text-teal-700', icon: Clock },
+  'attendance.start': { label: 'Mulai Absensi', color: 'bg-sky-100 text-sky-700', icon: Clock },
   'attendance.close': { label: 'Tutup Absensi', color: 'bg-slate-100 text-slate-600', icon: Clock },
   'settings.update': { label: 'Ubah Pengaturan', color: 'bg-purple-100 text-purple-700', icon: Settings },
-  'login': { label: 'Login', color: 'bg-teal-50 text-teal-700', icon: Key },
+  'login': { label: 'Login', color: 'bg-sky-50 text-sky-700', icon: Key },
   'logout': { label: 'Logout', color: 'bg-slate-100 text-slate-600', icon: Key },
 };
 
@@ -173,7 +173,7 @@ export default function AuditLogPage() {
                 placeholder="Cari…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-sm"
+                className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                 aria-label="Cari audit log"
                 name="searchAudit"
               />
@@ -198,7 +198,7 @@ export default function AuditLogPage() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 aria-label="Dari tanggal"
                 name="dateFrom"
               />
@@ -208,7 +208,7 @@ export default function AuditLogPage() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 aria-label="Sampai tanggal"
                 name="dateTo"
               />
@@ -224,7 +224,7 @@ export default function AuditLogPage() {
           />
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-12">
