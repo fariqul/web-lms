@@ -77,9 +77,11 @@ export default function SiswaBankSoalPage() {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [showModeSelection, setShowModeSelection] = useState(false);
   const [subjectCounts, setSubjectCounts] = useState<Record<string, number>>({});
+  const [practiceStats, setPracticeStats] = useState({ total_practices: 0, total_time_spent: 0, average_score: 0 });
 
   useEffect(() => {
     fetchSubjectStats();
+    fetchPracticeStats();
   }, [selectedGrade]);
 
   const fetchSubjectStats = async () => {
@@ -98,6 +100,28 @@ export default function SiswaBankSoalPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPracticeStats = async () => {
+    try {
+      const response = await bankQuestionAPI.getPracticeStats();
+      const data = response.data?.data;
+      if (data) {
+        setPracticeStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch practice stats:', error);
+    }
+  };
+
+  const formatStudyTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds} detik`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} menit`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes === 0) return `${hours} jam`;
+    return `${hours} jam ${remainingMinutes} menit`;
   };
 
   const handleSubjectClick = (subjectId: string) => {
@@ -198,7 +222,7 @@ export default function SiswaBankSoalPage() {
               </div>
               <div>
                 <p className="text-teal-100 text-sm">Total Latihan</p>
-                <p className="text-2xl font-bold">128</p>
+                <p className="text-2xl font-bold">{practiceStats.total_practices}</p>
               </div>
             </div>
           </Card>
@@ -209,7 +233,7 @@ export default function SiswaBankSoalPage() {
               </div>
               <div>
                 <p className="text-blue-100 text-sm">Waktu Belajar</p>
-                <p className="text-2xl font-bold">24 jam</p>
+                <p className="text-2xl font-bold">{formatStudyTime(practiceStats.total_time_spent)}</p>
               </div>
             </div>
           </Card>
@@ -220,7 +244,7 @@ export default function SiswaBankSoalPage() {
               </div>
               <div>
                 <p className="text-purple-100 text-sm">Rata-rata Nilai</p>
-                <p className="text-2xl font-bold">78.5</p>
+                <p className="text-2xl font-bold">{practiceStats.average_score}</p>
               </div>
             </div>
           </Card>

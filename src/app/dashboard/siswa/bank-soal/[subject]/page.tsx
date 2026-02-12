@@ -55,6 +55,8 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
   const [timeLeft, setTimeLeft] = useState(mode === 'tryout' ? 600 : 0); // 10 minutes for tryout
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [startTime] = useState(() => Date.now());
+  const [resultSaved, setResultSaved] = useState(false);
 
   // Get subject name from URL (decode it since it's URL encoded)
   const decodedSubject = decodeURIComponent(subject);
@@ -175,6 +177,34 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     setIsFinished(true);
   };
 
+  // Save practice result when finished
+  useEffect(() => {
+    if (!isFinished || resultSaved || questions.length === 0) return;
+    
+    const savePracticeResult = async () => {
+      const correct = answers.filter(a => a.isCorrect === true).length;
+      const score = Math.round((correct / questions.length) * 100);
+      const timeSpent = Math.round((Date.now() - startTime) / 1000);
+      
+      try {
+        await bankQuestionAPI.savePracticeResult({
+          subject: decodedSubject,
+          grade_level: grade,
+          mode: mode as 'tryout' | 'belajar',
+          total_questions: questions.length,
+          correct_answers: correct,
+          score,
+          time_spent: timeSpent,
+        });
+        setResultSaved(true);
+      } catch (err) {
+        console.error('Failed to save practice result:', err);
+      }
+    };
+    
+    savePracticeResult();
+  }, [isFinished]);
+
   const handleBookmark = () => {
     setAnswers(prev => prev.map((a, i) => 
       i === currentIndex 
@@ -193,6 +223,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     })));
     setShowExplanation(false);
     setIsFinished(false);
+    setResultSaved(false);
     setTimeLeft(mode === 'tryout' ? 600 : 0);
   };
 

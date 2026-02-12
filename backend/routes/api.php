@@ -175,6 +175,8 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Bank Soal for Students (practice)
         Route::get('/bank-questions/subjects', [BankQuestionController::class, 'subjects']);
         Route::get('/bank-questions/practice', [BankQuestionController::class, 'forStudents']);
+        Route::post('/bank-questions/practice-result', [BankQuestionController::class, 'savePracticeResult']);
+        Route::get('/bank-questions/practice-stats', [BankQuestionController::class, 'practiceStats']);
     });
 
     // ============================================

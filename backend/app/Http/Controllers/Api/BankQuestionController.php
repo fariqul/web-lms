@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\BankQuestion;
+use App\Models\PracticeResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BankQuestionController extends Controller
 {
@@ -289,5 +291,61 @@ class BankQuestionController extends Controller
             'message' => 'Soal berhasil diduplikasi',
             'data' => $duplicate,
         ], 201);
+    }
+
+    /**
+     * Save practice result for a student
+     */
+    public function savePracticeResult(Request $request)
+    {
+        $request->validate([
+            'subject' => 'required|string|max:100',
+            'grade_level' => 'required|in:10,11,12',
+            'mode' => 'required|in:tryout,belajar',
+            'total_questions' => 'required|integer|min:1',
+            'correct_answers' => 'required|integer|min:0',
+            'score' => 'required|numeric|min:0|max:100',
+            'time_spent' => 'required|integer|min:0',
+        ]);
+
+        $result = PracticeResult::create([
+            'student_id' => Auth::id(),
+            'subject' => $request->subject,
+            'grade_level' => $request->grade_level,
+            'mode' => $request->mode,
+            'total_questions' => $request->total_questions,
+            'correct_answers' => $request->correct_answers,
+            'score' => $request->score,
+            'time_spent' => $request->time_spent,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hasil latihan berhasil disimpan',
+            'data' => $result,
+        ], 201);
+    }
+
+    /**
+     * Get practice stats for the current student
+     */
+    public function practiceStats()
+    {
+        $studentId = Auth::id();
+
+        $stats = PracticeResult::where('student_id', $studentId)
+            ->selectRaw('COUNT(*) as total_practices')
+            ->selectRaw('COALESCE(SUM(time_spent), 0) as total_time_spent')
+            ->selectRaw('COALESCE(ROUND(AVG(score), 1), 0) as average_score')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_practices' => (int) $stats->total_practices,
+                'total_time_spent' => (int) $stats->total_time_spent,
+                'average_score' => (float) $stats->average_score,
+            ],
+        ]);
     }
 }

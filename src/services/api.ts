@@ -541,6 +541,20 @@ export const bankQuestionAPI = {
   
   getPracticeQuestions: (params: { subject: string; grade_level?: string; difficulty?: string; limit?: number }) =>
     api.get('/bank-questions/practice', { params }),
+
+  savePracticeResult: (data: {
+    subject: string;
+    grade_level: string;
+    mode: 'tryout' | 'belajar';
+    total_questions: number;
+    correct_answers: number;
+    score: number;
+    time_spent: number;
+  }) =>
+    api.post('/bank-questions/practice-result', data),
+
+  getPracticeStats: () =>
+    api.get('/bank-questions/practice-stats'),
 };
 
 // PDF Import API
