@@ -120,9 +120,13 @@ export default function ExportPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Export Data</h1>
-          <p className="text-slate-600 dark:text-slate-400">Ekspor data nilai, absensi, dan rapor ke Excel atau PDF</p>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative">
+            <h1 className="text-2xl font-bold text-white">Export Data</h1>
+            <p className="text-slate-300/80">Ekspor data nilai, absensi, dan rapor ke Excel atau PDF</p>
+          </div>
         </div>
 
         {/* Export Type Selection */}

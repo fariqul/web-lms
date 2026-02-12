@@ -145,21 +145,25 @@ export default function AuditLogPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Shield className="w-7 h-7 text-orange-500" />
-              Audit Log
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400">Riwayat semua aktifitas dan perubahan di sistem</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => fetchLogs(currentPage)}>
-              <RefreshCw className="w-4 h-4 mr-2" />Refresh
-            </Button>
-            <Button variant="outline" onClick={handleExportCSV}>
-              <Download className="w-4 h-4 mr-2" />Export CSV
-            </Button>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative flex flex-col sm:flex-row justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Shield className="w-7 h-7 text-orange-400" />
+                Audit Log
+              </h1>
+              <p className="text-slate-300/80">Riwayat semua aktifitas dan perubahan di sistem</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => fetchLogs(currentPage)} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <RefreshCw className="w-4 h-4 mr-2" />Refresh
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Download className="w-4 h-4 mr-2" />Export CSV
+              </Button>
+            </div>
           </div>
         </div>
 

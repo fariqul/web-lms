@@ -137,9 +137,13 @@ export default function UjianSiswaPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ujian Saya</h1>
-          <p className="text-slate-600 dark:text-slate-400">Daftar ujian yang tersedia untuk Anda</p>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative">
+            <h1 className="text-2xl font-bold text-white">Ujian Saya</h1>
+            <p className="text-blue-100/80">Daftar ujian yang tersedia untuk Anda</p>
+          </div>
         </div>
 
         {loading ? (

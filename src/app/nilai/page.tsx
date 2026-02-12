@@ -215,20 +215,24 @@ export default function NilaiPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nilai Siswa</h1>
-            <p className="text-slate-600 dark:text-slate-400">Lihat dan kelola nilai ujian & tugas siswa</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => window.print()} className="print:hidden">
-              <Printer className="w-5 h-5 mr-2" />
-              Cetak
-            </Button>
-            <Button variant="outline" className="print:hidden">
-              <Download className="w-5 h-5 mr-2" />
-              Export Nilai
-            </Button>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative flex flex-col sm:flex-row justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Nilai Siswa</h1>
+              <p className="text-blue-100/80">Lihat dan kelola nilai ujian & tugas siswa</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => window.print()} className="print:hidden bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Printer className="w-5 h-5 mr-2" />
+                Cetak
+              </Button>
+              <Button variant="outline" className="print:hidden bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Download className="w-5 h-5 mr-2" />
+                Export Nilai
+              </Button>
+            </div>
           </div>
         </div>
 

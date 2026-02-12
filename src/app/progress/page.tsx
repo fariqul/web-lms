@@ -187,21 +187,25 @@ export default function ProgressPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Laporan Progress Siswa</h1>
-            <p className="text-slate-600 dark:text-slate-400">Rapor dan analisis nilai per semester</p>
-          </div>
-          <div className="flex gap-2 print:hidden">
-            <Button variant="outline" onClick={() => window.print()}>
-              <Printer className="w-4 h-4 mr-2" />Cetak
-            </Button>
-            <Button variant="outline" onClick={() => handleExport('xlsx')} disabled={exporting || (!classReport && !studentReport)}>
-              <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor…' : 'Excel'}
-            </Button>
-            <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exporting || (!classReport && !studentReport)}>
-              <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor…' : 'PDF'}
-            </Button>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative flex flex-col sm:flex-row justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Laporan Progress Siswa</h1>
+              <p className="text-blue-100/80">Rapor dan analisis nilai per semester</p>
+            </div>
+            <div className="flex gap-2 print:hidden">
+              <Button variant="outline" onClick={() => window.print()} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Printer className="w-4 h-4 mr-2" />Cetak
+              </Button>
+              <Button variant="outline" onClick={() => handleExport('xlsx')} disabled={exporting || (!classReport && !studentReport)} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor…' : 'Excel'}
+              </Button>
+              <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exporting || (!classReport && !studentReport)} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor…' : 'PDF'}
+              </Button>
+            </div>
           </div>
         </div>
 

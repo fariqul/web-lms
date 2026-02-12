@@ -214,35 +214,40 @@ export default function DeviceApprovalPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/absensi">
-              <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-              </button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Persetujuan Perangkat</h1>
-              <p className="text-slate-600 dark:text-slate-400">Kelola permintaan pindah perangkat dari siswa</p>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/absensi">
+                <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-white/80" />
+                </button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Persetujuan Perangkat</h1>
+                <p className="text-blue-100/80">Kelola permintaan pindah perangkat dari siswa</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Real-time connection indicator */}
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
-              isConnected 
-                ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`} />
-              {isConnected ? 'Real-time aktif' : 'Offline'}
+            <div className="flex items-center gap-3">
+              {/* Real-time connection indicator */}
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                isConnected 
+                  ? 'bg-green-500/20 text-green-100 border border-green-400/30' 
+                  : 'bg-white/10 text-white/70 border border-white/20'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-white/50'}`} />
+                {isConnected ? 'Real-time aktif' : 'Offline'}
+              </div>
+              <Button
+                onClick={fetchRequests}
+                variant="outline"
+                leftIcon={<RefreshCw className="w-4 h-4" />}
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white"
+              >
+                Refresh
+              </Button>
             </div>
-            <Button
-              onClick={fetchRequests}
-              variant="outline"
-              leftIcon={<RefreshCw className="w-4 h-4" />}
-            >
-              Refresh
-            </Button>
           </div>
         </div>
 

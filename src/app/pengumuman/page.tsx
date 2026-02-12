@@ -172,17 +172,21 @@ export default function PengumumanPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pengumuman</h1>
-            <p className="text-slate-600 dark:text-slate-400">Informasi dan pengumuman terbaru</p>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Pengumuman</h1>
+              <p className="text-blue-100/80">Informasi dan pengumuman terbaru</p>
+            </div>
+            {canCreate && (
+              <Button onClick={() => handleOpenModal()} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Buat Pengumuman
+              </Button>
+            )}
           </div>
-          {canCreate && (
-            <Button onClick={() => handleOpenModal()}>
-              <Plus className="w-4 h-4 mr-2" />
-              Buat Pengumuman
-            </Button>
-          )}
         </div>
 
         {/* Announcements List */}
