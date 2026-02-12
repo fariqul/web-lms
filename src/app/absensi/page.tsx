@@ -702,7 +702,7 @@ export default function AbsensiPage() {
                   />
                 ) : (
                   <div className="text-center py-8 text-slate-500">
-                    <QrCode className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                    <QrCode className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                     <p>Belum ada siswa yang absen</p>
                     <p className="text-sm text-slate-400 mt-1">Siswa dapat scan QR code di atas untuk absen</p>
                   </div>

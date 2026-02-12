@@ -351,7 +351,7 @@ export default function ExamResultsPage() {
         <Card className="overflow-hidden">
           {filteredResults.length === 0 ? (
             <div className="p-8 text-center">
-              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">Belum ada hasil ujian</p>
               <p className="text-sm text-slate-400 mt-1">Hasil akan muncul setelah siswa mengerjakan ujian</p>
             </div>
@@ -443,7 +443,7 @@ export default function ExamResultsPage() {
                             </button>
                           </Link>
                         ) : (
-                          <span className="text-slate-300">—</span>
+                          <span className="text-slate-400 dark:text-slate-500">—</span>
                         )}
                       </td>
                     </tr>

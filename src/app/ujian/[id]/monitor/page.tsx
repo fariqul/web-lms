@@ -498,7 +498,7 @@ export default function MonitorUjianPage() {
                 {filteredParticipants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-500">
-                      <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                      <Users className="w-12 h-12 mx-auto mb-3 text-slate-400 dark:text-slate-600" />
                       <p>Tidak ada peserta dengan filter ini</p>
                     </td>
                   </tr>

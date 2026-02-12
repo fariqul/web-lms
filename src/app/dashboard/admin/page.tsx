@@ -254,8 +254,8 @@ export default function AdminDashboard() {
                         {icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-800 truncate">{activity.message}</p>
-                        <p className="text-xs text-slate-500">{activity.time}</p>
+                        <p className="text-sm text-slate-800 dark:text-slate-200 truncate">{activity.message}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{activity.time}</p>
                       </div>
                     </div>
                   );
@@ -384,8 +384,8 @@ export default function AdminDashboard() {
                           }`} />
                         </div>
                         <div className="text-left">
-                          <p className="font-medium text-slate-900">{teacher.teacher_name}</p>
-                          <p className="text-sm text-slate-500">
+                          <p className="font-medium text-slate-900 dark:text-white">{teacher.teacher_name}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
                             {teacher.taught}/{teacher.total_scheduled} jadwal terpenuhi
                           </p>
                         </div>
@@ -415,9 +415,9 @@ export default function AdminDashboard() {
                           <tbody>
                             {teacher.classes.map((cls, idx) => (
                               <tr key={idx} className="border-t border-slate-200">
-                                <td className="py-2 font-medium text-slate-900">{cls.class_name}</td>
-                                <td className="py-2 text-slate-700">{cls.subject}</td>
-                                <td className="py-2 text-slate-600">{cls.time}</td>
+                                <td className="py-2 font-medium text-slate-900 dark:text-white">{cls.class_name}</td>
+                                <td className="py-2 text-slate-700 dark:text-slate-300">{cls.subject}</td>
+                                <td className="py-2 text-slate-600 dark:text-slate-400">{cls.time}</td>
                                 <td className="py-2 text-center">
                                   <div className="flex items-center justify-center gap-2">
                                     {getClassStatusIcon(cls.status)}
@@ -441,8 +441,8 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="text-center py-8 text-slate-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                <p>Tidak ada jadwal guru untuk hari ini</p>
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="text-slate-500 dark:text-slate-400">Tidak ada jadwal guru untuk hari ini</p>
               </div>
             )}
           </Card>

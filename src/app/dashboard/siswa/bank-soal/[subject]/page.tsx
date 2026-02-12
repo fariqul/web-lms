@@ -277,7 +277,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
       <DashboardLayout>
         <div className="max-w-md mx-auto mt-12">
           <Card className="p-8 text-center">
-            <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <BookOpen className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-slate-900 mb-2">
               {error || 'Belum Ada Soal'}
             </h2>

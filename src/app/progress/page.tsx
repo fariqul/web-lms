@@ -511,7 +511,7 @@ export default function ProgressPage() {
         {/* Empty State */}
         {!classReport && !studentReport && !loadingReport && (
           <Card className="p-12 text-center">
-            <BarChart3 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <BarChart3 className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-500 mb-2">Pilih Kelas untuk Melihat Laporan</h3>
             <p className="text-sm text-slate-400">Gunakan filter di atas untuk menampilkan laporan progress siswa</p>
           </Card>

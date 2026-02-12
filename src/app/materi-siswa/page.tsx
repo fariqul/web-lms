@@ -179,7 +179,7 @@ export default function MateriSiswaPage() {
         {/* Materials List */}
         {filteredMaterials.length === 0 ? (
           <Card className="p-8 text-center">
-            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <p className="text-slate-500">Belum ada materi</p>
             <p className="text-sm text-slate-400 mt-1">Materi akan muncul setelah guru mengunggah</p>
           </Card>

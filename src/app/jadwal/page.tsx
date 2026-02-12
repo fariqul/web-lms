@@ -136,7 +136,7 @@ export default function JadwalPage() {
         {/* Schedule List */}
         {filteredSchedules.length === 0 ? (
           <Card className="p-8 text-center">
-            <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <p className="text-slate-500">Tidak ada jadwal untuk {DAYS[selectedDay - 1]}</p>
             <p className="text-sm text-slate-400 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
           </Card>
@@ -195,7 +195,7 @@ export default function JadwalPage() {
                     onClick={() => setSelectedDay(index + 1)}
                   >
                     <p className="text-xs font-medium text-slate-500">{day.slice(0, 3)}</p>
-                    <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-sky-500' : 'text-slate-300'}`}>
+                    <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-sky-500' : 'text-slate-400 dark:text-slate-600'}`}>
                       {daySchedules.length}
                     </p>
                     <p className="text-xs text-slate-400">mata pelajaran</p>

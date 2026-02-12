@@ -227,7 +227,7 @@ export default function AdminJadwalPage() {
         <Card className="overflow-hidden">
           {filteredSchedules.length === 0 ? (
             <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
               <p className="text-sm text-slate-400 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
             </div>

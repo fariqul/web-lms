@@ -181,7 +181,7 @@ export default function GuruDashboard() {
 
         {/* Notification Banner for Announcements */}
         {newAnnouncementsCount > 0 && (
-          <div className="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-sky-200 rounded-xl">
+          <div className="p-4 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30 border border-sky-200 dark:border-sky-800 rounded-xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-800 rounded-lg flex items-center justify-center">
                 <Megaphone className="w-5 h-5 text-white" />
@@ -271,8 +271,8 @@ export default function GuruDashboard() {
               </div>
             ) : (
               <div className="text-center py-8 text-slate-500">
-                <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                <p>Tidak ada jadwal hari ini</p>
+                <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="text-slate-500 dark:text-slate-400">Tidak ada jadwal hari ini</p>
               </div>
             )}
           </Card>
@@ -302,8 +302,8 @@ export default function GuruDashboard() {
             }
           />
           <div className="text-center py-8 text-slate-500">
-            <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-            <p>Belum ada hasil ujian</p>
+            <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+            <p className="text-slate-500 dark:text-slate-400">Belum ada hasil ujian</p>
             <Link href="/ujian" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
               Buat Ujian Pertama
             </Link>
@@ -340,13 +340,13 @@ export default function GuruDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-slate-900 truncate">{announcement.title}</p>
+                        <p className="font-medium text-slate-900 dark:text-white truncate">{announcement.title}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(announcement.priority)}`}>
                           {getPriorityLabel(announcement.priority)}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-500 line-clamp-1 mt-1">{announcement.content}</p>
-                      <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-1 mt-1">{announcement.content}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         {announcement.author?.name} • {formatAnnouncementDate(announcement.created_at)}
                       </p>
                     </div>
@@ -356,8 +356,8 @@ export default function GuruDashboard() {
             </div>
           ) : (
             <div className="text-center py-8 text-slate-500">
-              <Megaphone className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-              <p>Belum ada pengumuman</p>
+              <Megaphone className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+              <p className="text-slate-500 dark:text-slate-400">Belum ada pengumuman</p>
               <Link href="/pengumuman" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
                 Buat Pengumuman
               </Link>

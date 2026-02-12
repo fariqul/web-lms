@@ -262,7 +262,7 @@ export default function BankSoalPage() {
         <div className="space-y-4">
           {filteredQuestions.length === 0 ? (
             <Card className="p-8 text-center">
-              <HelpCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <HelpCircle className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">Belum ada soal</p>
               <p className="text-sm text-slate-400 mt-1">Klik tombol &quot;Tambah Soal&quot; untuk membuat soal baru</p>
             </Card>

@@ -130,7 +130,7 @@ export default function RiwayatAbsensiPage() {
           </div>
         ) : attendances.length === 0 ? (
           <Card className="p-12 text-center">
-            <ClipboardList className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <ClipboardList className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Riwayat</h3>
             <p className="text-slate-500">Riwayat absensi Anda akan muncul di sini</p>
           </Card>

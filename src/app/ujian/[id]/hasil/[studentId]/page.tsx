@@ -182,7 +182,7 @@ export default function HasilSiswaPage() {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
-          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-slate-900">Hasil tidak ditemukan</h2>
           <p className="text-slate-500 mt-2">Siswa belum mengerjakan ujian ini.</p>
           <Button className="mt-4" onClick={() => router.back()}>

@@ -362,7 +362,7 @@ export default function NilaiPage() {
         <Card className="overflow-hidden">
           {filteredGrades.length === 0 ? (
             <div className="p-8 text-center">
-              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">Belum ada data nilai</p>
               <p className="text-sm text-slate-400 mt-1">Nilai akan muncul setelah siswa mengerjakan ujian atau tugas</p>
             </div>

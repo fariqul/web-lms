@@ -318,7 +318,7 @@ export default function JaringanSekolahPage() {
 
           {networks.length === 0 ? (
             <div className="p-12 text-center">
-              <Wifi className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <Wifi className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">Belum ada jaringan yang dikonfigurasi</p>
               <p className="text-sm text-slate-400 mt-2">
                 Absensi dapat dilakukan dari mana saja jika tidak ada jaringan yang dikonfigurasi

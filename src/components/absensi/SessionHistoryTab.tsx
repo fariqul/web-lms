@@ -191,7 +191,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
           </div>
         ) : (
           <div className="text-center py-8 text-slate-500">
-            <History className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+            <History className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
             <p>Belum ada riwayat sesi absensi</p>
           </div>
         )}
@@ -312,7 +312,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
             </div>
           ) : (
             <div className="text-center py-8 text-slate-500">
-              <Users className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+              <Users className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
               <p>Tidak ada data siswa pada sesi ini</p>
             </div>
           )}

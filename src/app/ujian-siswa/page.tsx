@@ -148,7 +148,7 @@ export default function UjianSiswaPage() {
           </div>
         ) : exams.length === 0 ? (
           <Card className="p-12 text-center">
-            <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <GraduationCap className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Ujian</h3>
             <p className="text-slate-500">Saat ini belum ada ujian yang tersedia untuk Anda</p>
           </Card>

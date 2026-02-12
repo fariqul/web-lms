@@ -423,7 +423,7 @@ export default function TugasGuruPage() {
         <div className="space-y-4">
           {filteredAssignments.length === 0 ? (
             <Card className="p-8 text-center">
-              <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <ClipboardList className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">Belum ada tugas</p>
               <p className="text-sm text-slate-400 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
             </Card>
@@ -693,7 +693,7 @@ export default function TugasGuruPage() {
               <div className="flex-1 overflow-y-auto p-4">
                 {submissions.length === 0 ? (
                   <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <Users className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-500">Belum ada pengumpulan</p>
                   </div>
                 ) : (

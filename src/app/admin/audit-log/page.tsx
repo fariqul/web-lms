@@ -228,7 +228,7 @@ export default function AuditLogPage() {
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-12">
-              <Shield className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <Shield className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
               <p className="text-slate-500">Belum ada log aktifitas</p>
             </div>
           ) : (

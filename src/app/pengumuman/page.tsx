@@ -188,7 +188,7 @@ export default function PengumumanPage() {
         {/* Announcements List */}
         {announcements.length === 0 ? (
           <Card className="p-12 text-center">
-            <Bell className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <Bell className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Pengumuman</h3>
             <p className="text-slate-500">Pengumuman terbaru akan muncul di sini</p>
           </Card>

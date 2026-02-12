@@ -302,7 +302,7 @@ export default function DeviceApprovalPage() {
         {filteredRequests.length === 0 ? (
           <Card>
             <div className="text-center py-12">
-              <Smartphone className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <Smartphone className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-slate-900 mb-2">
                 {filter === 'pending' ? 'Tidak ada permintaan pending' : 'Tidak ada data'}
               </h3>

@@ -310,7 +310,7 @@ export default function TugasSiswaPage() {
         <div className="space-y-4">
           {filteredAssignments.length === 0 ? (
             <Card className="p-8 text-center">
-              <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <ClipboardList className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-500">
                 {activeTab === 'pending' && 'Tidak ada tugas yang perlu dikerjakan'}
                 {activeTab === 'submitted' && 'Tidak ada tugas yang menunggu nilai'}

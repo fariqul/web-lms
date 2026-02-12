@@ -240,7 +240,7 @@ export default function NilaiSiswaPage() {
 
             {examGrades.length === 0 ? (
               <div className="p-8 text-center">
-                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
                 <p className="text-slate-500">Belum ada riwayat nilai ujian</p>
               </div>
             ) : (
@@ -313,7 +313,7 @@ export default function NilaiSiswaPage() {
 
             {assignmentGrades.length === 0 ? (
               <div className="p-8 text-center">
-                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
                 <p className="text-slate-500">Belum ada riwayat nilai tugas</p>
               </div>
             ) : (

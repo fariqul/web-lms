@@ -371,7 +371,7 @@ export default function SiswaDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{action.label}</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">{action.sub}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{action.sub}</p>
               </div>
               {action.badge ? (
                 <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
@@ -384,40 +384,40 @@ export default function SiswaDashboard() {
 
         {/* ── Stats Strip ────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Kehadiran</p>
-              <p className="text-lg font-bold text-slate-900 tabular-nums">{attendancePct > 0 ? `${attendancePct}%` : '-'}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Kehadiran</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{attendancePct > 0 ? `${attendancePct}%` : '-'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
-            <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
-              <GraduationCap className="w-4.5 h-4.5 text-violet-600" />
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center">
+              <GraduationCap className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Ujian Selesai</p>
-              <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.completed_exams_count}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Ujian Selesai</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{stats.completed_exams_count}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Calendar className="w-4.5 h-4.5 text-blue-800" />
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
+              <Calendar className="w-4.5 h-4.5 text-blue-800 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Jadwal Hari Ini</p>
-              <p className="text-lg font-bold text-slate-900 tabular-nums">{todaySchedule.length}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Jadwal Hari Ini</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{todaySchedule.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
-            <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center">
-              <ClipboardList className="w-4.5 h-4.5 text-orange-500" />
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/50 flex items-center justify-center">
+              <ClipboardList className="w-4.5 h-4.5 text-orange-500 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Tugas Pending</p>
-              <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.pending_assignments_count}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Tugas Pending</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{stats.pending_assignments_count}</p>
             </div>
           </div>
         </div>
@@ -433,7 +433,7 @@ export default function SiswaDashboard() {
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900">Statistik Kehadiran</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Statistik Kehadiran</h3>
                 </div>
                 <Link href="/riwayat-absensi" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
                   Detail <ChevronRight className="w-3.5 h-3.5" />
@@ -484,10 +484,10 @@ export default function SiswaDashboard() {
                       )}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold text-slate-900 tabular-nums leading-none">
+                      <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums leading-none">
                         {attendancePct > 0 ? attendancePct : 0}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium">persen</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">persen</span>
                     </div>
                   </div>
 
@@ -501,8 +501,8 @@ export default function SiswaDashboard() {
                     ].map((item) => (
                       <div key={item.label} className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${item.color}`} />
-                        <span className="text-xs text-slate-500">{item.label}</span>
-                        <span className="text-xs font-semibold text-slate-700 ml-auto tabular-nums">{item.value}</span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400">{item.label}</span>
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 ml-auto tabular-nums">{item.value}</span>
                       </div>
                     ))}
                   </div>
@@ -515,7 +515,7 @@ export default function SiswaDashboard() {
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900">Hasil Ujian Terbaru</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Hasil Ujian Terbaru</h3>
                 </div>
                 <Link href="/nilai-siswa" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
                   Semua Nilai <ChevronRight className="w-3.5 h-3.5" />
@@ -537,11 +537,11 @@ export default function SiswaDashboard() {
                             {grade || '-'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 truncate">{exam.title}</p>
-                            <p className="text-[11px] text-slate-400">{exam.subject}</p>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{exam.title}</p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">{exam.subject}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-bold text-slate-900 tabular-nums">{exam.score ?? '-'}<span className="text-slate-300 font-normal">/{exam.max_score}</span></p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{exam.score ?? '-'}<span className="text-slate-400 dark:text-slate-500 font-normal">/{exam.max_score}</span></p>
                             <span className={`text-[10px] font-medium ${exam.status === 'Pass' ? 'text-emerald-600' : 'text-red-500'}`}>
                               {exam.status === 'Pass' ? 'Lulus' : 'Tidak Lulus'}
                             </span>
@@ -553,8 +553,8 @@ export default function SiswaDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8 px-5">
-                  <GraduationCap className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                  <p className="text-xs text-slate-400">Belum ada hasil ujian</p>
+                  <GraduationCap className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Belum ada hasil ujian</p>
                 </div>
               )}
             </Card>
@@ -564,7 +564,7 @@ export default function SiswaDashboard() {
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900">Tugas Belum Dikerjakan</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Tugas Belum Dikerjakan</h3>
                   {pendingAssignments.length > 0 && (
                     <span className="px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-md">
                       {pendingAssignments.length}
@@ -602,8 +602,8 @@ export default function SiswaDashboard() {
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">{assignment.title}</p>
-                          <p className="text-[11px] text-slate-400">{assignment.subject}</p>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{assignment.title}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{assignment.subject}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className={`text-[11px] font-semibold ${
@@ -611,7 +611,7 @@ export default function SiswaDashboard() {
                           }`}>
                             {isOverdue ? 'Terlambat' : deadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                           </p>
-                          <p className="text-[10px] text-slate-400">{formatEventTime(assignment.deadline)}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">{formatEventTime(assignment.deadline)}</p>
                         </div>
                       </div>
                     );
@@ -619,8 +619,8 @@ export default function SiswaDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8 px-5">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-emerald-200" />
-                  <p className="text-xs text-slate-400">Semua tugas selesai!</p>
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-emerald-300 dark:text-emerald-700" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Semua tugas selesai!</p>
                 </div>
               )}
             </Card>
@@ -634,7 +634,7 @@ export default function SiswaDashboard() {
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900">Jadwal Hari Ini</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Jadwal Hari Ini</h3>
                 </div>
                 <Link href="/jadwal" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
                   Semua <ChevronRight className="w-3.5 h-3.5" />
@@ -656,7 +656,7 @@ export default function SiswaDashboard() {
                           <p className={`text-xs font-bold tabular-nums ${status === 'inprogress' ? 'text-sky-700' : 'text-slate-700'}`}>
                             {formatTime(item.start_time)}
                           </p>
-                          <p className="text-[10px] text-slate-400 tabular-nums">{formatTime(item.end_time)}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">{formatTime(item.end_time)}</p>
                         </div>
                         <div className={`w-0.5 h-8 rounded-full flex-shrink-0 ${
                           status === 'inprogress' ? 'bg-sky-500' :
@@ -667,14 +667,14 @@ export default function SiswaDashboard() {
                             {item.subject}
                           </p>
                           {item.room && (
-                            <p className="text-[10px] text-slate-400">{item.room}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">{item.room}</p>
                           )}
                         </div>
                         {status === 'inprogress' && (
                           <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse flex-shrink-0" />
                         )}
                         {status === 'completed' && (
-                          <CheckCircle className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                          <CheckCircle className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
                         )}
                       </div>
                     );
@@ -682,8 +682,8 @@ export default function SiswaDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8 px-5">
-                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                  <p className="text-xs text-slate-400">Tidak ada jadwal hari ini</p>
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Tidak ada jadwal hari ini</p>
                 </div>
               )}
             </Card>
@@ -694,7 +694,7 @@ export default function SiswaDashboard() {
                 <button onClick={prevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Bulan sebelumnya">
                   <ChevronLeft className="w-4 h-4 text-slate-500" />
                 </button>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                   {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </h3>
                 <button onClick={nextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Bulan berikutnya">
@@ -704,7 +704,7 @@ export default function SiswaDashboard() {
               <div className="px-4 pb-4">
                 <div className="grid grid-cols-7 gap-0.5 text-center">
                   {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, i) => (
-                    <div key={i} className="text-[10px] font-semibold text-slate-400 py-1.5">{day}</div>
+                    <div key={i} className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 py-1.5">{day}</div>
                   ))}
                   {getDaysInMonth(currentMonth).map((day, index) => (
                     <div key={index} className="aspect-square flex items-center justify-center">
@@ -712,7 +712,7 @@ export default function SiswaDashboard() {
                         <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs relative transition-colors ${
                           isToday(day) ? 'bg-blue-800 text-white font-bold shadow-sm' :
                           hasEvent(day) ? 'bg-orange-50 text-orange-600 font-semibold' :
-                          'text-slate-600 hover:bg-slate-50'
+                          'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}>
                           {day}
                           {hasEvent(day) && !isToday(day) && (
@@ -731,7 +731,7 @@ export default function SiswaDashboard() {
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900">Mendatang</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Mendatang</h3>
                 </div>
               </div>
               {upcomingEvents.length > 0 ? (
@@ -746,19 +746,19 @@ export default function SiswaDashboard() {
                         event.type === 'exam' ? 'bg-violet-400' : 'bg-amber-400'
                       }`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate group-hover:text-sky-600 transition-colors">{event.title}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-sky-600 transition-colors">{event.title}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} &middot; {event.time}
                         </p>
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-sky-500 mt-1 transition-colors flex-shrink-0" />
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 mt-1 transition-colors flex-shrink-0" />
                     </Link>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-8 px-5">
-                  <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                  <p className="text-xs text-slate-400">Tidak ada acara mendatang</p>
+                  <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Tidak ada acara mendatang</p>
                 </div>
               )}
             </Card>
@@ -770,7 +770,7 @@ export default function SiswaDashboard() {
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <div className="flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-slate-400" />
-              <h3 className="text-sm font-semibold text-slate-900">Pengumuman</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Pengumuman</h3>
               {newAnnouncementsCount > 0 && (
                 <span className="px-1.5 py-0.5 bg-sky-100 text-sky-600 text-[10px] font-bold rounded-md">
                   {newAnnouncementsCount} baru
@@ -802,13 +802,13 @@ export default function SiswaDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-medium text-slate-900 truncate group-hover:text-sky-600 transition-colors">{announcement.title}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-sky-600 transition-colors">{announcement.title}</p>
                         {announcement.priority === 'urgent' && (
                           <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded flex-shrink-0">!</span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{announcement.content}</p>
-                      <p className="text-[10px] text-slate-300 mt-1.5">{formatAnnouncementDate(announcement.created_at)}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{announcement.content}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">{formatAnnouncementDate(announcement.created_at)}</p>
                     </div>
                   </Link>
                 ))}
@@ -816,8 +816,8 @@ export default function SiswaDashboard() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10 px-5">
-              <Megaphone className="w-10 h-10 mb-2 text-slate-200" />
-              <p className="text-xs text-slate-400">Belum ada pengumuman</p>
+              <Megaphone className="w-10 h-10 mb-2 text-slate-300 dark:text-slate-600" />
+              <p className="text-xs text-slate-500 dark:text-slate-400">Belum ada pengumuman</p>
             </div>
           )}
         </Card>

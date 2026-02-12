@@ -342,14 +342,14 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
             {!loading && selectedClass && students.length === 0 && (
               <div className="text-center py-8 text-slate-500">
-                <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                 <p>Tidak ada siswa di kelas ini</p>
               </div>
             )}
 
             {!loading && !selectedClass && (
               <div className="text-center py-8 text-slate-500">
-                <UserCheck className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                <UserCheck className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                 <p>Pilih kelas untuk mulai absensi manual</p>
                 <p className="text-sm text-slate-400 mt-1">
                   Guru dapat menandai status setiap siswa: Hadir, Izin, Sakit, atau Alpa
