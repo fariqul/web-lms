@@ -125,7 +125,6 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::apiResource('assignments', AssignmentController::class);
         Route::get('/assignments/{assignment}/submissions', [AssignmentController::class, 'submissions']);
         Route::post('/submissions/{submission}/grade', [AssignmentController::class, 'grade']);
-        Route::get('/assignments-pending', [AssignmentController::class, 'pending']);
         
         // Teacher Schedule
         Route::get('/teacher-schedule', [ScheduleController::class, 'teacherSchedule']);
@@ -169,6 +168,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Student Assignments
         Route::post('/assignments/{assignment}/submit', [AssignmentController::class, 'submit']);
         Route::get('/assignments-new-count', [AssignmentController::class, 'newCount']);
+        Route::get('/assignments-pending', [AssignmentController::class, 'pending']);
         
         // Student Schedule
         Route::get('/my-schedule', [ScheduleController::class, 'mySchedule']);
