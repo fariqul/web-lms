@@ -71,7 +71,7 @@ export default function MateriSiswaPage() {
       case 'link':
         return <LinkIcon className="w-5 h-5 text-green-500" />;
       default:
-        return <BookOpen className="w-5 h-5 text-slate-500" />;
+        return <BookOpen className="w-5 h-5 text-slate-600 dark:text-slate-400" />;
     }
   };
 
@@ -107,8 +107,8 @@ export default function MateriSiswaPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Materi Pembelajaran</h1>
-          <p className="text-slate-600">Akses materi dari guru Anda</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Materi Pembelajaran</h1>
+          <p className="text-slate-600 dark:text-slate-400">Akses materi dari guru Anda</p>
         </div>
 
         {/* Stats */}
@@ -119,8 +119,8 @@ export default function MateriSiswaPage() {
                 <FileText className="w-5 h-5 text-sky-500" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Total Materi</p>
-                <p className="text-xl font-bold text-slate-900">{materials.length}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Materi</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{materials.length}</p>
               </div>
             </div>
           </Card>
@@ -130,8 +130,8 @@ export default function MateriSiswaPage() {
                 <Play className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Video</p>
-                <p className="text-xl font-bold text-slate-900">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Video</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">
                   {materials.filter(m => m.type === 'video').length}
                 </p>
               </div>
@@ -143,8 +143,8 @@ export default function MateriSiswaPage() {
                 <BookOpen className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Mata Pelajaran</p>
-                <p className="text-xl font-bold text-slate-900">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Mata Pelajaran</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">
                   {new Set(materials.map(m => m.subject)).size}
                 </p>
               </div>
@@ -155,7 +155,7 @@ export default function MateriSiswaPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Cari materi…"
@@ -180,8 +180,8 @@ export default function MateriSiswaPage() {
         {filteredMaterials.length === 0 ? (
           <Card className="p-8 text-center">
             <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-500">Belum ada materi</p>
-            <p className="text-sm text-slate-400 mt-1">Materi akan muncul setelah guru mengunggah</p>
+            <p className="text-slate-600 dark:text-slate-400">Belum ada materi</p>
+            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Materi akan muncul setelah guru mengunggah</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -192,8 +192,8 @@ export default function MateriSiswaPage() {
                     {getTypeIcon(material.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 truncate">{material.title}</h3>
-                    <p className="text-sm text-slate-500 mt-1 line-clamp-2">{material.description}</p>
+                    <h3 className="font-semibold text-slate-900 dark:text-white truncate">{material.title}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{material.description}</p>
                   </div>
                 </div>
 
@@ -201,17 +201,17 @@ export default function MateriSiswaPage() {
                   <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                     {material.subject}
                   </span>
-                  <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
+                  <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                     {getTypeLabel(material.type)}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <User className="w-4 h-4" />
                     <span>{material.teacher?.name || 'Guru'}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <Clock className="w-4 h-4" />
                     <span>{formatDate(material.created_at)}</span>
                   </div>

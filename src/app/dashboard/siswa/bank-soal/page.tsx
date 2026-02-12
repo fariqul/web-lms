@@ -42,12 +42,12 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor:
   'Ekonomi': { icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
   'Geografi': { icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
   'PKN': { icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
-  'Informatika': { icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600' },
+  'Informatika': { icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600 dark:text-slate-400' },
   'Seni Budaya': { icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
   'Pendidikan Agama': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
   'PJOK': { icon: Target, color: 'bg-lime-100', iconColor: 'text-lime-600' },
   'IPA': { icon: Microscope, color: 'bg-sky-100', iconColor: 'text-sky-500' },
-  'Pengetahuan Umum': { icon: BookOpen, color: 'bg-slate-100', iconColor: 'text-slate-600' },
+  'Pengetahuan Umum': { icon: BookOpen, color: 'bg-slate-100', iconColor: 'text-slate-600 dark:text-slate-400' },
 };
 
 const SUBJECTS = SUBJECT_LIST.map(name => ({
@@ -55,7 +55,7 @@ const SUBJECTS = SUBJECT_LIST.map(name => ({
   name,
   icon: SUBJECT_META[name]?.icon || BookOpen,
   color: SUBJECT_META[name]?.color || 'bg-slate-100',
-  iconColor: SUBJECT_META[name]?.iconColor || 'text-slate-500',
+  iconColor: SUBJECT_META[name]?.iconColor || 'text-slate-600 dark:text-slate-400',
 }));
 
 const GRADES = [
@@ -161,13 +161,13 @@ export default function SiswaBankSoalPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Pelajaran Banksoal</h1>
-            <p className="text-slate-600">Pilih mata pelajaran untuk berlatih</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pelajaran Banksoal</h1>
+            <p className="text-slate-600 dark:text-slate-400">Pilih mata pelajaran untuk berlatih</p>
           </div>
           <select
             value={selectedGrade}
             onChange={(e) => setSelectedGrade(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
           >
             {GRADES.map(grade => (
               <option key={grade.value} value={grade.value}>{grade.label}</option>
@@ -192,12 +192,12 @@ export default function SiswaBankSoalPage() {
                     <IconComponent className={`w-7 h-7 ${subject.iconColor}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 truncate">{subject.name}</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="font-semibold text-slate-900 dark:text-white truncate">{subject.name}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                       {questionCount > 0 ? `${questionCount} soal tersedia` : 'Belum ada soal'}
                     </p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                  <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-500" />
                 </div>
               </Card>
             );
@@ -208,8 +208,8 @@ export default function SiswaBankSoalPage() {
         {Object.values(subjectCounts).every(c => c === 0) && (
           <Card className="p-8 text-center">
             <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-500">Belum ada soal untuk kelas {selectedGrade}.</p>
-            <p className="text-slate-400 text-sm mt-1">Silakan hubungi guru untuk menambahkan soal.</p>
+            <p className="text-slate-600 dark:text-slate-400">Belum ada soal untuk kelas {selectedGrade}.</p>
+            <p className="text-slate-500 dark:text-slate-500 text-sm mt-1">Silakan hubungi guru untuk menambahkan soal.</p>
           </Card>
         )}
 
@@ -258,25 +258,25 @@ export default function SiswaBankSoalPage() {
                 <div className={`w-16 h-16 rounded-2xl ${selectedSubjectData.color} flex items-center justify-center mx-auto mb-4`}>
                   <selectedSubjectData.icon className={`w-8 h-8 ${selectedSubjectData.iconColor}`} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">{selectedSubjectData.name}</h3>
-                <p className="text-slate-500 mt-1">Pilih mode latihan</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedSubjectData.name}</h3>
+                <p className="text-slate-600 dark:text-slate-400 mt-1">Pilih mode latihan</p>
               </div>
 
               <div className="space-y-3">
                 {/* Tryout Mode */}
                 <button
                   onClick={() => handleModeSelect('tryout')}
-                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-orange-400 hover:bg-orange-50 transition-colors group text-left"
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-orange-400 hover:bg-orange-50 transition-colors group text-left"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
                       <Clock className="w-6 h-6 text-orange-500" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900">Mode Tryout</h4>
-                      <p className="text-sm text-slate-500">Simulasi ujian dengan waktu terbatas</p>
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Mode Tryout</h4>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Simulasi ujian dengan waktu terbatas</p>
                     </div>
-                    <Play className="w-5 h-5 text-slate-400 group-hover:text-orange-500" />
+                    <Play className="w-5 h-5 text-slate-500 dark:text-slate-500 group-hover:text-orange-500" />
                   </div>
                   <div className="mt-3 flex gap-2">
                     <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">Timer</span>
@@ -288,17 +288,17 @@ export default function SiswaBankSoalPage() {
                 {/* Belajar Mode */}
                 <button
                   onClick={() => handleModeSelect('belajar')}
-                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-sky-50 transition-colors group text-left"
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-sky-50 transition-colors group text-left"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-sky-100 flex items-center justify-center group-hover:bg-teal-200 transition-colors">
                       <BookMarked className="w-6 h-6 text-sky-500" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900">Mode Belajar</h4>
-                      <p className="text-sm text-slate-500">Belajar santai dengan pembahasan</p>
+                      <h4 className="font-semibold text-slate-900 dark:text-white">Mode Belajar</h4>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Belajar santai dengan pembahasan</p>
                     </div>
-                    <Play className="w-5 h-5 text-slate-400 group-hover:text-sky-500" />
+                    <Play className="w-5 h-5 text-slate-500 dark:text-slate-500 group-hover:text-sky-500" />
                   </div>
                   <div className="mt-3 flex gap-2">
                     <span className="px-2 py-1 bg-sky-100 text-sky-500 text-xs rounded-full">Tanpa Timer</span>

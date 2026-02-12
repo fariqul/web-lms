@@ -194,7 +194,7 @@ export default function UjianPage() {
     // If end_time has passed and not draft, show as "Selesai"
     if (exam.status === 'completed' || (endTime && endTime < now && exam.status !== 'draft')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 rounded-full text-xs">
           <CheckCircle className="w-3 h-3" />
           Selesai
         </span>
@@ -213,7 +213,7 @@ export default function UjianPage() {
 
     if (exam.status === 'draft') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 rounded-full text-xs">
           <FileEdit className="w-3 h-3" />
           Draft
         </span>
@@ -257,8 +257,8 @@ export default function UjianPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Ujian / CBT</h1>
-            <p className="text-slate-600">Kelola ujian Computer Based Test</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ujian / CBT</h1>
+            <p className="text-slate-600 dark:text-slate-400">Kelola ujian Computer Based Test</p>
           </div>
           <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-5 h-5" />}>
             Buat Ujian Baru
@@ -276,7 +276,7 @@ export default function UjianPage() {
               upcomingExams.map((exam) => (
                 <div
                   key={exam.id}
-                  className="border border-slate-200 rounded-xl p-4 hover:border-sky-300 transition-colors"
+                  className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-sky-300 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -284,23 +284,23 @@ export default function UjianPage() {
                         <FileEdit className="w-6 h-6 text-sky-500" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800">{exam.title}</h3>
-                        <p className="text-sm text-slate-500">{exam.subject}</p>
+                        <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
                       </div>
                     </div>
                     {getStatusBadge(exam)}
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-                    <div className="flex items-center gap-2 text-slate-600">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                       <Calendar className="w-4 h-4" />
                       <span>{exam.start_time ? new Date(exam.start_time).toLocaleDateString('id-ID') : '-'}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                       <Clock className="w-4 h-4" />
                       <span>{exam.duration} menit</span>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-600">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                       <Users className="w-4 h-4" />
                       <span>{exam.class_name || 'Semua Kelas'}</span>
                     </div>
@@ -333,7 +333,7 @@ export default function UjianPage() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Belum ada ujian</p>
                 <p className="text-sm mt-1">Klik tombol "Buat Ujian Baru" untuk membuat ujian</p>
@@ -353,16 +353,16 @@ export default function UjianPage() {
               {completedExams.map((exam) => (
                 <div
                   key={exam.id}
-                  className="border border-slate-200 rounded-xl p-4"
+                  className="border border-slate-200 dark:border-slate-700 rounded-xl p-4"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-slate-600" />
+                        <CheckCircle className="w-6 h-6 text-slate-600 dark:text-slate-400" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-slate-800">{exam.title}</h3>
-                        <p className="text-sm text-slate-500">{exam.subject}</p>
+                        <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
                       </div>
                     </div>
                     {getStatusBadge(exam)}

@@ -71,7 +71,7 @@ export default function RiwayatAbsensiPage() {
       case 'alpha':
         return { label: 'Alpha', color: 'bg-red-100 text-red-700', icon: XCircle };
       default:
-        return { label: status, color: 'bg-slate-100 text-slate-700', icon: Clock };
+        return { label: status, color: 'bg-slate-100 text-slate-700 dark:text-slate-300', icon: Clock };
     }
   };
 
@@ -95,31 +95,31 @@ export default function RiwayatAbsensiPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Riwayat Absensi</h1>
-          <p className="text-slate-600">Lihat riwayat kehadiran Anda</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Riwayat Absensi</h1>
+          <p className="text-slate-600 dark:text-slate-400">Lihat riwayat kehadiran Anda</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-sky-500">{attendancePercentage}%</p>
-            <p className="text-sm text-slate-600">Kehadiran</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Kehadiran</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-green-600">{stats.hadir}</p>
-            <p className="text-sm text-slate-600">Hadir</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Hadir</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-sky-500">{stats.izin}</p>
-            <p className="text-sm text-slate-600">Izin</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Izin</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-yellow-600">{stats.sakit}</p>
-            <p className="text-sm text-slate-600">Sakit</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Sakit</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-red-600">{stats.alpha}</p>
-            <p className="text-sm text-slate-600">Alpha</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Alpha</p>
           </Card>
         </div>
 
@@ -131,8 +131,8 @@ export default function RiwayatAbsensiPage() {
         ) : attendances.length === 0 ? (
           <Card className="p-12 text-center">
             <ClipboardList className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Riwayat</h3>
-            <p className="text-slate-500">Riwayat absensi Anda akan muncul di sini</p>
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Belum Ada Riwayat</h3>
+            <p className="text-slate-600 dark:text-slate-400">Riwayat absensi Anda akan muncul di sini</p>
           </Card>
         ) : (
           <Card>
@@ -145,14 +145,14 @@ export default function RiwayatAbsensiPage() {
                   <div key={attendance.id} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                        <ClipboardList className="w-6 h-6 text-slate-600" />
+                        <ClipboardList className="w-6 h-6 text-slate-600 dark:text-slate-400" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-slate-900">{attendance.session?.subject || 'Mata Pelajaran'}</h3>
-                        <p className="text-sm text-slate-500">
+                        <h3 className="font-medium text-slate-900 dark:text-white">{attendance.session?.subject || 'Mata Pelajaran'}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
                           {attendance.session?.created_at ? formatDate(attendance.session.created_at) : '-'}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
                           {attendance.session?.teacher?.name || 'Guru'} • {attendance.session?.class?.name || ''}
                         </p>
                       </div>
@@ -163,7 +163,7 @@ export default function RiwayatAbsensiPage() {
                         {statusConfig.label}
                       </span>
                       {attendance.scanned_at && (
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                           {new Date(attendance.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       )}

@@ -40,10 +40,10 @@ const actionLabels: Record<string, { label: string; color: string; icon: React.E
   'exam.update': { label: 'Edit Ujian', color: 'bg-sky-50 text-sky-700', icon: Edit },
   'exam.delete': { label: 'Hapus Ujian', color: 'bg-red-100 text-red-700', icon: Trash2 },
   'attendance.start': { label: 'Mulai Absensi', color: 'bg-sky-100 text-sky-700', icon: Clock },
-  'attendance.close': { label: 'Tutup Absensi', color: 'bg-slate-100 text-slate-600', icon: Clock },
+  'attendance.close': { label: 'Tutup Absensi', color: 'bg-slate-100 text-slate-600 dark:text-slate-400', icon: Clock },
   'settings.update': { label: 'Ubah Pengaturan', color: 'bg-purple-100 text-purple-700', icon: Settings },
   'login': { label: 'Login', color: 'bg-sky-50 text-sky-700', icon: Key },
-  'logout': { label: 'Logout', color: 'bg-slate-100 text-slate-600', icon: Key },
+  'logout': { label: 'Logout', color: 'bg-slate-100 text-slate-600 dark:text-slate-400', icon: Key },
 };
 
 export default function AuditLogPage() {
@@ -105,7 +105,7 @@ export default function AuditLogPage() {
   }, [filterAction, filterUser, dateFrom, dateTo]);
 
   const getActionInfo = (action: string) => {
-    return actionLabels[action] || { label: action, color: 'bg-slate-100 text-slate-600', icon: Eye };
+    return actionLabels[action] || { label: action, color: 'bg-slate-100 text-slate-600 dark:text-slate-400', icon: Eye };
   };
 
   const filteredLogs = searchQuery
@@ -147,11 +147,11 @@ export default function AuditLogPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Shield className="w-7 h-7 text-orange-500" />
               Audit Log
             </h1>
-            <p className="text-slate-600">Riwayat semua aktifitas dan perubahan di sistem</p>
+            <p className="text-slate-600 dark:text-slate-400">Riwayat semua aktifitas dan perubahan di sistem</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => fetchLogs(currentPage)}>
@@ -167,7 +167,7 @@ export default function AuditLogPage() {
         <Card className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="relative sm:col-span-2 lg:col-span-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Cari…"
@@ -229,7 +229,7 @@ export default function AuditLogPage() {
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-12">
               <Shield className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-500">Belum ada log aktifitas</p>
+              <p className="text-slate-600 dark:text-slate-400">Belum ada log aktifitas</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
@@ -242,7 +242,7 @@ export default function AuditLogPage() {
                   <div key={log.id}>
                     <button
                       type="button"
-                      className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors w-full text-left"
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors w-full text-left"
                       onClick={() => setExpandedLog(isExpanded ? null : log.id)}
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${info.color}`}>
@@ -253,9 +253,9 @@ export default function AuditLogPage() {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${info.color}`}>
                             {info.label}
                           </span>
-                          <span className="text-sm text-slate-900">{log.description}</span>
+                          <span className="text-sm text-slate-900 dark:text-white">{log.description}</span>
                         </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-600 dark:text-slate-400">
                           <span className="flex items-center gap-1">
                             <User className="w-3 h-3" />
                             {log.user_name}
@@ -268,7 +268,7 @@ export default function AuditLogPage() {
                               hour: '2-digit', minute: '2-digit',
                             })}
                           </span>
-                          <span className="hidden sm:inline text-slate-400">{log.ip_address}</span>
+                          <span className="hidden sm:inline text-slate-500 dark:text-slate-500">{log.ip_address}</span>
                         </div>
                       </div>
                     </button>
@@ -276,27 +276,27 @@ export default function AuditLogPage() {
                     {/* Expanded Detail */}
                     {isExpanded && (
                       <div className="px-4 pb-4 ml-12 animate-fadeIn">
-                        <div className="bg-slate-50 rounded-lg p-4 space-y-3 text-sm">
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-3 text-sm">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <span className="text-slate-500">Email:</span> <span className="font-mono">{log.user_email}</span>
+                              <span className="text-slate-600 dark:text-slate-400">Email:</span> <span className="font-mono">{log.user_email}</span>
                             </div>
                             <div>
-                              <span className="text-slate-500">IP:</span> <span className="font-mono">{log.ip_address}</span>
+                              <span className="text-slate-600 dark:text-slate-400">IP:</span> <span className="font-mono">{log.ip_address}</span>
                             </div>
                             {log.target_type && (
                               <div>
-                                <span className="text-slate-500">Target:</span> {log.target_type} #{log.target_id}
+                                <span className="text-slate-600 dark:text-slate-400">Target:</span> {log.target_type} #{log.target_id}
                               </div>
                             )}
                             <div>
-                              <span className="text-slate-500">Waktu:</span> {new Date(log.created_at).toLocaleString('id-ID')}
+                              <span className="text-slate-600 dark:text-slate-400">Waktu:</span> {new Date(log.created_at).toLocaleString('id-ID')}
                             </div>
                           </div>
 
                           {log.old_values && Object.keys(log.old_values).length > 0 && (
                             <div>
-                              <p className="font-medium text-slate-700 mb-1">Nilai Sebelum:</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">Nilai Sebelum:</p>
                               <pre className="bg-red-50 text-red-800 p-2 rounded text-xs overflow-x-auto">
                                 {JSON.stringify(log.old_values, null, 2)}
                               </pre>
@@ -305,7 +305,7 @@ export default function AuditLogPage() {
 
                           {log.new_values && Object.keys(log.new_values).length > 0 && (
                             <div>
-                              <p className="font-medium text-slate-700 mb-1">Nilai Sesudah:</p>
+                              <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">Nilai Sesudah:</p>
                               <pre className="bg-green-50 text-green-800 p-2 rounded text-xs overflow-x-auto">
                                 {JSON.stringify(log.new_values, null, 2)}
                               </pre>
@@ -314,8 +314,8 @@ export default function AuditLogPage() {
 
                           {log.user_agent && (
                             <div>
-                              <span className="text-slate-500">Browser:</span>
-                              <span className="text-xs text-slate-400 ml-1">{log.user_agent.substring(0, 100)}</span>
+                              <span className="text-slate-600 dark:text-slate-400">Browser:</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-500 ml-1">{log.user_agent.substring(0, 100)}</span>
                             </div>
                           )}
                         </div>
@@ -329,7 +329,7 @@ export default function AuditLogPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-slate-100">
+            <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}

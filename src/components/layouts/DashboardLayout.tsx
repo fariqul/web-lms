@@ -142,14 +142,14 @@ export default function DashboardLayout({ children }: SidebarProps) {
               <h1 className="font-bold text-[15px] text-white leading-tight tracking-tight">SMA 15 Makassar</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${getRoleAccent()}`} />
-                <p className="text-[11px] text-slate-400 font-medium">{getRoleLabel()}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 font-medium">{getRoleLabel()}</p>
               </div>
             </div>
           </div>
 
           {/* Mobile close button */}
           <button
-            className="absolute top-5 right-4 lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            className="absolute top-5 right-4 lg:hidden text-slate-500 dark:text-slate-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             onClick={() => setSidebarOpen(false)}
             aria-label="Tutup menu navigasi"
           >
@@ -159,7 +159,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="mt-2 px-3 flex-1 overflow-y-auto pb-4" aria-label="Menu utama" style={{ maxHeight: 'calc(100vh - 145px)' }}>
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">Menu</p>
+          <p className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest px-3 mb-2">Menu</p>
           {filteredNavigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
@@ -170,11 +170,11 @@ export default function DashboardLayout({ children }: SidebarProps) {
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset',
                   isActive
                     ? 'bg-blue-800/20 text-sky-400 border-l-2 border-sky-500 -ml-px pl-[11px]'
-                    : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
+                    : 'text-slate-500 dark:text-slate-500 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-sky-500' : 'text-slate-500 group-hover:text-slate-300')} />
+                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-sky-500' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-300')} />
                 <span className="text-[13px] font-medium">{item.name}</span>
                 {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />}
               </Link>
@@ -186,7 +186,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
         <div className="p-3 border-t border-white/[0.06]">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-slate-500 dark:text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
           >
             <LogOut className="w-[18px] h-[18px]" />
             <span className="text-[13px] font-medium">Log Out</span>
@@ -218,7 +218,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
               <div className="hidden sm:flex items-center gap-3 ml-2 pl-3 border-l border-[var(--border)]">
                 <div className="text-right">
                   <p className="text-sm font-semibold text-slate-800 dark:text-white leading-tight">{user?.name?.split(' ')[0]}</p>
-                  <p className="text-[11px] text-slate-400 capitalize">{user?.role}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-500 capitalize">{user?.role}</p>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-700 to-cyan-500 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-sm">
                   {(user?.photo || user?.avatar) ? (

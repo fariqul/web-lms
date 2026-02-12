@@ -240,14 +240,14 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
 
   const getOptionStyle = (option: string) => {
     if (!currentAnswer?.selectedAnswer) {
-      return 'border-slate-200 hover:border-teal-400 hover:bg-teal-50';
+      return 'border-slate-200 dark:border-slate-700 hover:border-teal-400 hover:bg-teal-50';
     }
 
     if (mode === 'tryout' && !isFinished) {
       // During tryout, just highlight selected
       return currentAnswer.selectedAnswer === option
         ? 'border-teal-500 bg-teal-50'
-        : 'border-slate-200';
+        : 'border-slate-200 dark:border-slate-700';
     }
 
     // In belajar mode or after tryout finished
@@ -257,7 +257,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     if (currentAnswer.selectedAnswer === option && !currentAnswer.isCorrect) {
       return 'border-red-500 bg-red-50';
     }
-    return 'border-slate-200 opacity-50';
+    return 'border-slate-200 dark:border-slate-700 opacity-50';
   };
 
   if (isLoading) {
@@ -265,7 +265,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center min-h-[400px]">
           <Loader2 className="w-12 h-12 text-teal-500 animate-spin" />
-          <p className="mt-4 text-slate-500">Memuat soal…</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Memuat soal…</p>
         </div>
       </DashboardLayout>
     );
@@ -278,10 +278,10 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
         <div className="max-w-md mx-auto mt-12">
           <Card className="p-8 text-center">
             <BookOpen className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
               {error || 'Belum Ada Soal'}
             </h2>
-            <p className="text-slate-500 mb-6">
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
               Mata pelajaran: {subjectName} - Kelas {grade}
             </p>
             <Button
@@ -316,13 +316,13 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
               }`} />
             </div>
             
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
               {mode === 'tryout' ? 'Hasil Tryout' : 'Latihan Selesai'}
             </h2>
-            <p className="text-slate-500 mb-6">{subjectName} - Kelas {grade}</p>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">{subjectName} - Kelas {grade}</p>
 
-            <div className="text-5xl font-bold text-slate-900 mb-2">{score}</div>
-            <p className="text-slate-500 mb-8">Skor Anda</p>
+            <div className="text-5xl font-bold text-slate-900 dark:text-white mb-2">{score}</div>
+            <p className="text-slate-600 dark:text-slate-400 mb-8">Skor Anda</p>
 
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="p-4 bg-green-50 rounded-xl">
@@ -335,16 +335,16 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                 <div className="text-2xl font-bold text-red-600">{incorrect}</div>
                 <div className="text-sm text-red-600">Salah</div>
               </div>
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <AlertCircle className="w-6 h-6 text-slate-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-slate-600">{unanswered}</div>
-                <div className="text-sm text-slate-600">Kosong</div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                <AlertCircle className="w-6 h-6 text-slate-600 dark:text-slate-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-slate-600 dark:text-slate-400">{unanswered}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">Kosong</div>
               </div>
             </div>
 
             {/* Review answers */}
             <div className="text-left mb-6">
-              <h3 className="font-semibold text-slate-900 mb-3">Review Jawaban</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Review Jawaban</h3>
               <div className="flex flex-wrap gap-2">
                 {answers.map((answer, idx) => (
                   <button
@@ -359,7 +359,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                         : answer.isCorrect === false
                         ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'bg-slate-100 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                     }`}
                   >
                     {idx + 1}
@@ -398,7 +398,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
         <div className="flex items-center justify-between">
           <button
             onClick={() => router.push('/dashboard/siswa/bank-soal')}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900"
+            className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900"
           >
             <ChevronLeft className="w-5 h-5" />
             <span>Kembali</span>
@@ -426,10 +426,10 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
         {/* Progress */}
         <Card className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-600">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
               {subjectName} - Kelas {grade}
             </span>
-            <span className="text-sm font-medium text-slate-900">
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
               {currentIndex + 1} / {questions.length}
             </span>
           </div>
@@ -458,7 +458,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                         ? 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700'
                       : 'bg-teal-100 text-teal-700'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                 } ${answers[idx].isBookmarked ? 'ring-2 ring-yellow-400' : ''}`}
               >
                 {idx + 1}
@@ -487,7 +487,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                 className={`p-2 rounded-lg transition-colors ${
                   currentAnswer?.isBookmarked 
                     ? 'bg-yellow-100 text-yellow-600' 
-                    : 'bg-slate-100 text-slate-400 hover:text-yellow-500'
+                    : 'bg-slate-100 text-slate-500 dark:text-slate-500 hover:text-yellow-500'
                 }`}
               >
                 {currentAnswer?.isBookmarked ? (
@@ -498,7 +498,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
               </button>
             </div>
 
-            <h3 className="text-lg font-medium text-slate-900 mb-6">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-6">
               {currentQuestion.question}
             </h3>
 

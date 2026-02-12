@@ -76,19 +76,19 @@ export default function LoginPage() {
             <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={112} height={112} className="object-contain w-full h-full drop-shadow-lg" />
           </div>
           <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">SMA 15 Makassar</h1>
-          <p className="text-lg text-slate-400 font-medium">Learning Management System</p>
+          <p className="text-lg text-slate-500 dark:text-slate-500 font-medium">Learning Management System</p>
           <div className="mt-10 grid grid-cols-3 gap-4">
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
               <p className="text-2xl font-bold text-cyan-400">QR</p>
-              <p className="text-xs text-slate-400 mt-1">Absensi Digital</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Absensi Digital</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
               <p className="text-2xl font-bold text-blue-400">CBT</p>
-              <p className="text-xs text-slate-400 mt-1">Ujian Online</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Ujian Online</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
               <p className="text-2xl font-bold text-sky-400">LMS</p>
-              <p className="text-xs text-slate-400 mt-1">E-Learning</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">E-Learning</p>
             </div>
           </div>
         </div>
@@ -102,15 +102,15 @@ export default function LoginPage() {
             <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
               <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={80} height={80} className="object-contain w-full h-full drop-shadow-md" />
             </div>
-            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">SMA 15 Makassar</h1>
-            <p className="text-slate-500 text-sm mt-1">Learning Management System</p>
+            <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">SMA 15 Makassar</h1>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Learning Management System</p>
           </div>
 
           {/* Login Card */}
-          <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 dark:border-slate-700 p-8">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">Masuk</h2>
-              <p className="text-slate-500 text-sm mt-1">Selamat datang kembali</p>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Masuk</h2>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Selamat datang kembali</p>
             </div>
 
             {error && (
@@ -172,8 +172,8 @@ export default function LoginPage() {
 
             {/* Demo Login Buttons - ONLY IN DEVELOPMENT */}
             {isDevelopment && (
-              <div className="mt-6 pt-6 border-t border-slate-100">
-                <p className="text-sm text-slate-500 text-center mb-3">
+              <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
+                <p className="text-sm text-slate-600 dark:text-slate-400 text-center mb-3">
                   <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded-lg text-xs font-semibold border border-orange-100">DEV</span>
                   {' '}Demo Login
                 </p>
@@ -205,7 +205,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <p className="text-center text-slate-400 text-xs mt-6">
+          <p className="text-center text-slate-500 dark:text-slate-500 text-xs mt-6">
             © 2026 SMA 15 Makassar. All rights reserved.
           </p>
         </div>

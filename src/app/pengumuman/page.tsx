@@ -174,8 +174,8 @@ export default function PengumumanPage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Pengumuman</h1>
-            <p className="text-slate-600">Informasi dan pengumuman terbaru</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pengumuman</h1>
+            <p className="text-slate-600 dark:text-slate-400">Informasi dan pengumuman terbaru</p>
           </div>
           {canCreate && (
             <Button onClick={() => handleOpenModal()}>
@@ -189,8 +189,8 @@ export default function PengumumanPage() {
         {announcements.length === 0 ? (
           <Card className="p-12 text-center">
             <Bell className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Pengumuman</h3>
-            <p className="text-slate-500">Pengumuman terbaru akan muncul di sini</p>
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Belum Ada Pengumuman</h3>
+            <p className="text-slate-600 dark:text-slate-400">Pengumuman terbaru akan muncul di sini</p>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -215,7 +215,7 @@ export default function PengumumanPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-semibold text-slate-900">{announcement.title}</h3>
+                        <h3 className="font-semibold text-slate-900 dark:text-white">{announcement.title}</h3>
                         {announcement.priority !== 'normal' && (
                           <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                             announcement.priority === 'urgent' 
@@ -227,7 +227,7 @@ export default function PengumumanPage() {
                         )}
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                           announcement.target === 'all' 
-                            ? 'bg-slate-100 text-slate-700'
+                            ? 'bg-slate-100 text-slate-700 dark:text-slate-300'
                             : announcement.target === 'guru'
                             ? 'bg-sky-100 text-sky-700'
                             : 'bg-sky-50 text-sky-700'
@@ -235,8 +235,8 @@ export default function PengumumanPage() {
                           {getTargetLabel(announcement.target)}
                         </span>
                       </div>
-                      <p className="text-slate-600 text-sm mb-3 line-clamp-2">{announcement.content}</p>
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <p className="text-slate-600 dark:text-slate-400 text-sm mb-3 line-clamp-2">{announcement.content}</p>
+                      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
                         <span>{announcement.author?.name || 'Admin'}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -247,7 +247,7 @@ export default function PengumumanPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                      className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
                       onClick={() => handleView(announcement)}
                     >
                       <Eye className="w-4 h-4" />
@@ -283,7 +283,7 @@ export default function PengumumanPage() {
                 <h2 className="text-lg font-semibold">
                   {editMode ? 'Edit Pengumuman' : 'Buat Pengumuman Baru'}
                 </h2>
-                <button onClick={() => { setShowModal(false); resetForm(); }} className="text-slate-500 hover:text-slate-700">
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="text-slate-600 dark:text-slate-400 hover:text-slate-700">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -305,7 +305,7 @@ export default function PengumumanPage() {
                   {/* Target dropdown - only visible for admin */}
                   {user?.role === 'admin' && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Target</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target</label>
                       <select
                         value={formData.target}
                         onChange={(e) => setFormData({ ...formData, target: e.target.value as 'all' | 'guru' | 'siswa' })}
@@ -318,7 +318,7 @@ export default function PengumumanPage() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Prioritas</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Prioritas</label>
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
@@ -362,7 +362,7 @@ export default function PengumumanPage() {
             <Card className="w-full max-w-lg">
               <div className="flex items-center justify-between p-4 border-b">
                 <h2 className="text-lg font-semibold">Detail Pengumuman</h2>
-                <button onClick={() => setSelectedAnnouncement(null)} className="text-slate-500 hover:text-slate-700">
+                <button onClick={() => setSelectedAnnouncement(null)} className="text-slate-600 dark:text-slate-400 hover:text-slate-700">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -379,7 +379,7 @@ export default function PengumumanPage() {
                   )}
                   <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                     selectedAnnouncement.target === 'all' 
-                      ? 'bg-slate-100 text-slate-700'
+                      ? 'bg-slate-100 text-slate-700 dark:text-slate-300'
                       : selectedAnnouncement.target === 'guru'
                       ? 'bg-sky-100 text-sky-700'
                       : 'bg-sky-50 text-sky-700'
@@ -387,12 +387,12 @@ export default function PengumumanPage() {
                     {getTargetLabel(selectedAnnouncement.target)}
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{selectedAnnouncement.title}</h3>
-                <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{selectedAnnouncement.title}</h3>
+                <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-4">
                   <span>{selectedAnnouncement.author?.name || 'Admin'}</span>
                   <span>{formatDate(selectedAnnouncement.created_at)}</span>
                 </div>
-                <p className="text-slate-600 whitespace-pre-wrap">{selectedAnnouncement.content}</p>
+                <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{selectedAnnouncement.content}</p>
               </div>
               <div className="p-4 border-t">
                 <Button variant="outline" className="w-full" onClick={() => setSelectedAnnouncement(null)}>

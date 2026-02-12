@@ -114,10 +114,10 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Import dari URL</h2>
-              <p className="text-sm text-slate-500">Import soal dari utbk.or.id</p>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Import dari URL</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Import soal dari utbk.or.id</p>
             </div>
-            <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5" /></button>
+            <button onClick={handleClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><X className="w-5 h-5" /></button>
           </div>
 
           {/* Step 1: Input URL */}
@@ -137,7 +137,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">URL Artikel Soal</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">URL Artikel Soal</label>
                 <input type="url" value={formData.url} onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://utbk.or.id/soal-…" className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
               </div>
               <div className="flex gap-3 pt-4">
@@ -160,14 +160,14 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Mata Pelajaran <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Mata Pelajaran <span className="text-red-500">*</span></label>
                   <select value={formData.subject} onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))} className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" required>
                     <option value="">Pilih Mata Pelajaran</option>
                     {SUBJECT_LIST.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Tingkat Kesulitan</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tingkat Kesulitan</label>
                   <select value={formData.difficulty} onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' }))} className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <option value="mudah">Mudah</option><option value="sedang">Sedang</option><option value="sulit">Sulit</option>
                   </select>
@@ -175,21 +175,21 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-slate-700">Pilih Soal untuk Diimport</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Pilih Soal untuk Diimport</label>
                   <button type="button" onClick={toggleAll} className="text-sm text-sky-500 hover:text-sky-700">
                     {selectedQuestions.length === previewResult.questions.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
                   </button>
                 </div>
                 <div className="border rounded-lg max-h-64 overflow-y-auto divide-y">
                   {previewResult.questions.map((q) => (
-                    <div key={q.number} className={`p-3 cursor-pointer hover:bg-slate-50 ${selectedQuestions.includes(q.number) ? 'bg-sky-50' : ''}`} onClick={() => toggleQuestion(q.number)}>
+                    <div key={q.number} className={`p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${selectedQuestions.includes(q.number) ? 'bg-sky-50' : ''}`} onClick={() => toggleQuestion(q.number)}>
                       <div className="flex items-start gap-3">
                         <input type="checkbox" checked={selectedQuestions.includes(q.number)} onChange={() => toggleQuestion(q.number)} className="mt-1 w-4 h-4 text-sky-500 rounded focus:ring-blue-500" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-900 line-clamp-2"><span className="font-medium">#{q.number}.</span> {q.question}</p>
+                          <p className="text-sm text-slate-900 dark:text-white line-clamp-2"><span className="font-medium">#{q.number}.</span> {q.question}</p>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {Object.entries(q.options).map(([key, value]) => (
-                              <span key={key} className={`text-xs px-2 py-0.5 rounded ${q.answer === key ? 'bg-green-200 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+                              <span key={key} className={`text-xs px-2 py-0.5 rounded ${q.answer === key ? 'bg-green-200 text-green-800' : 'bg-slate-100 text-slate-600 dark:text-slate-400'}`}>
                                 {key}. {String(value).substring(0, 25)}{String(value).length > 25 ? '…' : ''}
                               </span>
                             ))}
@@ -200,7 +200,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
                   {selectedQuestions.length} dari {previewResult.questions.length} soal dipilih
                   {' • '}
                   {previewResult.questions.filter(q => q.answer).length} soal memiliki kunci jawaban
@@ -219,7 +219,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
           {step === 'importing' && (
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 animate-spin text-sky-500 mx-auto mb-4" />
-              <p className="text-slate-600">Mengimpor soal ke database…</p>
+              <p className="text-slate-600 dark:text-slate-400">Mengimpor soal ke database…</p>
             </div>
           )}
         </div>

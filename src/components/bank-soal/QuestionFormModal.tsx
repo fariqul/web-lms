@@ -43,17 +43,17 @@ export function QuestionFormModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white">
+        <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900">
           <h2 className="text-lg font-semibold">
             {isEditing ? 'Edit Soal' : 'Tambah Soal Baru'}
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded">
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
             <X className="w-5 h-5" />
           </button>
         </div>
         <form onSubmit={onSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Pertanyaan</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pertanyaan</label>
             <textarea
               value={formData.question}
               onChange={(e) => onFormChange({ ...formData, question: e.target.value })}
@@ -65,7 +65,7 @@ export function QuestionFormModal({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Tipe Soal</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipe Soal</label>
               <select
                 value={formData.type}
                 onChange={(e) => onFormChange({ ...formData, type: e.target.value as 'pilihan_ganda' | 'essay' })}
@@ -76,7 +76,7 @@ export function QuestionFormModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kesulitan</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tingkat Kesulitan</label>
               <select
                 value={formData.difficulty}
                 onChange={(e) => onFormChange({ ...formData, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' })}
@@ -90,7 +90,7 @@ export function QuestionFormModal({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mata Pelajaran</label>
               <select
                 value={formData.subject}
                 onChange={(e) => onFormChange({ ...formData, subject: e.target.value })}
@@ -104,7 +104,7 @@ export function QuestionFormModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kelas</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tingkat Kelas</label>
               <select
                 value={formData.grade_level}
                 onChange={(e) => onFormChange({ ...formData, grade_level: e.target.value as '10' | '11' | '12' })}
@@ -118,7 +118,7 @@ export function QuestionFormModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Kelas Spesifik (Opsional)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kelas Spesifik (Opsional)</label>
             <select
               value={formData.class_id}
               onChange={(e) => onFormChange({ ...formData, class_id: e.target.value })}
@@ -134,11 +134,11 @@ export function QuestionFormModal({
           {formData.type === 'pilihan_ganda' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Pilihan Jawaban</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pilihan Jawaban</label>
                 <div className="space-y-2">
                   {formData.options.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-sm font-medium text-slate-600">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-sm font-medium text-slate-600 dark:text-slate-400">
                         {String.fromCharCode(65 + i)}
                       </span>
                       <input
@@ -157,7 +157,7 @@ export function QuestionFormModal({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Jawaban Benar</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jawaban Benar</label>
                 <select
                   value={formData.correct_answer}
                   onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
@@ -177,7 +177,7 @@ export function QuestionFormModal({
 
           {formData.type === 'essay' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Kunci Jawaban (opsional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kunci Jawaban (opsional)</label>
               <textarea
                 value={formData.correct_answer}
                 onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
@@ -189,7 +189,7 @@ export function QuestionFormModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Pembahasan (Opsional)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pembahasan (Opsional)</label>
             <textarea
               value={formData.explanation}
               onChange={(e) => onFormChange({ ...formData, explanation: e.target.value })}

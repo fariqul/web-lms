@@ -183,8 +183,8 @@ export default function HasilSiswaPage() {
       <DashboardLayout>
         <div className="text-center py-12">
           <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900">Hasil tidak ditemukan</h2>
-          <p className="text-slate-500 mt-2">Siswa belum mengerjakan ujian ini.</p>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Hasil tidak ditemukan</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Siswa belum mengerjakan ujian ini.</p>
           <Button className="mt-4" onClick={() => router.back()}>
             Kembali
           </Button>
@@ -204,8 +204,8 @@ export default function HasilSiswaPage() {
               Kembali
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Hasil Ujian</h1>
-              <p className="text-slate-600">{result.student.name} - NISN: {result.student.nisn}</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hasil Ujian</h1>
+              <p className="text-slate-600 dark:text-slate-400">{result.student.name} - NISN: {result.student.nisn}</p>
             </div>
           </div>
           {getUngradedEssayCount() > 0 && (
@@ -228,35 +228,35 @@ export default function HasilSiswaPage() {
               }`}>
                 {result.percentage != null ? Number(result.percentage).toFixed(1) : '-'}
               </p>
-              <p className="text-xs text-slate-500">Nilai</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Nilai</p>
             </div>
           </Card>
           <Card className="p-4">
             <div className="text-center">
               <CheckCircle className="w-6 h-6 mx-auto mb-1 text-green-500" />
               <p className="text-2xl font-bold text-green-600">{result.total_correct}</p>
-              <p className="text-xs text-slate-500">Benar</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Benar</p>
             </div>
           </Card>
           <Card className="p-4">
             <div className="text-center">
               <XCircle className="w-6 h-6 mx-auto mb-1 text-red-500" />
               <p className="text-2xl font-bold text-red-600">{result.total_wrong}</p>
-              <p className="text-xs text-slate-500">Salah</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Salah</p>
             </div>
           </Card>
           <Card className="p-4">
             <div className="text-center">
-              <Clock className="w-6 h-6 mx-auto mb-1 text-slate-500" />
-              <p className="text-lg font-bold text-slate-700">{getDuration()}</p>
-              <p className="text-xs text-slate-500">Durasi</p>
+              <Clock className="w-6 h-6 mx-auto mb-1 text-slate-600 dark:text-slate-400" />
+              <p className="text-lg font-bold text-slate-700 dark:text-slate-300">{getDuration()}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Durasi</p>
             </div>
           </Card>
           <Card className="p-4">
             <div className="text-center">
               <AlertTriangle className="w-6 h-6 mx-auto mb-1 text-orange-500" />
               <p className="text-2xl font-bold text-orange-600">{result.violation_count}</p>
-              <p className="text-xs text-slate-500">Pelanggaran</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Pelanggaran</p>
             </div>
           </Card>
         </div>
@@ -264,7 +264,7 @@ export default function HasilSiswaPage() {
         {/* Score Detail */}
         <Card className="p-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-6 text-sm text-slate-600">
+            <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">
               <span>Skor: <strong>{result.total_score}/{result.max_score}</strong></span>
               <span>Dijawab: <strong>{result.total_answered}</strong></span>
               <span>Status: <strong className={
@@ -293,7 +293,7 @@ export default function HasilSiswaPage() {
         {/* Snapshots */}
         {showSnapshots && snapshots.length > 0 && (
           <Card className="p-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Foto Monitoring</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Foto Monitoring</h3>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
               {snapshots.map((snap) => (
                 <div key={snap.id} className="text-center">
@@ -305,7 +305,7 @@ export default function HasilSiswaPage() {
                     alt="Monitoring"
                     className="w-full aspect-square object-cover rounded-lg border"
                   />
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                     {new Date(snap.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -326,7 +326,7 @@ export default function HasilSiswaPage() {
                 <div className="flex items-start gap-4">
                   {/* Question number & status indicator */}
                   <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-bold text-slate-700">
+                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-bold text-slate-700 dark:text-slate-300">
                       {index + 1}
                     </span>
                     {answer.question.type === 'multiple_choice' ? (
@@ -344,7 +344,7 @@ export default function HasilSiswaPage() {
 
                   <div className="flex-1 min-w-0">
                     {/* Question text */}
-                    <p className="text-slate-800 font-medium mb-2">{answer.question.question_text}</p>
+                    <p className="text-slate-800 dark:text-white font-medium mb-2">{answer.question.question_text}</p>
                     
                     <div className="flex items-center gap-3 mb-3">
                       <span className={`px-2 py-0.5 text-xs rounded ${
@@ -354,7 +354,7 @@ export default function HasilSiswaPage() {
                       }`}>
                         {answer.question.type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
                       </span>
-                      <span className="text-xs text-slate-400">{answer.question.points} poin</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-500">{answer.question.points} poin</span>
                       {answer.score !== null && (
                         <span className={`text-xs font-medium ${
                           answer.score >= answer.question.points * 0.7 ? 'text-green-600' : 'text-red-600'
@@ -378,7 +378,7 @@ export default function HasilSiswaPage() {
                                   ? 'bg-green-50 text-green-700 border border-green-200'
                                   : isStudentAnswer && !isCorrectAnswer
                                   ? 'bg-red-50 text-red-700 border border-red-200'
-                                  : 'bg-slate-50 text-slate-600'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                               }`}
                             >
                               <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs font-medium">
@@ -402,9 +402,9 @@ export default function HasilSiswaPage() {
                     {/* Essay: show student answer */}
                     {answer.question.type === 'essay' && (
                       <div className="mb-3">
-                        <p className="text-xs text-slate-500 mb-1">Jawaban Siswa:</p>
-                        <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 whitespace-pre-wrap border">
-                          {answer.answer || <span className="text-slate-400 italic">Tidak dijawab</span>}
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Jawaban Siswa:</p>
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap border">
+                          {answer.answer || <span className="text-slate-500 dark:text-slate-500 italic">Tidak dijawab</span>}
                         </div>
 
                         {/* Grading form for essay */}

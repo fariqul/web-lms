@@ -121,8 +121,8 @@ export default function ExportPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Export Data</h1>
-          <p className="text-slate-600">Ekspor data nilai, absensi, dan rapor ke Excel atau PDF</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Export Data</h1>
+          <p className="text-slate-600 dark:text-slate-400">Ekspor data nilai, absensi, dan rapor ke Excel atau PDF</p>
         </div>
 
         {/* Export Type Selection */}
@@ -142,8 +142,8 @@ export default function ExportPage() {
                   <Icon className={`w-6 h-6 text-${color}-600`} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900">{title}</h3>
-                  <p className="text-xs text-slate-500">{desc}</p>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">{title}</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{desc}</p>
                 </div>
               </div>
             </Card>
@@ -194,26 +194,26 @@ export default function ExportPage() {
 
           {/* Format Selection */}
           <div className="mt-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Format File</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Format File</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setFormat('xlsx')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-slate-200 hover:border-slate-300'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}
               >
-                <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-slate-400'}`} />
+                <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-slate-500 dark:text-slate-500'}`} />
                 <div className="text-left">
                   <p className="font-medium text-sm">Excel (.xlsx)</p>
-                  <p className="text-xs text-slate-500">Untuk pengolahan data</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Untuk pengolahan data</p>
                 </div>
               </button>
               <button
                 onClick={() => setFormat('pdf')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}
               >
-                <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-slate-400'}`} />
+                <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-slate-500 dark:text-slate-500'}`} />
                 <div className="text-left">
                   <p className="font-medium text-sm">PDF (.pdf)</p>
-                  <p className="text-xs text-slate-500">Untuk cetak dan arsip</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Untuk cetak dan arsip</p>
                 </div>
               </button>
             </div>

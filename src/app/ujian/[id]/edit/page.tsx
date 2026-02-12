@@ -375,8 +375,8 @@ export default function EditSoalPage() {
               Kembali
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{exam?.title}</h1>
-              <p className="text-slate-600">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{exam?.title}</h1>
+              <p className="text-slate-600 dark:text-slate-400">
                 {exam?.subject} • {exam?.class_name} • {exam?.duration} menit
               </p>
             </div>
@@ -384,7 +384,7 @@ export default function EditSoalPage() {
           <div className="flex gap-2">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               exam?.status === 'draft' 
-                ? 'bg-slate-100 text-slate-700' 
+                ? 'bg-slate-100 text-slate-700 dark:text-slate-300' 
                 : exam?.status === 'scheduled'
                   ? 'bg-teal-50 text-teal-700'
                   : 'bg-green-100 text-green-700'
@@ -398,17 +398,17 @@ export default function EditSoalPage() {
         <div className="grid grid-cols-3 gap-4">
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-teal-600">{questions.length}</p>
-            <p className="text-sm text-slate-600">Total Soal</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Total Soal</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-teal-600">
               {questions.reduce((sum, q) => sum + q.points, 0)}
             </p>
-            <p className="text-sm text-slate-600">Total Poin</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Total Poin</p>
           </Card>
           <Card className="p-4 text-center">
             <p className="text-3xl font-bold text-purple-600">{exam?.duration}</p>
-            <p className="text-sm text-slate-600">Durasi (menit)</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Durasi (menit)</p>
           </Card>
         </div>
 
@@ -439,7 +439,7 @@ export default function EditSoalPage() {
           />
           
           {questions.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-slate-600 dark:text-slate-400">
               <FileEdit className="w-16 h-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg font-medium">Belum ada soal</p>
               <p className="text-sm mt-1">Klik "Tambah Soal" untuk menambah soal baru</p>
@@ -447,21 +447,21 @@ export default function EditSoalPage() {
           ) : (
             <div className="divide-y">
               {questions.map((question, index) => (
-                <div key={question.id || index} className="p-4 hover:bg-slate-50">
+                <div key={question.id || index} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800">
                   <div className="flex items-start gap-4">
-                    <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-500">
                       <GripVertical className="w-5 h-5" />
-                      <span className="font-bold text-lg text-slate-600">{index + 1}</span>
+                      <span className="font-bold text-lg text-slate-600 dark:text-slate-400">{index + 1}</span>
                     </div>
                     <div className="flex-1">
-                      <p className="text-slate-800 mb-2">{question.question_text}</p>
+                      <p className="text-slate-800 dark:text-white mb-2">{question.question_text}</p>
                       
                       {question.image && (
                         <div className="mb-3">
                           <img
                             src={question.image.startsWith('http') ? question.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`}
                             alt="Gambar Soal"
-                            className="max-w-xs max-h-40 rounded-lg border border-slate-200"
+                            className="max-w-xs max-h-40 rounded-lg border border-slate-200 dark:border-slate-700"
                           />
                         </div>
                       )}
@@ -472,7 +472,7 @@ export default function EditSoalPage() {
                             <div
                               key={optIdx}
                               className={`flex items-center gap-2 text-sm ${
-                                opt.is_correct ? 'text-green-600 font-medium' : 'text-slate-600'
+                                opt.is_correct ? 'text-green-600 font-medium' : 'text-slate-600 dark:text-slate-400'
                               }`}
                             >
                               <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs">
@@ -486,10 +486,10 @@ export default function EditSoalPage() {
                       )}
                       
                       {question.question_type === 'essay' && (
-                        <p className="text-sm text-slate-400 italic ml-4">Jawaban Essay</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-500 italic ml-4">Jawaban Essay</p>
                       )}
                       
-                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
                         <span className="px-2 py-0.5 bg-slate-100 rounded">
                           {question.question_type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
                         </span>
@@ -541,7 +541,7 @@ export default function EditSoalPage() {
         <div className="space-y-4">
           {/* Question Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Tipe Soal
             </label>
             <div className="flex gap-4">
@@ -570,7 +570,7 @@ export default function EditSoalPage() {
 
           {/* Question Text */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Teks Soal
             </label>
             <textarea
@@ -584,7 +584,7 @@ export default function EditSoalPage() {
 
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Gambar Soal (Opsional)
             </label>
             {imagePreview ? (
@@ -592,7 +592,7 @@ export default function EditSoalPage() {
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="max-w-xs max-h-48 rounded-lg border border-slate-200"
+                  className="max-w-xs max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                 />
                 <button
                   type="button"
@@ -612,9 +612,9 @@ export default function EditSoalPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
               >
-                <ImagePlus className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Klik untuk upload gambar</p>
-                <p className="text-xs text-slate-400 mt-1">PNG, JPG, max 5MB</p>
+                <ImagePlus className="w-8 h-8 text-slate-500 dark:text-slate-500 mx-auto mb-2" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">Klik untuk upload gambar</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">PNG, JPG, max 5MB</p>
               </div>
             )}
             <input
@@ -640,7 +640,7 @@ export default function EditSoalPage() {
 
           {/* Points */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Poin
             </label>
             <input
@@ -656,7 +656,7 @@ export default function EditSoalPage() {
           {/* Options for Multiple Choice */}
           {newQuestion.question_type === 'multiple_choice' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Pilihan Jawaban (Pilih yang benar)
               </label>
               <div className="space-y-3">
@@ -727,7 +727,7 @@ export default function EditSoalPage() {
         <div className="space-y-4">
           {/* Question Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Tipe Soal
             </label>
             <div className="flex gap-4">
@@ -756,7 +756,7 @@ export default function EditSoalPage() {
 
           {/* Question Text */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Teks Soal
             </label>
             <textarea
@@ -770,7 +770,7 @@ export default function EditSoalPage() {
 
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Gambar Soal (Opsional)
             </label>
             {imagePreview ? (
@@ -778,7 +778,7 @@ export default function EditSoalPage() {
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="max-w-xs max-h-48 rounded-lg border border-slate-200"
+                  className="max-w-xs max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                 />
                 <button
                   type="button"
@@ -798,9 +798,9 @@ export default function EditSoalPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
               >
-                <ImagePlus className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Klik untuk upload gambar</p>
-                <p className="text-xs text-slate-400 mt-1">PNG, JPG, max 5MB</p>
+                <ImagePlus className="w-8 h-8 text-slate-500 dark:text-slate-500 mx-auto mb-2" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">Klik untuk upload gambar</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">PNG, JPG, max 5MB</p>
               </div>
             )}
             <input
@@ -826,7 +826,7 @@ export default function EditSoalPage() {
 
           {/* Points */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Poin
             </label>
             <input
@@ -842,7 +842,7 @@ export default function EditSoalPage() {
           {/* Options for Multiple Choice */}
           {newQuestion.question_type === 'multiple_choice' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Pilihan Jawaban (Pilih yang benar)
               </label>
               <div className="space-y-3">

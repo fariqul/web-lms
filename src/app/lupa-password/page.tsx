@@ -53,18 +53,18 @@ export default function LupaPasswordPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
             <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={80} height={80} className="object-contain w-full h-full drop-shadow-md" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-1">Lupa Password</h1>
-          <p className="text-slate-500 text-sm">SMA 15 Makassar LMS</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Lupa Password</h1>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">SMA 15 Makassar LMS</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 dark:border-slate-700 p-8">
           {success ? (
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800 mb-2">Permintaan Terkirim!</h2>
-              <p className="text-slate-600 mb-4">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Permintaan Terkirim!</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
                 Permintaan reset password untuk <strong>{email}</strong> telah dikirim ke admin.
               </p>
               <div className="bg-sky-50 border border-sky-200 rounded-lg p-4 mb-6 text-left">
@@ -91,8 +91,8 @@ export default function LupaPasswordPage() {
             </div>
           ) : (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">Lupa Password</h2>
-              <p className="text-slate-500 text-center mb-6 text-sm">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white text-center mb-2">Lupa Password</h2>
+              <p className="text-slate-600 dark:text-slate-400 text-center mb-6 text-sm">
                 Masukkan email akun Anda. Admin akan mereset password dan menghubungi Anda.
               </p>
 
@@ -105,11 +105,11 @@ export default function LupaPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Email Akun */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Email Akun <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
                     <input
                       type="email"
                       placeholder="Email yang digunakan untuk login"
@@ -123,11 +123,11 @@ export default function LupaPasswordPage() {
 
                 {/* Nama Lengkap (optional) */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Nama Lengkap <span className="text-slate-400 text-xs">(opsional)</span>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Nama Lengkap <span className="text-slate-500 dark:text-slate-500 text-xs">(opsional)</span>
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
                     <input
                       type="text"
                       placeholder="Nama lengkap Anda"
@@ -140,8 +140,8 @@ export default function LupaPasswordPage() {
 
                 {/* Contact Type */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Hubungi saya via <span className="text-slate-400 text-xs">(opsional)</span>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Hubungi saya via <span className="text-slate-500 dark:text-slate-500 text-xs">(opsional)</span>
                   </label>
                   <div className="flex gap-2 mb-2">
                     <button
@@ -150,7 +150,7 @@ export default function LupaPasswordPage() {
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         contactType === 'whatsapp'
                           ? 'border-green-500 bg-green-50 text-green-700'
-                          : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                          : 'border-slate-300 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       📱 WhatsApp
@@ -161,7 +161,7 @@ export default function LupaPasswordPage() {
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         contactType === 'email'
                           ? 'border-blue-500 bg-sky-50 text-sky-700'
-                          : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                          : 'border-slate-300 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       ✉️ Email
@@ -169,9 +169,9 @@ export default function LupaPasswordPage() {
                   </div>
                   <div className="relative">
                     {contactType === 'whatsapp' ? (
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
                     ) : (
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
                     )}
                     <input
                       type={contactType === 'email' ? 'email' : 'tel'}
@@ -185,7 +185,7 @@ export default function LupaPasswordPage() {
                       className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                     Admin akan menghubungi Anda untuk memberitahu password baru
                   </p>
                 </div>

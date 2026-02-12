@@ -99,7 +99,7 @@ export default function UjianSiswaPage() {
       return { label: 'Selesai', color: 'bg-green-100 text-green-700', icon: CheckCircle };
     }
     if (now < startTime) {
-      return { label: 'Belum Mulai', color: 'bg-slate-100 text-slate-700', icon: Clock };
+      return { label: 'Belum Mulai', color: 'bg-slate-100 text-slate-700 dark:text-slate-300', icon: Clock };
     }
     if (now > endTime) {
       return { label: 'Berakhir', color: 'bg-red-100 text-red-700', icon: AlertCircle };
@@ -138,8 +138,8 @@ export default function UjianSiswaPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Ujian Saya</h1>
-          <p className="text-slate-600">Daftar ujian yang tersedia untuk Anda</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ujian Saya</h1>
+          <p className="text-slate-600 dark:text-slate-400">Daftar ujian yang tersedia untuk Anda</p>
         </div>
 
         {loading ? (
@@ -149,8 +149,8 @@ export default function UjianSiswaPage() {
         ) : exams.length === 0 ? (
           <Card className="p-12 text-center">
             <GraduationCap className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Ujian</h3>
-            <p className="text-slate-500">Saat ini belum ada ujian yang tersedia untuk Anda</p>
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Belum Ada Ujian</h3>
+            <p className="text-slate-600 dark:text-slate-400">Saat ini belum ada ujian yang tersedia untuk Anda</p>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -170,10 +170,10 @@ export default function UjianSiswaPage() {
                     </span>
                   </div>
 
-                  <h3 className="font-semibold text-slate-900 mb-1">{exam.title}</h3>
-                  <p className="text-sm text-slate-500 mb-4">{exam.subject}</p>
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{exam.title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{exam.subject}</p>
 
-                  <div className="space-y-2 text-sm text-slate-600 mb-4">
+                  <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400 mb-4">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       <span>{formatDateTime(exam.start_time)}</span>
@@ -186,7 +186,7 @@ export default function UjianSiswaPage() {
 
                   {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (
                     <div className="bg-green-50 rounded-lg p-3 text-center">
-                      <p className="text-sm text-slate-600">Nilai Anda</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Nilai Anda</p>
                       <p className="text-2xl font-bold text-green-600">
                         {exam.my_result?.percentage ?? exam.my_result?.score ?? '-'}
                       </p>

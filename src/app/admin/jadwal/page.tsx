@@ -197,8 +197,8 @@ export default function AdminJadwalPage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Manajemen Jadwal</h1>
-            <p className="text-slate-600">Kelola jadwal pelajaran untuk semua kelas</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Manajemen Jadwal</h1>
+            <p className="text-slate-600 dark:text-slate-400">Kelola jadwal pelajaran untuk semua kelas</p>
           </div>
           <Button onClick={() => { resetForm(); setShowModal(true); }}>
             <Plus className="w-4 h-4 mr-2" />
@@ -215,7 +215,7 @@ export default function AdminJadwalPage() {
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 selectedDay === index + 1
                   ? 'bg-cyan-500 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700'
               }`}
             >
               {day}
@@ -228,43 +228,43 @@ export default function AdminJadwalPage() {
           {filteredSchedules.length === 0 ? (
             <div className="p-8 text-center">
               <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-500">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
-              <p className="text-sm text-slate-400 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
+              <p className="text-slate-600 dark:text-slate-400">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Waktu
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Mata Pelajaran
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Kelas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Guru
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Ruangan
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200">
                   {filteredSchedules
                     .sort((a, b) => a.start_time.localeCompare(b.start_time))
                     .map((schedule) => (
-                      <tr key={schedule.id} className="hover:bg-slate-50">
+                      <tr key={schedule.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-slate-400" />
-                            <span className="font-medium text-slate-900">
+                            <Clock className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                            <span className="font-medium text-slate-900 dark:text-white">
                               {schedule.start_time.slice(0, 5)} - {schedule.end_time.slice(0, 5)}
                             </span>
                           </div>
@@ -274,33 +274,33 @@ export default function AdminJadwalPage() {
                             {schedule.subject}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-slate-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-900 dark:text-white">
                           {getClassName(schedule)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-slate-400" />
-                            <span className="text-slate-600">{getTeacherName(schedule)}</span>
+                            <User className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                            <span className="text-slate-600 dark:text-slate-400">{getTeacherName(schedule)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-slate-400" />
-                            <span className="text-slate-600">{schedule.room || '-'}</span>
+                            <MapPin className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                            <span className="text-slate-600 dark:text-slate-400">{schedule.room || '-'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleEdit(schedule)}
-                              className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
+                              className="p-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                               aria-label="Edit jadwal"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(schedule.id)}
-                              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                              className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                               aria-label="Hapus jadwal"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -323,13 +323,13 @@ export default function AdminJadwalPage() {
                 <h2 className="text-lg font-semibold">
                   {editingSchedule ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}
                 </h2>
-                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-slate-100 rounded" aria-label="Tutup">
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded" aria-label="Tutup">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="p-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hari</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hari</label>
                   <select
                     value={formData.day_of_week}
                     onChange={(e) => setFormData({ ...formData, day_of_week: Number(e.target.value) })}
@@ -344,7 +344,7 @@ export default function AdminJadwalPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kelas</label>
                     <select
                       value={formData.class_id}
                       onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
@@ -367,7 +367,7 @@ export default function AdminJadwalPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Guru Pengajar</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Guru Pengajar</label>
                   <select
                     value={formData.teacher_id}
                     onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
@@ -390,7 +390,7 @@ export default function AdminJadwalPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Mulai</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Waktu Mulai</label>
                     <select
                       value={formData.start_time}
                       onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
@@ -404,7 +404,7 @@ export default function AdminJadwalPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Selesai</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Waktu Selesai</label>
                     <select
                       value={formData.end_time}
                       onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}

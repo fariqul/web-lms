@@ -284,7 +284,7 @@ export default function ExamTakingPage() {
         <Card className="max-w-lg w-full p-6 text-center">
           <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Ujian Tidak Tersedia</h2>
-          <p className="text-slate-600 mb-4">Ujian ini tidak ditemukan atau Anda tidak memiliki akses.</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">Ujian ini tidak ditemukan atau Anda tidak memiliki akses.</p>
           <Button onClick={() => router.push('/ujian-siswa')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Kembali ke Daftar Ujian
@@ -302,17 +302,17 @@ export default function ExamTakingPage() {
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <Card className="max-w-lg w-full p-6">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-slate-800 mb-2">{exam.title}</h1>
-            <p className="text-slate-600 mb-6">{exam.subject}</p>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{exam.title}</h1>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">{exam.subject}</p>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-slate-50 p-4 rounded-lg">
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                 <Clock className="w-6 h-6 text-teal-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Durasi</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Durasi</p>
                 <p className="font-medium">{exam.duration} Menit</p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-lg">
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                 <AlertTriangle className="w-6 h-6 text-orange-500 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Jumlah Soal</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Jumlah Soal</p>
                 <p className="font-medium">{exam.totalQuestions} Soal</p>
               </div>
             </div>
@@ -352,15 +352,15 @@ export default function ExamTakingPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="bg-white border-b sticky top-0 z-10">
+      <div className="bg-white dark:bg-slate-900 border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="font-semibold text-slate-800">{exam.title}</h1>
-            <p className="text-sm text-slate-500">Soal {currentQuestion + 1} dari {questions.length}</p>
+            <h1 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Soal {currentQuestion + 1} dari {questions.length}</p>
           </div>
           <div className="flex items-center gap-4">
             <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-              timeRemaining < 300 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
+              timeRemaining < 300 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700 dark:text-slate-300'
             }`}>
               <Clock className="w-5 h-5" />
               <span className="font-mono font-bold">{formatTime(timeRemaining)}</span>
@@ -388,14 +388,14 @@ export default function ExamTakingPage() {
             <Card className="p-6">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <span className="text-sm text-slate-500">Soal {question?.number || currentQuestion + 1}</span>
-                  <h2 className="text-lg font-medium text-slate-800 mt-1">{question?.text || 'Soal tidak tersedia'}</h2>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Soal {question?.number || currentQuestion + 1}</span>
+                  <h2 className="text-lg font-medium text-slate-800 dark:text-white mt-1">{question?.text || 'Soal tidak tersedia'}</h2>
                   {question?.image && (
                     <div className="mt-3">
                       <img
                         src={question.image.startsWith('http') ? question.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`}
                         alt="Gambar Soal"
-                        className="max-w-full max-h-80 rounded-lg border border-slate-200"
+                        className="max-w-full max-h-80 rounded-lg border border-slate-200 dark:border-slate-700"
                       />
                     </div>
                   )}
@@ -405,7 +405,7 @@ export default function ExamTakingPage() {
                   className={`p-2 rounded-lg ${
                     flaggedQuestions.has(question?.number || currentQuestion + 1)
                       ? 'bg-yellow-100 text-yellow-600'
-                      : 'bg-slate-100 text-slate-400 hover:text-yellow-600'
+                      : 'bg-slate-100 text-slate-500 dark:text-slate-500 hover:text-yellow-600'
                   }`}
                   aria-label="Tandai soal"
                 >
@@ -420,7 +420,7 @@ export default function ExamTakingPage() {
                       className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
                         answers[question.id] === option
                           ? 'border-teal-500 bg-teal-50'
-                          : 'border-slate-200 hover:bg-slate-50'
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <input
@@ -430,8 +430,8 @@ export default function ExamTakingPage() {
                         onChange={() => handleAnswer(question.id, option)}
                         className="w-4 h-4 text-teal-600"
                       />
-                      <span className="ml-3 font-medium text-slate-700">{String.fromCharCode(65 + index)}.</span>
-                      <span className="ml-2 text-slate-600">{option}</span>
+                      <span className="ml-3 font-medium text-slate-700 dark:text-slate-300">{String.fromCharCode(65 + index)}.</span>
+                      <span className="ml-2 text-slate-600 dark:text-slate-400">{option}</span>
                     </label>
                   ))}
                 </div>
@@ -442,7 +442,7 @@ export default function ExamTakingPage() {
                   onChange={(e) => handleAnswer(question.id, e.target.value)}
                   placeholder="Tulis jawaban Anda di sini…"
                   rows={6}
-                  className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  className="w-full p-4 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   name={`essay-${question.id}`}
                   aria-label="Jawaban essay"
                 />
@@ -457,7 +457,7 @@ export default function ExamTakingPage() {
                 <ChevronLeft className="w-5 h-5 mr-2" />
                 Sebelumnya
               </Button>
-              <span className="text-sm text-slate-500">{answeredCount} / {questions.length} Dijawab</span>
+              <span className="text-sm text-slate-600 dark:text-slate-400">{answeredCount} / {questions.length} Dijawab</span>
               {currentQuestion === questions.length - 1 ? (
                 <Button onClick={handleSubmit} disabled={submitting}>
                   {submitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
@@ -473,7 +473,7 @@ export default function ExamTakingPage() {
           </div>
           <div className="lg:col-span-1">
             <Card className="p-4 sticky top-20">
-              <h3 className="font-semibold text-slate-800 mb-4">Navigasi Soal</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Navigasi Soal</h3>
               <div className="grid grid-cols-5 gap-2">
                 {questions.map((q, index) => (
                   <button
@@ -484,7 +484,7 @@ export default function ExamTakingPage() {
                         ? 'bg-teal-500 text-white'
                         : answers[q.id]
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                     } ${flaggedQuestions.has(q.number) ? 'ring-2 ring-yellow-400' : ''}`}
                   >
                     {q.number || index + 1}
@@ -494,19 +494,19 @@ export default function ExamTakingPage() {
               <div className="mt-6 space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-green-100 rounded" />
-                  <span className="text-slate-600">Sudah dijawab</span>
+                  <span className="text-slate-600 dark:text-slate-400">Sudah dijawab</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-slate-100 rounded" />
-                  <span className="text-slate-600">Belum dijawab</span>
+                  <span className="text-slate-600 dark:text-slate-400">Belum dijawab</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-white border-2 border-yellow-400 rounded" />
-                  <span className="text-slate-600">Ditandai</span>
+                  <div className="w-4 h-4 bg-white dark:bg-slate-900 border-2 border-yellow-400 rounded" />
+                  <span className="text-slate-600 dark:text-slate-400">Ditandai</span>
                 </div>
               </div>
               <div className="mt-6">
-                <p className="text-sm text-slate-500 mb-2">Kamera Pengawas</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Kamera Pengawas</p>
                 <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden">
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 </div>

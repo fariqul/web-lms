@@ -226,7 +226,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
               <>
                 {/* Quick Actions */}
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-sm font-medium text-slate-600 mr-2">Set semua:</span>
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400 mr-2">Set semua:</span>
                   {statusOptions.map((opt) => (
                     <button
                       key={opt.value}
@@ -260,7 +260,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-500" />
                   <input
                     type="text"
                     placeholder="Cari nama siswa…"
@@ -271,8 +271,8 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                 </div>
 
                 {/* Student List */}
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2.5 flex items-center text-xs font-medium text-slate-500 uppercase tracking-wider border-b">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <div className="bg-slate-50 dark:bg-slate-800 px-4 py-2.5 flex items-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b">
                     <span className="w-10">No</span>
                     <span className="flex-1">Nama Siswa</span>
                     <span className="w-52 text-center">Status</span>
@@ -283,13 +283,13 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                       return (
                         <div
                           key={student.id}
-                          className="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors"
+                          className="flex items-center px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
-                          <span className="w-10 text-sm text-slate-400">{index + 1}</span>
+                          <span className="w-10 text-sm text-slate-500 dark:text-slate-500">{index + 1}</span>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-slate-800">{student.name}</p>
+                            <p className="text-sm font-medium text-slate-800 dark:text-white">{student.name}</p>
                             {student.nisn && (
-                              <p className="text-xs text-slate-400">NISN: {student.nisn}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">NISN: {student.nisn}</p>
                             )}
                           </div>
                           <div className="w-52 flex gap-1 justify-center">
@@ -305,7 +305,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                                         opt.value === 'sakit' ? 'ring-yellow-400' :
                                         'ring-red-400'
                                       }`
-                                    : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
+                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 {opt.label}
@@ -341,17 +341,17 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
             )}
 
             {!loading && selectedClass && students.length === 0 && (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                 <p>Tidak ada siswa di kelas ini</p>
               </div>
             )}
 
             {!loading && !selectedClass && (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <UserCheck className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                 <p>Pilih kelas untuk mulai absensi manual</p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
                   Guru dapat menandai status setiap siswa: Hadir, Izin, Sakit, atau Alpa
                 </p>
               </div>
@@ -361,8 +361,8 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
           /* Success state */
           <div className="text-center py-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">Absensi Berhasil Disimpan!</h3>
-            <p className="text-slate-500 mb-2">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Absensi Berhasil Disimpan!</h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-2">
               {classes.find((c) => c.value === selectedClass)?.label} -{' '}
               {subjects.find((s) => s.value === selectedSubject)?.label}
             </p>

@@ -211,13 +211,13 @@ export default function MonitorUjianPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'not_started':
-        return <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">Belum Mulai</span>;
+        return <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">Belum Mulai</span>;
       case 'in_progress':
         return <span className="px-2 py-1 bg-teal-50 text-teal-600 text-xs rounded-full">Mengerjakan</span>;
       case 'completed':
         return <span className="px-2 py-1 bg-green-100 text-green-600 text-xs rounded-full">Selesai</span>;
       default:
-        return <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">{status}</span>;
+        return <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">{status}</span>;
     }
   };
 
@@ -271,8 +271,8 @@ export default function MonitorUjianPage() {
       <DashboardLayout>
         <div className="text-center py-12">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900">Ujian tidak ditemukan</h2>
-          <p className="text-slate-500 mt-2">Ujian yang Anda cari tidak ada atau sudah dihapus.</p>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Ujian tidak ditemukan</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Ujian yang Anda cari tidak ada atau sudah dihapus.</p>
           <Link href="/ujian">
             <Button className="mt-4">Kembali ke Daftar Ujian</Button>
           </Link>
@@ -294,8 +294,8 @@ export default function MonitorUjianPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Monitor Ujian</h1>
-              <p className="text-slate-600">{exam.title} - {examDetail?.class?.name || examDetail?.subject || '-'}</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Monitor Ujian</h1>
+              <p className="text-slate-600 dark:text-slate-400">{exam.title} - {examDetail?.class?.name || examDetail?.subject || '-'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -306,13 +306,13 @@ export default function MonitorUjianPage() {
                   <span className="hidden sm:inline">Live</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-slate-400">
+                <span className="flex items-center gap-1 text-slate-500 dark:text-slate-500">
                   <WifiOff className="w-4 h-4" />
                   <span className="hidden sm:inline">Offline</span>
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
               <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
               <span>Update: {formatTime(lastRefresh.toISOString())}</span>
             </div>
@@ -335,30 +335,30 @@ export default function MonitorUjianPage() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-6">
               <div>
-                <p className="text-xs text-slate-500">Mata Pelajaran</p>
-                <p className="font-medium text-slate-900">{examDetail?.subject || '-'}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Mata Pelajaran</p>
+                <p className="font-medium text-slate-900 dark:text-white">{examDetail?.subject || '-'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Durasi</p>
-                <p className="font-medium text-slate-900">{exam.duration} menit</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Durasi</p>
+                <p className="font-medium text-slate-900 dark:text-white">{exam.duration} menit</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Mulai</p>
-                <p className="font-medium text-slate-900">{formatDateTime(exam.start_time)}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Mulai</p>
+                <p className="font-medium text-slate-900 dark:text-white">{formatDateTime(exam.start_time)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Selesai</p>
-                <p className="font-medium text-slate-900">{formatDateTime(exam.end_time)}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Selesai</p>
+                <p className="font-medium text-slate-900 dark:text-white">{formatDateTime(exam.end_time)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Jumlah Soal</p>
-                <p className="font-medium text-slate-900">{exam.total_questions} soal</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Jumlah Soal</p>
+                <p className="font-medium text-slate-900 dark:text-white">{exam.total_questions} soal</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-orange-500" />
               <div>
-                <p className="text-xs text-slate-500">Sisa Waktu</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Sisa Waktu</p>
                 <p className="font-bold text-orange-600 text-lg">{getTimeRemaining()}</p>
               </div>
             </div>
@@ -373,19 +373,19 @@ export default function MonitorUjianPage() {
                 <Users className="w-5 h-5 text-teal-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{summary?.total_students || 0}</p>
-                <p className="text-xs text-slate-500">Total Peserta</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{summary?.total_students || 0}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Total Peserta</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-slate-600" />
+                <Clock className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{summary?.not_started || 0}</p>
-                <p className="text-xs text-slate-500">Belum Mulai</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{summary?.not_started || 0}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Belum Mulai</p>
               </div>
             </div>
           </Card>
@@ -396,7 +396,7 @@ export default function MonitorUjianPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-teal-600">{summary?.in_progress || 0}</p>
-                <p className="text-xs text-slate-500">Mengerjakan</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Mengerjakan</p>
               </div>
             </div>
           </Card>
@@ -407,7 +407,7 @@ export default function MonitorUjianPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{summary?.completed || 0}</p>
-                <p className="text-xs text-slate-500">Selesai</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Selesai</p>
               </div>
             </div>
           </Card>
@@ -418,7 +418,7 @@ export default function MonitorUjianPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-red-600">{summary?.total_violations || 0}</p>
-                <p className="text-xs text-slate-500">Total Pelanggaran</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Total Pelanggaran</p>
               </div>
             </div>
           </Card>
@@ -438,7 +438,7 @@ export default function MonitorUjianPage() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === tab.value
                   ? 'bg-teal-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
               }`}
             >
               {tab.label}
@@ -450,13 +450,13 @@ export default function MonitorUjianPage() {
         {realtimeEvents.length > 0 && (
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 Aktivitas Real-time
               </h3>
               <button
                 onClick={() => setRealtimeEvents([])}
-                className="text-xs text-slate-400 hover:text-slate-600"
+                className="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-600"
               >
                 Bersihkan
               </button>
@@ -469,8 +469,8 @@ export default function MonitorUjianPage() {
                     evt.type === 'submit' ? 'bg-green-500' :
                     evt.type === 'join' ? 'bg-teal-500' : 'bg-slate-400'
                   }`} />
-                  <span className="text-slate-600 flex-1">{evt.message}</span>
-                  <span className="text-slate-400 flex-shrink-0">
+                  <span className="text-slate-600 dark:text-slate-400 flex-1">{evt.message}</span>
+                  <span className="text-slate-500 dark:text-slate-500 flex-shrink-0">
                     {evt.time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
@@ -483,32 +483,32 @@ export default function MonitorUjianPage() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b">
                 <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Siswa</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Status</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Progress</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Pelanggaran</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Waktu Mulai</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Nilai</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Aksi</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Siswa</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Status</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Progress</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Pelanggaran</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Waktu Mulai</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Nilai</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {filteredParticipants.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <td colSpan={7} className="py-12 text-center text-slate-600 dark:text-slate-400">
                       <Users className="w-12 h-12 mx-auto mb-3 text-slate-400 dark:text-slate-600" />
                       <p>Tidak ada peserta dengan filter ini</p>
                     </td>
                   </tr>
                 ) : (
                   filteredParticipants.map((participant) => (
-                    <tr key={participant.student.id} className="hover:bg-slate-50">
+                    <tr key={participant.student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                       <td className="py-3 px-4">
                         <div>
-                          <p className="font-medium text-slate-900">{participant.student.name}</p>
-                          <p className="text-xs text-slate-500">NISN: {participant.student.nisn}</p>
+                          <p className="font-medium text-slate-900 dark:text-white">{participant.student.name}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">NISN: {participant.student.nisn}</p>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -526,7 +526,7 @@ export default function MonitorUjianPage() {
                               }}
                             />
                           </div>
-                          <span className="text-xs text-slate-500 tabular-nums">
+                          <span className="text-xs text-slate-600 dark:text-slate-400 tabular-nums">
                             {participant.answered_count}/{participant.total_questions}
                           </span>
                         </div>
@@ -538,10 +538,10 @@ export default function MonitorUjianPage() {
                             <span className="font-medium tabular-nums">{participant.violation_count}</span>
                           </span>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-500 dark:text-slate-500">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-slate-500">
+                      <td className="py-3 px-4 text-center text-sm text-slate-600 dark:text-slate-400">
                         {participant.started_at ? formatTime(participant.started_at) : '-'}
                       </td>
                       <td className="py-3 px-4 text-center text-sm">
@@ -550,7 +550,7 @@ export default function MonitorUjianPage() {
                             {Number(participant.score).toFixed(1)}
                           </span>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-500 dark:text-slate-500">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -568,7 +568,7 @@ export default function MonitorUjianPage() {
                           )}
                           {participant.status === 'in_progress' && participant.latest_snapshot && (
                             <button
-                              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                              className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
                               title="Lihat Kamera"
                               aria-label="Lihat kamera siswa"
                             >
@@ -586,7 +586,7 @@ export default function MonitorUjianPage() {
         </Card>
 
         {/* Legend */}
-        <div className="flex items-center gap-6 text-sm text-slate-500">
+        <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-slate-400" />
             <span>Belum Mulai</span>

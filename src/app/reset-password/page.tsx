@@ -56,14 +56,14 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 dark:border-slate-700 p-8">
       {success ? (
         <div className="text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Password Berhasil Direset!</h2>
-          <p className="text-slate-600 mb-6">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Password Berhasil Direset!</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
             Password Anda telah berhasil diubah. Silakan login dengan password baru.
           </p>
           <Link
@@ -75,8 +75,8 @@ function ResetPasswordForm() {
         </div>
       ) : (
         <>
-          <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">Reset Password</h2>
-          <p className="text-slate-500 text-center mb-6 text-sm">
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white text-center mb-2">Reset Password</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-center mb-6 text-sm">
             Masukkan password baru untuk akun <strong>{email}</strong>
           </p>
 
@@ -88,9 +88,9 @@ function ResetPasswordForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password Baru</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Minimal 8 karakter"
@@ -103,7 +103,7 @@ function ResetPasswordForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-500 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -111,9 +111,9 @@ function ResetPasswordForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Konfirmasi Password</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Ulangi password baru"
@@ -165,12 +165,12 @@ export default function ResetPasswordPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
             <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={80} height={80} className="object-contain w-full h-full drop-shadow-md" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-1">Reset Password</h1>
-          <p className="text-slate-500 text-sm">SMA 15 Makassar LMS</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Reset Password</h1>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">SMA 15 Makassar LMS</p>
         </div>
 
         <Suspense fallback={
-          <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 dark:border-slate-700 p-8 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-sky-500 mx-auto" />
           </div>
         }>

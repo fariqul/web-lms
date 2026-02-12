@@ -1,4 +1,4 @@
-﻿import React, { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, forwardRef, useId } from 'react';
+import React, { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, forwardRef, useId } from 'react';
 import clsx from 'clsx';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -31,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-500">
               {leftIcon}
             </div>
           )}
@@ -44,8 +44,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={clsx(
               'w-full rounded-xl border transition-all duration-200',
               'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
-              'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400',
-              'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+              'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500 dark:text-slate-500',
+              'placeholder:text-slate-400 dark:placeholder:text-slate-600 dark:text-slate-400',
               'dark:bg-slate-800 dark:text-slate-100',
               error
                 ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
@@ -58,7 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-500">
               {rightIcon}
             </div>
           )}
@@ -108,7 +108,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             'w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-200',
             'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
             'disabled:bg-slate-50 disabled:cursor-not-allowed',
-            'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+            'placeholder:text-slate-400 dark:placeholder:text-slate-600 dark:text-slate-400',
             'dark:bg-slate-800 dark:text-slate-100',
             'resize-none',
             error
@@ -178,7 +178,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ))}
           </select>
           {/* Custom dropdown arrow */}
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-500">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>

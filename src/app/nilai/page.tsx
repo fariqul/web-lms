@@ -217,8 +217,8 @@ export default function NilaiPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Nilai Siswa</h1>
-            <p className="text-slate-600">Lihat dan kelola nilai ujian & tugas siswa</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nilai Siswa</h1>
+            <p className="text-slate-600 dark:text-slate-400">Lihat dan kelola nilai ujian & tugas siswa</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => window.print()} className="print:hidden">
@@ -244,8 +244,8 @@ export default function NilaiPage() {
               onClick={() => setViewTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 viewTab === tab.key
-                  ? 'bg-white text-sky-700 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-sky-700 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -262,8 +262,8 @@ export default function NilaiPage() {
                 <Users className="w-5 h-5 text-sky-500" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Total Siswa</p>
-                <p className="text-xl font-bold text-slate-900">{grades.length}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Siswa</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{grades.length}</p>
               </div>
             </div>
           </Card>
@@ -273,11 +273,11 @@ export default function NilaiPage() {
                 <BookCheck className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Rata-rata Ujian</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Rata-rata Ujian</p>
                 <p className={`text-xl font-bold ${getScoreColor(overallExamAvg)}`}>
                   {overallExamAvg.toFixed(1)}
                 </p>
-                <p className="text-xs text-slate-400">{totalExams} ujian</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">{totalExams} ujian</p>
               </div>
             </div>
           </Card>
@@ -287,11 +287,11 @@ export default function NilaiPage() {
                 <ClipboardList className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Rata-rata Tugas</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Rata-rata Tugas</p>
                 <p className={`text-xl font-bold ${getScoreColor(overallAssignmentAvg)}`}>
                   {overallAssignmentAvg.toFixed(1)}
                 </p>
-                <p className="text-xs text-slate-400">{totalAssignments} tugas</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">{totalAssignments} tugas</p>
               </div>
             </div>
           </Card>
@@ -301,7 +301,7 @@ export default function NilaiPage() {
                 <Award className="w-5 h-5 text-sky-500" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Rata-rata Gabungan</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Rata-rata Gabungan</p>
                 <p className={`text-xl font-bold ${getScoreColor(overallAverage)}`}>
                   {overallAverage.toFixed(1)}
                 </p>
@@ -313,7 +313,7 @@ export default function NilaiPage() {
         {/* Class Averages */}
         {classAverages.length > 0 && classAverages.some(c => c.count > 0) && (
           <Card className="p-4">
-            <h3 className="font-semibold text-slate-900 mb-4">Rata-rata Per Kelas</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Rata-rata Per Kelas</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
               {classAverages.filter(c => c.count > 0).map((c, i) => (
                 <div key={i} className="text-center">
@@ -322,8 +322,8 @@ export default function NilaiPage() {
                       {c.average.toFixed(0)}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-slate-700 mt-2">{c.class}</p>
-                  <p className="text-xs text-slate-500">{c.count} siswa</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-2">{c.class}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{c.count} siswa</p>
                 </div>
               ))}
             </div>
@@ -333,7 +333,7 @@ export default function NilaiPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Cari nama atau NIS siswa…"
@@ -363,79 +363,79 @@ export default function NilaiPage() {
           {filteredGrades.length === 0 ? (
             <div className="p-8 text-center">
               <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-500">Belum ada data nilai</p>
-              <p className="text-sm text-slate-400 mt-1">Nilai akan muncul setelah siswa mengerjakan ujian atau tugas</p>
+              <p className="text-slate-600 dark:text-slate-400">Belum ada data nilai</p>
+              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Nilai akan muncul setelah siswa mengerjakan ujian atau tugas</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Siswa
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Kelas
                     </th>
                     {(viewTab === 'gabungan' || viewTab === 'ujian') && (
-                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Ujian
                       </th>
                     )}
                     {(viewTab === 'gabungan' || viewTab === 'tugas') && (
-                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Tugas
                       </th>
                     )}
                     {(viewTab === 'gabungan' || viewTab === 'ujian') && (
-                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Avg Ujian
                       </th>
                     )}
                     {(viewTab === 'gabungan' || viewTab === 'tugas') && (
-                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Avg Tugas
                       </th>
                     )}
                     {viewTab === 'gabungan' && (
-                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Avg Gabungan
                       </th>
                     )}
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Detail
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200">
                   {filteredGrades.map((grade) => {
                     const displayAvg = viewTab === 'ujian' ? grade.exam_average
                       : viewTab === 'tugas' ? grade.assignment_average
                       : grade.average;
                     return (
                       <React.Fragment key={grade.id}>
-                        <tr className="hover:bg-slate-50">
+                        <tr className="hover:bg-slate-50 dark:hover:bg-slate-800">
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div>
-                              <div className="font-medium text-slate-900">{grade.student_name}</div>
-                              <div className="text-sm text-slate-500">{grade.student_nis}</div>
+                              <div className="font-medium text-slate-900 dark:text-white">{grade.student_name}</div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400">{grade.student_nis}</div>
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 bg-slate-100 text-slate-700 text-sm rounded-full">
+                            <span className="px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 text-sm rounded-full">
                               {grade.class_name}
                             </span>
                           </td>
                           {(viewTab === 'gabungan' || viewTab === 'ujian') && (
-                            <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-slate-600">
+                            <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-400">
                               {grade.exams.length}
                             </td>
                           )}
                           {(viewTab === 'gabungan' || viewTab === 'tugas') && (
-                            <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-slate-600">
+                            <td className="px-4 py-4 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-400">
                               {grade.assignments.length}
                             </td>
                           )}
@@ -474,7 +474,7 @@ export default function NilaiPage() {
                           <td className="px-4 py-4 whitespace-nowrap text-center">
                             <button
                               onClick={() => setExpandedStudent(expandedStudent === grade.id ? null : grade.id)}
-                              className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
+                              className="p-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                               aria-label={expandedStudent === grade.id ? 'Tutup detail nilai' : 'Lihat detail nilai'}
                             >
                               {expandedStudent === grade.id ? (
@@ -489,28 +489,28 @@ export default function NilaiPage() {
                         {/* Expanded Detail */}
                         {expandedStudent === grade.id && (
                           <tr>
-                            <td colSpan={10} className="px-4 py-4 bg-slate-50">
+                            <td colSpan={10} className="px-4 py-4 bg-slate-50 dark:bg-slate-800">
                               <div className="space-y-4">
                                 {/* Exam Section */}
                                 {(viewTab === 'gabungan' || viewTab === 'ujian') && (
                                   <div>
-                                    <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
+                                    <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                                       <BookCheck className="w-4 h-4 text-indigo-600" />
                                       Nilai Ujian ({grade.exams.length})
                                     </h4>
                                     {grade.exams.length === 0 ? (
-                                      <p className="text-sm text-slate-400">Belum ada ujian yang dikerjakan</p>
+                                      <p className="text-sm text-slate-500 dark:text-slate-500">Belum ada ujian yang dikerjakan</p>
                                     ) : (
                                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {grade.exams.map((exam, i) => (
-                                          <div key={i} className="bg-white p-3 rounded-lg border border-slate-200">
+                                          <div key={i} className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
                                             <div className="flex justify-between items-start">
                                               <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-slate-900 truncate">{exam.exam_name}</p>
+                                                <p className="font-medium text-slate-900 dark:text-white truncate">{exam.exam_name}</p>
                                                 {exam.subject && (
                                                   <p className="text-xs text-indigo-600 mt-0.5">{exam.subject}</p>
                                                 )}
-                                                <p className="text-xs text-slate-500 mt-1">
+                                                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                                                   {new Date(exam.submitted_at).toLocaleDateString('id-ID')}
                                                 </p>
                                               </div>
@@ -554,7 +554,7 @@ export default function NilaiPage() {
                                                         setEditScore(exam.score.toString());
                                                         setEditingAssignment(null);
                                                       }}
-                                                      className="p-1 text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded"
+                                                      className="p-1 text-slate-500 dark:text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded"
                                                       title="Edit nilai"
                                                     >
                                                       <Pencil className="w-3.5 h-3.5" />
@@ -573,23 +573,23 @@ export default function NilaiPage() {
                                 {/* Assignment Section */}
                                 {(viewTab === 'gabungan' || viewTab === 'tugas') && (
                                   <div>
-                                    <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
+                                    <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                                       <ClipboardList className="w-4 h-4 text-purple-600" />
                                       Nilai Tugas ({grade.assignments.length})
                                     </h4>
                                     {grade.assignments.length === 0 ? (
-                                      <p className="text-sm text-slate-400">Belum ada tugas yang dikumpulkan</p>
+                                      <p className="text-sm text-slate-500 dark:text-slate-500">Belum ada tugas yang dikumpulkan</p>
                                     ) : (
                                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {grade.assignments.map((assignment, i) => (
-                                          <div key={i} className="bg-white p-3 rounded-lg border border-slate-200">
+                                          <div key={i} className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
                                             <div className="flex justify-between items-start">
                                               <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-slate-900 truncate">{assignment.assignment_name}</p>
+                                                <p className="font-medium text-slate-900 dark:text-white truncate">{assignment.assignment_name}</p>
                                                 {assignment.subject && (
                                                   <p className="text-xs text-purple-600 mt-0.5">{assignment.subject}</p>
                                                 )}
-                                                <p className="text-xs text-slate-500 mt-1">
+                                                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                                                   {new Date(assignment.submitted_at).toLocaleDateString('id-ID')}
                                                 </p>
                                               </div>
@@ -639,7 +639,7 @@ export default function NilaiPage() {
                                                         setEditScore(assignment.score?.toString() || '');
                                                         setEditingExam(null);
                                                       }}
-                                                      className="p-1 text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded"
+                                                      className="p-1 text-slate-500 dark:text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded"
                                                       title="Edit nilai"
                                                       aria-label="Edit nilai tugas"
                                                     >

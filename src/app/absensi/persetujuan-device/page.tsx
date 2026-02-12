@@ -217,13 +217,13 @@ export default function DeviceApprovalPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/absensi">
-              <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-slate-600" />
+              <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               </button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Persetujuan Perangkat</h1>
-              <p className="text-slate-600">Kelola permintaan pindah perangkat dari siswa</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Persetujuan Perangkat</h1>
+              <p className="text-slate-600 dark:text-slate-400">Kelola permintaan pindah perangkat dari siswa</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export default function DeviceApprovalPage() {
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
               isConnected 
                 ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-slate-50 text-slate-500 border border-slate-200'
+                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
             }`}>
               <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`} />
               {isConnected ? 'Real-time aktif' : 'Offline'}
@@ -270,7 +270,7 @@ export default function DeviceApprovalPage() {
         )}
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 border-b border-slate-200">
+        <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
           {[
             { key: 'pending', label: 'Menunggu', count: requests.filter(r => r.status === 'pending').length },
             { key: 'approved', label: 'Disetujui', count: requests.filter(r => r.status === 'approved').length },
@@ -283,13 +283,13 @@ export default function DeviceApprovalPage() {
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 filter === tab.key
                   ? 'border-blue-500 text-sky-500'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-700'
               }`}
             >
               {tab.label}
               {tab.count > 0 && (
                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  filter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'
+                  filter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600 dark:text-slate-400'
                 }`}>
                   {tab.count}
                 </span>
@@ -303,10 +303,10 @@ export default function DeviceApprovalPage() {
           <Card>
             <div className="text-center py-12">
               <Smartphone className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
                 {filter === 'pending' ? 'Tidak ada permintaan pending' : 'Tidak ada data'}
               </h3>
-              <p className="text-slate-500">
+              <p className="text-slate-600 dark:text-slate-400">
                 {filter === 'pending' 
                   ? 'Semua permintaan pindah perangkat telah diproses'
                   : 'Belum ada permintaan pindah perangkat untuk filter ini'}
@@ -321,37 +321,37 @@ export default function DeviceApprovalPage() {
                   {/* Request Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <Smartphone className="w-5 h-5 text-slate-400" />
+                      <Smartphone className="w-5 h-5 text-slate-500 dark:text-slate-500" />
                       {getStatusBadge(request.status)}
                     </div>
                     
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-500">Siswa:</span>
-                        <span className="font-medium text-slate-900">{request.student.name}</span>
-                        <span className="text-sm text-slate-500">({request.student.nisn})</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Siswa:</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{request.student.name}</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">({request.student.nisn})</span>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-500">Sebelumnya digunakan oleh:</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Sebelumnya digunakan oleh:</span>
                         <span className="font-medium text-orange-600">{request.previous_student.name}</span>
-                        <span className="text-sm text-slate-500">({request.previous_student.nisn})</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">({request.previous_student.nisn})</span>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-500">Sesi:</span>
-                        <span className="text-sm text-slate-700">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Sesi:</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">
                           {request.session.class?.name} - {request.session.subject}
                         </span>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-500">Waktu permintaan:</span>
-                        <span className="text-sm text-slate-700">{formatDate(request.created_at)}</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Waktu permintaan:</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{formatDate(request.created_at)}</span>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-500">Device ID:</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Device ID:</span>
                         <code className="text-xs bg-slate-100 px-2 py-0.5 rounded font-mono">
                           {request.device_id.substring(0, 20)}…
                         </code>
@@ -383,7 +383,7 @@ export default function DeviceApprovalPage() {
                   )}
                   
                   {request.status !== 'pending' && request.handled_at && (
-                    <div className="text-sm text-slate-500">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
                       Diproses: {formatDate(request.handled_at)}
                     </div>
                   )}
@@ -399,7 +399,7 @@ export default function DeviceApprovalPage() {
             title="Tentang Persetujuan Perangkat"
             subtitle="Sistem anti-titip absensi"
           />
-          <div className="space-y-3 text-sm text-slate-600">
+          <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
             <p>
               <strong>Mengapa perlu persetujuan?</strong><br />
               Ketika seorang siswa mencoba absen menggunakan perangkat yang sebelumnya 

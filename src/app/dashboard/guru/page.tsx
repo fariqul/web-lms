@@ -270,7 +270,7 @@ export default function GuruDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
                 <p className="text-slate-500 dark:text-slate-400">Tidak ada jadwal hari ini</p>
               </div>
@@ -301,7 +301,7 @@ export default function GuruDashboard() {
               </Link>
             }
           />
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-slate-600 dark:text-slate-400">
             <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
             <p className="text-slate-500 dark:text-slate-400">Belum ada hasil ujian</p>
             <Link href="/ujian" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
@@ -326,7 +326,7 @@ export default function GuruDashboard() {
                 <Link
                   key={announcement.id}
                   href="/pengumuman"
-                  className="block p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                  className="block p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -355,7 +355,7 @@ export default function GuruDashboard() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-600 dark:text-slate-400">
               <Megaphone className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
               <p className="text-slate-500 dark:text-slate-400">Belum ada pengumuman</p>
               <Link href="/pengumuman" className="text-sky-500 hover:underline text-sm mt-2 inline-block">

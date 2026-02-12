@@ -432,7 +432,7 @@ export default function SiswaDashboard() {
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-slate-400" />
+                  <BarChart3 className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Statistik Kehadiran</h3>
                 </div>
                 <Link href="/riwayat-absensi" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
@@ -514,7 +514,7 @@ export default function SiswaDashboard() {
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4 text-slate-400" />
+                  <GraduationCap className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Hasil Ujian Terbaru</h3>
                 </div>
                 <Link href="/nilai-siswa" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
@@ -530,7 +530,7 @@ export default function SiswaDashboard() {
                       const gradeColor = grade === 'A' ? 'text-emerald-600 bg-emerald-50' :
                         grade === 'B' ? 'text-sky-600 bg-sky-50' :
                         grade === 'C' ? 'text-orange-500 bg-orange-50' :
-                        grade === 'F' ? 'text-red-600 bg-red-50' : 'text-slate-600 bg-slate-50';
+                        grade === 'F' ? 'text-red-600 bg-red-50' : 'text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800';
                       return (
                         <div key={exam.id} className="flex items-center gap-3 py-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${gradeColor}`}>
@@ -563,7 +563,7 @@ export default function SiswaDashboard() {
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4 text-slate-400" />
+                  <ClipboardList className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Tugas Belum Dikerjakan</h3>
                   {pendingAssignments.length > 0 && (
                     <span className="px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-md">
@@ -591,14 +591,14 @@ export default function SiswaDashboard() {
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
                           isOverdue ? 'bg-red-50/50 border-red-200' :
                           isUrgent ? 'bg-orange-50/50 border-orange-200' :
-                          'bg-slate-50/50 border-slate-100 hover:border-slate-200'
+                          'bg-slate-50/50 border-slate-100 dark:border-slate-700 hover:border-slate-200'
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           isOverdue ? 'bg-red-100' : isUrgent ? 'bg-amber-100' : 'bg-slate-100'
                         }`}>
                           <ClipboardList className={`w-4 h-4 ${
-                            isOverdue ? 'text-red-600' : isUrgent ? 'text-orange-500' : 'text-slate-500'
+                            isOverdue ? 'text-red-600' : isUrgent ? 'text-orange-500' : 'text-slate-600 dark:text-slate-400'
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -607,7 +607,7 @@ export default function SiswaDashboard() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className={`text-[11px] font-semibold ${
-                            isOverdue ? 'text-red-600' : isUrgent ? 'text-orange-500' : 'text-slate-500'
+                            isOverdue ? 'text-red-600' : isUrgent ? 'text-orange-500' : 'text-slate-600 dark:text-slate-400'
                           }`}>
                             {isOverdue ? 'Terlambat' : deadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                           </p>
@@ -633,7 +633,7 @@ export default function SiswaDashboard() {
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-400" />
+                  <Clock className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Jadwal Hari Ini</h3>
                 </div>
                 <Link href="/jadwal" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
@@ -653,7 +653,7 @@ export default function SiswaDashboard() {
                         }`}
                       >
                         <div className="text-center flex-shrink-0 w-12">
-                          <p className={`text-xs font-bold tabular-nums ${status === 'inprogress' ? 'text-sky-700' : 'text-slate-700'}`}>
+                          <p className={`text-xs font-bold tabular-nums ${status === 'inprogress' ? 'text-sky-700' : 'text-slate-700 dark:text-slate-300'}`}>
                             {formatTime(item.start_time)}
                           </p>
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">{formatTime(item.end_time)}</p>
@@ -663,7 +663,7 @@ export default function SiswaDashboard() {
                           status === 'completed' ? 'bg-slate-200' : 'bg-slate-300'
                         }`} />
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${status === 'inprogress' ? 'text-sky-900' : 'text-slate-900'}`}>
+                          <p className={`text-sm font-medium truncate ${status === 'inprogress' ? 'text-sky-900' : 'text-slate-900 dark:text-white'}`}>
                             {item.subject}
                           </p>
                           {item.room && (
@@ -691,14 +691,14 @@ export default function SiswaDashboard() {
             {/* Calendar */}
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-2">
-                <button onClick={prevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Bulan sebelumnya">
-                  <ChevronLeft className="w-4 h-4 text-slate-500" />
+                <button onClick={prevMonth} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" aria-label="Bulan sebelumnya">
+                  <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </button>
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                   {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button onClick={nextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Bulan berikutnya">
-                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                <button onClick={nextMonth} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" aria-label="Bulan berikutnya">
+                  <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </button>
               </div>
               <div className="px-4 pb-4">
@@ -730,7 +730,7 @@ export default function SiswaDashboard() {
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Mendatang</h3>
                 </div>
               </div>
@@ -740,7 +740,7 @@ export default function SiswaDashboard() {
                     <Link
                       key={event.id}
                       href={event.type === 'exam' ? '/ujian-siswa' : '/tugas-siswa'}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors group"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
                     >
                       <div className={`w-1 h-full min-h-[40px] rounded-full flex-shrink-0 ${
                         event.type === 'exam' ? 'bg-violet-400' : 'bg-amber-400'
@@ -769,7 +769,7 @@ export default function SiswaDashboard() {
         <Card className="p-0 overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <div className="flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-slate-400" />
+              <Megaphone className="w-4 h-4 text-slate-500 dark:text-slate-500" />
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Pengumuman</h3>
               {newAnnouncementsCount > 0 && (
                 <span className="px-1.5 py-0.5 bg-sky-100 text-sky-600 text-[10px] font-bold rounded-md">
@@ -789,7 +789,7 @@ export default function SiswaDashboard() {
                   <Link
                     key={announcement.id}
                     href="/pengumuman"
-                    className="flex gap-3 p-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all group"
+                    className="flex gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-slate-200 hover:bg-slate-50/50 transition-all group"
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       announcement.priority === 'urgent' ? 'bg-red-100' :
@@ -797,7 +797,7 @@ export default function SiswaDashboard() {
                     }`}>
                       <Megaphone className={`w-4 h-4 ${
                         announcement.priority === 'urgent' ? 'text-red-600' :
-                        announcement.priority === 'important' ? 'text-orange-500' : 'text-slate-500'
+                        announcement.priority === 'important' ? 'text-orange-500' : 'text-slate-600 dark:text-slate-400'
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">

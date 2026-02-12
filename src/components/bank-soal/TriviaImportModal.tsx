@@ -127,14 +127,14 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
             <Globe className="w-5 h-5 text-sky-500" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Import Soal</h3>
-            <p className="text-sm text-slate-500">Dari Open Trivia Database</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Import Soal</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Dari Open Trivia Database</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kategori</label>
             <select
               value={importData.category}
               onChange={(e) => setImportData({ ...importData, category: parseInt(e.target.value) })}
@@ -147,7 +147,7 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kesulitan</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tingkat Kesulitan</label>
             <select
               value={importData.difficulty}
               onChange={(e) => setImportData({ ...importData, difficulty: e.target.value })}
@@ -161,7 +161,7 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Jumlah Soal</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jumlah Soal</label>
             <input
               type="number"
               min="1"
@@ -170,11 +170,11 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
               onChange={(e) => setImportData({ ...importData, amount: Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) })}
               className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
-            <p className="text-xs text-slate-500 mt-1">Maksimal 50 soal per import</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Maksimal 50 soal per import</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kelas</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tingkat Kelas</label>
             <select
               value={importData.grade_level}
               onChange={(e) => setImportData({ ...importData, grade_level: e.target.value as '10' | '11' | '12' })}

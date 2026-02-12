@@ -30,22 +30,22 @@ const difficultyStyles: Record<string, { color: string; label: string }> = {
 };
 
 export function QuestionCard({ question, index, onEdit, onDelete, onDuplicate }: QuestionCardProps) {
-  const diff = difficultyStyles[question.difficulty] || { color: 'bg-slate-100 text-slate-700', label: question.difficulty };
+  const diff = difficultyStyles[question.difficulty] || { color: 'bg-slate-100 text-slate-700 dark:text-slate-300', label: question.difficulty };
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 font-semibold text-slate-600">
+        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 font-semibold text-slate-600 dark:text-slate-400">
           {index + 1}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-slate-900 font-medium">{question.question}</p>
+              <p className="text-slate-900 dark:text-white font-medium">{question.question}</p>
               {question.type === 'pilihan_ganda' && question.options && (
                 <div className="mt-2 space-y-1">
                   {question.options.map((opt, i) => (
-                    <p key={i} className={`text-sm ${opt === question.correct_answer ? 'text-green-600 font-medium' : 'text-slate-500'}`}>
+                    <p key={i} className={`text-sm ${opt === question.correct_answer ? 'text-green-600 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
                       {String.fromCharCode(65 + i)}. {opt} {opt === question.correct_answer && '✓'}
                     </p>
                   ))}
@@ -56,7 +56,7 @@ export function QuestionCard({ question, index, onEdit, onDelete, onDuplicate }:
                   {question.subject}
                 </span>
                 {question.class_name && (
-                  <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
+                  <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                     {question.class_name}
                   </span>
                 )}
@@ -71,21 +71,21 @@ export function QuestionCard({ question, index, onEdit, onDelete, onDuplicate }:
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => onDuplicate(question)}
-                className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
+                className="p-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                 title="Duplikat"
               >
                 <Copy className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onEdit(question)}
-                className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
+                className="p-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                 title="Edit"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onDelete(question.id)}
-                className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                className="p-2 text-slate-600 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                 title="Hapus"
               >
                 <Trash2 className="w-4 h-4" />

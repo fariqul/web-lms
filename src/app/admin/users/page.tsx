@@ -338,7 +338,7 @@ export default function AdminUsersPage() {
           />
           {!selectedUser && (
             <div className="w-full">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -351,7 +351,7 @@ export default function AdminUsersPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 dark:text-slate-500 hover:text-slate-600"
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -449,7 +449,7 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="w-full">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Password Baru</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
                 <div className="relative">
                   <input
                     type={resetPasswordData.showPassword ? 'text' : 'password'}
@@ -463,13 +463,13 @@ export default function AdminUsersPage() {
                   <button
                     type="button"
                     onClick={() => setResetPasswordData({ ...resetPasswordData, showPassword: !resetPasswordData.showPassword })}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 dark:text-slate-500 hover:text-slate-600"
                     aria-label={resetPasswordData.showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
                     {resetPasswordData.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">Harus mengandung huruf besar, huruf kecil, dan angka</p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Harus mengandung huruf besar, huruf kecil, dan angka</p>
               </div>
 
               <div className="flex gap-3 pt-2">

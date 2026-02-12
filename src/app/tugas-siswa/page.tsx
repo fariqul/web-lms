@@ -230,13 +230,13 @@ export default function TugasSiswaPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tugas Saya</h1>
-          <p className="text-slate-600">Lihat dan kumpulkan tugas dari guru</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tugas Saya</h1>
+          <p className="text-slate-600 dark:text-slate-400">Lihat dan kumpulkan tugas dari guru</p>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Cari tugas…"
@@ -255,7 +255,7 @@ export default function TugasSiswaPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'pending'
                 ? 'border-blue-500 text-sky-500'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-700'
             }`}
           >
             <span className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export default function TugasSiswaPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'submitted'
                 ? 'border-blue-500 text-sky-500'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-700'
             }`}
           >
             <span className="flex items-center gap-2">
@@ -291,7 +291,7 @@ export default function TugasSiswaPage() {
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'graded'
                 ? 'border-blue-500 text-sky-500'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-700'
             }`}
           >
             <span className="flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function TugasSiswaPage() {
           {filteredAssignments.length === 0 ? (
             <Card className="p-8 text-center">
               <ClipboardList className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-500">
+              <p className="text-slate-600 dark:text-slate-400">
                 {activeTab === 'pending' && 'Tidak ada tugas yang perlu dikerjakan'}
                 {activeTab === 'submitted' && 'Tidak ada tugas yang menunggu nilai'}
                 {activeTab === 'graded' && 'Belum ada tugas yang dinilai'}
@@ -339,13 +339,13 @@ export default function TugasSiswaPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-slate-900">{assignment.title}</h3>
-                        <p className="text-sm text-slate-500 mt-1 line-clamp-2">{assignment.description}</p>
+                        <h3 className="font-semibold text-slate-900 dark:text-white">{assignment.title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{assignment.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                             {assignment.subject}
                           </span>
-                          <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                             {assignment.teacher?.name || 'Guru'}
                           </span>
                           {assignment.my_submission?.status === 'late' && (
@@ -361,14 +361,14 @@ export default function TugasSiswaPage() {
                             <p className="text-2xl font-bold text-sky-500">
                               {assignment.my_submission.score}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
                               / {assignment.max_score}
                             </p>
                           </div>
                         ) : assignment.has_submitted ? (
                           <button
                             onClick={() => handleViewDetail(assignment)}
-                            className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
+                            className="p-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg"
                             aria-label="Lihat detail tugas"
                           >
                             <Eye className="w-5 h-5" />
@@ -385,7 +385,7 @@ export default function TugasSiswaPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-600 dark:text-slate-400">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         Deadline: {formatDate(assignment.deadline)}
@@ -410,9 +410,9 @@ export default function TugasSiswaPage() {
                       )}
                     </div>
                     {assignment.my_submission?.feedback && (
-                      <div className="mt-3 p-2 bg-slate-50 rounded text-sm">
-                        <p className="text-slate-500 text-xs mb-1">Feedback Guru:</p>
-                        <p className="text-slate-700">{assignment.my_submission.feedback}</p>
+                      <div className="mt-3 p-2 bg-slate-50 dark:bg-slate-800 rounded text-sm">
+                        <p className="text-slate-600 dark:text-slate-400 text-xs mb-1">Feedback Guru:</p>
+                        <p className="text-slate-700 dark:text-slate-300">{assignment.my_submission.feedback}</p>
                       </div>
                     )}
                   </div>
@@ -426,11 +426,11 @@ export default function TugasSiswaPage() {
         {showSubmitModal && selectedAssignment && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
                 <h2 className="text-lg font-semibold">Kumpulkan Tugas</h2>
                 <button 
                   onClick={() => { setShowSubmitModal(false); setSelectedAssignment(null); }} 
-                  className="p-1 hover:bg-slate-100 rounded"
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
                   aria-label="Tutup"
                 >
                   <X className="w-5 h-5" />
@@ -439,10 +439,10 @@ export default function TugasSiswaPage() {
               
               <div className="p-4">
                 {/* Assignment Info */}
-                <div className="mb-4 p-3 bg-slate-50 rounded-lg">
-                  <h3 className="font-medium text-slate-900">{selectedAssignment.title}</h3>
-                  <p className="text-sm text-slate-500 mt-1">{selectedAssignment.description}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <h3 className="font-medium text-slate-900 dark:text-white">{selectedAssignment.title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{selectedAssignment.description}</p>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-slate-600 dark:text-slate-400">
                     <span>{selectedAssignment.subject}</span>
                     <span>•</span>
                     <span>Deadline: {formatDate(selectedAssignment.deadline)}</span>
@@ -475,7 +475,7 @@ export default function TugasSiswaPage() {
                   )}
 
                   <div>
-                    <label htmlFor="jawaban" className="block text-sm font-medium text-slate-700 mb-1">
+                    <label htmlFor="jawaban" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Jawaban
                     </label>
                     <textarea
@@ -490,7 +490,7 @@ export default function TugasSiswaPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Upload File
                     </label>
                     <div 
@@ -507,7 +507,7 @@ export default function TugasSiswaPage() {
                       {submitFile ? (
                         <div className="flex items-center justify-center gap-2">
                           <FileText className="w-5 h-5 text-sky-500" />
-                          <span className="text-sm text-slate-700">{submitFile.name}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{submitFile.name}</span>
                           <button 
                             type="button"
                             onClick={(e) => {
@@ -522,9 +522,9 @@ export default function TugasSiswaPage() {
                         </div>
                       ) : (
                         <>
-                          <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                          <p className="text-sm text-slate-500">Klik untuk upload file</p>
-                          <p className="text-xs text-slate-400">PDF, DOC, DOCX, dll (Max. 50MB)</p>
+                          <Upload className="w-6 h-6 text-slate-500 dark:text-slate-500 mx-auto mb-1" />
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Klik untuk upload file</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500">PDF, DOC, DOCX, dll (Max. 50MB)</p>
                         </>
                       )}
                     </div>
@@ -568,7 +568,7 @@ export default function TugasSiswaPage() {
                 <h2 className="text-lg font-semibold">Detail Tugas</h2>
                 <button 
                   onClick={() => { setShowDetailModal(false); setSelectedAssignment(null); }} 
-                  className="p-1 hover:bg-slate-100 rounded"
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
                   aria-label="Tutup"
                 >
                   <X className="w-5 h-5" />
@@ -576,34 +576,34 @@ export default function TugasSiswaPage() {
               </div>
               <div className="p-4 space-y-4">
                 <div>
-                  <h3 className="font-semibold text-slate-900">{selectedAssignment.title}</h3>
-                  <p className="text-sm text-slate-500 mt-1">{selectedAssignment.description}</p>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">{selectedAssignment.title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{selectedAssignment.description}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-500">Mata Pelajaran</p>
+                    <p className="text-slate-600 dark:text-slate-400">Mata Pelajaran</p>
                     <p className="font-medium">{selectedAssignment.subject}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Guru</p>
+                    <p className="text-slate-600 dark:text-slate-400">Guru</p>
                     <p className="font-medium">{selectedAssignment.teacher?.name}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Deadline</p>
+                    <p className="text-slate-600 dark:text-slate-400">Deadline</p>
                     <p className="font-medium">{formatDate(selectedAssignment.deadline)}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Nilai Maksimal</p>
+                    <p className="text-slate-600 dark:text-slate-400">Nilai Maksimal</p>
                     <p className="font-medium">{selectedAssignment.max_score}</p>
                   </div>
                 </div>
 
                 {selectedAssignment.my_submission && (
                   <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-slate-700 mb-2">Jawaban Saya:</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Jawaban Saya:</p>
                     {selectedAssignment.my_submission.content && (
-                      <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded">
                         {selectedAssignment.my_submission.content}
                       </p>
                     )}
@@ -618,7 +618,7 @@ export default function TugasSiswaPage() {
                         Download File Jawaban
                       </a>
                     )}
-                    <p className="text-xs text-slate-500 mt-2">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
                       Dikumpulkan: {formatDate(selectedAssignment.my_submission.submitted_at)}
                     </p>
                   </div>

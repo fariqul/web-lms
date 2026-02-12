@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -262,7 +262,7 @@ export default function AdminDashboard() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <p>Belum ada aktivitas terbaru</p>
               </div>
             )}
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-center">
               <div className="text-center">
                 <p className="text-4xl font-bold text-blue-800">{stats.totalStudents}</p>
-                <p className="text-sm text-slate-500">Total Siswa Terdaftar</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Siswa Terdaftar</p>
                 <div className="flex gap-1 mt-2 justify-center">
                   {[35, 28, 42, 30, 45, 38, 32].map((height, i) => (
                     <div
@@ -318,7 +318,7 @@ export default function AdminDashboard() {
               height={300}
             />
           ) : (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-slate-600 dark:text-slate-400">
               <p>Belum ada data kehadiran minggu ini</p>
             </div>
           )}
@@ -365,7 +365,7 @@ export default function AdminDashboard() {
             {teacherRecap.teachers.length > 0 ? (
               <div className="space-y-3">
                 {teacherRecap.teachers.map((teacher) => (
-                  <div key={teacher.teacher_id} className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div key={teacher.teacher_id} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                     {/* Teacher Header */}
                     <button
                       onClick={() => setExpandedTeacher(
@@ -393,16 +393,16 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3">
                         {getTeacherStatusBadge(teacher.status)}
                         {expandedTeacher === teacher.teacher_id ? (
-                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                          <ChevronUp className="w-5 h-5 text-slate-500 dark:text-slate-500" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                          <ChevronDown className="w-5 h-5 text-slate-500 dark:text-slate-500" />
                         )}
                       </div>
                     </button>
 
                     {/* Expanded Detail */}
                     {expandedTeacher === teacher.teacher_id && (
-                      <div className="border-t border-slate-200 bg-slate-50 p-4">
+                      <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left text-slate-500 dark:text-slate-400">
@@ -414,7 +414,7 @@ export default function AdminDashboard() {
                           </thead>
                           <tbody>
                             {teacher.classes.map((cls, idx) => (
-                              <tr key={idx} className="border-t border-slate-200">
+                              <tr key={idx} className="border-t border-slate-200 dark:border-slate-700">
                                 <td className="py-2 font-medium text-slate-900 dark:text-white">{cls.class_name}</td>
                                 <td className="py-2 text-slate-700 dark:text-slate-300">{cls.subject}</td>
                                 <td className="py-2 text-slate-600 dark:text-slate-400">{cls.time}</td>
@@ -440,7 +440,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <Calendar className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
                 <p className="text-slate-500 dark:text-slate-400">Tidak ada jadwal guru untuk hari ini</p>
               </div>

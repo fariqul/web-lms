@@ -37,7 +37,7 @@ export function Table<T>({
 
   if (data.length === 0) {
     return (
-      <div className="text-center py-12 text-slate-500">
+      <div className="text-center py-12 text-slate-600 dark:text-slate-400">
         <p>{emptyMessage}</p>
       </div>
     );
@@ -46,13 +46,13 @@ export function Table<T>({
   return (
     <div className={clsx('overflow-x-auto', className)}>
       <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
+        <thead className="bg-slate-50 dark:bg-slate-800">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 className={clsx(
-                  'px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider',
+                  'px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider',
                   column.className
                 )}
               >
@@ -61,13 +61,13 @@ export function Table<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-slate-200">
+        <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200">
           {data.map((item) => (
             <tr
               key={keyExtractor(item)}
               onClick={() => onRowClick?.(item)}
               className={clsx(
-                'hover:bg-slate-50 transition-colors',
+                'hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors',
                 onRowClick && 'cursor-pointer'
               )}
             >
@@ -111,14 +111,14 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t">
-      <div className="text-sm text-slate-500">
+      <div className="text-sm text-slate-600 dark:text-slate-400">
         Halaman {currentPage} dari {totalPages}
       </div>
       <div className="flex gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 text-sm rounded-lg border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 text-sm rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Prev
         </button>
@@ -130,7 +130,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
               'px-3 py-1 text-sm rounded-lg border transition-colors',
               page === currentPage
                 ? 'bg-blue-800 text-white border-teal-600'
-                : 'hover:bg-slate-50'
+                : 'hover:bg-slate-50 dark:hover:bg-slate-800'
             )}
           >
             {page}
@@ -139,7 +139,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 text-sm rounded-lg border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 text-sm rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next
         </button>

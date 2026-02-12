@@ -86,7 +86,7 @@ export default function JadwalPage() {
       'Seni Budaya': 'bg-pink-100 text-pink-700 border-pink-200',
       'Informatika': 'bg-cyan-100 text-cyan-700 border-cyan-200',
     };
-    return colors[subject] || 'bg-slate-100 text-slate-700 border-slate-200';
+    return colors[subject] || 'bg-slate-100 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
   };
 
   if (loading) {
@@ -103,8 +103,8 @@ export default function JadwalPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Jadwal Pelajaran</h1>
-          <p className="text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Jadwal Pelajaran</h1>
+          <p className="text-slate-600 dark:text-slate-400">
             {user?.role === 'siswa' ? `Kelas ${user?.class?.name || '-'}` : 'Jadwal mengajar Anda'}
           </p>
         </div>
@@ -121,7 +121,7 @@ export default function JadwalPage() {
                 className={`relative px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   selectedDay === dayNum
                     ? 'bg-cyan-500 text-white'
-                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700'
                 }`}
               >
                 {day}
@@ -137,8 +137,8 @@ export default function JadwalPage() {
         {filteredSchedules.length === 0 ? (
           <Card className="p-8 text-center">
             <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-500">Tidak ada jadwal untuk {DAYS[selectedDay - 1]}</p>
-            <p className="text-sm text-slate-400 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
+            <p className="text-slate-600 dark:text-slate-400">Tidak ada jadwal untuk {DAYS[selectedDay - 1]}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -150,9 +150,9 @@ export default function JadwalPage() {
                     {/* Time */}
                     <div className="flex-shrink-0 w-20 text-center">
                       <div className="bg-slate-100 rounded-lg p-2">
-                        <p className="text-sm font-bold text-slate-900">{schedule.start_time}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{schedule.start_time}</p>
                         <div className="w-4 h-0.5 bg-slate-300 mx-auto my-1" />
-                        <p className="text-sm text-slate-600">{schedule.end_time}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{schedule.end_time}</p>
                       </div>
                     </div>
 
@@ -163,12 +163,12 @@ export default function JadwalPage() {
                       </div>
                       
                       <div className="mt-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <User className="w-4 h-4 text-slate-400" />
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                          <User className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                           <span>{schedule.teacher?.name || schedule.class_room?.name || '-'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <MapPin className="w-4 h-4 text-slate-400" />
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                          <MapPin className="w-4 h-4 text-slate-500 dark:text-slate-500" />
                           <span>{schedule.room || '-'}</span>
                         </div>
                       </div>
@@ -182,7 +182,7 @@ export default function JadwalPage() {
         {/* Weekly Overview */}
         {schedules.length > 0 && (
           <Card className="p-4">
-            <h3 className="font-semibold text-slate-900 mb-4">Ringkasan Minggu Ini</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Ringkasan Minggu Ini</h3>
             <div className="grid grid-cols-6 gap-2">
               {DAYS.map((day, index) => {
                 const daySchedules = schedules.filter(s => s.day_of_week === index + 1);
@@ -190,15 +190,15 @@ export default function JadwalPage() {
                   <div 
                     key={day} 
                     className={`text-center p-2 rounded-lg cursor-pointer transition-colors ${
-                      selectedDay === index + 1 ? 'bg-sky-100' : 'bg-slate-50 hover:bg-slate-100'
+                      selectedDay === index + 1 ? 'bg-sky-100' : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setSelectedDay(index + 1)}
                   >
-                    <p className="text-xs font-medium text-slate-500">{day.slice(0, 3)}</p>
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{day.slice(0, 3)}</p>
                     <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-sky-500' : 'text-slate-400 dark:text-slate-600'}`}>
                       {daySchedules.length}
                     </p>
-                    <p className="text-xs text-slate-400">mata pelajaran</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">mata pelajaran</p>
                   </div>
                 );
               })}
