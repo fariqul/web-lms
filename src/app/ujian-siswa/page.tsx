@@ -40,27 +40,27 @@ function CountdownDisplay({ startTime }: { startTime: string }) {
   if (isExpired) return null;
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+    <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mb-4">
       <div className="flex items-center gap-2 mb-2">
-        <Timer className="w-4 h-4 text-blue-600" />
-        <span className="text-xs font-medium text-blue-700">Dimulai dalam</span>
+        <Timer className="w-4 h-4 text-teal-600" />
+        <span className="text-xs font-medium text-teal-700">Dimulai dalam</span>
       </div>
       <div className="flex gap-2 justify-center">
         {days > 0 && (
-          <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+          <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
             <div className="text-lg font-bold leading-tight">{days}</div>
             <div className="text-[10px] opacity-80">hari</div>
           </div>
         )}
-        <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+        <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
           <div className="text-lg font-bold leading-tight">{String(hours).padStart(2, '0')}</div>
           <div className="text-[10px] opacity-80">jam</div>
         </div>
-        <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+        <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
           <div className="text-lg font-bold leading-tight">{String(minutes).padStart(2, '0')}</div>
           <div className="text-[10px] opacity-80">menit</div>
         </div>
-        <div className="bg-blue-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
+        <div className="bg-teal-600 text-white rounded-lg px-2 py-1 text-center min-w-[44px]">
           <div className="text-lg font-bold leading-tight">{String(seconds).padStart(2, '0')}</div>
           <div className="text-[10px] opacity-80">detik</div>
         </div>
@@ -99,7 +99,7 @@ export default function UjianSiswaPage() {
       return { label: 'Selesai', color: 'bg-green-100 text-green-700', icon: CheckCircle };
     }
     if (now < startTime) {
-      return { label: 'Belum Mulai', color: 'bg-gray-100 text-gray-700', icon: Clock };
+      return { label: 'Belum Mulai', color: 'bg-slate-100 text-slate-700', icon: Clock };
     }
     if (now > endTime) {
       return { label: 'Berakhir', color: 'bg-red-100 text-red-700', icon: AlertCircle };
@@ -107,7 +107,7 @@ export default function UjianSiswaPage() {
     if (resultStatus === 'in_progress') {
       return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 text-yellow-700', icon: PlayCircle };
     }
-    return { label: 'Tersedia', color: 'bg-blue-100 text-blue-700', icon: PlayCircle };
+    return { label: 'Tersedia', color: 'bg-teal-50 text-teal-700', icon: PlayCircle };
   };
 
   const canStartExam = (exam: Exam) => {
@@ -138,19 +138,19 @@ export default function UjianSiswaPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ujian Saya</h1>
-          <p className="text-gray-600">Daftar ujian yang tersedia untuk Anda</p>
+          <h1 className="text-2xl font-bold text-slate-900">Ujian Saya</h1>
+          <p className="text-slate-600">Daftar ujian yang tersedia untuk Anda</p>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
           </div>
         ) : exams.length === 0 ? (
           <Card className="p-12 text-center">
-            <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Ujian</h3>
-            <p className="text-gray-500">Saat ini belum ada ujian yang tersedia untuk Anda</p>
+            <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Ujian</h3>
+            <p className="text-slate-500">Saat ini belum ada ujian yang tersedia untuk Anda</p>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -161,8 +161,8 @@ export default function UjianSiswaPage() {
               return (
                 <Card key={exam.id} className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <GraduationCap className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center">
+                      <GraduationCap className="w-6 h-6 text-teal-600" />
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${status.color}`}>
                       <StatusIcon className="w-3 h-3" />
@@ -170,10 +170,10 @@ export default function UjianSiswaPage() {
                     </span>
                   </div>
 
-                  <h3 className="font-semibold text-gray-900 mb-1">{exam.title}</h3>
-                  <p className="text-sm text-gray-500 mb-4">{exam.subject}</p>
+                  <h3 className="font-semibold text-slate-900 mb-1">{exam.title}</h3>
+                  <p className="text-sm text-slate-500 mb-4">{exam.subject}</p>
 
-                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                  <div className="space-y-2 text-sm text-slate-600 mb-4">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       <span>{formatDateTime(exam.start_time)}</span>
@@ -186,7 +186,7 @@ export default function UjianSiswaPage() {
 
                   {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (
                     <div className="bg-green-50 rounded-lg p-3 text-center">
-                      <p className="text-sm text-gray-600">Nilai Anda</p>
+                      <p className="text-sm text-slate-600">Nilai Anda</p>
                       <p className="text-2xl font-bold text-green-600">
                         {exam.my_result?.percentage ?? exam.my_result?.score ?? '-'}
                       </p>

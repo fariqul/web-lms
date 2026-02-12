@@ -174,7 +174,7 @@ export default function ExamResultsPage() {
         );
       case 'in_progress':
         return (
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full">
             Mengerjakan
           </span>
         );
@@ -186,7 +186,7 @@ export default function ExamResultsPage() {
         );
       case 'not_started':
         return (
-          <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs font-medium rounded-full">
             Belum Mulai
           </span>
         );
@@ -198,7 +198,7 @@ export default function ExamResultsPage() {
         );
       default:
         return (
-          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full">
             {status}
           </span>
         );
@@ -227,14 +227,14 @@ export default function ExamResultsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/ujian')}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
               aria-label="Kembali ke daftar ujian"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Hasil Ujian</h1>
-              <p className="text-gray-600">
+              <h1 className="text-2xl font-bold text-slate-900">Hasil Ujian</h1>
+              <p className="text-slate-600">
                 {examInfo ? `${examInfo.title} — ${examInfo.subject}` : 'Lihat hasil ujian seluruh siswa'}
               </p>
             </div>
@@ -252,13 +252,13 @@ export default function ExamResultsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Total Peserta</p>
-                  <p className="text-xl font-bold text-gray-900">{summary.total_students}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm text-slate-500">Total Peserta</p>
+                  <p className="text-xl font-bold text-slate-900">{summary.total_students}</p>
+                  <p className="text-xs text-slate-400">
                     {summary.completed} selesai · {summary.in_progress} mengerjakan · {summary.not_started + summary.missed} belum
                   </p>
                 </div>
@@ -270,7 +270,7 @@ export default function ExamResultsPage() {
                   <BarChart3 className="w-5 h-5 text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Rata-rata Nilai</p>
+                  <p className="text-sm text-slate-500">Rata-rata Nilai</p>
                   <p className={`text-xl font-bold ${getScoreColor(avgScore)}`}>
                     {avgScore ? avgScore.toFixed(1) : '-'}
                   </p>
@@ -283,9 +283,9 @@ export default function ExamResultsPage() {
                   <TrendingUp className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Lulus</p>
+                  <p className="text-sm text-slate-500">Lulus</p>
                   <p className="text-xl font-bold text-green-600">{passedCount}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-400">
                     Tertinggi: {summary.highest_score?.toFixed(1) ?? '-'}
                   </p>
                 </div>
@@ -297,9 +297,9 @@ export default function ExamResultsPage() {
                   <TrendingDown className="w-5 h-5 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Tidak Lulus</p>
+                  <p className="text-sm text-slate-500">Tidak Lulus</p>
                   <p className="text-xl font-bold text-red-600">{failedCount > 0 ? failedCount : 0}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-400">
                     Terendah: {summary.lowest_score?.toFixed(1) ?? '-'}
                   </p>
                 </div>
@@ -311,13 +311,13 @@ export default function ExamResultsPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
               placeholder="Cari nama atau NIS siswa…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               aria-label="Cari nama atau NIS siswa"
               name="searchResults"
             />
@@ -325,7 +325,7 @@ export default function ExamResultsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             aria-label="Filter status"
             name="filterStatus"
           >
@@ -338,7 +338,7 @@ export default function ExamResultsPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'rank' | 'name')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             aria-label="Urutkan hasil"
             name="sortBy"
           >
@@ -351,76 +351,76 @@ export default function ExamResultsPage() {
         <Card className="overflow-hidden">
           {filteredResults.length === 0 ? (
             <div className="p-8 text-center">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Belum ada hasil ujian</p>
-              <p className="text-sm text-gray-400 mt-1">Hasil akan muncul setelah siswa mengerjakan ujian</p>
+              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">Belum ada hasil ujian</p>
+              <p className="text-sm text-slate-400 mt-1">Hasil akan muncul setelah siswa mengerjakan ujian</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider w-12">
                       #
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Siswa
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Benar/Salah
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Skor
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Nilai
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Waktu Selesai
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider print:hidden">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-200">
                   {filteredResults.map((result, index) => (
-                    <tr key={result.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-center text-sm text-gray-500 font-medium">
+                    <tr key={result.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 text-center text-sm text-slate-500 font-medium">
                         {sortBy === 'rank' ? index + 1 : '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div>
-                          <div className="font-medium text-gray-900">{result.student?.name}</div>
-                          <div className="text-sm text-gray-500">{result.student?.nisn}</div>
+                          <div className="font-medium text-slate-900">{result.student?.name}</div>
+                          <div className="text-sm text-slate-500">{result.student?.nisn}</div>
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
                         {result.status === 'in_progress' ? (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-slate-400">-</span>
                         ) : (
                           <>
                             <span className="text-green-600 font-medium tabular-nums">{result.total_correct}</span>
-                            <span className="text-gray-400 mx-1">/</span>
+                            <span className="text-slate-400 mx-1">/</span>
                             <span className="text-red-600 font-medium tabular-nums">{result.total_wrong}</span>
                           </>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
                         {result.status === 'in_progress' ? (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-slate-400">-</span>
                         ) : (
-                          <span className="font-medium text-gray-700 tabular-nums">
+                          <span className="font-medium text-slate-700 tabular-nums">
                             {result.total_score}/{result.max_score}
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         {result.status === 'in_progress' ? (
-                          <Clock className="w-5 h-5 text-blue-500 mx-auto" />
+                          <Clock className="w-5 h-5 text-teal-500 mx-auto" />
                         ) : (
                           <div className={`inline-flex items-center justify-center w-11 h-11 rounded-full ${getScoreBg(result.percentage)}`}>
                             <span className={`text-sm font-bold tabular-nums ${getScoreColor(result.percentage)}`}>
@@ -432,7 +432,7 @@ export default function ExamResultsPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         {getStatusBadge(result.status)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-500">
+                      <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-slate-500">
                         {formatDate(result.finished_at || result.submitted_at)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center print:hidden">
@@ -443,7 +443,7 @@ export default function ExamResultsPage() {
                             </button>
                           </Link>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-slate-300">—</span>
                         )}
                       </td>
                     </tr>

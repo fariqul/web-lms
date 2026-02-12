@@ -47,40 +47,40 @@ export function QuestionFormModal({
           <h2 className="text-lg font-semibold">
             {isEditing ? 'Edit Soal' : 'Tambah Soal Baru'}
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded">
             <X className="w-5 h-5" />
           </button>
         </div>
         <form onSubmit={onSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pertanyaan</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Pertanyaan</label>
             <textarea
               value={formData.question}
               onChange={(e) => onFormChange({ ...formData, question: e.target.value })}
               placeholder="Tuliskan pertanyaan…"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Soal</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tipe Soal</label>
               <select
                 value={formData.type}
                 onChange={(e) => onFormChange({ ...formData, type: e.target.value as 'pilihan_ganda' | 'essay' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               >
                 <option value="pilihan_ganda">Pilihan Ganda</option>
                 <option value="essay">Essay</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tingkat Kesulitan</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kesulitan</label>
               <select
                 value={formData.difficulty}
                 onChange={(e) => onFormChange({ ...formData, difficulty: e.target.value as 'mudah' | 'sedang' | 'sulit' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               >
                 <option value="mudah">Mudah</option>
                 <option value="sedang">Sedang</option>
@@ -90,11 +90,11 @@ export function QuestionFormModal({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mata Pelajaran</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran</label>
               <select
                 value={formData.subject}
                 onChange={(e) => onFormChange({ ...formData, subject: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 required
               >
                 <option value="">Pilih Mata Pelajaran</option>
@@ -104,11 +104,11 @@ export function QuestionFormModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tingkat Kelas</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kelas</label>
               <select
                 value={formData.grade_level}
                 onChange={(e) => onFormChange({ ...formData, grade_level: e.target.value as '10' | '11' | '12' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 required
               >
                 <option value="10">Kelas 10</option>
@@ -118,11 +118,11 @@ export function QuestionFormModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Kelas Spesifik (Opsional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Kelas Spesifik (Opsional)</label>
             <select
               value={formData.class_id}
               onChange={(e) => onFormChange({ ...formData, class_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             >
               <option value="">Semua Kelas</option>
               {classes.map(c => (
@@ -134,11 +134,11 @@ export function QuestionFormModal({
           {formData.type === 'pilihan_ganda' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pilihan Jawaban</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Pilihan Jawaban</label>
                 <div className="space-y-2">
                   {formData.options.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-sm font-medium text-slate-600">
                         {String.fromCharCode(65 + i)}
                       </span>
                       <input
@@ -150,18 +150,18 @@ export function QuestionFormModal({
                           onFormChange({ ...formData, options: newOptions });
                         }}
                         placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        className="flex-1 px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       />
                     </div>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jawaban Benar</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Jawaban Benar</label>
                 <select
                   value={formData.correct_answer}
                   onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   required
                 >
                   <option value="">Pilih jawaban benar</option>
@@ -177,25 +177,25 @@ export function QuestionFormModal({
 
           {formData.type === 'essay' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kunci Jawaban (opsional)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Kunci Jawaban (opsional)</label>
               <textarea
                 value={formData.correct_answer}
                 onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
                 placeholder="Tuliskan kunci jawaban atau pedoman penilaian…"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pembahasan (Opsional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Pembahasan (Opsional)</label>
             <textarea
               value={formData.explanation}
               onChange={(e) => onFormChange({ ...formData, explanation: e.target.value })}
               placeholder="Tuliskan pembahasan untuk soal ini…"
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             />
           </div>
 

@@ -121,8 +121,8 @@ export default function ExportPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Export Data</h1>
-          <p className="text-gray-600">Ekspor data nilai, absensi, dan rapor ke Excel atau PDF</p>
+          <h1 className="text-2xl font-bold text-slate-900">Export Data</h1>
+          <p className="text-slate-600">Ekspor data nilai, absensi, dan rapor ke Excel atau PDF</p>
         </div>
 
         {/* Export Type Selection */}
@@ -134,7 +134,7 @@ export default function ExportPage() {
           ].map(({ type, icon: Icon, title, desc, color }) => (
             <Card
               key={type}
-              className={`p-4 cursor-pointer transition-colors border-2 ${exportType === type ? `border-${color}-500 bg-${color}-50` : 'border-transparent hover:border-gray-200'}`}
+              className={`p-4 cursor-pointer transition-colors border-2 ${exportType === type ? `border-${color}-500 bg-${color}-50` : 'border-transparent hover:border-slate-200'}`}
               onClick={() => setExportType(type)}
             >
               <div className="flex items-center gap-3">
@@ -142,8 +142,8 @@ export default function ExportPage() {
                   <Icon className={`w-6 h-6 text-${color}-600`} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">{title}</h3>
-                  <p className="text-xs text-gray-500">{desc}</p>
+                  <h3 className="font-semibold text-slate-900">{title}</h3>
+                  <p className="text-xs text-slate-500">{desc}</p>
                 </div>
               </div>
             </Card>
@@ -194,26 +194,26 @@ export default function ExportPage() {
 
           {/* Format Selection */}
           <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Format File</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Format File</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setFormat('xlsx')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-slate-200 hover:border-slate-300'}`}
               >
-                <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-gray-400'}`} />
+                <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-slate-400'}`} />
                 <div className="text-left">
                   <p className="font-medium text-sm">Excel (.xlsx)</p>
-                  <p className="text-xs text-gray-500">Untuk pengolahan data</p>
+                  <p className="text-xs text-slate-500">Untuk pengolahan data</p>
                 </div>
               </button>
               <button
                 onClick={() => setFormat('pdf')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
               >
-                <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
+                <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-slate-400'}`} />
                 <div className="text-left">
                   <p className="font-medium text-sm">PDF (.pdf)</p>
-                  <p className="text-xs text-gray-500">Untuk cetak dan arsip</p>
+                  <p className="text-xs text-slate-500">Untuk cetak dan arsip</p>
                 </div>
               </button>
             </div>

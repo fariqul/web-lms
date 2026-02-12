@@ -125,7 +125,7 @@ export default function AdminKelasPage() {
       header: 'Jumlah Siswa',
       render: (item: ClassRoom) => (
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-gray-400" />
+          <Users className="w-4 h-4 text-slate-400" />
           <span>{item.students_count || 0} siswa</span>
         </div>
       ),
@@ -137,7 +137,7 @@ export default function AdminKelasPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleOpenModal(item)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
             aria-label="Edit kelas"
           >
             <Edit2 className="w-4 h-4" />
@@ -171,23 +171,23 @@ export default function AdminKelasPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="text-center">
             <p className="text-3xl font-bold text-orange-600">{classes.length}</p>
-            <p className="text-sm text-gray-500">Total Kelas</p>
+            <p className="text-sm text-slate-500">Total Kelas</p>
           </Card>
           <Card className="text-center">
-            <p className="text-3xl font-bold text-blue-600">{totalStudents}</p>
-            <p className="text-sm text-gray-500">Total Siswa</p>
+            <p className="text-3xl font-bold text-teal-600">{totalStudents}</p>
+            <p className="text-sm text-slate-500">Total Siswa</p>
           </Card>
           <Card className="text-center">
             <p className="text-3xl font-bold text-green-600">
               {classes.filter((c) => c.grade_level === 'XII').length}
             </p>
-            <p className="text-sm text-gray-500">Kelas XII</p>
+            <p className="text-sm text-slate-500">Kelas XII</p>
           </Card>
           <Card className="text-center">
             <p className="text-3xl font-bold text-purple-600">
               {classes.filter((c) => c.grade_level === 'XI').length}
             </p>
-            <p className="text-sm text-gray-500">Kelas XI</p>
+            <p className="text-sm text-slate-500">Kelas XI</p>
           </Card>
         </div>
 

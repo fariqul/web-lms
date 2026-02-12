@@ -29,7 +29,7 @@ interface StudentStatus {
 
 const statusOptions = [
   { value: 'hadir', label: 'Hadir', color: 'bg-green-100 text-green-700 border-green-300' },
-  { value: 'izin', label: 'Izin', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  { value: 'izin', label: 'Izin', color: 'bg-teal-50 text-teal-700 border-teal-300' },
   { value: 'sakit', label: 'Sakit', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
   { value: 'alpha', label: 'Alpa', color: 'bg-red-100 text-red-700 border-red-300' },
 ];
@@ -226,7 +226,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
               <>
                 {/* Quick Actions */}
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-sm font-medium text-gray-600 mr-2">Set semua:</span>
+                  <span className="text-sm font-medium text-slate-600 mr-2">Set semua:</span>
                   {statusOptions.map((opt) => (
                     <button
                       key={opt.value}
@@ -244,9 +244,9 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                     <p className="text-xl font-bold text-green-600">{summary.hadir}</p>
                     <p className="text-xs text-green-700">Hadir</p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                    <p className="text-xl font-bold text-blue-600">{summary.izin}</p>
-                    <p className="text-xs text-blue-700">Izin</p>
+                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-teal-600">{summary.izin}</p>
+                    <p className="text-xs text-teal-700">Izin</p>
                   </div>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                     <p className="text-xl font-bold text-yellow-600">{summary.sakit}</p>
@@ -260,36 +260,36 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     placeholder="Cari nama siswa…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
 
                 {/* Student List */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2.5 flex items-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-2.5 flex items-center text-xs font-medium text-slate-500 uppercase tracking-wider border-b">
                     <span className="w-10">No</span>
                     <span className="flex-1">Nama Siswa</span>
                     <span className="w-52 text-center">Status</span>
                   </div>
-                  <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                  <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
                     {filteredStudents.map((student, index) => {
                       const currentStatus = statuses[student.id] || 'hadir';
                       return (
                         <div
                           key={student.id}
-                          className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+                          className="flex items-center px-4 py-3 hover:bg-slate-50 transition-colors"
                         >
-                          <span className="w-10 text-sm text-gray-400">{index + 1}</span>
+                          <span className="w-10 text-sm text-slate-400">{index + 1}</span>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-800">{student.name}</p>
+                            <p className="text-sm font-medium text-slate-800">{student.name}</p>
                             {student.nisn && (
-                              <p className="text-xs text-gray-400">NISN: {student.nisn}</p>
+                              <p className="text-xs text-slate-400">NISN: {student.nisn}</p>
                             )}
                           </div>
                           <div className="w-52 flex gap-1 justify-center">
@@ -301,11 +301,11 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                                   currentStatus === opt.value
                                     ? `${opt.color} ring-2 ring-offset-1 ${
                                         opt.value === 'hadir' ? 'ring-green-400' :
-                                        opt.value === 'izin' ? 'ring-blue-400' :
+                                        opt.value === 'izin' ? 'ring-teal-400' :
                                         opt.value === 'sakit' ? 'ring-yellow-400' :
                                         'ring-red-400'
                                       }`
-                                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
                                 }`}
                               >
                                 {opt.label}
@@ -341,17 +341,17 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
             )}
 
             {!loading && selectedClass && students.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <AlertCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 text-slate-500">
+                <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300" />
                 <p>Tidak ada siswa di kelas ini</p>
               </div>
             )}
 
             {!loading && !selectedClass && (
-              <div className="text-center py-8 text-gray-500">
-                <UserCheck className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 text-slate-500">
+                <UserCheck className="w-12 h-12 mx-auto mb-2 text-slate-300" />
                 <p>Pilih kelas untuk mulai absensi manual</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-slate-400 mt-1">
                   Guru dapat menandai status setiap siswa: Hadir, Izin, Sakit, atau Alpa
                 </p>
               </div>
@@ -361,14 +361,14 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
           /* Success state */
           <div className="text-center py-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Absensi Berhasil Disimpan!</h3>
-            <p className="text-gray-500 mb-2">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Absensi Berhasil Disimpan!</h3>
+            <p className="text-slate-500 mb-2">
               {classes.find((c) => c.value === selectedClass)?.label} -{' '}
               {subjects.find((s) => s.value === selectedSubject)?.label}
             </p>
             <div className="flex justify-center gap-4 mb-6">
               <span className="text-green-600 font-medium">{summary.hadir} Hadir</span>
-              <span className="text-blue-600 font-medium">{summary.izin} Izin</span>
+              <span className="text-teal-600 font-medium">{summary.izin} Izin</span>
               <span className="text-yellow-600 font-medium">{summary.sakit} Sakit</span>
               <span className="text-red-600 font-medium">{summary.alpha} Alpa</span>
             </div>

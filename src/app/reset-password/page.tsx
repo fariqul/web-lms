@@ -55,27 +55,27 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8">
       {success ? (
         <div className="text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Password Berhasil Direset!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Password Berhasil Direset!</h2>
+          <p className="text-slate-600 mb-6">
             Password Anda telah berhasil diubah. Silakan login dengan password baru.
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors"
           >
             Masuk Sekarang
           </Link>
         </div>
       ) : (
         <>
-          <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Reset Password</h2>
-          <p className="text-gray-500 text-center mb-6 text-sm">
+          <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">Reset Password</h2>
+          <p className="text-slate-500 text-center mb-6 text-sm">
             Masukkan password baru untuk akun <strong>{email}</strong>
           </p>
 
@@ -87,22 +87,22 @@ function ResetPasswordForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Password Baru</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Minimal 8 karakter"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   required
                   minLength={8}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -110,15 +110,15 @@ function ResetPasswordForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Konfirmasi Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Ulangi password baru"
                   value={passwordConfirmation}
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   required
                   minLength={8}
                 />
@@ -128,7 +128,7 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -144,7 +144,7 @@ function ResetPasswordForm() {
           <div className="mt-6 text-center">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="inline-flex items-center gap-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               Kembali ke halaman login
@@ -158,19 +158,19 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-4">
-            <GraduationCap className="w-12 h-12 text-blue-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg mb-4">
+            <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">SMA 15 Makassar</h1>
-          <p className="text-blue-200">Learning Management System</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">Reset Password</h1>
+          <p className="text-slate-500 text-sm">SMA 15 Makassar LMS</p>
         </div>
 
         <Suspense fallback={
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+          <div className="bg-white rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 p-8 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-teal-500 mx-auto" />
           </div>
         }>
           <ResetPasswordForm />

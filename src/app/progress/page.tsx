@@ -164,7 +164,7 @@ export default function ProgressPage() {
   const TrendIcon = ({ trend }: { trend: string }) => {
     if (trend === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
     if (trend === 'down') return <TrendingDown className="w-4 h-4 text-red-500" />;
-    return <Minus className="w-4 h-4 text-gray-400" />;
+    return <Minus className="w-4 h-4 text-slate-400" />;
   };
 
   const getScoreColor = (score: number) => {
@@ -189,8 +189,8 @@ export default function ProgressPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Laporan Progress Siswa</h1>
-            <p className="text-gray-600">Rapor dan analisis nilai per semester</p>
+            <h1 className="text-2xl font-bold text-slate-900">Laporan Progress Siswa</h1>
+            <p className="text-slate-600">Rapor dan analisis nilai per semester</p>
           </div>
           <div className="flex gap-2 print:hidden">
             <Button variant="outline" onClick={() => window.print()}>
@@ -252,12 +252,12 @@ export default function ProgressPage() {
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Jumlah Siswa</p>
-                    <p className="text-xl font-bold text-gray-900">{classReport.total_students}</p>
+                    <p className="text-sm text-slate-500">Jumlah Siswa</p>
+                    <p className="text-xl font-bold text-slate-900">{classReport.total_students}</p>
                   </div>
                 </div>
               </Card>
@@ -267,7 +267,7 @@ export default function ProgressPage() {
                     <BarChart3 className="w-5 h-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Rata-rata Kelas</p>
+                    <p className="text-sm text-slate-500">Rata-rata Kelas</p>
                     <p className={`text-xl font-bold ${getScoreColor(Number(classReport.class_average ?? 0))}`}>{Number(classReport.class_average ?? 0).toFixed(1)}</p>
                   </div>
                 </div>
@@ -278,8 +278,8 @@ export default function ProgressPage() {
                     <ClipboardList className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Kehadiran</p>
-                    <p className="text-xl font-bold text-gray-900">{Number(classReport.attendance_rate ?? 0).toFixed(1)}%</p>
+                    <p className="text-sm text-slate-500">Kehadiran</p>
+                    <p className="text-xl font-bold text-slate-900">{Number(classReport.attendance_rate ?? 0).toFixed(1)}%</p>
                   </div>
                 </div>
               </Card>
@@ -289,8 +289,8 @@ export default function ProgressPage() {
                     <BookOpen className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Mata Pelajaran</p>
-                    <p className="text-xl font-bold text-gray-900">{classReport.subject_averages.length}</p>
+                    <p className="text-sm text-slate-500">Mata Pelajaran</p>
+                    <p className="text-xl font-bold text-slate-900">{classReport.subject_averages.length}</p>
                   </div>
                 </div>
               </Card>
@@ -319,24 +319,24 @@ export default function ProgressPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm print-table">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Peringkat</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">NISN</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Nama</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Rata-rata</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Kehadiran</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600 print:hidden">Aksi</th>
+                    <tr className="border-b border-slate-200">
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Peringkat</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">NISN</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Nama</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Rata-rata</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600">Kehadiran</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 print:hidden">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {classReport.students.map((s) => (
-                      <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${s.rank <= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${s.rank <= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-600'}`}>
                             {s.rank}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-gray-500 font-mono text-xs">{s.nisn}</td>
+                        <td className="py-3 px-4 text-slate-500 font-mono text-xs">{s.nisn}</td>
                         <td className="py-3 px-4 font-medium">{s.name}</td>
                         <td className="py-3 px-4">
                           <span className={`font-semibold tabular-nums ${getScoreColor(Number(s.average_score ?? 0))}`}>{Number(s.average_score ?? 0).toFixed(1)}</span>
@@ -370,13 +370,13 @@ export default function ProgressPage() {
             <Card className="p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{studentReport.student.name}</h2>
-                  <p className="text-gray-500">NISN: {studentReport.student.nisn} • {studentReport.student.class_name}</p>
-                  <p className="text-sm text-gray-400">Semester {semester === 'ganjil' ? 'Ganjil' : 'Genap'} {academicYear}</p>
+                  <h2 className="text-xl font-bold text-slate-900">{studentReport.student.name}</h2>
+                  <p className="text-slate-500">NISN: {studentReport.student.nisn} • {studentReport.student.class_name}</p>
+                  <p className="text-sm text-slate-400">Semester {semester === 'ganjil' ? 'Ganjil' : 'Genap'} {academicYear}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <TrendIcon trend={studentReport.trend} />
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-slate-500">
                     {studentReport.trend === 'up' ? 'Meningkat' : studentReport.trend === 'down' ? 'Menurun' : 'Stabil'}
                   </span>
                 </div>
@@ -386,24 +386,24 @@ export default function ProgressPage() {
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Card className="p-4 text-center">
-                <GraduationCap className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                <GraduationCap className="w-6 h-6 text-teal-500 mx-auto mb-2" />
                 <p className={`text-2xl font-bold ${getScoreColor(Number(studentReport.summary.average_score ?? 0))}`}>{Number(studentReport.summary.average_score ?? 0).toFixed(1)}</p>
-                <p className="text-xs text-gray-500">Rata-rata Nilai</p>
+                <p className="text-xs text-slate-500">Rata-rata Nilai</p>
               </Card>
               <Card className="p-4 text-center">
                 <ClipboardList className="w-6 h-6 text-teal-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{Number(studentReport.summary.attendance_rate ?? 0).toFixed(0)}%</p>
-                <p className="text-xs text-gray-500">Kehadiran</p>
+                <p className="text-2xl font-bold text-slate-900">{Number(studentReport.summary.attendance_rate ?? 0).toFixed(0)}%</p>
+                <p className="text-xs text-slate-500">Kehadiran</p>
               </Card>
               <Card className="p-4 text-center">
                 <BookOpen className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{studentReport.summary.total_exams}</p>
-                <p className="text-xs text-gray-500">Ujian Diikuti</p>
+                <p className="text-2xl font-bold text-slate-900">{studentReport.summary.total_exams}</p>
+                <p className="text-xs text-slate-500">Ujian Diikuti</p>
               </Card>
               <Card className="p-4 text-center">
                 <BarChart3 className="w-6 h-6 text-orange-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{studentReport.summary.assignments_submitted}/{studentReport.summary.total_assignments}</p>
-                <p className="text-xs text-gray-500">Tugas Dikumpulkan</p>
+                <p className="text-2xl font-bold text-slate-900">{studentReport.summary.assignments_submitted}/{studentReport.summary.total_assignments}</p>
+                <p className="text-xs text-slate-500">Tugas Dikumpulkan</p>
               </Card>
             </div>
 
@@ -414,17 +414,17 @@ export default function ProgressPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm print-table">
                     <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">No</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Mata Pelajaran</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Rata-rata</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Jumlah Ujian</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Predikat</th>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">No</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Mata Pelajaran</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Rata-rata</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Jumlah Ujian</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Predikat</th>
                       </tr>
                     </thead>
                     <tbody>
                       {studentReport.subject_averages.map((sa, idx) => (
-                        <tr key={sa.subject} className="border-b border-gray-100">
+                        <tr key={sa.subject} className="border-b border-slate-100">
                           <td className="py-3 px-4">{idx + 1}</td>
                           <td className="py-3 px-4 font-medium">{sa.subject}</td>
                           <td className="py-3 px-4">
@@ -432,7 +432,7 @@ export default function ProgressPage() {
                           </td>
                           <td className="py-3 px-4">{sa.count}</td>
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 text-green-700' : Number(sa.average) >= 80 ? 'bg-blue-100 text-blue-700' : Number(sa.average) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 text-green-700' : Number(sa.average) >= 80 ? 'bg-teal-50 text-teal-700' : Number(sa.average) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
                               {Number(sa.average) >= 90 ? 'A' : Number(sa.average) >= 80 ? 'B' : Number(sa.average) >= 70 ? 'C' : 'D'}
                             </span>
                           </td>
@@ -448,25 +448,25 @@ export default function ProgressPage() {
             <Card>
               <CardHeader title="Rekap Kehadiran" />
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-lg font-bold text-gray-900">{studentReport.attendance_summary.total_sessions}</p>
-                  <p className="text-xs text-gray-500">Total Sesi</p>
+                <div className="text-center p-3 bg-slate-50 rounded-lg">
+                  <p className="text-lg font-bold text-slate-900">{studentReport.attendance_summary.total_sessions}</p>
+                  <p className="text-xs text-slate-500">Total Sesi</p>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <p className="text-lg font-bold text-green-600">{studentReport.attendance_summary.hadir}</p>
-                  <p className="text-xs text-gray-500">Hadir</p>
+                  <p className="text-xs text-slate-500">Hadir</p>
                 </div>
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <p className="text-lg font-bold text-blue-600">{studentReport.attendance_summary.izin}</p>
-                  <p className="text-xs text-gray-500">Izin</p>
+                <div className="text-center p-3 bg-teal-50 rounded-lg">
+                  <p className="text-lg font-bold text-teal-600">{studentReport.attendance_summary.izin}</p>
+                  <p className="text-xs text-slate-500">Izin</p>
                 </div>
                 <div className="text-center p-3 bg-yellow-50 rounded-lg">
                   <p className="text-lg font-bold text-yellow-600">{studentReport.attendance_summary.sakit}</p>
-                  <p className="text-xs text-gray-500">Sakit</p>
+                  <p className="text-xs text-slate-500">Sakit</p>
                 </div>
                 <div className="text-center p-3 bg-red-50 rounded-lg">
                   <p className="text-lg font-bold text-red-600">{studentReport.attendance_summary.alpha}</p>
-                  <p className="text-xs text-gray-500">Alpha</p>
+                  <p className="text-xs text-slate-500">Alpha</p>
                 </div>
               </div>
             </Card>
@@ -478,24 +478,24 @@ export default function ProgressPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm print-table">
                     <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Ujian</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Mata Pelajaran</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Nilai</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Persentase</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Tanggal</th>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Ujian</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Mata Pelajaran</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Nilai</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Persentase</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-600">Tanggal</th>
                       </tr>
                     </thead>
                     <tbody>
                       {studentReport.exam_scores.map((es) => (
-                        <tr key={es.exam_id} className="border-b border-gray-100">
+                        <tr key={es.exam_id} className="border-b border-slate-100">
                           <td className="py-3 px-4 font-medium">{es.title}</td>
                           <td className="py-3 px-4">{es.subject}</td>
                           <td className="py-3 px-4 tabular-nums">{es.score}/{es.max_score}</td>
                           <td className="py-3 px-4">
                             <span className={`font-semibold tabular-nums ${getScoreColor(Number(es.percentage ?? 0))}`}>{Number(es.percentage ?? 0).toFixed(0)}%</span>
                           </td>
-                          <td className="py-3 px-4 text-gray-500">
+                          <td className="py-3 px-4 text-slate-500">
                             {new Date(es.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </td>
                         </tr>
@@ -511,9 +511,9 @@ export default function ProgressPage() {
         {/* Empty State */}
         {!classReport && !studentReport && !loadingReport && (
           <Card className="p-12 text-center">
-            <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-500 mb-2">Pilih Kelas untuk Melihat Laporan</h3>
-            <p className="text-sm text-gray-400">Gunakan filter di atas untuk menampilkan laporan progress siswa</p>
+            <BarChart3 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-500 mb-2">Pilih Kelas untuk Melihat Laporan</h3>
+            <p className="text-sm text-slate-400">Gunakan filter di atas untuk menampilkan laporan progress siswa</p>
           </Card>
         )}
       </div>

@@ -303,7 +303,7 @@ export default function SiswaDashboard() {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
         </div>
       </DashboardLayout>
     );
@@ -340,7 +340,7 @@ export default function SiswaDashboard() {
         <div className="grid grid-cols-12 gap-6 items-start">
           {/* Left Column - Profile Card */}
           <div className="col-span-12 lg:col-span-3 lg:sticky lg:top-6">
-            <Card className="p-6 text-center bg-gradient-to-b from-blue-600 to-blue-700">
+            <Card className="p-6 text-center bg-gradient-to-b from-teal-600 to-teal-700">
               <div className="w-20 h-20 mx-auto rounded-full bg-white/20 flex items-center justify-center mb-4 overflow-hidden">
                 {user?.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -350,8 +350,8 @@ export default function SiswaDashboard() {
                 )}
               </div>
               <h3 className="text-white font-semibold text-lg">{user?.name}</h3>
-              <p className="text-blue-200 text-sm">Kelas: {user?.class?.name || '-'}</p>
-              <p className="text-blue-200 text-sm">NISN: {user?.nisn || '-'}</p>
+              <p className="text-teal-200 text-sm">Kelas: {user?.class?.name || '-'}</p>
+              <p className="text-teal-200 text-sm">NISN: {user?.nisn || '-'}</p>
               <Link href="/akun" className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg text-sm hover:bg-white/30 transition-colors">
                 <Edit className="w-4 h-4" />
                 Edit Profil
@@ -366,19 +366,19 @@ export default function SiswaDashboard() {
                     <Calendar className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Jadwal Hari Ini</p>
-                    <p className="text-xl font-bold text-gray-900">{todaySchedule.length}</p>
+                    <p className="text-xs text-slate-500">Jadwal Hari Ini</p>
+                    <p className="text-xl font-bold text-slate-900">{todaySchedule.length}</p>
                   </div>
                 </div>
               </Card>
-              <Card className="p-4 border-l-4 border-l-blue-500">
+              <Card className="p-4 border-l-4 border-l-teal-500">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Notifikasi</p>
-                    <p className="text-xl font-bold text-gray-900">{newAssignmentsCount + newAnnouncementsCount}</p>
+                    <p className="text-xs text-slate-500">Notifikasi</p>
+                    <p className="text-xl font-bold text-slate-900">{newAssignmentsCount + newAnnouncementsCount}</p>
                   </div>
                 </div>
               </Card>
@@ -388,8 +388,8 @@ export default function SiswaDashboard() {
                     <TrendingUp className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Kehadiran</p>
-                    <p className="text-xl font-bold text-gray-900">
+                    <p className="text-xs text-slate-500">Kehadiran</p>
+                    <p className="text-xl font-bold text-slate-900">
                       {stats.attendance_percentage > 0 ? `${stats.attendance_percentage}%` : '-'}
                     </p>
                   </div>
@@ -403,8 +403,8 @@ export default function SiswaDashboard() {
             {/* Attendance Donut Chart */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Statistik Kehadiran</h3>
-                <select className="text-sm border rounded-lg px-3 py-1.5 text-gray-600" aria-label="Pilih semester" name="semester">
+                <h3 className="font-semibold text-slate-900">Statistik Kehadiran</h3>
+                <select className="text-sm border rounded-lg px-3 py-1.5 text-slate-600" aria-label="Pilih semester" name="semester">
                   <option>Semester Ini</option>
                 </select>
               </div>
@@ -462,7 +462,7 @@ export default function SiswaDashboard() {
                     )}
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-gray-900">
+                    <span className="text-2xl font-bold text-slate-900">
                       {stats.attendance_percentage > 0 ? `${stats.attendance_percentage}%` : '0%'}
                     </span>
                   </div>
@@ -472,23 +472,23 @@ export default function SiswaDashboard() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-green-500" />
-                    <span className="text-sm text-gray-600">Hadir</span>
-                    <span className="text-sm font-semibold text-gray-900 ml-auto">{stats.total_present}</span>
+                    <span className="text-sm text-slate-600">Hadir</span>
+                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_present}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-yellow-500" />
-                    <span className="text-sm text-gray-600">Izin</span>
-                    <span className="text-sm font-semibold text-gray-900 ml-auto">{stats.total_late}</span>
+                    <span className="text-sm text-slate-600">Izin</span>
+                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_late}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-blue-500" />
-                    <span className="text-sm text-gray-600">Sakit</span>
-                    <span className="text-sm font-semibold text-gray-900 ml-auto">{stats.total_sick}</span>
+                    <div className="w-4 h-4 rounded-full bg-teal-500" />
+                    <span className="text-sm text-slate-600">Sakit</span>
+                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_sick}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-orange-500" />
-                    <span className="text-sm text-gray-600">Alpha</span>
-                    <span className="text-sm font-semibold text-gray-900 ml-auto">{stats.total_absent}</span>
+                    <span className="text-sm text-slate-600">Alpha</span>
+                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_absent}</span>
                   </div>
                 </div>
               </div>
@@ -497,8 +497,8 @@ export default function SiswaDashboard() {
             {/* Exam Results Table */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Hasil Ujian</h3>
-                <Link href="/nilai-siswa" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                <h3 className="font-semibold text-slate-900">Hasil Ujian</h3>
+                <Link href="/nilai-siswa" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
                   Lihat Semua <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -507,26 +507,26 @@ export default function SiswaDashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-2 font-medium text-gray-500">Ujian</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-500">Mapel</th>
-                        <th className="text-center py-3 px-2 font-medium text-gray-500">Nilai</th>
-                        <th className="text-center py-3 px-2 font-medium text-gray-500">Grade</th>
-                        <th className="text-center py-3 px-2 font-medium text-gray-500">Status</th>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-3 px-2 font-medium text-slate-500">Ujian</th>
+                        <th className="text-left py-3 px-2 font-medium text-slate-500">Mapel</th>
+                        <th className="text-center py-3 px-2 font-medium text-slate-500">Nilai</th>
+                        <th className="text-center py-3 px-2 font-medium text-slate-500">Grade</th>
+                        <th className="text-center py-3 px-2 font-medium text-slate-500">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {examResults.map((exam) => (
-                        <tr key={exam.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-2 font-medium text-gray-900">{exam.title}</td>
-                          <td className="py-3 px-2 text-gray-600">{exam.subject}</td>
+                        <tr key={exam.id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-3 px-2 font-medium text-slate-900">{exam.title}</td>
+                          <td className="py-3 px-2 text-slate-600">{exam.subject}</td>
                           <td className="py-3 px-2 text-center">
                             <span className="font-semibold tabular-nums">{exam.score ?? '-'}</span>
-                            <span className="text-gray-400 tabular-nums">/{exam.max_score}</span>
+                            <span className="text-slate-400 tabular-nums">/{exam.max_score}</span>
                           </td>
                           <td className="py-3 px-2 text-center">
                             <span className={`font-semibold ${exam.score ? (getGrade(exam.score, exam.max_score) === 'A' ? 'text-green-600' :
-                              getGrade(exam.score, exam.max_score) === 'F' ? 'text-red-600' : 'text-blue-600') : 'text-gray-400'
+                              getGrade(exam.score, exam.max_score) === 'F' ? 'text-red-600' : 'text-teal-600') : 'text-slate-400'
                               }`}>
                               {exam.score ? getGrade(exam.score, exam.max_score) : '-'}
                             </span>
@@ -543,8 +543,8 @@ export default function SiswaDashboard() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <GraduationCap className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                <div className="text-center py-4 text-slate-500">
+                  <GraduationCap className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                   <p className="text-sm">Belum ada hasil ujian</p>
                 </div>
               )}
@@ -553,8 +553,8 @@ export default function SiswaDashboard() {
             {/* Pending Assignments */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Tugas Belum Dikerjakan</h3>
-                <Link href="/tugas-siswa" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                <h3 className="font-semibold text-slate-900">Tugas Belum Dikerjakan</h3>
+                <Link href="/tugas-siswa" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
                   Lihat Semua <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -567,28 +567,28 @@ export default function SiswaDashboard() {
                     const isUrgent = deadline.getTime() - now.getTime() < 24 * 60 * 60 * 1000;
 
                     return (
-                      <div key={assignment.id} className={`flex items-center gap-3 p-3 rounded-lg border ${isUrgent ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+                      <div key={assignment.id} className={`flex items-center gap-3 p-3 rounded-lg border ${isUrgent ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'
                         }`}>
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isUrgent ? 'bg-red-100' : 'bg-orange-100'
                           }`}>
                           <ClipboardList className={`w-5 h-5 ${isUrgent ? 'text-red-600' : 'text-orange-600'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{assignment.title}</p>
-                          <p className="text-sm text-gray-500">{assignment.subject} • {assignment.teacher?.name}</p>
+                          <p className="font-medium text-slate-900 truncate">{assignment.title}</p>
+                          <p className="text-sm text-slate-500">{assignment.subject} • {assignment.teacher?.name}</p>
                         </div>
                         <div className="text-right">
                           <p className={`text-xs font-medium ${isUrgent ? 'text-red-600' : 'text-orange-600'}`}>
                             {deadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                           </p>
-                          <p className="text-xs text-gray-400">{formatEventTime(assignment.deadline)}</p>
+                          <p className="text-xs text-slate-400">{formatEventTime(assignment.deadline)}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-4 text-slate-500">
                   <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-300" />
                   <p className="text-sm">Semua tugas sudah dikerjakan!</p>
                 </div>
@@ -597,7 +597,7 @@ export default function SiswaDashboard() {
 
             {/* Quick Actions - Moved inside middle column */}
             <div className="grid grid-cols-4 gap-3 mt-auto">
-              <Link href="/scan-qr" className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white hover:from-blue-600 hover:to-blue-700 transition-colors">
+              <Link href="/scan-qr" className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl text-white hover:from-teal-600 hover:to-teal-700 transition-colors">
                 <QrCode className="w-7 h-7 mb-2" />
                 <p className="font-medium text-sm">Scan QR</p>
               </Link>
@@ -625,23 +625,23 @@ export default function SiswaDashboard() {
           <div className="col-span-12 lg:col-span-4 space-y-6 flex flex-col">
             {/* Today's Class */}
             <Card className="p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Jadwal Hari Ini</h3>
+              <h3 className="font-semibold text-slate-900 mb-4">Jadwal Hari Ini</h3>
               {todaySchedule.length > 0 ? (
                 <div className="space-y-3">
                   {todaySchedule.map((item) => {
                     const status = getScheduleStatus(item.start_time, item.end_time);
                     return (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                         <div>
-                          <p className="font-medium text-gray-900">{item.subject}</p>
-                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <p className="font-medium text-slate-900">{item.subject}</p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                             <Clock className="w-3 h-3" />
                             {formatTime(item.start_time)} - {formatTime(item.end_time)}
                           </p>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${status === 'completed' ? 'bg-green-100 text-green-700' :
-                          status === 'inprogress' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-600'
+                          status === 'inprogress' ? 'bg-teal-50 text-teal-700' :
+                            'bg-slate-100 text-slate-600'
                           }`}>
                           {status === 'completed' ? 'Selesai' :
                             status === 'inprogress' ? 'Berlangsung' : 'Mendatang'}
@@ -651,8 +651,8 @@ export default function SiswaDashboard() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <Clock className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <div className="text-center py-4 text-slate-500">
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                   <p className="text-sm">Tidak ada jadwal hari ini</p>
                 </div>
               )}
@@ -661,27 +661,27 @@ export default function SiswaDashboard() {
             {/* Calendar */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded" aria-label="Bulan sebelumnya">
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
+                <button onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded" aria-label="Bulan sebelumnya">
+                  <ChevronLeft className="w-5 h-5 text-slate-600" />
                 </button>
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-slate-900">
                   {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded" aria-label="Bulan berikutnya">
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                <button onClick={nextMonth} className="p-1 hover:bg-slate-100 rounded" aria-label="Bulan berikutnya">
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
                 </button>
               </div>
 
               <div className="grid grid-cols-7 gap-1 text-center">
                 {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day) => (
-                  <div key={day} className="text-xs font-medium text-gray-500 py-2">{day}</div>
+                  <div key={day} className="text-xs font-medium text-slate-500 py-2">{day}</div>
                 ))}
                 {getDaysInMonth(currentMonth).map((day, index) => (
                   <div key={index} className="aspect-square flex items-center justify-center">
                     {day && (
-                      <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm relative ${isToday(day) ? 'bg-blue-600 text-white font-semibold' :
+                      <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm relative ${isToday(day) ? 'bg-teal-600 text-white font-semibold' :
                         hasEvent(day) ? 'bg-orange-100 text-orange-700 font-medium' :
-                          'text-gray-700 hover:bg-gray-100'
+                          'text-slate-700 hover:bg-slate-100'
                         }`}>
                         {day}
                         {hasEvent(day) && !isToday(day) && (
@@ -696,29 +696,29 @@ export default function SiswaDashboard() {
 
             {/* Upcoming Events */}
             <Card className="p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Acara Mendatang</h3>
+              <h3 className="font-semibold text-slate-900 mb-4">Acara Mendatang</h3>
               {upcomingEvents.length > 0 ? (
                 <div className="space-y-3">
                   {upcomingEvents.map((event) => (
-                    <div key={event.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className={`w-1 h-full min-h-[50px] rounded-full ${event.type === 'exam' ? 'bg-blue-500' : 'bg-orange-500'
+                    <div key={event.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                      <div className={`w-1 h-full min-h-[50px] rounded-full ${event.type === 'exam' ? 'bg-teal-500' : 'bg-orange-500'
                         }`} />
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-gray-500">{event.time}</p>
-                        <p className="font-medium text-gray-900 mt-1">{event.title}</p>
+                        <p className="text-xs font-medium text-slate-500">{event.time}</p>
+                        <p className="font-medium text-slate-900 mt-1">{event.title}</p>
                         {event.description && (
-                          <p className="text-xs text-gray-500 mt-0.5">{event.description}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{event.description}</p>
                         )}
                       </div>
-                      <Link href={event.type === 'exam' ? '/ujian-siswa' : '/tugas-siswa'} className="text-blue-600 text-xs hover:underline">
+                      <Link href={event.type === 'exam' ? '/ujian-siswa' : '/tugas-siswa'} className="text-teal-600 text-xs hover:underline">
                         Lihat
                       </Link>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <div className="text-center py-4 text-slate-500">
+                  <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                   <p className="text-sm">Tidak ada acara mendatang</p>
                 </div>
               )}
@@ -729,8 +729,8 @@ export default function SiswaDashboard() {
         {/* Pengumuman - Full Width */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Pengumuman</h3>
-            <Link href="/pengumuman" className="text-blue-600 text-xs hover:underline">
+            <h3 className="font-semibold text-slate-900">Pengumuman</h3>
+            <Link href="/pengumuman" className="text-teal-600 text-xs hover:underline">
               Lihat Semua
             </Link>
           </div>
@@ -740,18 +740,18 @@ export default function SiswaDashboard() {
                 <Link
                   key={announcement.id}
                   href="/pengumuman"
-                  className="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                  className="flex gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100"
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${announcement.priority === 'urgent' ? 'bg-red-100' :
-                    announcement.priority === 'important' ? 'bg-orange-100' : 'bg-blue-100'
+                    announcement.priority === 'important' ? 'bg-orange-100' : 'bg-teal-50'
                     }`}>
                     <Megaphone className={`w-5 h-5 ${announcement.priority === 'urgent' ? 'text-red-600' :
-                      announcement.priority === 'important' ? 'text-orange-600' : 'text-blue-600'
+                      announcement.priority === 'important' ? 'text-orange-600' : 'text-teal-600'
                       }`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900 text-sm">{announcement.author?.name || 'Admin'}</p>
+                      <p className="font-medium text-slate-900 text-sm">{announcement.author?.name || 'Admin'}</p>
                       {announcement.priority === 'urgent' && (
                         <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">Mendesak</span>
                       )}
@@ -759,18 +759,18 @@ export default function SiswaDashboard() {
                         <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">Penting</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-800 mt-1 font-medium">{announcement.title}</p>
-                    <p className="text-xs text-gray-600 line-clamp-2 mt-1">{announcement.content}</p>
-                    <p className="text-xs text-gray-400 mt-2">{formatAnnouncementDate(announcement.created_at)}</p>
+                    <p className="text-sm text-slate-800 mt-1 font-medium">{announcement.title}</p>
+                    <p className="text-xs text-slate-600 line-clamp-2 mt-1">{announcement.content}</p>
+                    <p className="text-xs text-slate-400 mt-2">{formatAnnouncementDate(announcement.created_at)}</p>
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-500">
-              <Megaphone className="w-16 h-16 mb-3 text-gray-200" />
+            <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+              <Megaphone className="w-16 h-16 mb-3 text-slate-200" />
               <p className="font-medium text-sm">Belum ada pengumuman</p>
-              <p className="text-xs text-gray-400 mt-1">Pengumuman dari sekolah akan muncul di sini</p>
+              <p className="text-xs text-slate-400 mt-1">Pengumuman dari sekolah akan muncul di sini</p>
             </div>
           )}
         </Card>

@@ -47,31 +47,31 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     success: <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />,
     error: <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />,
     warning: <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />,
-    info: <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />,
+    info: <Info className="w-5 h-5 text-teal-500 flex-shrink-0" />,
   };
 
   const bgColors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    warning: 'bg-yellow-50 border-yellow-200',
-    info: 'bg-blue-50 border-blue-200',
+    success: 'bg-white border-l-4 border-l-emerald-500 border-slate-100',
+    error: 'bg-white border-l-4 border-l-red-500 border-slate-100',
+    warning: 'bg-white border-l-4 border-l-amber-500 border-slate-100',
+    info: 'bg-white border-l-4 border-l-sky-500 border-slate-100',
   };
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 border rounded-lg shadow-lg transition-opacity duration-300 max-w-sm w-full ${bgColors[toast.type]} ${
+      className={`flex items-start gap-3 p-4 border rounded-xl shadow-lg transition-opacity duration-300 max-w-sm w-full ${bgColors[toast.type]} ${
         isExiting ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
       }`}
       role="alert"
     >
       {icons[toast.type]}
-      <p className="text-sm text-gray-800 flex-1 pt-0.5">{toast.message}</p>
+      <p className="text-sm text-slate-800 flex-1 pt-0.5">{toast.message}</p>
       <button
         onClick={() => {
           setIsExiting(true);
           setTimeout(() => onRemove(toast.id), 300);
         }}
-        className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+        className="text-slate-400 hover:text-slate-600 flex-shrink-0"
         aria-label="Tutup notifikasi"
       >
         <X className="w-4 h-4" />

@@ -327,10 +327,10 @@ export default function MateriPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'document': return <FileText className="w-5 h-5 text-blue-500" />;
+      case 'document': return <FileText className="w-5 h-5 text-teal-500" />;
       case 'video': return <Video className="w-5 h-5 text-red-500" />;
       case 'link': return <LinkIcon className="w-5 h-5 text-green-500" />;
-      default: return <BookOpen className="w-5 h-5 text-gray-500" />;
+      default: return <BookOpen className="w-5 h-5 text-slate-500" />;
     }
   };
 
@@ -364,23 +364,23 @@ export default function MateriPage() {
       />
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Deskripsi singkat materi"
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
         />
       </div>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
           <select
             value={formData.subject}
             onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             required
           >
             <option value="">Pilih Mata Pelajaran</option>
@@ -390,11 +390,11 @@ export default function MateriPage() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
           <select
             value={formData.class_id}
             onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             required
           >
             <option value="">Pilih Kelas</option>
@@ -406,7 +406,7 @@ export default function MateriPage() {
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Materi</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Tipe Materi</label>
         <select
           value={formData.type}
           onChange={(e) => {
@@ -414,7 +414,7 @@ export default function MateriPage() {
             setSelectedFile(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
           }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
         >
           <option value="document">Dokumen (PDF, Word, dll)</option>
           <option value="video">Video</option>
@@ -425,12 +425,12 @@ export default function MateriPage() {
       {/* Upload File Section - For Document or Video */}
       {formData.type !== 'link' && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             Upload {formData.type === 'document' ? 'Dokumen' : 'Video'}
           </label>
           <div 
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
-              ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-gray-300 hover:border-teal-500'}`}
+              ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-slate-300 hover:border-teal-500'}`}
             onClick={() => fileInputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -449,8 +449,8 @@ export default function MateriPage() {
               <div className="flex items-center justify-center gap-3">
                 <CheckCircle className="w-8 h-8 text-teal-500" />
                 <div className="text-left">
-                  <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-slate-900">{selectedFile.name}</p>
+                  <p className="text-sm text-slate-500">
                     {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
@@ -461,16 +461,16 @@ export default function MateriPage() {
                     setSelectedFile(null);
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
-                  className="p-1 hover:bg-gray-200 rounded"
+                  className="p-1 hover:bg-slate-200 rounded"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Klik atau drag & drop file di sini</p>
-                <p className="text-xs text-gray-400 mt-1">
+                <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-sm text-slate-500">Klik atau drag & drop file di sini</p>
+                <p className="text-xs text-slate-400 mt-1">
                   {formData.type === 'document' 
                     ? 'PDF, DOC, DOCX, PPT, PPTX (Max. 50MB)' 
                     : 'MP4, WEBM, AVI, MOV (Max. 50MB)'}
@@ -479,7 +479,7 @@ export default function MateriPage() {
             )}
           </div>
           {isEdit && !selectedFile && editingMaterial?.file_url && (
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-slate-500 mt-2">
               File saat ini tersimpan. Kosongkan jika tidak ingin mengubah file.
             </p>
           )}
@@ -489,19 +489,19 @@ export default function MateriPage() {
       {/* External Link Section */}
       {formData.type === 'link' && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">URL Link</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">URL Link</label>
           <div className="relative">
-            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="url"
               value={formData.file_url}
               onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
               placeholder="https://example.com/materi"
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               required
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Masukkan URL lengkap termasuk https://
           </p>
         </div>
@@ -564,8 +564,8 @@ export default function MateriPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Materi Pembelajaran</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl font-bold text-slate-900">Materi Pembelajaran</h1>
+            <p className="text-slate-600">
               {isTeacherOrAdmin ? 'Kelola materi untuk siswa' : 'Akses materi pembelajaran'}
             </p>
           </div>
@@ -579,13 +579,13 @@ export default function MateriPage() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input
             type="text"
             placeholder="Cari materi…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
           />
         </div>
 
@@ -593,12 +593,12 @@ export default function MateriPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-teal-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Materi</p>
-                <p className="text-xl font-bold text-gray-900">{materials.length}</p>
+                <p className="text-sm text-slate-500">Total Materi</p>
+                <p className="text-xl font-bold text-slate-900">{materials.length}</p>
               </div>
             </div>
           </Card>
@@ -608,8 +608,8 @@ export default function MateriPage() {
                 <Video className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Video</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-slate-500">Video</p>
+                <p className="text-xl font-bold text-slate-900">
                   {materials.filter(m => m.type === 'video').length}
                 </p>
               </div>
@@ -621,8 +621,8 @@ export default function MateriPage() {
                 <LinkIcon className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Link Eksternal</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-slate-500">Link Eksternal</p>
+                <p className="text-xl font-bold text-slate-900">
                   {materials.filter(m => m.type === 'link').length}
                 </p>
               </div>
@@ -634,32 +634,32 @@ export default function MateriPage() {
         <div className="space-y-4">
           {filteredMaterials.length === 0 ? (
             <Card className="p-8 text-center">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Belum ada materi</p>
+              <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">Belum ada materi</p>
               {isTeacherOrAdmin && (
-                <p className="text-sm text-gray-400 mt-1">Klik tombol "Tambah Materi" untuk membuat materi baru</p>
+                <p className="text-sm text-slate-400 mt-1">Klik tombol "Tambah Materi" untuk membuat materi baru</p>
               )}
             </Card>
           ) : (
             filteredMaterials.map((material) => (
               <Card key={material.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                     {getTypeIcon(material.type)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{material.title}</h3>
-                        <p className="text-sm text-gray-500 mt-1">{material.description}</p>
+                        <h3 className="font-semibold text-slate-900">{material.title}</h3>
+                        <p className="text-sm text-slate-500 mt-1">{material.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
                             {material.subject}
                           </span>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
                             {material.class_room?.name || '-'}
                           </span>
-                          <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-teal-50 text-teal-600 text-xs rounded-full">
                             {getTypeLabel(material.type)}
                           </span>
                         </div>
@@ -668,7 +668,7 @@ export default function MateriPage() {
                         {material.file_url && (
                           <button
                             onClick={() => openFile(material)}
-                            className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                            className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                             title={material.type === 'link' ? 'Buka Link' : 'Download/Lihat'}
                           >
                             {material.type === 'link' ? (
@@ -680,7 +680,7 @@ export default function MateriPage() {
                         )}
                         <button
                           onClick={() => setSelectedMaterial(material)}
-                          className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                           title="Detail"
                         >
                           <Eye className="w-4 h-4" />
@@ -689,14 +689,14 @@ export default function MateriPage() {
                           <>
                             <button 
                               onClick={() => handleEdit(material)}
-                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                               title="Edit"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(material.id)}
-                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                               title="Hapus"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -705,7 +705,7 @@ export default function MateriPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
                       <span>Oleh: {material.teacher?.name || '-'}</span>
                       <span>•</span>
                       <span>
@@ -731,7 +731,7 @@ export default function MateriPage() {
                 <h2 className="text-lg font-semibold">Tambah Materi Baru</h2>
                 <button 
                   onClick={() => { setShowAddModal(false); resetForm(); setError(''); }} 
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-slate-100 rounded"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -749,7 +749,7 @@ export default function MateriPage() {
                 <h2 className="text-lg font-semibold">Edit Materi</h2>
                 <button 
                   onClick={() => { setShowEditModal(false); setEditingMaterial(null); resetForm(); setError(''); }} 
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-slate-100 rounded"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -765,41 +765,41 @@ export default function MateriPage() {
             <Card className="w-full max-w-lg">
               <div className="p-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Detail Materi</h2>
-                <button onClick={() => setSelectedMaterial(null)} className="p-1 hover:bg-gray-100 rounded">
+                <button onClick={() => setSelectedMaterial(null)} className="p-1 hover:bg-slate-100 rounded">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
                     {getTypeIcon(selectedMaterial.type)}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{selectedMaterial.title}</h3>
-                    <p className="text-sm text-gray-500">{getTypeLabel(selectedMaterial.type)}</p>
+                    <h3 className="font-semibold text-slate-900">{selectedMaterial.title}</h3>
+                    <p className="text-sm text-slate-500">{getTypeLabel(selectedMaterial.type)}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Deskripsi</p>
-                  <p className="text-gray-600">{selectedMaterial.description || '-'}</p>
+                  <p className="text-sm font-medium text-slate-700">Deskripsi</p>
+                  <p className="text-slate-600">{selectedMaterial.description || '-'}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Mata Pelajaran</p>
-                    <p className="text-gray-600">{selectedMaterial.subject}</p>
+                    <p className="text-sm font-medium text-slate-700">Mata Pelajaran</p>
+                    <p className="text-slate-600">{selectedMaterial.subject}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Kelas</p>
-                    <p className="text-gray-600">{selectedMaterial.class_room?.name || '-'}</p>
+                    <p className="text-sm font-medium text-slate-700">Kelas</p>
+                    <p className="text-slate-600">{selectedMaterial.class_room?.name || '-'}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Pengajar</p>
-                  <p className="text-gray-600">{selectedMaterial.teacher?.name || '-'}</p>
+                  <p className="text-sm font-medium text-slate-700">Pengajar</p>
+                  <p className="text-slate-600">{selectedMaterial.teacher?.name || '-'}</p>
                 </div>
                 {selectedMaterial.file_url && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">
+                    <p className="text-sm font-medium text-slate-700">
                       {selectedMaterial.type === 'link' ? 'URL' : 'File'}
                     </p>
                     <a 

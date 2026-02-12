@@ -74,7 +74,7 @@ export default function JadwalPage() {
 
   const getSubjectColor = (subject: string) => {
     const colors: Record<string, string> = {
-      'Matematika': 'bg-blue-100 text-blue-700 border-blue-200',
+      'Matematika': 'bg-teal-50 text-teal-700 border-teal-200',
       'Fisika': 'bg-purple-100 text-purple-700 border-purple-200',
       'Kimia': 'bg-green-100 text-green-700 border-green-200',
       'Biologi': 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -86,7 +86,7 @@ export default function JadwalPage() {
       'Seni Budaya': 'bg-pink-100 text-pink-700 border-pink-200',
       'Informatika': 'bg-cyan-100 text-cyan-700 border-cyan-200',
     };
-    return colors[subject] || 'bg-gray-100 text-gray-700 border-gray-200';
+    return colors[subject] || 'bg-slate-100 text-slate-700 border-slate-200';
   };
 
   if (loading) {
@@ -103,8 +103,8 @@ export default function JadwalPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Jadwal Pelajaran</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-slate-900">Jadwal Pelajaran</h1>
+          <p className="text-slate-600">
             {user?.role === 'siswa' ? `Kelas ${user?.class?.name || '-'}` : 'Jadwal mengajar Anda'}
           </p>
         </div>
@@ -121,7 +121,7 @@ export default function JadwalPage() {
                 className={`relative px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   selectedDay === dayNum
                     ? 'bg-teal-500 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                 }`}
               >
                 {day}
@@ -136,9 +136,9 @@ export default function JadwalPage() {
         {/* Schedule List */}
         {filteredSchedules.length === 0 ? (
           <Card className="p-8 text-center">
-            <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Tidak ada jadwal untuk {DAYS[selectedDay - 1]}</p>
-            <p className="text-sm text-gray-400 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
+            <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500">Tidak ada jadwal untuk {DAYS[selectedDay - 1]}</p>
+            <p className="text-sm text-slate-400 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -149,10 +149,10 @@ export default function JadwalPage() {
                   <div className="flex items-start gap-4">
                     {/* Time */}
                     <div className="flex-shrink-0 w-20 text-center">
-                      <div className="bg-gray-100 rounded-lg p-2">
-                        <p className="text-sm font-bold text-gray-900">{schedule.start_time}</p>
-                        <div className="w-4 h-0.5 bg-gray-300 mx-auto my-1" />
-                        <p className="text-sm text-gray-600">{schedule.end_time}</p>
+                      <div className="bg-slate-100 rounded-lg p-2">
+                        <p className="text-sm font-bold text-slate-900">{schedule.start_time}</p>
+                        <div className="w-4 h-0.5 bg-slate-300 mx-auto my-1" />
+                        <p className="text-sm text-slate-600">{schedule.end_time}</p>
                       </div>
                     </div>
 
@@ -163,12 +163,12 @@ export default function JadwalPage() {
                       </div>
                       
                       <div className="mt-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <User className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <User className="w-4 h-4 text-slate-400" />
                           <span>{schedule.teacher?.name || schedule.class_room?.name || '-'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <MapPin className="w-4 h-4 text-slate-400" />
                           <span>{schedule.room || '-'}</span>
                         </div>
                       </div>
@@ -182,7 +182,7 @@ export default function JadwalPage() {
         {/* Weekly Overview */}
         {schedules.length > 0 && (
           <Card className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Ringkasan Minggu Ini</h3>
+            <h3 className="font-semibold text-slate-900 mb-4">Ringkasan Minggu Ini</h3>
             <div className="grid grid-cols-6 gap-2">
               {DAYS.map((day, index) => {
                 const daySchedules = schedules.filter(s => s.day_of_week === index + 1);
@@ -190,15 +190,15 @@ export default function JadwalPage() {
                   <div 
                     key={day} 
                     className={`text-center p-2 rounded-lg cursor-pointer transition-colors ${
-                      selectedDay === index + 1 ? 'bg-teal-100' : 'bg-gray-50 hover:bg-gray-100'
+                      selectedDay === index + 1 ? 'bg-teal-100' : 'bg-slate-50 hover:bg-slate-100'
                     }`}
                     onClick={() => setSelectedDay(index + 1)}
                   >
-                    <p className="text-xs font-medium text-gray-500">{day.slice(0, 3)}</p>
-                    <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-teal-600' : 'text-gray-300'}`}>
+                    <p className="text-xs font-medium text-slate-500">{day.slice(0, 3)}</p>
+                    <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-teal-600' : 'text-slate-300'}`}>
                       {daySchedules.length}
                     </p>
-                    <p className="text-xs text-gray-400">mata pelajaran</p>
+                    <p className="text-xs text-slate-400">mata pelajaran</p>
                   </div>
                 );
               })}

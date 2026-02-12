@@ -88,7 +88,7 @@ export default function AdminStatistikPage() {
   };
 
   const statCards = [
-    { label: 'Total Pengguna', value: stats.totalUsers, icon: Users, color: 'bg-blue-500' },
+    { label: 'Total Pengguna', value: stats.totalUsers, icon: Users, color: 'bg-teal-500' },
     { label: 'Total Siswa', value: stats.totalStudents, icon: GraduationCap, color: 'bg-green-500' },
     { label: 'Total Guru', value: stats.totalTeachers, icon: UserCheck, color: 'bg-purple-500' },
     { label: 'Total Kelas', value: stats.totalClasses, icon: BookOpen, color: 'bg-orange-500' },
@@ -108,8 +108,8 @@ export default function AdminStatistikPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Statistik</h1>
-          <p className="text-gray-600">Ringkasan data dan statistik sistem</p>
+          <h1 className="text-2xl font-bold text-slate-900">Statistik</h1>
+          <p className="text-slate-600">Ringkasan data dan statistik sistem</p>
         </div>
 
         {/* Stats Cards */}
@@ -123,8 +123,8 @@ export default function AdminStatistikPage() {
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">{stat.label}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-sm text-slate-600">{stat.label}</p>
+                    <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
                   </div>
                 </div>
               </Card>
@@ -135,12 +135,12 @@ export default function AdminStatistikPage() {
         {/* Charts */}
         <div className="grid md:grid-cols-2 gap-6">
           <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pengguna Berdasarkan Role</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Pengguna Berdasarkan Role</h3>
             <SimplePieChart data={usersByRole} />
           </Card>
 
           <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Siswa Per Kelas</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Siswa Per Kelas</h3>
             <SimpleBarChart data={studentsByClass} dataKey="jumlah" />
           </Card>
         </div>
@@ -152,19 +152,19 @@ export default function AdminStatistikPage() {
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
-              <h3 className="font-semibold text-gray-900">Aktivitas Bulan Ini</h3>
+              <h3 className="font-semibold text-slate-900">Aktivitas Bulan Ini</h3>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Sesi Absensi</span>
+                <span className="text-slate-600">Sesi Absensi</span>
                 <span className="font-semibold">{monthlyActivity.sessions}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Ujian Dilaksanakan</span>
+                <span className="text-slate-600">Ujian Dilaksanakan</span>
                 <span className="font-semibold">{monthlyActivity.exams}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Materi Diunggah</span>
+                <span className="text-slate-600">Materi Diunggah</span>
                 <span className="font-semibold">{monthlyActivity.materials}</span>
               </div>
             </div>
@@ -172,22 +172,22 @@ export default function AdminStatistikPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-teal-600" />
               </div>
-              <h3 className="font-semibold text-gray-900">Jadwal Hari Ini</h3>
+              <h3 className="font-semibold text-slate-900">Jadwal Hari Ini</h3>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Jadwal</span>
+                <span className="text-slate-600">Total Jadwal</span>
                 <span className="font-semibold">{todaySchedule.total}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Kelas Aktif</span>
+                <span className="text-slate-600">Kelas Aktif</span>
                 <span className="font-semibold">{todaySchedule.active_classes}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Guru Mengajar</span>
+                <span className="text-slate-600">Guru Mengajar</span>
                 <span className="font-semibold">{todaySchedule.teaching_teachers}</span>
               </div>
             </div>
@@ -198,19 +198,19 @@ export default function AdminStatistikPage() {
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-purple-600" />
               </div>
-              <h3 className="font-semibold text-gray-900">Performa Akademik</h3>
+              <h3 className="font-semibold text-slate-900">Performa Akademik</h3>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Rata-rata Kehadiran</span>
+                <span className="text-slate-600">Rata-rata Kehadiran</span>
                 <span className="font-semibold text-green-600">{academicPerformance.attendance_percentage}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Rata-rata Nilai Ujian</span>
-                <span className="font-semibold text-blue-600">{academicPerformance.avg_score}</span>
+                <span className="text-slate-600">Rata-rata Nilai Ujian</span>
+                <span className="font-semibold text-teal-600">{academicPerformance.avg_score}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Tingkat Kelulusan</span>
+                <span className="text-slate-600">Tingkat Kelulusan</span>
                 <span className="font-semibold text-green-600">{academicPerformance.pass_rate}%</span>
               </div>
             </div>

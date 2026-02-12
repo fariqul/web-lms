@@ -8,10 +8,10 @@ import api from '@/services/api';
 
 const statusOptions = [
   { value: 'hadir', label: 'Hadir', color: 'bg-green-100 text-green-700' },
-  { value: 'izin', label: 'Izin', color: 'bg-blue-100 text-blue-700' },
+  { value: 'izin', label: 'Izin', color: 'bg-teal-50 text-teal-700' },
   { value: 'sakit', label: 'Sakit', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'alpha', label: 'Alpha', color: 'bg-red-100 text-red-700' },
-  { value: 'belum', label: 'Belum Absen', color: 'bg-gray-100 text-gray-600' },
+  { value: 'belum', label: 'Belum Absen', color: 'bg-slate-100 text-slate-600' },
 ];
 
 export interface SessionHistory {
@@ -151,18 +151,18 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
           <div className="overflow-x-auto">
             <table className="w-full text-sm print-table">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Tanggal</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Kelas</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Mata Pelajaran</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Kehadiran</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 print:hidden">Aksi</th>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">Tanggal</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">Kelas</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">Mata Pelajaran</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">Kehadiran</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">Status</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600 print:hidden">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {sessions.map((session) => (
-                  <tr key={session.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={session.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-3 px-4">
                       {new Date(session.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
@@ -170,12 +170,12 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                     <td className="py-3 px-4">{session.subject}</td>
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center gap-1">
-                        <Users className="w-4 h-4 text-gray-400" />
+                        <Users className="w-4 h-4 text-slate-400" />
                         {session.total_present}/{session.total_students}
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${session.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${session.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                         {session.status === 'active' ? 'Aktif' : 'Selesai'}
                       </span>
                     </td>
@@ -190,8 +190,8 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
             </table>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <History className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+          <div className="text-center py-8 text-slate-500">
+            <History className="w-12 h-12 mx-auto mb-2 text-slate-300" />
             <p>Belum ada riwayat sesi absensi</p>
           </div>
         )}
@@ -250,7 +250,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
           ) : allStudents.length > 0 ? (
             <div className="overflow-x-auto">
               {/* Summary */}
-              <div className="flex gap-4 mb-4 px-4 py-2 bg-gray-50 rounded-lg">
+              <div className="flex gap-4 mb-4 px-4 py-2 bg-slate-50 rounded-lg">
                 {statusOptions.filter(s => s.value !== 'belum').map(status => {
                   const count = allStudents.filter(sa => (editedStatuses[sa.student.id] || sa.status) === status.value).length;
                   return (
@@ -259,18 +259,18 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                     </span>
                   );
                 })}
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-700">
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-200 text-slate-700">
                   Belum: {allStudents.filter(sa => (editedStatuses[sa.student.id] || sa.status) === 'belum').length}
                 </span>
               </div>
               <table className="w-full text-sm print-table">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">No</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">NISN</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Nama Siswa</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Waktu</th>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-3 px-4 font-medium text-slate-600">No</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-600">NISN</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-600">Nama Siswa</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-600">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-600">Waktu</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -278,28 +278,28 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                     const currentStatus = editedStatuses[sa.student.id] || sa.status;
                     const statusInfo = statusOptions.find(s => s.value === currentStatus);
                     return (
-                      <tr key={sa.student.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={sa.student.id} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="py-3 px-4">{index + 1}</td>
-                        <td className="py-3 px-4 text-gray-500">{sa.student.nisn || '-'}</td>
+                        <td className="py-3 px-4 text-slate-500">{sa.student.nisn || '-'}</td>
                         <td className="py-3 px-4 font-medium">{sa.student.name}</td>
                         <td className="py-3 px-4">
                           {isEditMode ? (
                             <select
                               value={currentStatus}
                               onChange={(e) => handleStatusChange(sa.student.id, e.target.value)}
-                              className="block w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              className="block w-full px-2 py-1 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                             >
                               {statusOptions.filter(s => s.value !== 'belum').map(option => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
                               ))}
                             </select>
                           ) : (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo?.color || 'bg-gray-100 text-gray-600'}`}>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo?.color || 'bg-slate-100 text-slate-600'}`}>
                               {statusInfo?.label || currentStatus}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-gray-500">
+                        <td className="py-3 px-4 text-slate-500">
                           {sa.attendance?.scanned_at
                             ? new Date(sa.attendance.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                             : '-'}
@@ -311,8 +311,8 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <div className="text-center py-8 text-slate-500">
+              <Users className="w-12 h-12 mx-auto mb-2 text-slate-300" />
               <p>Tidak ada data siswa pada sesi ini</p>
             </div>
           )}

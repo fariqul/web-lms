@@ -232,7 +232,7 @@ export default function ScanQRPage() {
           />
 
           {/* Camera/Scanner View */}
-          <div className="relative aspect-square bg-gray-900 rounded-xl overflow-hidden mb-4">
+          <div className="relative aspect-square bg-slate-900 rounded-xl overflow-hidden mb-4">
             {isCameraActive ? (
               <>
                 {/* QR Scanner will render here */}
@@ -246,7 +246,7 @@ export default function ScanQRPage() {
                 </p>
               </>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
                 <QrCode className="w-16 h-16 mb-4" />
                 <p className="text-sm">Kamera tidak aktif</p>
                 <p className="text-xs mt-2">Klik tombol di bawah untuk mulai scan</p>
@@ -315,16 +315,16 @@ export default function ScanQRPage() {
                 {/* Divider */}
                 <div className="relative py-2">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
+                    <div className="w-full border-t border-slate-200"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">atau</span>
+                    <span className="px-2 bg-white text-slate-500">atau</span>
                   </div>
                 </div>
                 
                 {/* Manual Token Input */}
                 <div className="space-y-2">
-                  <label htmlFor="manualToken" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="manualToken" className="block text-sm font-medium text-slate-700">
                     Input Token Manual
                   </label>
                   <input
@@ -333,7 +333,7 @@ export default function ScanQRPage() {
                     value={manualToken}
                     onChange={(e) => setManualToken(e.target.value)}
                     placeholder="Masukkan token dari QR…"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     disabled={status === 'processing'}
                     name="manualToken"
                     autoComplete="off"
@@ -380,7 +380,7 @@ export default function ScanQRPage() {
         {/* Instructions */}
         <Card>
           <CardHeader title="Petunjuk" />
-          <ul className="space-y-2 text-sm text-gray-600">
+          <ul className="space-y-2 text-sm text-slate-600">
             <li className="flex items-start gap-2">
               <span className="w-5 h-5 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
                 1

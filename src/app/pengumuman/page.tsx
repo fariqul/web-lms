@@ -163,7 +163,7 @@ export default function PengumumanPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
         </div>
       </DashboardLayout>
     );
@@ -174,8 +174,8 @@ export default function PengumumanPage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pengumuman</h1>
-            <p className="text-gray-600">Informasi dan pengumuman terbaru</p>
+            <h1 className="text-2xl font-bold text-slate-900">Pengumuman</h1>
+            <p className="text-slate-600">Informasi dan pengumuman terbaru</p>
           </div>
           {canCreate && (
             <Button onClick={() => handleOpenModal()}>
@@ -188,9 +188,9 @@ export default function PengumumanPage() {
         {/* Announcements List */}
         {announcements.length === 0 ? (
           <Card className="p-12 text-center">
-            <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Pengumuman</h3>
-            <p className="text-gray-500">Pengumuman terbaru akan muncul di sini</p>
+            <Bell className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 mb-2">Belum Ada Pengumuman</h3>
+            <p className="text-slate-500">Pengumuman terbaru akan muncul di sini</p>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -203,19 +203,19 @@ export default function PengumumanPage() {
                   <div className="flex items-start gap-4 flex-1">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       announcement.priority === 'urgent' ? 'bg-red-100' : 
-                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-blue-100'
+                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-teal-50'
                     }`}>
                       {announcement.priority !== 'normal' ? (
                         <Megaphone className={`w-6 h-6 ${
                           announcement.priority === 'urgent' ? 'text-red-600' : 'text-orange-600'
                         }`} />
                       ) : (
-                        <Bell className="w-6 h-6 text-blue-600" />
+                        <Bell className="w-6 h-6 text-teal-600" />
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
+                        <h3 className="font-semibold text-slate-900">{announcement.title}</h3>
                         {announcement.priority !== 'normal' && (
                           <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                             announcement.priority === 'urgent' 
@@ -227,16 +227,16 @@ export default function PengumumanPage() {
                         )}
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                           announcement.target === 'all' 
-                            ? 'bg-gray-100 text-gray-700'
+                            ? 'bg-slate-100 text-slate-700'
                             : announcement.target === 'guru'
                             ? 'bg-teal-100 text-teal-700'
-                            : 'bg-blue-100 text-blue-700'
+                            : 'bg-teal-50 text-teal-700'
                         }`}>
                           {getTargetLabel(announcement.target)}
                         </span>
                       </div>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{announcement.content}</p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <p className="text-slate-600 text-sm mb-3 line-clamp-2">{announcement.content}</p>
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
                         <span>{announcement.author?.name || 'Admin'}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -247,7 +247,7 @@ export default function PengumumanPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                      className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                       onClick={() => handleView(announcement)}
                     >
                       <Eye className="w-4 h-4" />
@@ -255,7 +255,7 @@ export default function PengumumanPage() {
                     {canCreate && (user?.role === 'admin' || announcement.author?.id === user?.id) && (
                       <>
                         <button 
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg"
                           onClick={() => handleOpenModal(announcement)}
                         >
                           <Edit2 className="w-4 h-4" />
@@ -283,7 +283,7 @@ export default function PengumumanPage() {
                 <h2 className="text-lg font-semibold">
                   {editMode ? 'Edit Pengumuman' : 'Buat Pengumuman Baru'}
                 </h2>
-                <button onClick={() => { setShowModal(false); resetForm(); }} className="text-gray-500 hover:text-gray-700">
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="text-slate-500 hover:text-slate-700">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -305,11 +305,11 @@ export default function PengumumanPage() {
                   {/* Target dropdown - only visible for admin */}
                   {user?.role === 'admin' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Target</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Target</label>
                       <select
                         value={formData.target}
                         onChange={(e) => setFormData({ ...formData, target: e.target.value as 'all' | 'guru' | 'siswa' })}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       >
                         <option value="all">Semua</option>
                         <option value="guru">Guru</option>
@@ -318,11 +318,11 @@ export default function PengumumanPage() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Prioritas</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Prioritas</label>
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     >
                       <option value="normal">Normal</option>
                       <option value="important">Penting</option>
@@ -362,7 +362,7 @@ export default function PengumumanPage() {
             <Card className="w-full max-w-lg">
               <div className="flex items-center justify-between p-4 border-b">
                 <h2 className="text-lg font-semibold">Detail Pengumuman</h2>
-                <button onClick={() => setSelectedAnnouncement(null)} className="text-gray-500 hover:text-gray-700">
+                <button onClick={() => setSelectedAnnouncement(null)} className="text-slate-500 hover:text-slate-700">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -379,20 +379,20 @@ export default function PengumumanPage() {
                   )}
                   <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                     selectedAnnouncement.target === 'all' 
-                      ? 'bg-gray-100 text-gray-700'
+                      ? 'bg-slate-100 text-slate-700'
                       : selectedAnnouncement.target === 'guru'
                       ? 'bg-teal-100 text-teal-700'
-                      : 'bg-blue-100 text-blue-700'
+                      : 'bg-teal-50 text-teal-700'
                   }`}>
                     {getTargetLabel(selectedAnnouncement.target)}
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedAnnouncement.title}</h3>
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{selectedAnnouncement.title}</h3>
+                <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
                   <span>{selectedAnnouncement.author?.name || 'Admin'}</span>
                   <span>{formatDate(selectedAnnouncement.created_at)}</span>
                 </div>
-                <p className="text-gray-600 whitespace-pre-wrap">{selectedAnnouncement.content}</p>
+                <p className="text-slate-600 whitespace-pre-wrap">{selectedAnnouncement.content}</p>
               </div>
               <div className="p-4 border-t">
                 <Button variant="outline" className="w-full" onClick={() => setSelectedAnnouncement(null)}>

@@ -127,18 +127,18 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
             <Globe className="w-5 h-5 text-teal-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Import Soal</h3>
-            <p className="text-sm text-gray-500">Dari Open Trivia Database</p>
+            <h3 className="text-lg font-semibold text-slate-900">Import Soal</h3>
+            <p className="text-sm text-slate-500">Dari Open Trivia Database</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
             <select
               value={importData.category}
               onChange={(e) => setImportData({ ...importData, category: parseInt(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             >
               {TRIVIA_CATEGORIES.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name} ({cat.subject})</option>
@@ -147,11 +147,11 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tingkat Kesulitan</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kesulitan</label>
             <select
               value={importData.difficulty}
               onChange={(e) => setImportData({ ...importData, difficulty: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             >
               <option value="">Semua Tingkat</option>
               <option value="easy">Mudah (Easy)</option>
@@ -161,24 +161,24 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Soal</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Jumlah Soal</label>
             <input
               type="number"
               min="1"
               max="50"
               value={importData.amount}
               onChange={(e) => setImportData({ ...importData, amount: Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             />
-            <p className="text-xs text-gray-500 mt-1">Maksimal 50 soal per import</p>
+            <p className="text-xs text-slate-500 mt-1">Maksimal 50 soal per import</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tingkat Kelas</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Tingkat Kelas</label>
             <select
               value={importData.grade_level}
               onChange={(e) => setImportData({ ...importData, grade_level: e.target.value as '10' | '11' | '12' })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             >
               <option value="10">Kelas 10</option>
               <option value="11">Kelas 11</option>
@@ -186,8 +186,8 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
             </select>
           </div>
 
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm text-blue-700">
+          <div className="bg-teal-50 p-3 rounded-lg">
+            <p className="text-sm text-teal-700">
               <strong>Catatan:</strong> Soal diambil dari Open Trivia Database (opentdb.com) dalam bahasa Inggris.
               Semua soal berbentuk pilihan ganda dengan 4 opsi jawaban.
             </p>

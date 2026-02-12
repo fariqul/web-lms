@@ -357,8 +357,8 @@ export default function TugasGuruPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Tugas & Assignment</h1>
-            <p className="text-gray-600">Kelola tugas untuk siswa</p>
+            <h1 className="text-2xl font-bold text-slate-900">Tugas & Assignment</h1>
+            <p className="text-slate-600">Kelola tugas untuk siswa</p>
           </div>
           <Button onClick={() => { resetForm(); setShowAddModal(true); }}>
             <Plus className="w-5 h-5 mr-2" />
@@ -368,13 +368,13 @@ export default function TugasGuruPage() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input
             type="text"
             placeholder="Cari tugas…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
           />
         </div>
 
@@ -382,12 +382,12 @@ export default function TugasGuruPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-teal-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Tugas</p>
-                <p className="text-xl font-bold text-gray-900">{assignments.length}</p>
+                <p className="text-sm text-slate-500">Total Tugas</p>
+                <p className="text-xl font-bold text-slate-900">{assignments.length}</p>
               </div>
             </div>
           </Card>
@@ -397,8 +397,8 @@ export default function TugasGuruPage() {
                 <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Aktif</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-slate-500">Aktif</p>
+                <p className="text-xl font-bold text-slate-900">
                   {assignments.filter(a => a.status === 'active').length}
                 </p>
               </div>
@@ -410,8 +410,8 @@ export default function TugasGuruPage() {
                 <Clock className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Perlu Dinilai</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-slate-500">Perlu Dinilai</p>
+                <p className="text-xl font-bold text-slate-900">
                   {assignments.reduce((sum, a) => sum + (a.ungraded_count || 0), 0)}
                 </p>
               </div>
@@ -423,37 +423,37 @@ export default function TugasGuruPage() {
         <div className="space-y-4">
           {filteredAssignments.length === 0 ? (
             <Card className="p-8 text-center">
-              <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Belum ada tugas</p>
-              <p className="text-sm text-gray-400 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
+              <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">Belum ada tugas</p>
+              <p className="text-sm text-slate-400 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
             </Card>
           ) : (
             filteredAssignments.map((assignment) => (
               <Card key={assignment.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    assignment.status === 'closed' ? 'bg-gray-100' :
+                    assignment.status === 'closed' ? 'bg-slate-100' :
                     isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-teal-100'
                   }`}>
                     <ClipboardList className={`w-5 h-5 ${
-                      assignment.status === 'closed' ? 'text-gray-500' :
+                      assignment.status === 'closed' ? 'text-slate-500' :
                       isOverdue(assignment.deadline) ? 'text-red-500' : 'text-teal-500'
                     }`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{assignment.description}</p>
+                        <h3 className="font-semibold text-slate-900">{assignment.title}</h3>
+                        <p className="text-sm text-slate-500 mt-1 line-clamp-2">{assignment.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
                             {assignment.subject}
                           </span>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
                             {assignment.class_room?.name || '-'}
                           </span>
                           <span className={`px-2 py-1 text-xs rounded-full ${
-                            assignment.status === 'closed' ? 'bg-gray-100 text-gray-600' :
+                            assignment.status === 'closed' ? 'bg-slate-100 text-slate-600' :
                             isOverdue(assignment.deadline) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
                           }`}>
                             {assignment.status === 'closed' ? 'Ditutup' :
@@ -464,28 +464,28 @@ export default function TugasGuruPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleViewSubmissions(assignment)}
-                          className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                           title="Lihat Pengumpulan"
                         >
                           <Users className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => handleEdit(assignment)}
-                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(assignment.id)}
-                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                           title="Hapus"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         Deadline: {formatDate(assignment.deadline)}
@@ -521,7 +521,7 @@ export default function TugasGuruPage() {
                     resetForm(); 
                     setError(''); 
                   }} 
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-slate-100 rounded"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -542,23 +542,23 @@ export default function TugasGuruPage() {
                 />
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Deskripsi</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Instruksi atau deskripsi tugas"
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran <span className="text-red-500">*</span></label>
                     <select
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       required
                     >
                       <option value="">Pilih Mata Pelajaran</option>
@@ -568,11 +568,11 @@ export default function TugasGuruPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
                     <select
                       value={formData.class_id}
                       onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       required
                     >
                       <option value="">Pilih Kelas</option>
@@ -585,12 +585,12 @@ export default function TugasGuruPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Deadline</label>
                     <input
                       type="datetime-local"
                       value={formData.deadline}
                       onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       required
                     />
                   </div>
@@ -605,12 +605,12 @@ export default function TugasGuruPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Lampiran (Opsional)
                   </label>
                   <div 
                     className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-                      ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-gray-300 hover:border-teal-500'}`}
+                      ${selectedFile ? 'border-teal-500 bg-teal-50' : 'border-slate-300 hover:border-teal-500'}`}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <input
@@ -622,22 +622,22 @@ export default function TugasGuruPage() {
                     {selectedFile ? (
                       <div className="flex items-center justify-center gap-2">
                         <FileText className="w-5 h-5 text-teal-500" />
-                        <span className="text-sm text-gray-700">{selectedFile.name}</span>
+                        <span className="text-sm text-slate-700">{selectedFile.name}</span>
                         <button 
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedFile(null);
                           }}
-                          className="p-1 hover:bg-gray-200 rounded"
+                          className="p-1 hover:bg-slate-200 rounded"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
                       <>
-                        <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
-                        <p className="text-sm text-gray-500">Upload file lampiran</p>
+                        <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                        <p className="text-sm text-slate-500">Upload file lampiran</p>
                       </>
                     )}
                   </div>
@@ -681,11 +681,11 @@ export default function TugasGuruPage() {
               <div className="p-4 border-b flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold">Pengumpulan Tugas</h2>
-                  <p className="text-sm text-gray-500">{selectedAssignment.title}</p>
+                  <p className="text-sm text-slate-500">{selectedAssignment.title}</p>
                 </div>
                 <button 
                   onClick={() => { setShowSubmissionsModal(false); setSelectedAssignment(null); }} 
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-slate-100 rounded"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -693,39 +693,39 @@ export default function TugasGuruPage() {
               <div className="flex-1 overflow-y-auto p-4">
                 {submissions.length === 0 ? (
                   <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Belum ada pengumpulan</p>
+                    <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500">Belum ada pengumpulan</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {submissions.map((submission) => (
                       <div 
                         key={submission.id} 
-                        className="p-4 border rounded-lg hover:bg-gray-50"
+                        className="p-4 border rounded-lg hover:bg-slate-50"
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-slate-900">
                               {submission.student?.name}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-slate-500">
                               NISN: {submission.student?.nisn}
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                               <span className={`px-2 py-1 text-xs rounded-full ${
                                 submission.status === 'graded' ? 'bg-green-100 text-green-700' :
                                 submission.status === 'late' ? 'bg-orange-100 text-orange-700' :
-                                'bg-blue-100 text-blue-700'
+                                'bg-teal-50 text-teal-700'
                               }`}>
                                 {submission.status === 'graded' ? 'Sudah Dinilai' :
                                  submission.status === 'late' ? 'Terlambat' : 'Menunggu Penilaian'}
                               </span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-slate-500">
                                 Dikumpulkan: {formatDate(submission.submitted_at)}
                               </span>
                             </div>
                             {submission.content && (
-                              <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                              <p className="text-sm text-slate-600 mt-2 line-clamp-2">
                                 {submission.content}
                               </p>
                             )}
@@ -747,7 +747,7 @@ export default function TugasGuruPage() {
                                 <p className="text-2xl font-bold text-teal-600">
                                   {submission.score}
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-slate-500">
                                   / {selectedAssignment.max_score}
                                 </p>
                               </div>
@@ -763,9 +763,9 @@ export default function TugasGuruPage() {
                           </div>
                         </div>
                         {submission.feedback && (
-                          <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
-                            <p className="text-gray-500 text-xs mb-1">Feedback:</p>
-                            <p className="text-gray-700">{submission.feedback}</p>
+                          <div className="mt-3 p-2 bg-slate-50 rounded text-sm">
+                            <p className="text-slate-500 text-xs mb-1">Feedback:</p>
+                            <p className="text-slate-700">{submission.feedback}</p>
                           </div>
                         )}
                       </div>
@@ -785,19 +785,19 @@ export default function TugasGuruPage() {
                 <h2 className="text-lg font-semibold">Beri Nilai</h2>
                 <button 
                   onClick={() => { setShowGradeModal(false); setSelectedSubmission(null); }} 
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-slate-100 rounded"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleGrade} className="p-4 space-y-4">
                 <div>
-                  <p className="text-sm text-gray-500">Siswa</p>
+                  <p className="text-sm text-slate-500">Siswa</p>
                   <p className="font-medium">{selectedSubmission.student?.name}</p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Nilai (0 - {selectedAssignment.max_score})
                   </label>
                   <input
@@ -806,13 +806,13 @@ export default function TugasGuruPage() {
                     onChange={(e) => setGradeData({ ...gradeData, score: e.target.value })}
                     min="0"
                     max={selectedAssignment.max_score}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Feedback (Opsional)
                   </label>
                   <textarea
@@ -820,7 +820,7 @@ export default function TugasGuruPage() {
                     onChange={(e) => setGradeData({ ...gradeData, feedback: e.target.value })}
                     placeholder="Berikan komentar atau feedback"
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
 

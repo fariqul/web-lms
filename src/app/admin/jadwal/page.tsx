@@ -197,8 +197,8 @@ export default function AdminJadwalPage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
-            <p className="text-gray-600">Kelola jadwal pelajaran untuk semua kelas</p>
+            <h1 className="text-2xl font-bold text-slate-900">Manajemen Jadwal</h1>
+            <p className="text-slate-600">Kelola jadwal pelajaran untuk semua kelas</p>
           </div>
           <Button onClick={() => { resetForm(); setShowModal(true); }}>
             <Plus className="w-4 h-4 mr-2" />
@@ -215,7 +215,7 @@ export default function AdminJadwalPage() {
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 selectedDay === index + 1
                   ? 'bg-teal-500 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
             >
               {day}
@@ -227,44 +227,44 @@ export default function AdminJadwalPage() {
         <Card className="overflow-hidden">
           {filteredSchedules.length === 0 ? (
             <div className="p-8 text-center">
-              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
-              <p className="text-sm text-gray-400 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
+              <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
+              <p className="text-sm text-slate-400 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Waktu
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Mata Pelajaran
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Kelas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Guru
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Ruangan
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-200">
                   {filteredSchedules
                     .sort((a, b) => a.start_time.localeCompare(b.start_time))
                     .map((schedule) => (
-                      <tr key={schedule.id} className="hover:bg-gray-50">
+                      <tr key={schedule.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium text-gray-900">
+                            <Clock className="w-4 h-4 text-slate-400" />
+                            <span className="font-medium text-slate-900">
                               {schedule.start_time.slice(0, 5)} - {schedule.end_time.slice(0, 5)}
                             </span>
                           </div>
@@ -274,33 +274,33 @@ export default function AdminJadwalPage() {
                             {schedule.subject}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                           {getClassName(schedule)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-600">{getTeacherName(schedule)}</span>
+                            <User className="w-4 h-4 text-slate-400" />
+                            <span className="text-slate-600">{getTeacherName(schedule)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-600">{schedule.room || '-'}</span>
+                            <MapPin className="w-4 h-4 text-slate-400" />
+                            <span className="text-slate-600">{schedule.room || '-'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleEdit(schedule)}
-                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                               aria-label="Edit jadwal"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(schedule.id)}
-                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                               aria-label="Hapus jadwal"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -323,17 +323,17 @@ export default function AdminJadwalPage() {
                 <h2 className="text-lg font-semibold">
                   {editingSchedule ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}
                 </h2>
-                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-gray-100 rounded" aria-label="Tutup">
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-slate-100 rounded" aria-label="Tutup">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="p-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hari</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Hari</label>
                   <select
                     value={formData.day_of_week}
                     onChange={(e) => setFormData({ ...formData, day_of_week: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                     required
                   >
                     {DAYS.map((day, index) => (
@@ -344,11 +344,11 @@ export default function AdminJadwalPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
                     <select
                       value={formData.class_id}
                       onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       required
                     >
                       <option value="">Pilih Kelas</option>
@@ -367,11 +367,11 @@ export default function AdminJadwalPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Guru Pengajar</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Guru Pengajar</label>
                   <select
                     value={formData.teacher_id}
                     onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                     required
                   >
                     <option value="">Pilih Guru</option>
@@ -390,11 +390,11 @@ export default function AdminJadwalPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Waktu Mulai</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Mulai</label>
                     <select
                       value={formData.start_time}
                       onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       required
                     >
                       <option value="">Pilih Waktu</option>
@@ -404,11 +404,11 @@ export default function AdminJadwalPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Waktu Selesai</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Waktu Selesai</label>
                     <select
                       value={formData.end_time}
                       onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       required
                     >
                       <option value="">Pilih Waktu</option>

@@ -17,13 +17,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={inputId} className="block text-sm font-semibold text-slate-700 mb-1.5">
             {label}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
               {leftIcon}
             </div>
           )}
@@ -31,10 +31,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={clsx(
-              'w-full rounded-lg border transition-colors duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-              'disabled:bg-gray-100 disabled:cursor-not-allowed',
-              error ? 'border-red-500' : 'border-gray-300',
+              'w-full rounded-xl border transition-colors duration-150',
+              'focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500',
+              'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400',
+              'placeholder:text-slate-400',
+              error ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 hover:border-slate-300',
               leftIcon ? 'pl-10' : 'pl-4',
               rightIcon ? 'pr-10' : 'pr-4',
               'py-2.5 text-sm',
@@ -43,13 +44,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
               {rightIcon}
             </div>
           )}
         </div>
         {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-        {helperText && !error && <p className="mt-1 text-sm text-gray-500">{helperText}</p>}
+        {helperText && !error && <p className="mt-1 text-sm text-slate-500">{helperText}</p>}
       </div>
     );
   }
@@ -71,7 +72,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={textareaId} className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={textareaId} className="block text-sm font-semibold text-slate-700 mb-1.5">
             {label}
           </label>
         )}
@@ -79,17 +80,18 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           className={clsx(
-            'w-full rounded-lg border px-4 py-2.5 text-sm transition-colors duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-            'disabled:bg-gray-100 disabled:cursor-not-allowed',
+            'w-full rounded-xl border px-4 py-2.5 text-sm transition-colors duration-150',
+            'focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500',
+            'disabled:bg-slate-50 disabled:cursor-not-allowed',
+            'placeholder:text-slate-400',
             'resize-none',
-            error ? 'border-red-500' : 'border-gray-300',
+            error ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 hover:border-slate-300',
             className
           )}
           {...props}
         />
         {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-        {helperText && !error && <p className="mt-1 text-sm text-gray-500">{helperText}</p>}
+        {helperText && !error && <p className="mt-1 text-sm text-slate-500">{helperText}</p>}
       </div>
     );
   }
@@ -113,7 +115,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={selectId} className="block text-sm font-semibold text-slate-700 mb-1.5">
             {label}
           </label>
         )}
@@ -121,11 +123,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={clsx(
-            'w-full rounded-lg border px-4 py-2.5 text-sm transition-colors duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-            'disabled:bg-gray-100 disabled:cursor-not-allowed',
+            'w-full rounded-xl border px-4 py-2.5 text-sm transition-colors duration-150',
+            'focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500',
+            'disabled:bg-slate-50 disabled:cursor-not-allowed',
             'appearance-none bg-white',
-            error ? 'border-red-500' : 'border-gray-300',
+            error ? 'border-red-400' : 'border-slate-200 hover:border-slate-300',
             className
           )}
           {...props}
@@ -142,7 +144,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ))}
         </select>
         {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-        {helperText && !error && <p className="mt-1 text-sm text-gray-500">{helperText}</p>}
+        {helperText && !error && <p className="mt-1 text-sm text-slate-500">{helperText}</p>}
       </div>
     );
   }
@@ -168,8 +170,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             id={checkboxId}
             type="checkbox"
             className={clsx(
-              'w-4 h-4 rounded border-gray-300 text-blue-600',
-              'focus:ring-2 focus:ring-blue-500',
+              'w-4 h-4 rounded border-slate-300 text-teal-600',
+              'focus:ring-2 focus:ring-teal-500',
               'disabled:cursor-not-allowed',
               className
             )}
@@ -177,7 +179,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           />
         </div>
         <div className="ml-3">
-          <label htmlFor={checkboxId} className="text-sm text-gray-700">
+          <label htmlFor={checkboxId} className="text-sm text-slate-700">
             {label}
           </label>
           {error && <p className="text-sm text-red-500">{error}</p>}

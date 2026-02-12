@@ -514,13 +514,13 @@ export default function AbsensiPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200">
+        <div className="flex gap-2 border-b border-slate-200">
           <button
             onClick={() => setActiveTab('create')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'create'
                 ? 'border-teal-500 text-teal-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
             <QrCode className="w-4 h-4 inline mr-2" />
@@ -531,7 +531,7 @@ export default function AbsensiPage() {
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'manual'
                 ? 'border-teal-500 text-teal-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
             <UserCheck className="w-4 h-4 inline mr-2" />
@@ -542,7 +542,7 @@ export default function AbsensiPage() {
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'history'
                 ? 'border-teal-500 text-teal-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
             <History className="w-4 h-4 inline mr-2" />
@@ -577,18 +577,18 @@ export default function AbsensiPage() {
                   </div>
                   
                   {/* Anti-Cheat Options */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Pengaturan Anti-Titip</h4>
+                  <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <h4 className="text-sm font-medium text-slate-700 mb-3">Pengaturan Anti-Titip</h4>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={requireSchoolNetwork}
                         onChange={(e) => setRequireSchoolNetwork(e.target.checked)}
-                        className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                        className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
                       />
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Wajibkan WiFi Sekolah</span>
-                        <p className="text-xs text-gray-500">Siswa hanya bisa absen jika terhubung ke jaringan sekolah</p>
+                        <span className="text-sm font-medium text-slate-700">Wajibkan WiFi Sekolah</span>
+                        <p className="text-xs text-slate-500">Siswa hanya bisa absen jika terhubung ke jaringan sekolah</p>
                       </div>
                     </label>
                   </div>
@@ -608,7 +608,7 @@ export default function AbsensiPage() {
                   <span className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
                   <span className="font-medium">Sesi Aktif</span>
                 </div>
-                <p className="text-gray-700">
+                <p className="text-slate-700">
                   {classes.find((c) => c.value === selectedClass)?.label} -{' '}
                   {subjects.find((s) => s.value === selectedSubject)?.label}
                 </p>
@@ -616,7 +616,7 @@ export default function AbsensiPage() {
 
               {/* QR Code Display */}
               <div className="flex flex-col items-center">
-                <div className="w-64 h-64 bg-white border-4 border-gray-200 rounded-xl flex items-center justify-center mb-4 p-2">
+                <div className="w-64 h-64 bg-white border-4 border-slate-200 rounded-xl flex items-center justify-center mb-4 p-2">
                   {qrToken ? (
                     <QRCodeSVG 
                       value={qrToken}
@@ -631,7 +631,7 @@ export default function AbsensiPage() {
                   )}
                 </div>
 
-                <p className="text-sm text-gray-500 mb-2">Token: <span className="font-mono font-semibold">{qrToken}</span></p>
+                <p className="text-sm text-slate-500 mb-2">Token: <span className="font-mono font-semibold">{qrToken}</span></p>
 
                 {/* Timer */}
                 <div className="flex items-center gap-2 text-lg font-mono">
@@ -640,18 +640,18 @@ export default function AbsensiPage() {
                     {formatTime(timeRemaining)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">QR akan refresh otomatis setiap 5 menit</p>
+                <p className="text-xs text-slate-400 mt-1">QR akan refresh otomatis setiap 5 menit</p>
               </div>
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-600">{attendanceRecords.length}</p>
-                  <p className="text-sm text-blue-700">Sudah Absen</p>
+                <div className="bg-teal-50 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-teal-600">{attendanceRecords.length}</p>
+                  <p className="text-sm text-teal-700">Sudah Absen</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-gray-600">{totalStudents - attendanceRecords.length}</p>
-                  <p className="text-sm text-gray-700">Belum Absen</p>
+                <div className="bg-slate-50 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-slate-600">{totalStudents - attendanceRecords.length}</p>
+                  <p className="text-sm text-slate-700">Belum Absen</p>
                 </div>
               </div>
 
@@ -701,10 +701,10 @@ export default function AbsensiPage() {
                     keyExtractor={(item) => item.id}
                   />
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <QrCode className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <div className="text-center py-8 text-slate-500">
+                    <QrCode className="w-12 h-12 mx-auto mb-2 text-slate-300" />
                     <p>Belum ada siswa yang absen</p>
-                    <p className="text-sm text-gray-400 mt-1">Siswa dapat scan QR code di atas untuk absen</p>
+                    <p className="text-sm text-slate-400 mt-1">Siswa dapat scan QR code di atas untuk absen</p>
                   </div>
                 )}
               </Card>

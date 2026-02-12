@@ -158,7 +158,7 @@ export default function JaringanSekolahPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
         </div>
       </DashboardLayout>
     );
@@ -170,8 +170,8 @@ export default function JaringanSekolahPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pengaturan Jaringan Sekolah</h1>
-            <p className="text-gray-600">Kelola IP range yang diizinkan untuk absensi</p>
+            <h1 className="text-2xl font-bold text-slate-900">Pengaturan Jaringan Sekolah</h1>
+            <p className="text-slate-600">Kelola IP range yang diizinkan untuk absensi</p>
           </div>
           <Button onClick={() => setShowAddForm(true)} leftIcon={<Plus className="w-4 h-4" />}>
             Tambah Jaringan
@@ -179,14 +179,14 @@ export default function JaringanSekolahPage() {
         </div>
 
         {/* Current IP Info */}
-        <Card className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+        <Card className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 border-teal-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center">
               <Globe className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-blue-600 font-medium">IP Address Anda Saat Ini</p>
-              <p className="text-xl font-bold text-blue-900">
+              <p className="text-sm text-teal-600 font-medium">IP Address Anda Saat Ini</p>
+              <p className="text-xl font-bold text-teal-900">
                 {checkingIp ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -200,7 +200,7 @@ export default function JaringanSekolahPage() {
             <button
               onClick={checkCurrentIp}
               disabled={checkingIp}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium text-sm transition-colors"
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 flex items-center gap-2 font-medium text-sm transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${checkingIp ? 'animate-spin' : ''}`} />
               Tes IP
@@ -225,7 +225,7 @@ export default function JaringanSekolahPage() {
           </div>
           {/* Debug info - show raw IP details */}
           {(ipDebugInfo.raw_ip || ipDebugInfo.x_forwarded_for || ipDebugInfo.x_real_ip) && (
-            <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-600 space-y-1">
+            <div className="mt-3 pt-3 border-t border-teal-200 text-xs text-teal-600 space-y-1">
               {ipDebugInfo.raw_ip && (
                 <p>Raw Server IP: <span className="font-mono">{ipDebugInfo.raw_ip}</span></p>
               )}
@@ -243,17 +243,17 @@ export default function JaringanSekolahPage() {
         {showAddForm && (
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="font-semibold text-slate-900">
                 {editingId ? 'Edit Jaringan' : 'Tambah Jaringan Baru'}
               </h3>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600" aria-label="Tutup form">
+              <button onClick={resetForm} className="text-slate-400 hover:text-slate-600" aria-label="Tutup form">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Nama Jaringan
                 </label>
                 <Input
@@ -263,7 +263,7 @@ export default function JaringanSekolahPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   IP Range
                 </label>
                 <Input
@@ -274,9 +274,9 @@ export default function JaringanSekolahPage() {
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg mb-4">
-              <h4 className="font-medium text-gray-700 mb-2">Format IP Range:</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
+            <div className="bg-slate-50 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-slate-700 mb-2">Format IP Range:</h4>
+              <ul className="text-sm text-slate-600 space-y-1">
                 <li>• <strong>CIDR:</strong> 192.168.1.0/24 (semua IP dari 192.168.1.0 - 192.168.1.255)</li>
                 <li>• <strong>Range:</strong> 192.168.1.1-192.168.1.100 (IP spesifik)</li>
                 <li>• <strong>Single IP:</strong> 192.168.1.1 (hanya satu IP)</li>
@@ -289,9 +289,9 @@ export default function JaringanSekolahPage() {
                 id="is_active"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                className="w-4 h-4 text-teal-600 border-slate-300 rounded"
               />
-              <label htmlFor="is_active" className="text-sm text-gray-700">
+              <label htmlFor="is_active" className="text-sm text-slate-700">
                 Aktifkan jaringan ini
               </label>
             </div>
@@ -309,18 +309,18 @@ export default function JaringanSekolahPage() {
 
         {/* Network List */}
         <Card className="overflow-hidden">
-          <div className="p-4 border-b bg-gray-50">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-600" />
+          <div className="p-4 border-b bg-slate-50">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-teal-600" />
               Daftar Jaringan yang Diizinkan
             </h3>
           </div>
 
           {networks.length === 0 ? (
             <div className="p-12 text-center">
-              <Wifi className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Belum ada jaringan yang dikonfigurasi</p>
-              <p className="text-sm text-gray-400 mt-2">
+              <Wifi className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">Belum ada jaringan yang dikonfigurasi</p>
+              <p className="text-sm text-slate-400 mt-2">
                 Absensi dapat dilakukan dari mana saja jika tidak ada jaringan yang dikonfigurasi
               </p>
             </div>
@@ -329,19 +329,19 @@ export default function JaringanSekolahPage() {
               {networks.map((network) => (
                 <div
                   key={network.id}
-                  className="p-4 flex items-center justify-between hover:bg-gray-50"
+                  className="p-4 flex items-center justify-between hover:bg-slate-50"
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      network.is_active ? 'bg-green-100' : 'bg-gray-100'
+                      network.is_active ? 'bg-green-100' : 'bg-slate-100'
                     }`}>
                       <Wifi className={`w-5 h-5 ${
-                        network.is_active ? 'text-green-600' : 'text-gray-400'
+                        network.is_active ? 'text-green-600' : 'text-slate-400'
                       }`} />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{network.name}</p>
-                      <p className="text-sm text-gray-500 font-mono">{network.ip_range}</p>
+                      <p className="font-medium text-slate-900">{network.name}</p>
+                      <p className="text-sm text-slate-500 font-mono">{network.ip_range}</p>
                     </div>
                   </div>
                   
@@ -351,14 +351,14 @@ export default function JaringanSekolahPage() {
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
                         network.is_active
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
+                          : 'bg-slate-100 text-slate-500'
                       }`}
                     >
                       {network.is_active ? 'Aktif' : 'Nonaktif'}
                     </button>
                     <button
                       onClick={() => handleEdit(network)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg"
                       aria-label="Edit jaringan"
                     >
                       <Edit className="w-4 h-4" />

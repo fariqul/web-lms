@@ -22,9 +22,9 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
     <Component
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={clsx(
-        'bg-white rounded-xl shadow-sm',
+        'bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]',
         paddingClasses[padding],
-        onClick && 'cursor-pointer text-left w-full',
+        onClick && 'cursor-pointer text-left w-full hover:border-slate-200 hover:shadow-[var(--shadow-md)] transition-shadow duration-200',
         className
       )}
     >
@@ -44,8 +44,8 @@ export function CardHeader({ title, subtitle, action, className }: CardHeaderPro
   return (
     <div className={clsx('flex items-center justify-between mb-4', className)}>
       <div>
-        <h3 className="font-semibold text-gray-800">{title}</h3>
-        {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+        <h3 className="font-semibold text-slate-800">{title}</h3>
+        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -65,27 +65,27 @@ interface StatCardProps {
 
 export function StatCard({ value, label, icon, color = 'blue', trend }: StatCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    orange: 'bg-orange-500',
-    red: 'bg-red-500',
-    teal: 'bg-teal-500',
-    purple: 'bg-purple-500',
+    blue: 'from-sky-500 to-teal-600',
+    green: 'from-emerald-500 to-teal-600',
+    orange: 'from-amber-500 to-orange-600',
+    red: 'from-rose-500 to-red-600',
+    teal: 'from-teal-500 to-emerald-600',
+    purple: 'from-violet-500 to-purple-600',
   };
 
   return (
-    <div className={clsx('rounded-xl p-4 text-white', colorClasses[color])}>
+    <div className={clsx('rounded-2xl p-5 text-white bg-gradient-to-br shadow-lg', colorClasses[color])}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-3xl font-bold">{value}</p>
-          <p className="text-sm opacity-90">{label}</p>
+          <p className="text-3xl font-extrabold tracking-tight tabular-nums">{value}</p>
+          <p className="text-sm opacity-90 mt-1 font-medium">{label}</p>
           {trend && (
-            <p className="text-xs mt-1 opacity-80">
+            <p className="text-xs mt-1.5 opacity-80 font-medium">
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
             </p>
           )}
         </div>
-        {icon && <div className="opacity-80">{icon}</div>}
+        {icon && <div className="opacity-70 bg-white/10 rounded-xl p-2.5">{icon}</div>}
       </div>
     </div>
   );
@@ -109,10 +109,10 @@ export function QuickActionCard({
   badge,
 }: QuickActionCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-100 text-blue-600 hover:bg-blue-200',
-    green: 'bg-green-100 text-green-600 hover:bg-green-200',
-    orange: 'bg-orange-100 text-orange-600 hover:bg-orange-200',
-    teal: 'bg-teal-100 text-teal-600 hover:bg-teal-200',
+    blue: 'bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-100',
+    green: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100',
+    orange: 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-100',
+    teal: 'bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-100',
   };
 
   const Component = href ? 'a' : 'button';
@@ -122,7 +122,7 @@ export function QuickActionCard({
     <Component
       {...props}
       className={clsx(
-        'flex flex-col items-center justify-center p-4 rounded-xl transition-colors duration-200 relative',
+        'flex flex-col items-center justify-center p-4 rounded-2xl transition-colors duration-150 relative',
         colorClasses[color]
       )}
     >
@@ -154,24 +154,24 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
     green: 'bg-green-100 text-green-700',
     red: 'bg-red-100 text-red-700',
     yellow: 'bg-yellow-100 text-yellow-700',
-    blue: 'bg-blue-100 text-blue-700',
+    blue: 'bg-teal-50 text-teal-700',
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
       {icon && (
         <div
           className={clsx(
-            'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
-            iconColor || 'bg-blue-100 text-blue-600'
+            'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+            iconColor || 'bg-teal-50 text-teal-600'
           )}
         >
           {icon}
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-gray-800 truncate">{title}</p>
-        {subtitle && <p className="text-sm text-gray-500 truncate">{subtitle}</p>}
+        <p className="font-semibold text-slate-800 truncate">{title}</p>
+        {subtitle && <p className="text-sm text-slate-500 truncate">{subtitle}</p>}
       </div>
       {badge && (
         <span className={clsx('text-xs px-2 py-1 rounded-full flex-shrink-0', badgeColors[badge.color])}>

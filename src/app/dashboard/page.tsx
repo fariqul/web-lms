@@ -33,10 +33,10 @@ export default function DashboardPage() {
   }, [user, isLoading, isAuthenticated, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface)]">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">Memuat dashboard…</p>
+        <Loader2 className="w-10 h-10 text-teal-600 animate-spin mx-auto mb-4" />
+        <p className="text-slate-500 font-medium">Memuat dashboard…</p>
       </div>
     </div>
   );

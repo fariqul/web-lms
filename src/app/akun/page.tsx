@@ -147,8 +147,8 @@ export default function AkunPage() {
     switch (user?.role) {
       case 'admin': return 'bg-orange-100 text-orange-700';
       case 'guru': return 'bg-teal-100 text-teal-700';
-      case 'siswa': return 'bg-blue-100 text-blue-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'siswa': return 'bg-teal-50 text-teal-700';
+      default: return 'bg-slate-100 text-slate-700';
     }
   };
 
@@ -165,8 +165,8 @@ export default function AkunPage() {
     <DashboardLayout>
       <div className="space-y-6 max-w-3xl">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Akun Saya</h1>
-          <p className="text-gray-600">Kelola informasi akun Anda</p>
+          <h1 className="text-2xl font-bold text-slate-900">Akun Saya</h1>
+          <p className="text-slate-600">Kelola informasi akun Anda</p>
         </div>
 
         {/* Profile Card */}
@@ -174,7 +174,7 @@ export default function AkunPage() {
           <div className="flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
                 {previewPhoto ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={previewPhoto} alt="Preview" className="w-full h-full object-cover" />
@@ -194,18 +194,18 @@ export default function AkunPage() {
               />
               <button 
                 onClick={handlePhotoClick}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border hover:bg-gray-50 transition-colors"
+                className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border hover:bg-slate-50 transition-colors"
                 title="Ganti foto profil"
                 aria-label="Ganti foto profil"
               >
-                <Camera className="w-4 h-4 text-gray-600" />
+                <Camera className="w-4 h-4 text-slate-600" />
               </button>
             </div>
 
             {/* Info */}
             <div className="text-center sm:text-left flex-1">
-              <h2 className="text-xl font-bold text-gray-900">{user?.name}</h2>
-              <p className="text-gray-600">{user?.email}</p>
+              <h2 className="text-xl font-bold text-slate-900">{user?.name}</h2>
+              <p className="text-slate-600">{user?.email}</p>
               <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor()}`}>
                 {getRoleLabel()}
               </span>
@@ -248,7 +248,7 @@ export default function AkunPage() {
         {/* Detail Info */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Informasi Akun</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Informasi Akun</h3>
             {!isEditing ? (
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                 Edit
@@ -271,10 +271,10 @@ export default function AkunPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-              <User className="w-5 h-5 text-gray-500" />
+            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+              <User className="w-5 h-5 text-slate-500" />
               <div className="flex-1">
-                <p className="text-sm text-gray-500">Nama Lengkap</p>
+                <p className="text-sm text-slate-500">Nama Lengkap</p>
                 {isEditing ? (
                   <Input
                     label="Nama Lengkap"
@@ -285,44 +285,44 @@ export default function AkunPage() {
                     className="mt-1"
                   />
                 ) : (
-                  <p className="font-medium text-gray-900">{user?.name}</p>
+                  <p className="font-medium text-slate-900">{user?.name}</p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-              <Mail className="w-5 h-5 text-gray-500" />
+            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+              <Mail className="w-5 h-5 text-slate-500" />
               <div className="flex-1">
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium text-gray-900">{user?.email}</p>
+                <p className="text-sm text-slate-500">Email</p>
+                <p className="font-medium text-slate-900">{user?.email}</p>
               </div>
             </div>
 
             {user?.role === 'siswa' && (
               <>
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                  <User className="w-5 h-5 text-gray-500" />
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+                  <User className="w-5 h-5 text-slate-500" />
                   <div className="flex-1">
-                    <p className="text-sm text-gray-500">NISN</p>
-                    <p className="font-medium text-gray-900">{user?.nisn || '-'}</p>
+                    <p className="text-sm text-slate-500">NISN</p>
+                    <p className="font-medium text-slate-900">{user?.nisn || '-'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                  <User className="w-5 h-5 text-gray-500" />
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+                  <User className="w-5 h-5 text-slate-500" />
                   <div className="flex-1">
-                    <p className="text-sm text-gray-500">Kelas</p>
-                    <p className="font-medium text-gray-900">{user?.class?.name || '-'}</p>
+                    <p className="text-sm text-slate-500">Kelas</p>
+                    <p className="font-medium text-slate-900">{user?.class?.name || '-'}</p>
                   </div>
                 </div>
               </>
             )}
 
             {user?.role === 'guru' && (
-              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                <User className="w-5 h-5 text-gray-500" />
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+                <User className="w-5 h-5 text-slate-500" />
                 <div className="flex-1">
-                  <p className="text-sm text-gray-500">NIP</p>
-                  <p className="font-medium text-gray-900">{user?.nip || '-'}</p>
+                  <p className="text-sm text-slate-500">NIP</p>
+                  <p className="font-medium text-slate-900">{user?.nip || '-'}</p>
                 </div>
               </div>
             )}
@@ -331,13 +331,13 @@ export default function AkunPage() {
 
         {/* Security */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Keamanan</h3>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Keamanan</h3>
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
             <div className="flex items-center gap-4">
-              <Lock className="w-5 h-5 text-gray-500" />
+              <Lock className="w-5 h-5 text-slate-500" />
               <div>
-                <p className="font-medium text-gray-900">Password</p>
-                <p className="text-sm text-gray-500">Terakhir diubah: Tidak pernah</p>
+                <p className="font-medium text-slate-900">Password</p>
+                <p className="text-sm text-slate-500">Terakhir diubah: Tidak pernah</p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)}>

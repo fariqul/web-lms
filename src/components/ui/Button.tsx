@@ -23,16 +23,16 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-semibold rounded-xl transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-    secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
+    primary: 'bg-teal-600 text-white hover:bg-teal-700 focus:ring-teal-500 shadow-sm',
+    secondary: 'bg-slate-700 text-white hover:bg-slate-800 focus:ring-slate-500 shadow-sm',
+    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm',
+    success: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm',
     outline:
-      'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 focus:ring-blue-500',
-    ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-500',
+      'border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:ring-teal-500',
+    ghost: 'text-slate-600 hover:bg-slate-100 focus:ring-slate-400',
   };
 
   const sizeClasses = {
@@ -104,22 +104,22 @@ export function IconButton({
   ...props
 }: IconButtonProps) {
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700',
-    secondary: 'bg-gray-600 text-white hover:bg-gray-700',
+    primary: 'bg-teal-600 text-white hover:bg-teal-700',
+    secondary: 'bg-slate-700 text-white hover:bg-slate-800',
     danger: 'bg-red-600 text-white hover:bg-red-700',
-    ghost: 'text-gray-600 hover:bg-gray-100',
+    ghost: 'text-slate-600 hover:bg-slate-100',
   };
 
   const sizeClasses = {
     sm: 'p-1.5',
     md: 'p-2',
-    lg: 'p-3',
+    lg: 'p-2.5',
   };
 
   return (
     <button
       className={clsx(
-        'rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
+        'rounded-xl transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500',
         variantClasses[variant],
         sizeClasses[size],
         className

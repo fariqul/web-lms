@@ -142,7 +142,7 @@ export default function AdminDashboard() {
       case 'exam':
         return { icon: <FileEdit className="w-4 h-4" />, color: 'bg-orange-100 text-orange-600' };
       default:
-        return { icon: <UserPlus className="w-4 h-4" />, color: 'bg-blue-100 text-blue-600' };
+        return { icon: <UserPlus className="w-4 h-4" />, color: 'bg-teal-50 text-teal-600' };
     }
   };
 
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
 
         {/* Statistics */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Statistik Pengguna</h3>
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Statistik Pengguna</h3>
           <div className="grid grid-cols-3 gap-4">
             <StatCard
               value={stats.totalStudents}
@@ -256,15 +256,15 @@ export default function AdminDashboard() {
                         {icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800 truncate">{activity.message}</p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
+                        <p className="text-sm text-slate-800 truncate">{activity.message}</p>
+                        <p className="text-xs text-slate-500">{activity.time}</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-slate-500">
                 <p>Belum ada aktivitas terbaru</p>
               </div>
             )}
@@ -286,13 +286,13 @@ export default function AdminDashboard() {
             />
             <div className="flex items-center justify-center">
               <div className="text-center">
-                <p className="text-4xl font-bold text-blue-600">{stats.totalStudents}</p>
-                <p className="text-sm text-gray-500">Total Siswa Terdaftar</p>
+                <p className="text-4xl font-bold text-teal-600">{stats.totalStudents}</p>
+                <p className="text-sm text-slate-500">Total Siswa Terdaftar</p>
                 <div className="flex gap-1 mt-2 justify-center">
                   {[35, 28, 42, 30, 45, 38, 32].map((height, i) => (
                     <div
                       key={i}
-                      className="w-3 bg-gradient-to-t from-blue-300 to-blue-500 rounded"
+                      className="w-3 bg-gradient-to-t from-teal-300 to-teal-500 rounded"
                       style={{ height: `${height}px` }}
                     />
                   ))}
@@ -320,7 +320,7 @@ export default function AdminDashboard() {
               height={300}
             />
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-slate-500">
               <p>Belum ada data kehadiran minggu ini</p>
             </div>
           )}
@@ -336,9 +336,9 @@ export default function AdminDashboard() {
             
             {/* Summary Stats */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-blue-600">{teacherRecap.summary.total_teachers_scheduled}</p>
-                <p className="text-sm text-blue-700">Guru Terjadwal</p>
+              <div className="bg-teal-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-teal-600">{teacherRecap.summary.total_teachers_scheduled}</p>
+                <p className="text-sm text-teal-700">Guru Terjadwal</p>
               </div>
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-green-600">{teacherRecap.summary.teachers_teaching}</p>
@@ -367,13 +367,13 @@ export default function AdminDashboard() {
             {teacherRecap.teachers.length > 0 ? (
               <div className="space-y-3">
                 {teacherRecap.teachers.map((teacher) => (
-                  <div key={teacher.teacher_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div key={teacher.teacher_id} className="border border-slate-200 rounded-lg overflow-hidden">
                     {/* Teacher Header */}
                     <button
                       onClick={() => setExpandedTeacher(
                         expandedTeacher === teacher.teacher_id ? null : teacher.teacher_id
                       )}
-                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -386,8 +386,8 @@ export default function AdminDashboard() {
                           }`} />
                         </div>
                         <div className="text-left">
-                          <p className="font-medium text-gray-900">{teacher.teacher_name}</p>
-                          <p className="text-sm text-gray-500">
+                          <p className="font-medium text-slate-900">{teacher.teacher_name}</p>
+                          <p className="text-sm text-slate-500">
                             {teacher.taught}/{teacher.total_scheduled} jadwal terpenuhi
                           </p>
                         </div>
@@ -395,19 +395,19 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3">
                         {getTeacherStatusBadge(teacher.status)}
                         {expandedTeacher === teacher.teacher_id ? (
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
                         )}
                       </div>
                     </button>
 
                     {/* Expanded Detail */}
                     {expandedTeacher === teacher.teacher_id && (
-                      <div className="border-t border-gray-200 bg-gray-50 p-4">
+                      <div className="border-t border-slate-200 bg-slate-50 p-4">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-left text-gray-500">
+                            <tr className="text-left text-slate-500">
                               <th className="pb-2">Kelas</th>
                               <th className="pb-2">Mata Pelajaran</th>
                               <th className="pb-2">Jam</th>
@@ -416,10 +416,10 @@ export default function AdminDashboard() {
                           </thead>
                           <tbody>
                             {teacher.classes.map((cls, idx) => (
-                              <tr key={idx} className="border-t border-gray-200">
-                                <td className="py-2 font-medium text-gray-900">{cls.class_name}</td>
-                                <td className="py-2 text-gray-700">{cls.subject}</td>
-                                <td className="py-2 text-gray-600">{cls.time}</td>
+                              <tr key={idx} className="border-t border-slate-200">
+                                <td className="py-2 font-medium text-slate-900">{cls.class_name}</td>
+                                <td className="py-2 text-slate-700">{cls.subject}</td>
+                                <td className="py-2 text-slate-600">{cls.time}</td>
                                 <td className="py-2 text-center">
                                   <div className="flex items-center justify-center gap-2">
                                     {getClassStatusIcon(cls.status)}
@@ -442,8 +442,8 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 text-slate-500">
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-slate-300" />
                 <p>Tidak ada jadwal guru untuk hari ini</p>
               </div>
             )}

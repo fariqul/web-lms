@@ -205,7 +205,7 @@ export default function AdminUsersPage() {
             ? 'bg-orange-100 text-orange-700'
             : item.role === 'guru'
             ? 'bg-teal-100 text-teal-700'
-            : 'bg-blue-100 text-blue-700'
+            : 'bg-teal-50 text-teal-700'
         }`}>
           {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
         </span>
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => handleOpenModal(item)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
             title="Edit"
             aria-label="Edit pengguna"
           >
@@ -338,20 +338,20 @@ export default function AdminUsersPage() {
           />
           {!selectedUser && (
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-gray-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -441,15 +441,15 @@ export default function AdminUsersPage() {
             </div>
           ) : (
             <>
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-700">
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                <p className="text-sm text-teal-700">
                   Reset password untuk: <strong>{selectedUser?.name}</strong>
                 </p>
-                <p className="text-xs text-blue-500 mt-1">{selectedUser?.email}</p>
+                <p className="text-xs text-teal-500 mt-1">{selectedUser?.email}</p>
               </div>
 
               <div className="w-full">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Password Baru</label>
                 <div className="relative">
                   <input
                     type={resetPasswordData.showPassword ? 'text' : 'password'}
@@ -457,19 +457,19 @@ export default function AdminUsersPage() {
                     onChange={(e) => setResetPasswordData({ ...resetPasswordData, password: e.target.value })}
                     required
                     minLength={8}
-                    className="w-full rounded-lg border border-gray-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
                   />
                   <button
                     type="button"
                     onClick={() => setResetPasswordData({ ...resetPasswordData, showPassword: !resetPasswordData.showPassword })}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                     aria-label={resetPasswordData.showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
                     {resetPasswordData.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Harus mengandung huruf besar, huruf kecil, dan angka</p>
+                <p className="mt-1 text-xs text-slate-500">Harus mengandung huruf besar, huruf kecil, dan angka</p>
               </div>
 
               <div className="flex gap-3 pt-2">

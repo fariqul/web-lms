@@ -67,11 +67,11 @@ export default function MateriSiswaPage() {
       case 'video':
         return <Play className="w-5 h-5 text-red-500" />;
       case 'document':
-        return <FileText className="w-5 h-5 text-blue-500" />;
+        return <FileText className="w-5 h-5 text-teal-500" />;
       case 'link':
         return <LinkIcon className="w-5 h-5 text-green-500" />;
       default:
-        return <BookOpen className="w-5 h-5 text-gray-500" />;
+        return <BookOpen className="w-5 h-5 text-slate-500" />;
     }
   };
 
@@ -87,9 +87,9 @@ export default function MateriSiswaPage() {
   const getTypeBg = (type: string) => {
     switch (type) {
       case 'video': return 'bg-red-100';
-      case 'document': return 'bg-blue-100';
+      case 'document': return 'bg-teal-50';
       case 'link': return 'bg-green-100';
-      default: return 'bg-gray-100';
+      default: return 'bg-slate-100';
     }
   };
 
@@ -107,20 +107,20 @@ export default function MateriSiswaPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Materi Pembelajaran</h1>
-          <p className="text-gray-600">Akses materi dari guru Anda</p>
+          <h1 className="text-2xl font-bold text-slate-900">Materi Pembelajaran</h1>
+          <p className="text-slate-600">Akses materi dari guru Anda</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-teal-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Materi</p>
-                <p className="text-xl font-bold text-gray-900">{materials.length}</p>
+                <p className="text-sm text-slate-500">Total Materi</p>
+                <p className="text-xl font-bold text-slate-900">{materials.length}</p>
               </div>
             </div>
           </Card>
@@ -130,8 +130,8 @@ export default function MateriSiswaPage() {
                 <Play className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Video</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-slate-500">Video</p>
+                <p className="text-xl font-bold text-slate-900">
                   {materials.filter(m => m.type === 'video').length}
                 </p>
               </div>
@@ -143,8 +143,8 @@ export default function MateriSiswaPage() {
                 <BookOpen className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Mata Pelajaran</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-slate-500">Mata Pelajaran</p>
+                <p className="text-xl font-bold text-slate-900">
                   {new Set(materials.map(m => m.subject)).size}
                 </p>
               </div>
@@ -155,19 +155,19 @@ export default function MateriSiswaPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
               placeholder="Cari materi…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             />
           </div>
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
           >
             <option value="all">Semua Mata Pelajaran</option>
             {subjects.filter(s => s !== 'all').map(subject => (
@@ -179,9 +179,9 @@ export default function MateriSiswaPage() {
         {/* Materials List */}
         {filteredMaterials.length === 0 ? (
           <Card className="p-8 text-center">
-            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Belum ada materi</p>
-            <p className="text-sm text-gray-400 mt-1">Materi akan muncul setelah guru mengunggah</p>
+            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500">Belum ada materi</p>
+            <p className="text-sm text-slate-400 mt-1">Materi akan muncul setelah guru mengunggah</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -192,8 +192,8 @@ export default function MateriSiswaPage() {
                     {getTypeIcon(material.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{material.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{material.description}</p>
+                    <h3 className="font-semibold text-slate-900 truncate">{material.title}</h3>
+                    <p className="text-sm text-slate-500 mt-1 line-clamp-2">{material.description}</p>
                   </div>
                 </div>
 
@@ -201,17 +201,17 @@ export default function MateriSiswaPage() {
                   <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
                     {material.subject}
                   </span>
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                  <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
                     {getTypeLabel(material.type)}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
                     <User className="w-4 h-4" />
                     <span>{material.teacher?.name || 'Guru'}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Clock className="w-4 h-4" />
                     <span>{formatDate(material.created_at)}</span>
                   </div>
