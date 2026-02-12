@@ -134,7 +134,7 @@ export default function ExportPage() {
           ].map(({ type, icon: Icon, title, desc, color }) => (
             <Card
               key={type}
-              className={`p-4 cursor-pointer transition-all border-2 ${exportType === type ? `border-${color}-500 bg-${color}-50` : 'border-transparent hover:border-gray-200'}`}
+              className={`p-4 cursor-pointer transition-colors border-2 ${exportType === type ? `border-${color}-500 bg-${color}-50` : 'border-transparent hover:border-gray-200'}`}
               onClick={() => setExportType(type)}
             >
               <div className="flex items-center gap-3">
@@ -198,7 +198,7 @@ export default function ExportPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setFormat('xlsx')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-all ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-gray-400'}`} />
                 <div className="text-left">
@@ -208,7 +208,7 @@ export default function ExportPage() {
               </button>
               <button
                 onClick={() => setFormat('pdf')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-all ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
                 <div className="text-left">
@@ -223,7 +223,7 @@ export default function ExportPage() {
           <div className="mt-6 flex justify-end">
             <Button onClick={handleExport} disabled={exporting}>
               {exporting ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengekspor...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengekspor…</>
               ) : (
                 <><Download className="w-4 h-4 mr-2" />Export {format.toUpperCase()}</>
               )}

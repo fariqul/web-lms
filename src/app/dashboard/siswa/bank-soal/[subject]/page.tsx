@@ -265,7 +265,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center min-h-[400px]">
           <Loader2 className="w-12 h-12 text-teal-500 animate-spin" />
-          <p className="mt-4 text-gray-500">Memuat soal...</p>
+          <p className="mt-4 text-gray-500">Memuat soal…</p>
         </div>
       </DashboardLayout>
     );
@@ -435,7 +435,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-teal-500 h-2 rounded-full transition-all duration-300"
+              className="bg-teal-500 h-2 rounded-full transition-[width] duration-300"
               style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
             />
           </div>
@@ -508,7 +508,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                   key={idx}
                   onClick={() => handleSelectAnswer(option)}
                   disabled={mode === 'belajar' && currentAnswer?.selectedAnswer !== null}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${getOptionStyle(option)}`}
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${getOptionStyle(option)}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium flex-shrink-0">

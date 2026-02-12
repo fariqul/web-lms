@@ -106,6 +106,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -113,7 +114,7 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600" />
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600" name="rememberMe" />
                 <span className="text-sm text-gray-600">Ingat saya</span>
               </label>
               <Link href="/lupa-password" className="text-sm text-blue-600 hover:underline">
@@ -129,7 +130,7 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Memproses...</span>
+                  <span>Memproses…</span>
                 </>
               ) : (
                 'Masuk'

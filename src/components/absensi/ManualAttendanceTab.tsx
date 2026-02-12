@@ -200,7 +200,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
             <div className="grid md:grid-cols-2 gap-4">
               <Select
                 label="Pilih Kelas"
-                options={[{ value: '', label: 'Pilih kelas...' }, ...classes]}
+                options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
                 value={selectedClass}
                 onChange={(e) => {
                   setSelectedClass(e.target.value);
@@ -210,7 +210,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
               />
               <Select
                 label="Mata Pelajaran"
-                options={[{ value: '', label: 'Pilih mata pelajaran...' }, ...subjects]}
+                options={[{ value: '', label: 'Pilih mata pelajaran…' }, ...subjects]}
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
               />
@@ -263,7 +263,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Cari nama siswa..."
+                    placeholder="Cari nama siswa…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -297,7 +297,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                               <button
                                 key={opt.value}
                                 onClick={() => handleStatusChange(student.id, opt.value)}
-                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all border ${
+                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors border ${
                                   currentStatus === opt.value
                                     ? `${opt.color} ring-2 ring-offset-1 ${
                                         opt.value === 'hadir' ? 'ring-green-400' :
@@ -334,7 +334,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                       )
                     }
                   >
-                    {saving ? 'Menyimpan...' : 'Simpan Absensi'}
+                    {saving ? 'Menyimpan…' : 'Simpan Absensi'}
                   </Button>
                 </div>
               </>

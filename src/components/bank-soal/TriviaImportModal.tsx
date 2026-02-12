@@ -199,7 +199,7 @@ export function TriviaImportModal({ isOpen, onClose, onImportSuccess }: TriviaIm
             </Button>
             <Button type="button" className="flex-1" onClick={handleImport} disabled={loading}>
               {loading ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengimpor...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengimpor…</>
               ) : (
                 <><Download className="w-4 h-4 mr-2" />Import Soal</>
               )}

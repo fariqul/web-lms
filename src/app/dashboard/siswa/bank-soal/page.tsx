@@ -184,7 +184,7 @@ export default function SiswaBankSoalPage() {
             return (
               <Card
                 key={subject.id}
-                className={`p-4 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all duration-200 border-2 border-transparent hover:border-teal-200 ${questionCount === 0 ? 'opacity-60' : ''}`}
+                className={`p-4 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition duration-200 border-2 border-transparent hover:border-teal-200 ${questionCount === 0 ? 'opacity-60' : ''}`}
                 onClick={() => handleSubjectClick(subject.id)}
               >
                 <div className="flex items-center gap-4">
@@ -266,7 +266,7 @@ export default function SiswaBankSoalPage() {
                 {/* Tryout Mode */}
                 <button
                   onClick={() => handleModeSelect('tryout')}
-                  className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all group text-left"
+                  className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-colors group text-left"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
@@ -288,7 +288,7 @@ export default function SiswaBankSoalPage() {
                 {/* Belajar Mode */}
                 <button
                   onClick={() => handleModeSelect('belajar')}
-                  className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-all group text-left"
+                  className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors group text-left"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center group-hover:bg-teal-200 transition-colors">

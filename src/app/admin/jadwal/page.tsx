@@ -294,12 +294,14 @@ export default function AdminJadwalPage() {
                             <button
                               onClick={() => handleEdit(schedule)}
                               className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                              aria-label="Edit jadwal"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(schedule.id)}
                               className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                              aria-label="Hapus jadwal"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -321,7 +323,7 @@ export default function AdminJadwalPage() {
                 <h2 className="text-lg font-semibold">
                   {editingSchedule ? 'Edit Jadwal' : 'Tambah Jadwal Baru'}
                 </h2>
-                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-gray-100 rounded">
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 hover:bg-gray-100 rounded" aria-label="Tutup">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -425,7 +427,7 @@ export default function AdminJadwalPage() {
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Menyimpan...
+                        Menyimpan…
                       </>
                     ) : (
                       editingSchedule ? 'Simpan Perubahan' : 'Simpan Jadwal'

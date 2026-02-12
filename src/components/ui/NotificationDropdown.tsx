@@ -225,10 +225,11 @@ export function NotificationDropdown() {
                     const colorClass = typeColors[notif.type] || typeColors.info;
 
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={notif.id}
                         onClick={() => handleViewDetail(notif)}
-                        className={`flex gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read_at ? 'bg-blue-50/40' : ''}`}
+                        className={`flex gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer w-full text-left ${!notif.read_at ? 'bg-blue-50/40' : ''}`}
                       >
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
                           <Icon className="w-4 h-4" />
@@ -246,6 +247,7 @@ export function NotificationDropdown() {
                               onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
                               className="p-1 text-gray-400 hover:text-teal-600 rounded"
                               title="Tandai dibaca"
+                              aria-label="Tandai dibaca"
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
@@ -254,11 +256,12 @@ export function NotificationDropdown() {
                             onClick={(e) => { e.stopPropagation(); handleDelete(notif.id); }}
                             className="p-1 text-gray-400 hover:text-red-500 rounded"
                             title="Hapus"
+                            aria-label="Hapus notifikasi"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </div>
+                      </button>
                     );
                   })
                 )}
@@ -309,7 +312,7 @@ function NotificationDetail({
     <>
       {/* Detail Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-        <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg transition-colors" title="Kembali">
+        <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg transition-colors" title="Kembali" aria-label="Kembali">
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </button>
         <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
@@ -322,6 +325,7 @@ function NotificationDetail({
           onClick={() => onDelete(notif.id)}
           className="p-1 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
           title="Hapus notifikasi"
+          aria-label="Hapus notifikasi"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -402,6 +406,7 @@ function DetailRow({
           onClick={() => onCopy(value)}
           className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors flex-shrink-0"
           title={copied ? 'Tersalin!' : 'Salin'}
+          aria-label={copied ? 'Tersalin' : 'Salin'}
         >
           {copied ? (
             <Check className="w-3.5 h-3.5 text-green-500" />

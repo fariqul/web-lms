@@ -404,7 +404,7 @@ export default function SiswaDashboard() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Statistik Kehadiran</h3>
-                <select className="text-sm border rounded-lg px-3 py-1.5 text-gray-600">
+                <select className="text-sm border rounded-lg px-3 py-1.5 text-gray-600" aria-label="Pilih semester" name="semester">
                   <option>Semester Ini</option>
                 </select>
               </div>
@@ -521,8 +521,8 @@ export default function SiswaDashboard() {
                           <td className="py-3 px-2 font-medium text-gray-900">{exam.title}</td>
                           <td className="py-3 px-2 text-gray-600">{exam.subject}</td>
                           <td className="py-3 px-2 text-center">
-                            <span className="font-semibold">{exam.score ?? '-'}</span>
-                            <span className="text-gray-400">/{exam.max_score}</span>
+                            <span className="font-semibold tabular-nums">{exam.score ?? '-'}</span>
+                            <span className="text-gray-400 tabular-nums">/{exam.max_score}</span>
                           </td>
                           <td className="py-3 px-2 text-center">
                             <span className={`font-semibold ${exam.score ? (getGrade(exam.score, exam.max_score) === 'A' ? 'text-green-600' :
@@ -597,15 +597,15 @@ export default function SiswaDashboard() {
 
             {/* Quick Actions - Moved inside middle column */}
             <div className="grid grid-cols-4 gap-3 mt-auto">
-              <Link href="/scan-qr" className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white hover:from-blue-600 hover:to-blue-700 transition-all">
+              <Link href="/scan-qr" className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white hover:from-blue-600 hover:to-blue-700 transition-colors">
                 <QrCode className="w-7 h-7 mb-2" />
                 <p className="font-medium text-sm">Scan QR</p>
               </Link>
-              <Link href="/ujian-siswa" className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white hover:from-purple-600 hover:to-purple-700 transition-all">
+              <Link href="/ujian-siswa" className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white hover:from-purple-600 hover:to-purple-700 transition-colors">
                 <FileText className="w-7 h-7 mb-2" />
                 <p className="font-medium text-sm">Ujian</p>
               </Link>
-              <Link href="/tugas-siswa" className="p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl text-white hover:from-orange-600 hover:to-orange-700 transition-all relative">
+              <Link href="/tugas-siswa" className="p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl text-white hover:from-orange-600 hover:to-orange-700 transition-colors relative">
                 <ClipboardList className="w-7 h-7 mb-2" />
                 <p className="font-medium text-sm">Tugas</p>
                 {stats.pending_assignments_count > 0 && (
@@ -614,7 +614,7 @@ export default function SiswaDashboard() {
                   </span>
                 )}
               </Link>
-              <Link href="/materi-siswa" className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl text-white hover:from-teal-600 hover:to-teal-700 transition-all">
+              <Link href="/materi-siswa" className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl text-white hover:from-teal-600 hover:to-teal-700 transition-colors">
                 <BookOpen className="w-7 h-7 mb-2" />
                 <p className="font-medium text-sm">Materi</p>
               </Link>
@@ -661,13 +661,13 @@ export default function SiswaDashboard() {
             {/* Calendar */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded">
+                <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded" aria-label="Bulan sebelumnya">
                   <ChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <h3 className="font-semibold text-gray-900">
                   {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded">
+                <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded" aria-label="Bulan berikutnya">
                   <ChevronRight className="w-5 h-5 text-gray-600" />
                 </button>
               </div>

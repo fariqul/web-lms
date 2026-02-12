@@ -60,7 +60,7 @@ export function OfflineBanner() {
   // Reconnected banner (auto-hides)
   if (showReconnected) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[110] bg-green-600 text-white px-4 py-2.5 shadow-lg print:hidden transition-all">
+      <div className="fixed top-0 left-0 right-0 z-[110] bg-green-600 text-white px-4 py-2.5 shadow-lg print:hidden transition-colors">
         <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
           <Wifi className="w-4 h-4" />
           <span className="text-sm font-medium">Koneksi internet pulih kembali.</span>

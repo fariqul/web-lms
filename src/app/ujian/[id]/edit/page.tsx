@@ -504,6 +504,7 @@ export default function EditSoalPage() {
                             size="sm"
                             onClick={() => handleEditQuestion(question)}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            aria-label="Edit soal"
                           >
                             <FileEdit className="w-4 h-4" />
                           </Button>
@@ -512,6 +513,7 @@ export default function EditSoalPage() {
                             size="sm"
                             onClick={() => handleDeleteQuestion(question.id!)}
                             className="text-red-600 border-red-200 hover:bg-red-50"
+                            aria-label="Hapus soal"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -576,7 +578,7 @@ export default function EditSoalPage() {
               onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-              placeholder="Masukkan teks soal..."
+              placeholder="Masukkan teks soal…"
             />
           </div>
 
@@ -600,6 +602,7 @@ export default function EditSoalPage() {
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                   className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                  aria-label="Hapus gambar"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -697,7 +700,7 @@ export default function EditSoalPage() {
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Menyimpan...
+                  Menyimpan…
                 </>
               ) : (
                 <>
@@ -761,7 +764,7 @@ export default function EditSoalPage() {
               onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-              placeholder="Masukkan teks soal..."
+              placeholder="Masukkan teks soal…"
             />
           </div>
 
@@ -785,6 +788,7 @@ export default function EditSoalPage() {
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                   className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                  aria-label="Hapus gambar"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -883,7 +887,7 @@ export default function EditSoalPage() {
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Menyimpan...
+                  Menyimpan…
                 </>
               ) : (
                 <>

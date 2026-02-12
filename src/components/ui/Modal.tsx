@@ -118,7 +118,7 @@ export function Modal({
           aria-labelledby={title ? titleId : undefined}
           tabIndex={-1}
           className={clsx(
-            'relative w-full bg-white rounded-xl shadow-xl transform transition-all outline-none',
+            'relative w-full bg-white rounded-xl shadow-xl transform transition-shadow outline-none',
             sizeClasses[size]
           )}
         >
@@ -196,7 +196,7 @@ export function ConfirmDialog({
               variantColors[variant]
             )}
           >
-            {isLoading ? 'Loading...' : confirmText}
+            {isLoading ? 'Loading…' : confirmText}
           </button>
         </div>
       </div>

@@ -138,12 +138,14 @@ export default function AdminKelasPage() {
           <button
             onClick={() => handleOpenModal(item)}
             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            aria-label="Edit kelas"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDeleteClick(item)}
             className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            aria-label="Hapus kelas"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -217,7 +219,7 @@ export default function AdminKelasPage() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
-                placeholder="Cari nama kelas..."
+                placeholder="Cari nama kelas…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="w-4 h-4" />}
@@ -282,7 +284,7 @@ export default function AdminKelasPage() {
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Menyimpan...
+                  Menyimpan…
                 </>
               ) : selectedClass ? (
                 'Simpan Perubahan'

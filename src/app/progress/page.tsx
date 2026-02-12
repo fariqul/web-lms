@@ -197,10 +197,10 @@ export default function ProgressPage() {
               <Printer className="w-4 h-4 mr-2" />Cetak
             </Button>
             <Button variant="outline" onClick={() => handleExport('xlsx')} disabled={exporting || (!classReport && !studentReport)}>
-              <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor...' : 'Excel'}
+              <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor…' : 'Excel'}
             </Button>
             <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exporting || (!classReport && !studentReport)}>
-              <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor...' : 'PDF'}
+              <Download className="w-4 h-4 mr-2" />{exporting ? 'Mengekspor…' : 'PDF'}
             </Button>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function ProgressPage() {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <Select
               label="Kelas"
-              options={[{ value: '', label: 'Pilih kelas...' }, ...classes]}
+              options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
               value={selectedClass}
               onChange={(e) => { setSelectedClass(e.target.value); setSelectedStudent(''); }}
             />
@@ -303,7 +303,7 @@ export default function ProgressPage() {
                 <div className="h-64">
                   <SimpleBarChart
                     data={classReport.subject_averages.map(sa => ({
-                      name: sa.subject.length > 12 ? sa.subject.substring(0, 12) + '...' : sa.subject,
+                      name: sa.subject.length > 12 ? sa.subject.substring(0, 12) + '…' : sa.subject,
                       value: Math.round(Number(sa.average) * 10) / 10,
                     }))}
                     dataKey="value"
@@ -339,9 +339,9 @@ export default function ProgressPage() {
                         <td className="py-3 px-4 text-gray-500 font-mono text-xs">{s.nisn}</td>
                         <td className="py-3 px-4 font-medium">{s.name}</td>
                         <td className="py-3 px-4">
-                          <span className={`font-semibold ${getScoreColor(Number(s.average_score ?? 0))}`}>{Number(s.average_score ?? 0).toFixed(1)}</span>
+                          <span className={`font-semibold tabular-nums ${getScoreColor(Number(s.average_score ?? 0))}`}>{Number(s.average_score ?? 0).toFixed(1)}</span>
                         </td>
-                        <td className="py-3 px-4">{Number(s.attendance_rate ?? 0).toFixed(0)}%</td>
+                        <td className="py-3 px-4 tabular-nums">{Number(s.attendance_rate ?? 0).toFixed(0)}%</td>
                         <td className="py-3 px-4 print:hidden">
                           <Button size="sm" variant="outline" onClick={() => fetchStudentReport(s.id)}>
                             Detail
@@ -428,7 +428,7 @@ export default function ProgressPage() {
                           <td className="py-3 px-4">{idx + 1}</td>
                           <td className="py-3 px-4 font-medium">{sa.subject}</td>
                           <td className="py-3 px-4">
-                            <span className={`font-semibold ${getScoreColor(Number(sa.average ?? 0))}`}>{Number(sa.average ?? 0).toFixed(1)}</span>
+                            <span className={`font-semibold tabular-nums ${getScoreColor(Number(sa.average ?? 0))}`}>{Number(sa.average ?? 0).toFixed(1)}</span>
                           </td>
                           <td className="py-3 px-4">{sa.count}</td>
                           <td className="py-3 px-4">
@@ -491,9 +491,9 @@ export default function ProgressPage() {
                         <tr key={es.exam_id} className="border-b border-gray-100">
                           <td className="py-3 px-4 font-medium">{es.title}</td>
                           <td className="py-3 px-4">{es.subject}</td>
-                          <td className="py-3 px-4">{es.score}/{es.max_score}</td>
+                          <td className="py-3 px-4 tabular-nums">{es.score}/{es.max_score}</td>
                           <td className="py-3 px-4">
-                            <span className={`font-semibold ${getScoreColor(Number(es.percentage ?? 0))}`}>{Number(es.percentage ?? 0).toFixed(0)}%</span>
+                            <span className={`font-semibold tabular-nums ${getScoreColor(Number(es.percentage ?? 0))}`}>{Number(es.percentage ?? 0).toFixed(0)}%</span>
                           </td>
                           <td className="py-3 px-4 text-gray-500">
                             {new Date(es.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}

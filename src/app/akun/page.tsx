@@ -196,6 +196,7 @@ export default function AkunPage() {
                 onClick={handlePhotoClick}
                 className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border hover:bg-gray-50 transition-colors"
                 title="Ganti foto profil"
+                aria-label="Ganti foto profil"
               >
                 <Camera className="w-4 h-4 text-gray-600" />
               </button>
@@ -220,7 +221,7 @@ export default function AkunPage() {
                     {uploadingPhoto ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        Mengupload...
+                        Mengupload…
                       </>
                     ) : (
                       <>
@@ -263,7 +264,7 @@ export default function AkunPage() {
                   ) : (
                     <Save className="w-4 h-4 mr-1" />
                   )}
-                  {savingProfile ? 'Menyimpan...' : 'Simpan'}
+                  {savingProfile ? 'Menyimpan…' : 'Simpan'}
                 </Button>
               </div>
             )}
@@ -276,6 +277,9 @@ export default function AkunPage() {
                 <p className="text-sm text-gray-500">Nama Lengkap</p>
                 {isEditing ? (
                   <Input
+                    label="Nama Lengkap"
+                    name="name"
+                    autoComplete="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="mt-1"
@@ -353,6 +357,8 @@ export default function AkunPage() {
                 <Input
                   type="password"
                   label="Password Saat Ini"
+                  name="current_password"
+                  autoComplete="current-password"
                   value={passwordData.current_password}
                   onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
                   required
@@ -360,6 +366,8 @@ export default function AkunPage() {
                 <Input
                   type="password"
                   label="Password Baru"
+                  name="new_password"
+                  autoComplete="new-password"
                   value={passwordData.new_password}
                   onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
                   required
@@ -367,6 +375,8 @@ export default function AkunPage() {
                 <Input
                   type="password"
                   label="Konfirmasi Password Baru"
+                  name="confirm_password"
+                  autoComplete="new-password"
                   value={passwordData.confirm_password}
                   onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
                   required
@@ -379,7 +389,7 @@ export default function AkunPage() {
                     {changingPassword ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        Menyimpan...
+                        Menyimpan…
                       </>
                     ) : (
                       'Simpan'

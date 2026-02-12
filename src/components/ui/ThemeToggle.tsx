@@ -19,7 +19,7 @@ export function ThemeToggle() {
         <button
           key={value}
           onClick={() => setTheme(value)}
-          className={`p-1.5 rounded-md transition-all ${
+          className={`p-1.5 rounded-md transition-colors ${
             theme === value
               ? 'bg-white/20 dark:bg-gray-600 text-white'
               : 'text-white/60 hover:text-white/80'

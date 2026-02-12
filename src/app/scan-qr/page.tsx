@@ -257,7 +257,7 @@ export default function ScanQRPage() {
               <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
                 <div className="text-center text-white">
                   <Loader2 className="w-10 h-10 animate-spin mx-auto mb-2" />
-                  <p className="font-medium">Memproses absensi...</p>
+                  <p className="font-medium">Memproses absensi…</p>
                 </div>
               </div>
             )}
@@ -324,16 +324,19 @@ export default function ScanQRPage() {
                 
                 {/* Manual Token Input */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="manualToken" className="block text-sm font-medium text-gray-700">
                     Input Token Manual
                   </label>
                   <input
+                    id="manualToken"
                     type="text"
                     value={manualToken}
                     onChange={(e) => setManualToken(e.target.value)}
-                    placeholder="Masukkan token dari QR..."
+                    placeholder="Masukkan token dari QR…"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     disabled={status === 'processing'}
+                    name="manualToken"
+                    autoComplete="off"
                   />
                   <Button
                     onClick={handleManualSubmit}

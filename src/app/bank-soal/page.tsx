@@ -244,13 +244,13 @@ export default function BankSoalPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input type="text" placeholder="Cari soal..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+            <input type="text" placeholder="Cari soal…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500" aria-label="Cari soal" name="searchSoal" />
           </div>
-          <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+          <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500" aria-label="Filter mata pelajaran" name="filterSubject">
             <option value="">Semua Mata Pelajaran</option>
             {subjects.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+          <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500" aria-label="Filter tingkat kesulitan" name="filterDifficulty">
             <option value="">Semua Tingkat</option>
             <option value="mudah">Mudah</option>
             <option value="sedang">Sedang</option>
@@ -292,9 +292,9 @@ export default function BankSoalPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button onClick={() => handleDuplicate(question)} className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg" title="Duplikat"><Copy className="w-4 h-4" /></button>
-                        <button onClick={() => handleEdit(question)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit"><Edit className="w-4 h-4" /></button>
-                        <button onClick={() => setDeleteId(question.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Hapus"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDuplicate(question)} className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg" title="Duplikat" aria-label="Duplikat soal"><Copy className="w-4 h-4" /></button>
+                        <button onClick={() => handleEdit(question)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit" aria-label="Edit soal"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteId(question.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Hapus" aria-label="Hapus soal"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                   </div>

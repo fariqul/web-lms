@@ -526,7 +526,7 @@ export default function MonitorUjianPage() {
                               }}
                             />
                           </div>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 tabular-nums">
                             {participant.answered_count}/{participant.total_questions}
                           </span>
                         </div>
@@ -535,7 +535,7 @@ export default function MonitorUjianPage() {
                         {participant.violation_count > 0 ? (
                           <span className="flex items-center justify-center gap-1 text-red-600">
                             <AlertTriangle className="w-4 h-4" />
-                            <span className="font-medium">{participant.violation_count}</span>
+                            <span className="font-medium tabular-nums">{participant.violation_count}</span>
                           </span>
                         ) : (
                           <span className="text-gray-400">-</span>
@@ -546,7 +546,7 @@ export default function MonitorUjianPage() {
                       </td>
                       <td className="py-3 px-4 text-center text-sm">
                         {participant.score != null && !isNaN(Number(participant.score)) ? (
-                          <span className={`font-medium ${Number(participant.score) >= 70 ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`font-medium tabular-nums ${Number(participant.score) >= 70 ? 'text-green-600' : 'text-red-600'}`}>
                             {Number(participant.score).toFixed(1)}
                           </span>
                         ) : (
@@ -560,6 +560,7 @@ export default function MonitorUjianPage() {
                               <button
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                                 title="Lihat Detail"
+                                aria-label="Lihat detail siswa"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
@@ -569,6 +570,7 @@ export default function MonitorUjianPage() {
                             <button
                               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
                               title="Lihat Kamera"
+                              aria-label="Lihat kamera siswa"
                             >
                               <Camera className="w-4 h-4" />
                             </button>

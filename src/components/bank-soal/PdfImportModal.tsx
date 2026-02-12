@@ -186,7 +186,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>Batal</Button>
                 <Button type="button" className="flex-1" onClick={handleParse} disabled={!formData.file || loading}>
-                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Memproses...</> : <><Eye className="w-4 h-4 mr-2" />Ekstrak Soal</>}
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Memproses…</> : <><Eye className="w-4 h-4 mr-2" />Ekstrak Soal</>}
                 </Button>
               </div>
             </div>
@@ -234,10 +234,10 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
                     <div key={idx} className={`p-3 rounded-lg ${q.correct_answer ? 'bg-green-50' : 'bg-amber-50'}`}>
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{q.number}. {q.question.substring(0, 100)}{q.question.length > 100 ? '...' : ''}</p>
+                          <p className="font-medium text-sm">{q.number}. {q.question.substring(0, 100)}{q.question.length > 100 ? '…' : ''}</p>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {q.options.map((opt, optIdx) => (
-                              <span key={optIdx} className="text-xs bg-white px-2 py-0.5 rounded">{String.fromCharCode(65 + optIdx)}. {opt.substring(0, 30)}{opt.length > 30 ? '...' : ''}</span>
+                              <span key={optIdx} className="text-xs bg-white px-2 py-0.5 rounded">{String.fromCharCode(65 + optIdx)}. {opt.substring(0, 30)}{opt.length > 30 ? '…' : ''}</span>
                             ))}
                           </div>
                         </div>
@@ -260,7 +260,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setStep('upload'); setParseResult(null); }}>Kembali</Button>
                 <Button type="button" className="flex-1" onClick={handleImport} disabled={!formData.subject || loading || parseResult.questions.filter(q => q.correct_answer).length === 0}>
-                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengimpor...</> : <><Download className="w-4 h-4 mr-2" />Import {parseResult.questions.filter(q => q.correct_answer).length} Soal</>}
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengimpor…</> : <><Download className="w-4 h-4 mr-2" />Import {parseResult.questions.filter(q => q.correct_answer).length} Soal</>}
                 </Button>
               </div>
             </div>
@@ -270,7 +270,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
           {step === 'importing' && (
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 animate-spin text-teal-500 mx-auto mb-4" />
-              <p className="text-gray-600">Mengimpor soal ke database...</p>
+              <p className="text-gray-600">Mengimpor soal ke database…</p>
             </div>
           )}
         </div>

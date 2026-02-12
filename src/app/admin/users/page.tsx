@@ -225,6 +225,7 @@ export default function AdminUsersPage() {
             onClick={() => handleOpenModal(item)}
             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             title="Edit"
+            aria-label="Edit pengguna"
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -232,6 +233,7 @@ export default function AdminUsersPage() {
             onClick={() => handleResetPasswordClick(item)}
             className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
             title="Reset Password"
+            aria-label="Reset password"
           >
             <KeyRound className="w-4 h-4" />
           </button>
@@ -239,6 +241,7 @@ export default function AdminUsersPage() {
             onClick={() => handleDeleteClick(item)}
             className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             title="Hapus"
+            aria-label="Hapus pengguna"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -288,7 +291,7 @@ export default function AdminUsersPage() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
-                placeholder="Cari nama atau email..."
+                placeholder="Cari nama atau email…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="w-4 h-4" />}
@@ -349,6 +352,7 @@ export default function AdminUsersPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -400,7 +404,7 @@ export default function AdminUsersPage() {
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Menyimpan...
+                  Menyimpan…
                 </>
               ) : selectedUser ? (
                 'Simpan Perubahan'
@@ -460,6 +464,7 @@ export default function AdminUsersPage() {
                     type="button"
                     onClick={() => setResetPasswordData({ ...resetPasswordData, showPassword: !resetPasswordData.showPassword })}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    aria-label={resetPasswordData.showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
                     {resetPasswordData.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -475,7 +480,7 @@ export default function AdminUsersPage() {
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Mereset...
+                      Mereset…
                     </>
                   ) : (
                     'Reset Password'

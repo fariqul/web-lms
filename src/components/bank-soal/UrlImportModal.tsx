@@ -138,12 +138,12 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">URL Artikel Soal</label>
-                <input type="url" value={formData.url} onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://utbk.or.id/soal-..." className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+                <input type="url" value={formData.url} onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://utbk.or.id/soal-…" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
               </div>
               <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={handleClose}>Batal</Button>
                 <Button type="button" className="flex-1" onClick={handlePreview} disabled={!formData.url || loading}>
-                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Memproses...</> : <><Eye className="w-4 h-4 mr-2" />Preview Soal</>}
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Memproses…</> : <><Eye className="w-4 h-4 mr-2" />Preview Soal</>}
                 </Button>
               </div>
             </div>
@@ -190,7 +190,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
                           <div className="flex flex-wrap gap-1 mt-1">
                             {Object.entries(q.options).map(([key, value]) => (
                               <span key={key} className={`text-xs px-2 py-0.5 rounded ${q.answer === key ? 'bg-green-200 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                                {key}. {String(value).substring(0, 25)}{String(value).length > 25 ? '...' : ''}
+                                {key}. {String(value).substring(0, 25)}{String(value).length > 25 ? '…' : ''}
                               </span>
                             ))}
                           </div>
@@ -209,7 +209,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setStep('input'); setPreviewResult(null); }}>Kembali</Button>
                 <Button type="button" className="flex-1" onClick={handleImport} disabled={!formData.subject || selectedQuestions.length === 0 || loading}>
-                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengimpor...</> : <><Download className="w-4 h-4 mr-2" />Import {selectedQuestions.length} Soal</>}
+                  {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mengimpor…</> : <><Download className="w-4 h-4 mr-2" />Import {selectedQuestions.length} Soal</>}
                 </Button>
               </div>
             </div>
@@ -219,7 +219,7 @@ export function UrlImportModal({ isOpen, onClose, onImportSuccess }: UrlImportMo
           {step === 'importing' && (
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 animate-spin text-teal-500 mx-auto mb-4" />
-              <p className="text-gray-600">Mengimpor soal ke database...</p>
+              <p className="text-gray-600">Mengimpor soal ke database…</p>
             </div>
           )}
         </div>

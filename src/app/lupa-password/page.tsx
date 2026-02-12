@@ -197,7 +197,7 @@ export default function LupaPasswordPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Mengirim...
+                      Mengirim…
                     </>
                   ) : (
                     'Kirim Permintaan Reset'

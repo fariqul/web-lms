@@ -57,7 +57,7 @@ export function QuestionFormModal({
             <textarea
               value={formData.question}
               onChange={(e) => onFormChange({ ...formData, question: e.target.value })}
-              placeholder="Tuliskan pertanyaan..."
+              placeholder="Tuliskan pertanyaan…"
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               required
@@ -181,7 +181,7 @@ export function QuestionFormModal({
               <textarea
                 value={formData.correct_answer}
                 onChange={(e) => onFormChange({ ...formData, correct_answer: e.target.value })}
-                placeholder="Tuliskan kunci jawaban atau pedoman penilaian..."
+                placeholder="Tuliskan kunci jawaban atau pedoman penilaian…"
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               />
@@ -193,7 +193,7 @@ export function QuestionFormModal({
             <textarea
               value={formData.explanation}
               onChange={(e) => onFormChange({ ...formData, explanation: e.target.value })}
-              placeholder="Tuliskan pembahasan untuk soal ini..."
+              placeholder="Tuliskan pembahasan untuk soal ini…"
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
             />
@@ -207,7 +207,7 @@ export function QuestionFormModal({
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Menyimpan...
+                  Menyimpan…
                 </>
               ) : (
                 isEditing ? 'Simpan Perubahan' : 'Simpan Soal'

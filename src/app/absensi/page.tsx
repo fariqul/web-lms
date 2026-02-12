@@ -564,13 +564,13 @@ export default function AbsensiPage() {
                   <div className="grid md:grid-cols-2 gap-4">
                     <Select
                       label="Pilih Kelas"
-                      options={[{ value: '', label: 'Pilih kelas...' }, ...classes]}
+                      options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
                       value={selectedClass}
                       onChange={(e) => setSelectedClass(e.target.value)}
                     />
                     <Select
                       label="Mata Pelajaran"
-                      options={[{ value: '', label: 'Pilih mata pelajaran...' }, ...subjects]}
+                      options={[{ value: '', label: 'Pilih mata pelajaran…' }, ...subjects]}
                       value={selectedSubject}
                       onChange={(e) => setSelectedSubject(e.target.value)}
                     />
@@ -670,7 +670,7 @@ export default function AbsensiPage() {
                   leftIcon={isClosing ? <Loader2 className="w-4 h-4 animate-spin" /> : <StopCircle className="w-4 h-4" />}
                   disabled={isClosing}
                 >
-                  {isClosing ? 'Menutup...' : 'Akhiri Sesi'}
+                  {isClosing ? 'Menutup…' : 'Akhiri Sesi'}
                 </Button>
               </div>
             </div>

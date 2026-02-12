@@ -222,7 +222,7 @@ export default function TugasSiswaPage() {
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
-            <button onClick={() => setError('')} className="ml-auto">
+            <button onClick={() => setError('')} className="ml-auto" aria-label="Tutup pesan error">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -239,10 +239,12 @@ export default function TugasSiswaPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Cari tugas..."
+            placeholder="Cari tugas…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            aria-label="Cari tugas"
+            name="searchTugas"
           />
         </div>
 
@@ -367,6 +369,7 @@ export default function TugasSiswaPage() {
                           <button
                             onClick={() => handleViewDetail(assignment)}
                             className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                            aria-label="Lihat detail tugas"
                           >
                             <Eye className="w-5 h-5" />
                           </button>
@@ -428,6 +431,7 @@ export default function TugasSiswaPage() {
                 <button 
                   onClick={() => { setShowSubmitModal(false); setSelectedAssignment(null); }} 
                   className="p-1 hover:bg-gray-100 rounded"
+                  aria-label="Tutup"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -471,13 +475,15 @@ export default function TugasSiswaPage() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="jawaban" className="block text-sm font-medium text-gray-700 mb-1">
                       Jawaban
                     </label>
                     <textarea
+                      id="jawaban"
+                      name="jawaban"
                       value={submitContent}
                       onChange={(e) => setSubmitContent(e.target.value)}
-                      placeholder="Tulis jawaban atau penjelasan di sini..."
+                      placeholder="Tulis jawaban atau penjelasan di sini…"
                       rows={5}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     />
@@ -509,6 +515,7 @@ export default function TugasSiswaPage() {
                               setSubmitFile(null);
                             }}
                             className="p-1 hover:bg-gray-200 rounded"
+                            aria-label="Hapus file"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -537,7 +544,7 @@ export default function TugasSiswaPage() {
                       {submitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Mengirim...
+                          Mengirim…
                         </>
                       ) : (
                         <>
@@ -562,6 +569,7 @@ export default function TugasSiswaPage() {
                 <button 
                   onClick={() => { setShowDetailModal(false); setSelectedAssignment(null); }} 
                   className="p-1 hover:bg-gray-100 rounded"
+                  aria-label="Tutup"
                 >
                   <X className="w-5 h-5" />
                 </button>

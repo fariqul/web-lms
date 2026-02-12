@@ -353,7 +353,7 @@ export default function DeviceApprovalPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">Device ID:</span>
                         <code className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono">
-                          {request.device_id.substring(0, 20)}...
+                          {request.device_id.substring(0, 20)}…
                         </code>
                       </div>
                     </div>

@@ -190,7 +190,7 @@ export default function JaringanSekolahPage() {
                 {checkingIp ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Mengecek...
+                    Mengecek…
                   </span>
                 ) : (
                   currentIp || 'Tidak terdeteksi'
@@ -246,7 +246,7 @@ export default function JaringanSekolahPage() {
               <h3 className="font-semibold text-gray-900">
                 {editingId ? 'Edit Jaringan' : 'Tambah Jaringan Baru'}
               </h3>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
+              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600" aria-label="Tutup form">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -298,7 +298,7 @@ export default function JaringanSekolahPage() {
 
             <div className="flex gap-3">
               <Button onClick={handleSave} disabled={saving} leftIcon={<Save className="w-4 h-4" />}>
-                {saving ? 'Menyimpan...' : 'Simpan'}
+                {saving ? 'Menyimpan…' : 'Simpan'}
               </Button>
               <Button variant="outline" onClick={resetForm}>
                 Batal
@@ -359,12 +359,14 @@ export default function JaringanSekolahPage() {
                     <button
                       onClick={() => handleEdit(network)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      aria-label="Edit jaringan"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(network.id)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      aria-label="Hapus jaringan"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

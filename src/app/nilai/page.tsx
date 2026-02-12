@@ -336,16 +336,20 @@ export default function NilaiPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari nama atau NIS siswa..."
+              placeholder="Cari nama atau NIS siswa…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              aria-label="Cari nama atau NIS siswa"
+              name="searchNilai"
             />
           </div>
           <select
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            aria-label="Filter kelas"
+            name="filterClass"
           >
             <option value="">Semua Kelas</option>
             {classes.map(c => (
@@ -437,21 +441,21 @@ export default function NilaiPage() {
                           )}
                           {(viewTab === 'gabungan' || viewTab === 'ujian') && (
                             <td className="px-4 py-4 whitespace-nowrap text-center">
-                              <span className={`font-bold ${getScoreColor(grade.exam_average)}`}>
+                              <span className={`font-bold tabular-nums ${getScoreColor(grade.exam_average)}`}>
                                 {grade.exam_average.toFixed(1)}
                               </span>
                             </td>
                           )}
                           {(viewTab === 'gabungan' || viewTab === 'tugas') && (
                             <td className="px-4 py-4 whitespace-nowrap text-center">
-                              <span className={`font-bold ${getScoreColor(grade.assignment_average)}`}>
+                              <span className={`font-bold tabular-nums ${getScoreColor(grade.assignment_average)}`}>
                                 {grade.assignment_average.toFixed(1)}
                               </span>
                             </td>
                           )}
                           {viewTab === 'gabungan' && (
                             <td className="px-4 py-4 whitespace-nowrap text-center">
-                              <span className={`text-lg font-bold ${getScoreColor(grade.average)}`}>
+                              <span className={`text-lg font-bold tabular-nums ${getScoreColor(grade.average)}`}>
                                 {grade.average.toFixed(1)}
                               </span>
                             </td>
@@ -471,6 +475,7 @@ export default function NilaiPage() {
                             <button
                               onClick={() => setExpandedStudent(expandedStudent === grade.id ? null : grade.id)}
                               className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
+                              aria-label={expandedStudent === grade.id ? 'Tutup detail nilai' : 'Lihat detail nilai'}
                             >
                               {expandedStudent === grade.id ? (
                                 <ChevronUp className="w-5 h-5" />
@@ -524,12 +529,14 @@ export default function NilaiPage() {
                                                       onClick={() => handleEditExamScore(grade.id, exam.result_id)}
                                                       disabled={saving}
                                                       className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                      aria-label="Simpan nilai"
                                                     >
                                                       <Check className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                       onClick={() => { setEditingExam(null); setEditScore(''); }}
                                                       className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                      aria-label="Batal edit"
                                                     >
                                                       <X className="w-4 h-4" />
                                                     </button>
@@ -601,12 +608,14 @@ export default function NilaiPage() {
                                                       onClick={() => handleEditAssignmentScore(grade.id, assignment.submission_id)}
                                                       disabled={saving}
                                                       className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                      aria-label="Simpan nilai"
                                                     >
                                                       <Check className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                       onClick={() => { setEditingAssignment(null); setEditScore(''); }}
                                                       className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                      aria-label="Batal edit"
                                                     >
                                                       <X className="w-4 h-4" />
                                                     </button>
@@ -632,6 +641,7 @@ export default function NilaiPage() {
                                                       }}
                                                       className="p-1 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded"
                                                       title="Edit nilai"
+                                                      aria-label="Edit nilai tugas"
                                                     >
                                                       <Pencil className="w-3.5 h-3.5" />
                                                     </button>

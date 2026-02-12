@@ -449,7 +449,7 @@ export default function HasilSiswaPage() {
                                   [answer.id]: e.target.value,
                                 })}
                                 className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                placeholder="Berikan komentar..."
+                                placeholder="Berikan komentar…"
                               />
                             </div>
                             <Button

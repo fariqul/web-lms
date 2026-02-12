@@ -228,6 +228,7 @@ export default function ExamResultsPage() {
             <button
               onClick={() => router.push('/ujian')}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+              aria-label="Kembali ke daftar ujian"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -313,16 +314,20 @@ export default function ExamResultsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari nama atau NIS siswa..."
+              placeholder="Cari nama atau NIS siswa…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              aria-label="Cari nama atau NIS siswa"
+              name="searchResults"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            aria-label="Filter status"
+            name="filterStatus"
           >
             <option value="">Semua Status</option>
             <option value="completed">Selesai</option>
@@ -334,6 +339,8 @@ export default function ExamResultsPage() {
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'rank' | 'name')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            aria-label="Urutkan hasil"
+            name="sortBy"
           >
             <option value="rank">Urutkan: Nilai Tertinggi</option>
             <option value="name">Urutkan: Nama A-Z</option>
@@ -396,9 +403,9 @@ export default function ExamResultsPage() {
                           <span className="text-gray-400">-</span>
                         ) : (
                           <>
-                            <span className="text-green-600 font-medium">{result.total_correct}</span>
+                            <span className="text-green-600 font-medium tabular-nums">{result.total_correct}</span>
                             <span className="text-gray-400 mx-1">/</span>
-                            <span className="text-red-600 font-medium">{result.total_wrong}</span>
+                            <span className="text-red-600 font-medium tabular-nums">{result.total_wrong}</span>
                           </>
                         )}
                       </td>
@@ -406,7 +413,7 @@ export default function ExamResultsPage() {
                         {result.status === 'in_progress' ? (
                           <span className="text-gray-400">-</span>
                         ) : (
-                          <span className="font-medium text-gray-700">
+                          <span className="font-medium text-gray-700 tabular-nums">
                             {result.total_score}/{result.max_score}
                           </span>
                         )}
@@ -416,7 +423,7 @@ export default function ExamResultsPage() {
                           <Clock className="w-5 h-5 text-blue-500 mx-auto" />
                         ) : (
                           <div className={`inline-flex items-center justify-center w-11 h-11 rounded-full ${getScoreBg(result.percentage)}`}>
-                            <span className={`text-sm font-bold ${getScoreColor(result.percentage)}`}>
+                            <span className={`text-sm font-bold tabular-nums ${getScoreColor(result.percentage)}`}>
                               {Number(result.percentage ?? 0).toFixed(0)}
                             </span>
                           </div>
@@ -431,7 +438,7 @@ export default function ExamResultsPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-center print:hidden">
                         {result.status !== 'not_started' && result.status !== 'missed' ? (
                           <Link href={`/ujian/${examId}/hasil/${result.student_id}`}>
-                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg" title="Lihat detail">
+                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg" title="Lihat detail" aria-label="Lihat detail hasil">
                               <Eye className="w-4 h-4" />
                             </button>
                           </Link>

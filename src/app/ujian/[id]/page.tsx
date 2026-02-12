@@ -332,7 +332,7 @@ export default function ExamTakingPage() {
                 ) : (
                   <Maximize className="w-5 h-5 mr-2" />
                 )}
-                {startingExam ? 'Mempersiapkan...' : 'Mulai Ujian'}
+                {startingExam ? 'Mempersiapkan…' : 'Mulai Ujian'}
               </Button>
               <Button
                 variant="outline"
@@ -407,6 +407,7 @@ export default function ExamTakingPage() {
                       ? 'bg-yellow-100 text-yellow-600'
                       : 'bg-gray-100 text-gray-400 hover:text-yellow-600'
                   }`}
+                  aria-label="Tandai soal"
                 >
                   <Flag className="w-5 h-5" />
                 </button>
@@ -439,9 +440,11 @@ export default function ExamTakingPage() {
                 <textarea
                   value={answers[question.id] || ''}
                   onChange={(e) => handleAnswer(question.id, e.target.value)}
-                  placeholder="Tulis jawaban Anda di sini..."
+                  placeholder="Tulis jawaban Anda di sini…"
                   rows={6}
                   className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  name={`essay-${question.id}`}
+                  aria-label="Jawaban essay"
                 />
               )}
             </Card>

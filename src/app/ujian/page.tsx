@@ -324,6 +324,7 @@ export default function UjianPage() {
                         variant="outline"
                         onClick={() => handleDeleteExam(exam.id, exam.title)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
+                        aria-label="Hapus ujian"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -395,13 +396,13 @@ export default function UjianPage() {
           />
           <Select
             label="Mata Pelajaran"
-            options={[{ value: '', label: 'Pilih mata pelajaran...' }, ...subjects]}
+            options={[{ value: '', label: 'Pilih mata pelajaran…' }, ...subjects]}
             value={formData.subject}
             onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
           />
           <Select
             label="Kelas"
-            options={[{ value: '', label: 'Pilih kelas...' }, ...classes]}
+            options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
             value={formData.class_id}
             onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
           />
@@ -427,7 +428,7 @@ export default function UjianPage() {
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Menyimpan...
+                  Menyimpan…
                 </>
               ) : (
                 'Buat Ujian'

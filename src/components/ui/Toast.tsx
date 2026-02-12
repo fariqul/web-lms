@@ -59,7 +59,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 border rounded-lg shadow-lg transition-all duration-300 max-w-sm w-full ${bgColors[toast.type]} ${
+      className={`flex items-start gap-3 p-4 border rounded-lg shadow-lg transition-opacity duration-300 max-w-sm w-full ${bgColors[toast.type]} ${
         isExiting ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
       }`}
       role="alert"
@@ -72,6 +72,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
           setTimeout(() => onRemove(toast.id), 300);
         }}
         className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+        aria-label="Tutup notifikasi"
       >
         <X className="w-4 h-4" />
       </button>

@@ -161,7 +161,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 className={clsx(
-                  'flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-all duration-200',
+                  'flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors duration-200',
                   isActive
                     ? 'bg-white/20 text-white font-medium'
                     : 'text-white/80 hover:bg-white/10 hover:text-white'
@@ -179,7 +179,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
         <div className="p-3 border-t border-white/20">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg w-full text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg w-full text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
           >
             <LogOut className="w-5 h-5" />
             <span className="text-sm">Log Out</span>

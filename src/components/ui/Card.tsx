@@ -16,18 +16,20 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
     lg: 'p-6',
   };
 
+  const Component = onClick ? 'button' : 'div';
+
   return (
-    <div
-      onClick={onClick}
+    <Component
+      {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={clsx(
         'bg-white rounded-xl shadow-sm',
         paddingClasses[padding],
-        onClick && 'cursor-pointer',
+        onClick && 'cursor-pointer text-left w-full',
         className
       )}
     >
       {children}
-    </div>
+    </Component>
   );
 }
 
@@ -120,7 +122,7 @@ export function QuickActionCard({
     <Component
       {...props}
       className={clsx(
-        'flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 relative',
+        'flex flex-col items-center justify-center p-4 rounded-xl transition-colors duration-200 relative',
         colorClasses[color]
       )}
     >

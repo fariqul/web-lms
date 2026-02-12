@@ -170,14 +170,16 @@ export default function AuditLogPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Cari..."
+                placeholder="Cari…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                aria-label="Cari audit log"
+                name="searchAudit"
               />
             </div>
             <Select
-              label=""
+              label="Filter aksi"
               options={[
                 { value: '', label: 'Semua Aksi' },
                 ...actions.map(a => ({ value: a, label: getActionInfo(a).label })),
@@ -186,7 +188,7 @@ export default function AuditLogPage() {
               onChange={(e) => setFilterAction(e.target.value)}
             />
             <Select
-              label=""
+              label="Filter user"
               options={[{ value: '', label: 'Semua User' }, ...users]}
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
@@ -197,7 +199,8 @@ export default function AuditLogPage() {
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
-                placeholder="Dari tanggal"
+                aria-label="Dari tanggal"
+                name="dateFrom"
               />
             </div>
             <div>
@@ -206,7 +209,8 @@ export default function AuditLogPage() {
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
-                placeholder="Sampai tanggal"
+                aria-label="Sampai tanggal"
+                name="dateTo"
               />
             </div>
           </div>
@@ -236,8 +240,9 @@ export default function AuditLogPage() {
 
                 return (
                   <div key={log.id}>
-                    <div
-                      className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                    <button
+                      type="button"
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors w-full text-left"
                       onClick={() => setExpandedLog(isExpanded ? null : log.id)}
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${info.color}`}>
@@ -266,7 +271,7 @@ export default function AuditLogPage() {
                           <span className="hidden sm:inline text-gray-400">{log.ip_address}</span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Expanded Detail */}
                     {isExpanded && (
