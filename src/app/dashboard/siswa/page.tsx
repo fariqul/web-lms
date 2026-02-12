@@ -18,9 +18,11 @@ import {
   Megaphone,
   Calendar,
   User,
-  Edit,
   GraduationCap,
   TrendingUp,
+  ArrowRight,
+  BarChart3,
+  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import api, { assignmentAPI, announcementAPI } from '@/services/api';
@@ -302,478 +304,527 @@ export default function SiswaDashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-7 h-7 animate-spin text-teal-500" />
+          <p className="text-sm text-slate-400">Memuat dashboard...</p>
         </div>
       </DashboardLayout>
     );
   }
 
   const totalAttendance = stats.total_present + stats.total_late + stats.total_sick + stats.total_absent;
+  const attendancePct = stats.attendance_percentage;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Notification Banners */}
-        {(newAssignmentsCount > 0 || newAnnouncementsCount > 0) && (
-          <div className="space-y-3">
-            {newAssignmentsCount > 0 && (
-              <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-orange-900">Ada {newAssignmentsCount} tugas baru!</p>
-                    <p className="text-sm text-orange-700">Segera kerjakan sebelum deadline</p>
-                  </div>
-                  <Link href="/tugas-siswa" className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600">
-                    Lihat Tugas
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="space-y-6 max-w-[1280px] mx-auto">
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-12 gap-6 items-start">
-          {/* Left Column - Profile Card */}
-          <div className="col-span-12 lg:col-span-3 lg:sticky lg:top-6">
-            <Card className="p-6 text-center bg-gradient-to-b from-teal-600 to-teal-700">
-              <div className="w-20 h-20 mx-auto rounded-full bg-white/20 flex items-center justify-center mb-4 overflow-hidden">
-                {user?.photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.photo} alt={user.name || ''} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-10 h-10 text-white" />
-                )}
-              </div>
-              <h3 className="text-white font-semibold text-lg">{user?.name}</h3>
-              <p className="text-teal-200 text-sm">Kelas: {user?.class?.name || '-'}</p>
-              <p className="text-teal-200 text-sm">NISN: {user?.nisn || '-'}</p>
-              <Link href="/akun" className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg text-sm hover:bg-white/30 transition-colors">
-                <Edit className="w-4 h-4" />
-                Edit Profil
-              </Link>
-            </Card>
-
-            {/* Mini Stats */}
-            <div className="mt-4 space-y-3">
-              <Card className="p-4 border-l-4 border-l-purple-500">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Jadwal Hari Ini</p>
-                    <p className="text-xl font-bold text-slate-900">{todaySchedule.length}</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-4 border-l-4 border-l-teal-500">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-teal-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Notifikasi</p>
-                    <p className="text-xl font-bold text-slate-900">{newAssignmentsCount + newAnnouncementsCount}</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-4 border-l-4 border-l-green-500">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Kehadiran</p>
-                    <p className="text-xl font-bold text-slate-900">
-                      {stats.attendance_percentage > 0 ? `${stats.attendance_percentage}%` : '-'}
-                    </p>
-                  </div>
-                </div>
-              </Card>
+        {/* ── Welcome Header ─────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-teal-500/20 overflow-hidden">
+              {user?.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.photo} alt={user.name || ''} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-6 h-6 text-white" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-slate-900 truncate">
+                Halo, {user?.name?.split(' ')[0]}! 👋
+              </h1>
+              <p className="text-sm text-slate-500">
+                {user?.class?.name || 'Siswa'} &middot; NISN {user?.nisn || '-'}
+              </p>
             </div>
           </div>
+          {/* Inline notification badges */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {newAssignmentsCount > 0 && (
+              <Link href="/tugas-siswa" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-medium hover:bg-amber-100 transition-colors">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {newAssignmentsCount} tugas baru
+              </Link>
+            )}
+            {newAnnouncementsCount > 0 && (
+              <Link href="/pengumuman" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-700 border border-teal-200 rounded-full text-xs font-medium hover:bg-teal-100 transition-colors">
+                <Bell className="w-3.5 h-3.5" />
+                {newAnnouncementsCount} pengumuman
+              </Link>
+            )}
+          </div>
+        </div>
 
-          {/* Middle Column - Attendance & Exam Results */}
-          <div className="col-span-12 lg:col-span-5 space-y-6 flex flex-col">
-            {/* Attendance Donut Chart */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-slate-900">Statistik Kehadiran</h3>
-                <select className="text-sm border rounded-lg px-3 py-1.5 text-slate-600" aria-label="Pilih semester" name="semester">
-                  <option>Semester Ini</option>
-                </select>
+        {/* ── Quick Actions ──────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { href: '/scan-qr', icon: QrCode, label: 'Scan QR', sub: 'Absensi', color: 'from-teal-500 to-teal-600' },
+            { href: '/ujian-siswa', icon: FileText, label: 'Ujian', sub: `${stats.upcoming_exams_count} tersedia`, color: 'from-violet-500 to-violet-600' },
+            { href: '/tugas-siswa', icon: ClipboardList, label: 'Tugas', sub: `${stats.pending_assignments_count} pending`, color: 'from-amber-500 to-orange-500', badge: stats.pending_assignments_count },
+            { href: '/materi-siswa', icon: BookOpen, label: 'Materi', sub: 'Belajar', color: 'from-sky-500 to-blue-500' },
+          ].map((action) => (
+            <Link
+              key={action.href}
+              href={action.href}
+              className="group relative flex items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] hover:shadow-md hover:border-slate-200 transition-all duration-200"
+            >
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                <action.icon className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">{action.label}</p>
+                <p className="text-[11px] text-slate-400">{action.sub}</p>
+              </div>
+              {action.badge ? (
+                <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                  {action.badge}
+                </span>
+              ) : null}
+            </Link>
+          ))}
+        </div>
+
+        {/* ── Stats Strip ────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Kehadiran</p>
+              <p className="text-lg font-bold text-slate-900 tabular-nums">{attendancePct > 0 ? `${attendancePct}%` : '-'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
+              <GraduationCap className="w-4.5 h-4.5 text-violet-600" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Ujian Selesai</p>
+              <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.completed_exams_count}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
+              <Calendar className="w-4.5 h-4.5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Jadwal Hari Ini</p>
+              <p className="text-lg font-bold text-slate-900 tabular-nums">{todaySchedule.length}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)]">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+              <ClipboardList className="w-4.5 h-4.5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Tugas Pending</p>
+              <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.pending_assignments_count}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Main Content Grid ──────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+
+          {/* ── Left: Attendance + Exams + Assignments (3 cols) */}
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* Attendance */}
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-900">Statistik Kehadiran</h3>
+                </div>
+                <Link href="/riwayat-absensi" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
+                  Detail <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
 
-              <div className="flex items-center justify-center gap-8">
-                {/* Donut Chart */}
-                <div className="relative w-40 h-40">
-                  <svg className="w-full h-full" viewBox="0 0 100 100">
-                    {/* Background circle */}
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="20" />
+              <div className="px-5 pb-5">
+                <div className="flex items-center gap-6">
+                  {/* Donut Chart */}
+                  <div className="relative w-28 h-28 flex-shrink-0">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                      {totalAttendance > 0 && (
+                        <>
+                          {stats.total_present > 0 && (
+                            <circle
+                              cx="50" cy="50" r="40"
+                              fill="none" stroke="#10b981" strokeWidth="12" strokeLinecap="round"
+                              strokeDasharray={`${(stats.total_present / totalAttendance) * 251.2} 251.2`}
+                              strokeDashoffset="0"
+                            />
+                          )}
+                          {stats.total_late > 0 && (
+                            <circle
+                              cx="50" cy="50" r="40"
+                              fill="none" stroke="#f59e0b" strokeWidth="12" strokeLinecap="round"
+                              strokeDasharray={`${(stats.total_late / totalAttendance) * 251.2} 251.2`}
+                              strokeDashoffset={`${-(stats.total_present / totalAttendance) * 251.2}`}
+                            />
+                          )}
+                          {stats.total_sick > 0 && (
+                            <circle
+                              cx="50" cy="50" r="40"
+                              fill="none" stroke="#3b82f6" strokeWidth="12" strokeLinecap="round"
+                              strokeDasharray={`${(stats.total_sick / totalAttendance) * 251.2} 251.2`}
+                              strokeDashoffset={`${-((stats.total_present + stats.total_late) / totalAttendance) * 251.2}`}
+                            />
+                          )}
+                          {stats.total_absent > 0 && (
+                            <circle
+                              cx="50" cy="50" r="40"
+                              fill="none" stroke="#ef4444" strokeWidth="12" strokeLinecap="round"
+                              strokeDasharray={`${(stats.total_absent / totalAttendance) * 251.2} 251.2`}
+                              strokeDashoffset={`${-((stats.total_present + stats.total_late + stats.total_sick) / totalAttendance) * 251.2}`}
+                            />
+                          )}
+                        </>
+                      )}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xl font-bold text-slate-900 tabular-nums leading-none">
+                        {attendancePct > 0 ? attendancePct : 0}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">persen</span>
+                    </div>
+                  </div>
 
-                    {totalAttendance > 0 && (
-                      <>
-                        {/* Present - Green */}
-                        {stats.total_present > 0 && (
-                          <circle
-                            cx="50" cy="50" r="40"
-                            fill="none" stroke="#22c55e" strokeWidth="20"
-                            strokeDasharray={`${(stats.total_present / totalAttendance) * 251.2} 251.2`}
-                            strokeDashoffset="0"
-                            transform="rotate(-90 50 50)"
-                          />
-                        )}
-                        {/* Izin - Yellow */}
-                        {stats.total_late > 0 && (
-                          <circle
-                            cx="50" cy="50" r="40"
-                            fill="none" stroke="#eab308" strokeWidth="20"
-                            strokeDasharray={`${(stats.total_late / totalAttendance) * 251.2} 251.2`}
-                            strokeDashoffset={`${-(stats.total_present / totalAttendance) * 251.2}`}
-                            transform="rotate(-90 50 50)"
-                          />
-                        )}
-                        {/* Sick - Blue */}
-                        {stats.total_sick > 0 && (
-                          <circle
-                            cx="50" cy="50" r="40"
-                            fill="none" stroke="#3b82f6" strokeWidth="20"
-                            strokeDasharray={`${(stats.total_sick / totalAttendance) * 251.2} 251.2`}
-                            strokeDashoffset={`${-((stats.total_present + stats.total_late) / totalAttendance) * 251.2}`}
-                            transform="rotate(-90 50 50)"
-                          />
-                        )}
-                        {/* Absent - Orange */}
-                        {stats.total_absent > 0 && (
-                          <circle
-                            cx="50" cy="50" r="40"
-                            fill="none" stroke="#f97316" strokeWidth="20"
-                            strokeDasharray={`${(stats.total_absent / totalAttendance) * 251.2} 251.2`}
-                            strokeDashoffset={`${-((stats.total_present + stats.total_late + stats.total_sick) / totalAttendance) * 251.2}`}
-                            transform="rotate(-90 50 50)"
-                          />
-                        )}
-                      </>
-                    )}
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-slate-900">
-                      {stats.attendance_percentage > 0 ? `${stats.attendance_percentage}%` : '0%'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-green-500" />
-                    <span className="text-sm text-slate-600">Hadir</span>
-                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_present}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-yellow-500" />
-                    <span className="text-sm text-slate-600">Izin</span>
-                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_late}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-teal-500" />
-                    <span className="text-sm text-slate-600">Sakit</span>
-                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_sick}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full bg-orange-500" />
-                    <span className="text-sm text-slate-600">Alpha</span>
-                    <span className="text-sm font-semibold text-slate-900 ml-auto">{stats.total_absent}</span>
+                  {/* Legend */}
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 flex-1">
+                    {[
+                      { label: 'Hadir', value: stats.total_present, color: 'bg-emerald-500' },
+                      { label: 'Izin', value: stats.total_late, color: 'bg-amber-500' },
+                      { label: 'Sakit', value: stats.total_sick, color: 'bg-blue-500' },
+                      { label: 'Alpha', value: stats.total_absent, color: 'bg-red-500' },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                        <span className="text-xs text-slate-500">{item.label}</span>
+                        <span className="text-xs font-semibold text-slate-700 ml-auto tabular-nums">{item.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
             </Card>
 
-            {/* Exam Results Table */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-slate-900">Hasil Ujian</h3>
-                <Link href="/nilai-siswa" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
-                  Lihat Semua <ChevronRight className="w-4 h-4" />
+            {/* Exam Results */}
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-900">Hasil Ujian Terbaru</h3>
+                </div>
+                <Link href="/nilai-siswa" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
+                  Semua Nilai <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
               {examResults.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-3 px-2 font-medium text-slate-500">Ujian</th>
-                        <th className="text-left py-3 px-2 font-medium text-slate-500">Mapel</th>
-                        <th className="text-center py-3 px-2 font-medium text-slate-500">Nilai</th>
-                        <th className="text-center py-3 px-2 font-medium text-slate-500">Grade</th>
-                        <th className="text-center py-3 px-2 font-medium text-slate-500">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {examResults.map((exam) => (
-                        <tr key={exam.id} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-3 px-2 font-medium text-slate-900">{exam.title}</td>
-                          <td className="py-3 px-2 text-slate-600">{exam.subject}</td>
-                          <td className="py-3 px-2 text-center">
-                            <span className="font-semibold tabular-nums">{exam.score ?? '-'}</span>
-                            <span className="text-slate-400 tabular-nums">/{exam.max_score}</span>
-                          </td>
-                          <td className="py-3 px-2 text-center">
-                            <span className={`font-semibold ${exam.score ? (getGrade(exam.score, exam.max_score) === 'A' ? 'text-green-600' :
-                              getGrade(exam.score, exam.max_score) === 'F' ? 'text-red-600' : 'text-teal-600') : 'text-slate-400'
-                              }`}>
-                              {exam.score ? getGrade(exam.score, exam.max_score) : '-'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${exam.status === 'Pass' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                              }`}>
+                <div className="px-5 pb-4">
+                  <div className="divide-y divide-slate-100">
+                    {examResults.map((exam) => {
+                      const grade = exam.score ? getGrade(exam.score, exam.max_score) : null;
+                      const gradeColor = grade === 'A' ? 'text-emerald-600 bg-emerald-50' :
+                        grade === 'B' ? 'text-teal-600 bg-teal-50' :
+                        grade === 'C' ? 'text-amber-600 bg-amber-50' :
+                        grade === 'F' ? 'text-red-600 bg-red-50' : 'text-slate-600 bg-slate-50';
+                      return (
+                        <div key={exam.id} className="flex items-center gap-3 py-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${gradeColor}`}>
+                            {grade || '-'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900 truncate">{exam.title}</p>
+                            <p className="text-[11px] text-slate-400">{exam.subject}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-bold text-slate-900 tabular-nums">{exam.score ?? '-'}<span className="text-slate-300 font-normal">/{exam.max_score}</span></p>
+                            <span className={`text-[10px] font-medium ${exam.status === 'Pass' ? 'text-emerald-600' : 'text-red-500'}`}>
                               {exam.status === 'Pass' ? 'Lulus' : 'Tidak Lulus'}
                             </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
-                <div className="text-center py-4 text-slate-500">
-                  <GraduationCap className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm">Belum ada hasil ujian</p>
+                <div className="text-center py-8 px-5">
+                  <GraduationCap className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                  <p className="text-xs text-slate-400">Belum ada hasil ujian</p>
                 </div>
               )}
             </Card>
 
             {/* Pending Assignments */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-slate-900">Tugas Belum Dikerjakan</h3>
-                <Link href="/tugas-siswa" className="text-teal-600 text-sm hover:underline flex items-center gap-1">
-                  Lihat Semua <ChevronRight className="w-4 h-4" />
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-900">Tugas Belum Dikerjakan</h3>
+                  {pendingAssignments.length > 0 && (
+                    <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md">
+                      {pendingAssignments.length}
+                    </span>
+                  )}
+                </div>
+                <Link href="/tugas-siswa" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
+                  Semua <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
               {pendingAssignments.length > 0 ? (
-                <div className="space-y-3">
+                <div className="px-5 pb-4 space-y-2">
                   {pendingAssignments.map((assignment) => {
                     const deadline = new Date(assignment.deadline);
                     const now = new Date();
-                    const isUrgent = deadline.getTime() - now.getTime() < 24 * 60 * 60 * 1000;
+                    const diffMs = deadline.getTime() - now.getTime();
+                    const isUrgent = diffMs < 24 * 60 * 60 * 1000 && diffMs > 0;
+                    const isOverdue = diffMs <= 0;
 
                     return (
-                      <div key={assignment.id} className={`flex items-center gap-3 p-3 rounded-lg border ${isUrgent ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'
+                      <div
+                        key={assignment.id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                          isOverdue ? 'bg-red-50/50 border-red-200' :
+                          isUrgent ? 'bg-amber-50/50 border-amber-200' :
+                          'bg-slate-50/50 border-slate-100 hover:border-slate-200'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          isOverdue ? 'bg-red-100' : isUrgent ? 'bg-amber-100' : 'bg-slate-100'
                         }`}>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isUrgent ? 'bg-red-100' : 'bg-orange-100'
-                          }`}>
-                          <ClipboardList className={`w-5 h-5 ${isUrgent ? 'text-red-600' : 'text-orange-600'}`} />
+                          <ClipboardList className={`w-4 h-4 ${
+                            isOverdue ? 'text-red-600' : isUrgent ? 'text-amber-600' : 'text-slate-500'
+                          }`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900 truncate">{assignment.title}</p>
-                          <p className="text-sm text-slate-500">{assignment.subject} • {assignment.teacher?.name}</p>
+                          <p className="text-sm font-medium text-slate-900 truncate">{assignment.title}</p>
+                          <p className="text-[11px] text-slate-400">{assignment.subject}</p>
                         </div>
-                        <div className="text-right">
-                          <p className={`text-xs font-medium ${isUrgent ? 'text-red-600' : 'text-orange-600'}`}>
-                            {deadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        <div className="text-right flex-shrink-0">
+                          <p className={`text-[11px] font-semibold ${
+                            isOverdue ? 'text-red-600' : isUrgent ? 'text-amber-600' : 'text-slate-500'
+                          }`}>
+                            {isOverdue ? 'Terlambat' : deadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                           </p>
-                          <p className="text-xs text-slate-400">{formatEventTime(assignment.deadline)}</p>
+                          <p className="text-[10px] text-slate-400">{formatEventTime(assignment.deadline)}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-center py-4 text-slate-500">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-300" />
-                  <p className="text-sm">Semua tugas sudah dikerjakan!</p>
+                <div className="text-center py-8 px-5">
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-emerald-200" />
+                  <p className="text-xs text-slate-400">Semua tugas selesai!</p>
                 </div>
               )}
             </Card>
-
-            {/* Quick Actions - Moved inside middle column */}
-            <div className="grid grid-cols-4 gap-3 mt-auto">
-              <Link href="/scan-qr" className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl text-white hover:from-teal-600 hover:to-teal-700 transition-colors">
-                <QrCode className="w-7 h-7 mb-2" />
-                <p className="font-medium text-sm">Scan QR</p>
-              </Link>
-              <Link href="/ujian-siswa" className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white hover:from-purple-600 hover:to-purple-700 transition-colors">
-                <FileText className="w-7 h-7 mb-2" />
-                <p className="font-medium text-sm">Ujian</p>
-              </Link>
-              <Link href="/tugas-siswa" className="p-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl text-white hover:from-orange-600 hover:to-orange-700 transition-colors relative">
-                <ClipboardList className="w-7 h-7 mb-2" />
-                <p className="font-medium text-sm">Tugas</p>
-                {stats.pending_assignments_count > 0 && (
-                  <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
-                    {stats.pending_assignments_count}
-                  </span>
-                )}
-              </Link>
-              <Link href="/materi-siswa" className="p-4 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl text-white hover:from-teal-600 hover:to-teal-700 transition-colors">
-                <BookOpen className="w-7 h-7 mb-2" />
-                <p className="font-medium text-sm">Materi</p>
-              </Link>
-            </div>
           </div>
 
-          {/* Right Column - Today's Class, Calendar, Events, Notice Board */}
-          <div className="col-span-12 lg:col-span-4 space-y-6 flex flex-col">
-            {/* Today's Class */}
-            <Card className="p-6">
-              <h3 className="font-semibold text-slate-900 mb-4">Jadwal Hari Ini</h3>
+          {/* ── Right Sidebar (2 cols) ───────────────────── */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Today's Schedule */}
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-900">Jadwal Hari Ini</h3>
+                </div>
+                <Link href="/jadwal" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
+                  Semua <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
               {todaySchedule.length > 0 ? (
-                <div className="space-y-3">
+                <div className="px-5 pb-4 space-y-1.5">
                   {todaySchedule.map((item) => {
                     const status = getScheduleStatus(item.start_time, item.end_time);
                     return (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-slate-900">{item.subject}</p>
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                            <Clock className="w-3 h-3" />
-                            {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${
+                          status === 'inprogress' ? 'bg-teal-50 border border-teal-200' :
+                          status === 'completed' ? 'opacity-50' : ''
+                        }`}
+                      >
+                        <div className="text-center flex-shrink-0 w-12">
+                          <p className={`text-xs font-bold tabular-nums ${status === 'inprogress' ? 'text-teal-700' : 'text-slate-700'}`}>
+                            {formatTime(item.start_time)}
                           </p>
+                          <p className="text-[10px] text-slate-400 tabular-nums">{formatTime(item.end_time)}</p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${status === 'completed' ? 'bg-green-100 text-green-700' :
-                          status === 'inprogress' ? 'bg-teal-50 text-teal-700' :
-                            'bg-slate-100 text-slate-600'
-                          }`}>
-                          {status === 'completed' ? 'Selesai' :
-                            status === 'inprogress' ? 'Berlangsung' : 'Mendatang'}
-                        </span>
+                        <div className={`w-0.5 h-8 rounded-full flex-shrink-0 ${
+                          status === 'inprogress' ? 'bg-teal-500' :
+                          status === 'completed' ? 'bg-slate-200' : 'bg-slate-300'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${status === 'inprogress' ? 'text-teal-900' : 'text-slate-900'}`}>
+                            {item.subject}
+                          </p>
+                          {item.room && (
+                            <p className="text-[10px] text-slate-400">{item.room}</p>
+                          )}
+                        </div>
+                        {status === 'inprogress' && (
+                          <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse flex-shrink-0" />
+                        )}
+                        {status === 'completed' && (
+                          <CheckCircle className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                        )}
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-center py-4 text-slate-500">
-                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm">Tidak ada jadwal hari ini</p>
+                <div className="text-center py-8 px-5">
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                  <p className="text-xs text-slate-400">Tidak ada jadwal hari ini</p>
                 </div>
               )}
             </Card>
 
             {/* Calendar */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <button onClick={prevMonth} className="p-1 hover:bg-slate-100 rounded" aria-label="Bulan sebelumnya">
-                  <ChevronLeft className="w-5 h-5 text-slate-600" />
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-2">
+                <button onClick={prevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Bulan sebelumnya">
+                  <ChevronLeft className="w-4 h-4 text-slate-500" />
                 </button>
-                <h3 className="font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-slate-900">
                   {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button onClick={nextMonth} className="p-1 hover:bg-slate-100 rounded" aria-label="Bulan berikutnya">
-                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                <button onClick={nextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Bulan berikutnya">
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
-
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day) => (
-                  <div key={day} className="text-xs font-medium text-slate-500 py-2">{day}</div>
-                ))}
-                {getDaysInMonth(currentMonth).map((day, index) => (
-                  <div key={index} className="aspect-square flex items-center justify-center">
-                    {day && (
-                      <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm relative ${isToday(day) ? 'bg-teal-600 text-white font-semibold' :
-                        hasEvent(day) ? 'bg-orange-100 text-orange-700 font-medium' :
-                          'text-slate-700 hover:bg-slate-100'
+              <div className="px-4 pb-4">
+                <div className="grid grid-cols-7 gap-0.5 text-center">
+                  {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, i) => (
+                    <div key={i} className="text-[10px] font-semibold text-slate-400 py-1.5">{day}</div>
+                  ))}
+                  {getDaysInMonth(currentMonth).map((day, index) => (
+                    <div key={index} className="aspect-square flex items-center justify-center">
+                      {day && (
+                        <div className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs relative transition-colors ${
+                          isToday(day) ? 'bg-teal-600 text-white font-bold shadow-sm' :
+                          hasEvent(day) ? 'bg-amber-50 text-amber-700 font-semibold' :
+                          'text-slate-600 hover:bg-slate-50'
                         }`}>
-                        {day}
-                        {hasEvent(day) && !isToday(day) && (
-                          <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-orange-500" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          {day}
+                          {hasEvent(day) && !isToday(day) && (
+                            <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-amber-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </Card>
 
             {/* Upcoming Events */}
-            <Card className="p-6">
-              <h3 className="font-semibold text-slate-900 mb-4">Acara Mendatang</h3>
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-900">Mendatang</h3>
+                </div>
+              </div>
               {upcomingEvents.length > 0 ? (
-                <div className="space-y-3">
+                <div className="px-5 pb-4 space-y-2">
                   {upcomingEvents.map((event) => (
-                    <div key={event.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <div className={`w-1 h-full min-h-[50px] rounded-full ${event.type === 'exam' ? 'bg-teal-500' : 'bg-orange-500'
-                        }`} />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-slate-500">{event.time}</p>
-                        <p className="font-medium text-slate-900 mt-1">{event.title}</p>
-                        {event.description && (
-                          <p className="text-xs text-slate-500 mt-0.5">{event.description}</p>
-                        )}
+                    <Link
+                      key={event.id}
+                      href={event.type === 'exam' ? '/ujian-siswa' : '/tugas-siswa'}
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors group"
+                    >
+                      <div className={`w-1 h-full min-h-[40px] rounded-full flex-shrink-0 ${
+                        event.type === 'exam' ? 'bg-violet-400' : 'bg-amber-400'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate group-hover:text-teal-700 transition-colors">{event.title}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} &middot; {event.time}
+                        </p>
                       </div>
-                      <Link href={event.type === 'exam' ? '/ujian-siswa' : '/tugas-siswa'} className="text-teal-600 text-xs hover:underline">
-                        Lihat
-                      </Link>
-                    </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-teal-500 mt-1 transition-colors flex-shrink-0" />
+                    </Link>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-4 text-slate-500">
-                  <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="text-sm">Tidak ada acara mendatang</p>
+                <div className="text-center py-8 px-5">
+                  <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                  <p className="text-xs text-slate-400">Tidak ada acara mendatang</p>
                 </div>
               )}
             </Card>
           </div>
         </div>
 
-        {/* Pengumuman - Full Width */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-900">Pengumuman</h3>
-            <Link href="/pengumuman" className="text-teal-600 text-xs hover:underline">
-              Lihat Semua
+        {/* ── Announcements ──────────────────────────────── */}
+        <Card className="p-0 overflow-hidden">
+          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-slate-400" />
+              <h3 className="text-sm font-semibold text-slate-900">Pengumuman</h3>
+              {newAnnouncementsCount > 0 && (
+                <span className="px-1.5 py-0.5 bg-teal-100 text-teal-700 text-[10px] font-bold rounded-md">
+                  {newAnnouncementsCount} baru
+                </span>
+              )}
+            </div>
+            <Link href="/pengumuman" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
+              Semua <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
+
           {announcements.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {announcements.slice(0, 8).map((announcement) => (
-                <Link
-                  key={announcement.id}
-                  href="/pengumuman"
-                  className="flex gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100"
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${announcement.priority === 'urgent' ? 'bg-red-100' :
-                    announcement.priority === 'important' ? 'bg-orange-100' : 'bg-teal-50'
+            <div className="px-5 pb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {announcements.slice(0, 6).map((announcement) => (
+                  <Link
+                    key={announcement.id}
+                    href="/pengumuman"
+                    className="flex gap-3 p-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all group"
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      announcement.priority === 'urgent' ? 'bg-red-100' :
+                      announcement.priority === 'important' ? 'bg-amber-100' : 'bg-slate-100'
                     }`}>
-                    <Megaphone className={`w-5 h-5 ${announcement.priority === 'urgent' ? 'text-red-600' :
-                      announcement.priority === 'important' ? 'text-orange-600' : 'text-teal-600'
+                      <Megaphone className={`w-4 h-4 ${
+                        announcement.priority === 'urgent' ? 'text-red-600' :
+                        announcement.priority === 'important' ? 'text-amber-600' : 'text-slate-500'
                       }`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-900 text-sm">{announcement.author?.name || 'Admin'}</p>
-                      {announcement.priority === 'urgent' && (
-                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">Mendesak</span>
-                      )}
-                      {announcement.priority === 'important' && (
-                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">Penting</span>
-                      )}
                     </div>
-                    <p className="text-sm text-slate-800 mt-1 font-medium">{announcement.title}</p>
-                    <p className="text-xs text-slate-600 line-clamp-2 mt-1">{announcement.content}</p>
-                    <p className="text-xs text-slate-400 mt-2">{formatAnnouncementDate(announcement.created_at)}</p>
-                  </div>
-                </Link>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-slate-900 truncate group-hover:text-teal-700 transition-colors">{announcement.title}</p>
+                        {announcement.priority === 'urgent' && (
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded flex-shrink-0">!</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{announcement.content}</p>
+                      <p className="text-[10px] text-slate-300 mt-1.5">{formatAnnouncementDate(announcement.created_at)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-slate-500">
-              <Megaphone className="w-16 h-16 mb-3 text-slate-200" />
-              <p className="font-medium text-sm">Belum ada pengumuman</p>
-              <p className="text-xs text-slate-400 mt-1">Pengumuman dari sekolah akan muncul di sini</p>
+            <div className="flex flex-col items-center justify-center py-10 px-5">
+              <Megaphone className="w-10 h-10 mb-2 text-slate-200" />
+              <p className="text-xs text-slate-400">Belum ada pengumuman</p>
             </div>
           )}
         </Card>
+
       </div>
     </DashboardLayout>
   );
