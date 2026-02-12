@@ -987,28 +987,76 @@ class ExamController extends Controller
             ], 403);
         }
 
+        // Get all exam results
         $results = ExamResult::with(['student:id,name,nisn'])
             ->where('exam_id', $exam->id)
-            ->orderBy('percentage', 'desc')
             ->get();
 
-        // Calculate summary with collection methods - single iteration
-        $completed = $results->where('status', 'completed');
-        
+        // Get all students in the exam's class who haven't taken the exam
+        $studentIdsWithResults = $results->pluck('student_id')->toArray();
+        $allStudents = User::where('class_id', $exam->class_id)
+            ->where('role', 'siswa')
+            ->whereNotIn('id', $studentIdsWithResults)
+            ->select('id', 'name', 'nisn')
+            ->get();
+
+        // Build combined list: results + students who haven't started
+        $allEntries = [];
+
+        foreach ($results as $r) {
+            $allEntries[] = $r;
+        }
+
+        foreach ($allStudents as $student) {
+            $allEntries[] = [
+                'id' => null,
+                'student_id' => $student->id,
+                'exam_id' => $exam->id,
+                'status' => 'not_started',
+                'total_score' => 0,
+                'max_score' => 0,
+                'percentage' => 0,
+                'score' => null,
+                'total_correct' => 0,
+                'total_wrong' => 0,
+                'total_answered' => 0,
+                'violation_count' => 0,
+                'started_at' => null,
+                'finished_at' => null,
+                'submitted_at' => null,
+                'student' => [
+                    'id' => $student->id,
+                    'name' => $student->name,
+                    'nisn' => $student->nisn,
+                ],
+            ];
+        }
+
+        // Calculate summary
+        $finished = $results->whereIn('status', ['completed', 'graded', 'submitted']);
+        $inProgress = $results->where('status', 'in_progress');
+
         $summary = [
-            'total_students' => $results->count(),
-            'completed' => $completed->count(),
-            'in_progress' => $results->where('status', 'in_progress')->count(),
-            'average_score' => $completed->avg('percentage'),
-            'highest_score' => $results->max('percentage'),
-            'lowest_score' => $completed->min('percentage'),
+            'total_students' => count($allEntries),
+            'completed' => $finished->count(),
+            'in_progress' => $inProgress->count(),
+            'not_started' => $allStudents->count(),
+            'average_score' => $finished->count() > 0 ? $finished->avg('percentage') : null,
+            'highest_score' => $finished->count() > 0 ? $finished->max('percentage') : null,
+            'lowest_score' => $finished->count() > 0 ? $finished->min('percentage') : null,
             'passed' => $results->where('percentage', '>=', $exam->passing_score)->count(),
         ];
 
         return response()->json([
             'success' => true,
             'data' => [
-                'results' => $results,
+                'exam' => [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'subject' => $exam->subject,
+                    'passing_score' => $exam->passing_score,
+                ],
+                'results' => $allEntries,
                 'summary' => $summary,
             ],
         ]);

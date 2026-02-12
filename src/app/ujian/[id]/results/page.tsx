@@ -48,10 +48,18 @@ interface ResultSummary {
   total_students: number;
   completed: number;
   in_progress: number;
+  not_started: number;
   average_score: number | null;
   highest_score: number | null;
   lowest_score: number | null;
   passed: number;
+}
+
+interface ExamInfo {
+  id: number;
+  title: string;
+  subject: string;
+  passing_score: number;
 }
 
 export default function ExamResultsPage() {
@@ -62,14 +70,17 @@ export default function ExamResultsPage() {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
   const [summary, setSummary] = useState<ResultSummary | null>(null);
+  const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rank' | 'name'>('rank');
+  const [filterStatus, setFilterStatus] = useState<string>('');
 
   const fetchResults = useCallback(async () => {
     try {
       const response = await api.get(`/exams/${examId}/results`);
       const data = response.data?.data;
       if (data) {
+        setExamInfo(data.exam || null);
         setResults((data.results || []).map((r: StudentResult) => ({
           ...r,
           total_score: Number(r.total_score) || 0,
@@ -86,6 +97,7 @@ export default function ExamResultsPage() {
             total_students: Number(s.total_students) || 0,
             completed: Number(s.completed) || 0,
             in_progress: Number(s.in_progress) || 0,
+            not_started: Number(s.not_started) || 0,
             average_score: s.average_score != null ? Number(s.average_score) : null,
             highest_score: s.highest_score != null ? Number(s.highest_score) : null,
             lowest_score: s.lowest_score != null ? Number(s.lowest_score) : null,
@@ -106,16 +118,21 @@ export default function ExamResultsPage() {
 
   const filteredResults = results
     .filter(r => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        r.student?.name?.toLowerCase().includes(q) ||
-        r.student?.nisn?.includes(searchQuery)
-      );
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
+          r.student?.nisn?.includes(searchQuery);
+        if (!matchesSearch) return false;
+      }
+      if (filterStatus && r.status !== filterStatus) return false;
+      return true;
     })
     .sort((a, b) => {
       if (sortBy === 'name') return (a.student?.name || '').localeCompare(b.student?.name || '');
-      return b.percentage - a.percentage; // rank by score desc
+      // not_started goes to bottom
+      if (a.status === 'not_started' && b.status !== 'not_started') return 1;
+      if (b.status === 'not_started' && a.status !== 'not_started') return -1;
+      return b.percentage - a.percentage;
     });
 
   const getScoreColor = (score: number) => {
@@ -164,6 +181,12 @@ export default function ExamResultsPage() {
             Dikumpulkan
           </span>
         );
+      case 'not_started':
+        return (
+          <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
+            Belum Mulai
+          </span>
+        );
       default:
         return (
           <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
@@ -201,7 +224,9 @@ export default function ExamResultsPage() {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Hasil Ujian</h1>
-              <p className="text-gray-600">Lihat hasil ujian seluruh siswa</p>
+              <p className="text-gray-600">
+                {examInfo ? `${examInfo.title} — ${examInfo.subject}` : 'Lihat hasil ujian seluruh siswa'}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -224,7 +249,7 @@ export default function ExamResultsPage() {
                   <p className="text-sm text-gray-500">Total Peserta</p>
                   <p className="text-xl font-bold text-gray-900">{summary.total_students}</p>
                   <p className="text-xs text-gray-400">
-                    {summary.completed} selesai · {summary.in_progress} mengerjakan
+                    {summary.completed} selesai · {summary.in_progress} mengerjakan · {summary.not_started} belum
                   </p>
                 </div>
               </div>
@@ -285,6 +310,16 @@ export default function ExamResultsPage() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
             />
           </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          >
+            <option value="">Semua Status</option>
+            <option value="completed">Selesai</option>
+            <option value="in_progress">Mengerjakan</option>
+            <option value="not_started">Belum Mulai</option>
+          </select>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'rank' | 'name')}
@@ -384,11 +419,15 @@ export default function ExamResultsPage() {
                         {formatDate(result.finished_at || result.submitted_at)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center print:hidden">
-                        <Link href={`/ujian/${examId}/hasil/${result.student_id}`}>
-                          <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg" title="Lihat detail">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </Link>
+                        {result.status !== 'not_started' ? (
+                          <Link href={`/ujian/${examId}/hasil/${result.student_id}`}>
+                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg" title="Lihat detail">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </Link>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
