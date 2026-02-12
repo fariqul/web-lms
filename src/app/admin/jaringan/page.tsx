@@ -246,7 +246,7 @@ export default function JaringanSekolahPage() {
               <h3 className="font-semibold text-slate-900 dark:text-white">
                 {editingId ? 'Edit Jaringan' : 'Tambah Jaringan Baru'}
               </h3>
-              <button onClick={resetForm} className="text-slate-500 dark:text-slate-500 hover:text-slate-600" aria-label="Tutup form">
+              <button onClick={resetForm} className="text-slate-600 dark:text-slate-400 hover:text-slate-600" aria-label="Tutup form">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -320,7 +320,7 @@ export default function JaringanSekolahPage() {
             <div className="p-12 text-center">
               <Wifi className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada jaringan yang dikonfigurasi</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
                 Absensi dapat dilakukan dari mana saja jika tidak ada jaringan yang dikonfigurasi
               </p>
             </div>
@@ -336,7 +336,7 @@ export default function JaringanSekolahPage() {
                       network.is_active ? 'bg-green-100' : 'bg-slate-100'
                     }`}>
                       <Wifi className={`w-5 h-5 ${
-                        network.is_active ? 'text-green-600' : 'text-slate-500 dark:text-slate-500'
+                        network.is_active ? 'text-green-600' : 'text-slate-600 dark:text-slate-400'
                       }`} />
                     </div>
                     <div>

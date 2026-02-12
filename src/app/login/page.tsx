@@ -76,19 +76,19 @@ export default function LoginPage() {
             <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={112} height={112} className="object-contain w-full h-full drop-shadow-lg" />
           </div>
           <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">SMA 15 Makassar</h1>
-          <p className="text-lg text-slate-500 dark:text-slate-500 font-medium">Learning Management System</p>
+          <p className="text-lg text-slate-600 dark:text-slate-400 font-medium">Learning Management System</p>
           <div className="mt-10 grid grid-cols-3 gap-4">
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
               <p className="text-2xl font-bold text-cyan-400">QR</p>
-              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Absensi Digital</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Absensi Digital</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
               <p className="text-2xl font-bold text-blue-400">CBT</p>
-              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Ujian Online</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Ujian Online</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
               <p className="text-2xl font-bold text-sky-400">LMS</p>
-              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">E-Learning</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">E-Learning</p>
             </div>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <p className="text-center text-slate-500 dark:text-slate-500 text-xs mt-6">
+          <p className="text-center text-slate-600 dark:text-slate-400 text-xs mt-6">
             © 2026 SMA 15 Makassar. All rights reserved.
           </p>
         </div>

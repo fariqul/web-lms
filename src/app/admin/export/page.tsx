@@ -200,7 +200,7 @@ export default function ExportPage() {
                 onClick={() => setFormat('xlsx')}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'xlsx' ? 'border-green-500 bg-green-50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}
               >
-                <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-slate-500 dark:text-slate-500'}`} />
+                <FileSpreadsheet className={`w-6 h-6 ${format === 'xlsx' ? 'text-green-600' : 'text-slate-600 dark:text-slate-400'}`} />
                 <div className="text-left">
                   <p className="font-medium text-sm">Excel (.xlsx)</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Untuk pengolahan data</p>
@@ -210,7 +210,7 @@ export default function ExportPage() {
                 onClick={() => setFormat('pdf')}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-colors ${format === 'pdf' ? 'border-red-500 bg-red-50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}
               >
-                <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-slate-500 dark:text-slate-500'}`} />
+                <FileText className={`w-6 h-6 ${format === 'pdf' ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`} />
                 <div className="text-left">
                   <p className="font-medium text-sm">PDF (.pdf)</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Untuk cetak dan arsip</p>

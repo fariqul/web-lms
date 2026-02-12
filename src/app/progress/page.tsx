@@ -164,7 +164,7 @@ export default function ProgressPage() {
   const TrendIcon = ({ trend }: { trend: string }) => {
     if (trend === 'up') return <TrendingUp className="w-4 h-4 text-green-500" />;
     if (trend === 'down') return <TrendingDown className="w-4 h-4 text-red-500" />;
-    return <Minus className="w-4 h-4 text-slate-500 dark:text-slate-500" />;
+    return <Minus className="w-4 h-4 text-slate-600 dark:text-slate-400" />;
   };
 
   const getScoreColor = (score: number) => {
@@ -372,7 +372,7 @@ export default function ProgressPage() {
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">{studentReport.student.name}</h2>
                   <p className="text-slate-600 dark:text-slate-400">NISN: {studentReport.student.nisn} • {studentReport.student.class_name}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-500">Semester {semester === 'ganjil' ? 'Ganjil' : 'Genap'} {academicYear}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Semester {semester === 'ganjil' ? 'Ganjil' : 'Genap'} {academicYear}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <TrendIcon trend={studentReport.trend} />
@@ -513,7 +513,7 @@ export default function ProgressPage() {
           <Card className="p-12 text-center">
             <BarChart3 className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-600 dark:text-slate-400 mb-2">Pilih Kelas untuk Melihat Laporan</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-500">Gunakan filter di atas untuk menampilkan laporan progress siswa</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Gunakan filter di atas untuk menampilkan laporan progress siswa</p>
           </Card>
         )}
       </div>

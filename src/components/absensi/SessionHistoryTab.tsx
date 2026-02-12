@@ -170,7 +170,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                     <td className="py-3 px-4">{session.subject}</td>
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center gap-1">
-                        <Users className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                        <Users className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                         {session.total_present}/{session.total_students}
                       </span>
                     </td>

@@ -46,7 +46,7 @@ export function CardHeader({ title, subtitle, action, className }: CardHeaderPro
     <div className={clsx('flex items-center justify-between mb-4', className)}>
       <div>
         <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
-        {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -184,7 +184,7 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
       )}
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{title}</p>
-        {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{subtitle}</p>}
       </div>
       {badge && (
         <span className={clsx('text-xs px-2 py-1 rounded-full flex-shrink-0 font-medium', badgeColors[badge.color])}>

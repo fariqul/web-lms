@@ -368,7 +368,7 @@ export default function TugasGuruPage() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
           <input
             type="text"
             placeholder="Cari tugas…"
@@ -425,7 +425,7 @@ export default function TugasGuruPage() {
             <Card className="p-8 text-center">
               <ClipboardList className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada tugas</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
             </Card>
           ) : (
             filteredAssignments.map((assignment) => (
@@ -636,7 +636,7 @@ export default function TugasGuruPage() {
                       </div>
                     ) : (
                       <>
-                        <Upload className="w-6 h-6 text-slate-500 dark:text-slate-500 mx-auto mb-1" />
+                        <Upload className="w-6 h-6 text-slate-600 dark:text-slate-400 mx-auto mb-1" />
                         <p className="text-sm text-slate-600 dark:text-slate-400">Upload file lampiran</p>
                       </>
                     )}

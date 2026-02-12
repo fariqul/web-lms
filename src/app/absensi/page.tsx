@@ -640,7 +640,7 @@ export default function AbsensiPage() {
                     {formatTime(timeRemaining)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">QR akan refresh otomatis setiap 5 menit</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">QR akan refresh otomatis setiap 5 menit</p>
               </div>
 
               {/* Stats */}
@@ -704,7 +704,7 @@ export default function AbsensiPage() {
                   <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                     <QrCode className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                     <p>Belum ada siswa yang absen</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Siswa dapat scan QR code di atas untuk absen</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Siswa dapat scan QR code di atas untuk absen</p>
                   </div>
                 )}
               </Card>

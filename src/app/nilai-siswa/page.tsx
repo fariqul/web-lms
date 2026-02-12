@@ -267,11 +267,11 @@ export default function NilaiSiswaPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {grade.total_correct === 0 && grade.total_wrong === 0 ? (
-                            <span className="text-slate-500 dark:text-slate-500 text-sm">-</span>
+                            <span className="text-slate-600 dark:text-slate-400 text-sm">-</span>
                           ) : (
                             <>
                               <span className="text-green-600 font-medium">{grade.total_correct}</span>
-                              <span className="text-slate-500 dark:text-slate-500 mx-1">/</span>
+                              <span className="text-slate-600 dark:text-slate-400 mx-1">/</span>
                               <span className="text-red-600 font-medium">{grade.total_wrong}</span>
                             </>
                           )}
@@ -342,7 +342,7 @@ export default function NilaiSiswaPage() {
                           {grade.score !== null ? (
                             <span className="text-slate-700 dark:text-slate-300 font-medium">{grade.score}/{grade.max_score}</span>
                           ) : (
-                            <span className="text-slate-500 dark:text-slate-500 text-sm">-</span>
+                            <span className="text-slate-600 dark:text-slate-400 text-sm">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -351,7 +351,7 @@ export default function NilaiSiswaPage() {
                               {grade.percentage}
                             </span>
                           ) : (
-                            <span className="text-slate-500 dark:text-slate-500">-</span>
+                            <span className="text-slate-600 dark:text-slate-400">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">

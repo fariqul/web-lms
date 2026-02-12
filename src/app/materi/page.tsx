@@ -468,9 +468,9 @@ export default function MateriPage() {
               </div>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-slate-500 dark:text-slate-500 mx-auto mb-2" />
+                <Upload className="w-8 h-8 text-slate-600 dark:text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 dark:text-slate-400">Klik atau drag & drop file di sini</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   {formData.type === 'document' 
                     ? 'PDF, DOC, DOCX, PPT, PPTX (Max. 50MB)' 
                     : 'MP4, WEBM, AVI, MOV (Max. 50MB)'}
@@ -491,7 +491,7 @@ export default function MateriPage() {
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL Link</label>
           <div className="relative">
-            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
               type="url"
               value={formData.file_url}
@@ -579,7 +579,7 @@ export default function MateriPage() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
           <input
             type="text"
             placeholder="Cari materi…"
@@ -637,7 +637,7 @@ export default function MateriPage() {
               <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada materi</p>
               {isTeacherOrAdmin && (
-                <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Klik tombol "Tambah Materi" untuk membuat materi baru</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol "Tambah Materi" untuk membuat materi baru</p>
               )}
             </Card>
           ) : (

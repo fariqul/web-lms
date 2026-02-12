@@ -449,7 +449,7 @@ export default function EditSoalPage() {
               {questions.map((question, index) => (
                 <div key={question.id || index} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800">
                   <div className="flex items-start gap-4">
-                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-500">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                       <GripVertical className="w-5 h-5" />
                       <span className="font-bold text-lg text-slate-600 dark:text-slate-400">{index + 1}</span>
                     </div>
@@ -486,7 +486,7 @@ export default function EditSoalPage() {
                       )}
                       
                       {question.question_type === 'essay' && (
-                        <p className="text-sm text-slate-500 dark:text-slate-500 italic ml-4">Jawaban Essay</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 italic ml-4">Jawaban Essay</p>
                       )}
                       
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
@@ -612,9 +612,9 @@ export default function EditSoalPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
               >
-                <ImagePlus className="w-8 h-8 text-slate-500 dark:text-slate-500 mx-auto mb-2" />
+                <ImagePlus className="w-8 h-8 text-slate-600 dark:text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 dark:text-slate-400">Klik untuk upload gambar</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">PNG, JPG, max 5MB</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">PNG, JPG, max 5MB</p>
               </div>
             )}
             <input
@@ -798,9 +798,9 @@ export default function EditSoalPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
               >
-                <ImagePlus className="w-8 h-8 text-slate-500 dark:text-slate-500 mx-auto mb-2" />
+                <ImagePlus className="w-8 h-8 text-slate-600 dark:text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 dark:text-slate-400">Klik untuk upload gambar</p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">PNG, JPG, max 5MB</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">PNG, JPG, max 5MB</p>
               </div>
             )}
             <input

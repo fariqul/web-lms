@@ -305,7 +305,7 @@ export default function HasilSiswaPage() {
                     alt="Monitoring"
                     className="w-full aspect-square object-cover rounded-lg border"
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     {new Date(snap.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -354,7 +354,7 @@ export default function HasilSiswaPage() {
                       }`}>
                         {answer.question.type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-500">{answer.question.points} poin</span>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">{answer.question.points} poin</span>
                       {answer.score !== null && (
                         <span className={`text-xs font-medium ${
                           answer.score >= answer.question.points * 0.7 ? 'text-green-600' : 'text-red-600'
@@ -404,7 +404,7 @@ export default function HasilSiswaPage() {
                       <div className="mb-3">
                         <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Jawaban Siswa:</p>
                         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap border">
-                          {answer.answer || <span className="text-slate-500 dark:text-slate-500 italic">Tidak dijawab</span>}
+                          {answer.answer || <span className="text-slate-600 dark:text-slate-400 italic">Tidak dijawab</span>}
                         </div>
 
                         {/* Grading form for essay */}

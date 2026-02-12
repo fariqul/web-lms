@@ -155,7 +155,7 @@ export default function MateriSiswaPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
               placeholder="Cari materi…"
@@ -181,7 +181,7 @@ export default function MateriSiswaPage() {
           <Card className="p-8 text-center">
             <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <p className="text-slate-600 dark:text-slate-400">Belum ada materi</p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Materi akan muncul setelah guru mengunggah</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Materi akan muncul setelah guru mengunggah</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

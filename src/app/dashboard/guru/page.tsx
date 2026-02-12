@@ -174,9 +174,13 @@ export default function GuruDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Welcome */}
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Selamat Datang, {user?.name?.split(' ')[0]}!</h1>
-          <p className="text-slate-600 dark:text-slate-400">Kelola absensi dan ujian Anda di sini</p>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative">
+            <h1 className="text-2xl font-bold text-white">Selamat Datang, {user?.name?.split(' ')[0]}!</h1>
+            <p className="text-blue-100/80">Kelola absensi dan ujian Anda di sini</p>
+          </div>
         </div>
 
         {/* Notification Banner for Announcements */}
@@ -263,7 +267,7 @@ export default function GuruDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-slate-900 dark:text-slate-100">{item.subject}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{item.class_room?.name || '-'}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{item.class_room?.name || '-'}</p>
                     </div>
                     <span className="text-sm font-medium text-sky-500">{formatTime(item.start_time)}</span>
                   </div>
@@ -272,7 +276,7 @@ export default function GuruDashboard() {
             ) : (
               <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="text-slate-500 dark:text-slate-400">Tidak ada jadwal hari ini</p>
+                <p className="text-slate-600 dark:text-slate-400">Tidak ada jadwal hari ini</p>
               </div>
             )}
           </Card>
@@ -303,7 +307,7 @@ export default function GuruDashboard() {
           />
           <div className="text-center py-8 text-slate-600 dark:text-slate-400">
             <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-            <p className="text-slate-500 dark:text-slate-400">Belum ada hasil ujian</p>
+            <p className="text-slate-600 dark:text-slate-400">Belum ada hasil ujian</p>
             <Link href="/ujian" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
               Buat Ujian Pertama
             </Link>
@@ -346,7 +350,7 @@ export default function GuruDashboard() {
                         </span>
                       </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-1 mt-1">{announcement.content}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                         {announcement.author?.name} • {formatAnnouncementDate(announcement.created_at)}
                       </p>
                     </div>
@@ -357,7 +361,7 @@ export default function GuruDashboard() {
           ) : (
             <div className="text-center py-8 text-slate-600 dark:text-slate-400">
               <Megaphone className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-              <p className="text-slate-500 dark:text-slate-400">Belum ada pengumuman</p>
+              <p className="text-slate-600 dark:text-slate-400">Belum ada pengumuman</p>
               <Link href="/pengumuman" className="text-sky-500 hover:underline text-sm mt-2 inline-block">
                 Buat Pengumuman
               </Link>

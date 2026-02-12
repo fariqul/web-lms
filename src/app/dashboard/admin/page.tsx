@@ -196,6 +196,16 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Welcome Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
+          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
+          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+          <div className="relative">
+            <h1 className="text-2xl font-bold text-white">Panel Admin</h1>
+            <p className="text-slate-300/80">Kelola pengguna, kelas, dan seluruh sistem LMS</p>
+          </div>
+        </div>
+
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <QuickActionCard
@@ -255,7 +265,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-800 dark:text-slate-200 truncate">{activity.message}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{activity.time}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{activity.time}</p>
                       </div>
                     </div>
                   );
@@ -385,7 +395,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="text-left">
                           <p className="font-medium text-slate-900 dark:text-white">{teacher.teacher_name}</p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
                             {teacher.taught}/{teacher.total_scheduled} jadwal terpenuhi
                           </p>
                         </div>
@@ -393,9 +403,9 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3">
                         {getTeacherStatusBadge(teacher.status)}
                         {expandedTeacher === teacher.teacher_id ? (
-                          <ChevronUp className="w-5 h-5 text-slate-500 dark:text-slate-500" />
+                          <ChevronUp className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-slate-500 dark:text-slate-500" />
+                          <ChevronDown className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                         )}
                       </div>
                     </button>
@@ -405,7 +415,7 @@ export default function AdminDashboard() {
                       <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-left text-slate-500 dark:text-slate-400">
+                            <tr className="text-left text-slate-600 dark:text-slate-400">
                               <th scope="col" className="pb-2">Kelas</th>
                               <th scope="col" className="pb-2">Mata Pelajaran</th>
                               <th scope="col" className="pb-2">Jam</th>
@@ -442,7 +452,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <Calendar className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="text-slate-500 dark:text-slate-400">Tidak ada jadwal guru untuk hari ini</p>
+                <p className="text-slate-600 dark:text-slate-400">Tidak ada jadwal guru untuk hari ini</p>
               </div>
             )}
           </Card>

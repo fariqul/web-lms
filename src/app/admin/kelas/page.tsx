@@ -125,7 +125,7 @@ export default function AdminKelasPage() {
       header: 'Jumlah Siswa',
       render: (item: ClassRoom) => (
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+          <Users className="w-4 h-4 text-slate-600 dark:text-slate-400" />
           <span>{item.students_count || 0} siswa</span>
         </div>
       ),

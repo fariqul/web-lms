@@ -212,7 +212,7 @@ export function NotificationDropdown() {
               <div className="max-h-96 overflow-y-auto">
                 {loading ? (
                   <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-slate-500 dark:text-slate-500" />
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-600 dark:text-slate-400" />
                   </div>
                 ) : notifications.length === 0 ? (
                   <div className="text-center py-8">
@@ -239,13 +239,13 @@ export function NotificationDropdown() {
                             {notif.title}
                           </p>
                           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">{notif.message}</p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-500 mt-1">{timeAgo(notif.created_at)}</p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">{timeAgo(notif.created_at)}</p>
                         </div>
                         <div className="flex flex-col gap-1 flex-shrink-0">
                           {!notif.read_at && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
-                              className="p-1 text-slate-500 dark:text-slate-500 hover:text-sky-500 rounded"
+                              className="p-1 text-slate-600 dark:text-slate-400 hover:text-sky-500 rounded"
                               title="Tandai dibaca"
                               aria-label="Tandai dibaca"
                             >
@@ -254,7 +254,7 @@ export function NotificationDropdown() {
                           )}
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(notif.id); }}
-                            className="p-1 text-slate-500 dark:text-slate-500 hover:text-red-500 rounded"
+                            className="p-1 text-slate-600 dark:text-slate-400 hover:text-red-500 rounded"
                             title="Hapus"
                             aria-label="Hapus notifikasi"
                           >
@@ -323,7 +323,7 @@ function NotificationDetail({
         </div>
         <button
           onClick={() => onDelete(notif.id)}
-          className="p-1 text-slate-500 dark:text-slate-500 hover:text-red-500 rounded-lg transition-colors"
+          className="p-1 text-slate-600 dark:text-slate-400 hover:text-red-500 rounded-lg transition-colors"
           title="Hapus notifikasi"
           aria-label="Hapus notifikasi"
         >
@@ -334,7 +334,7 @@ function NotificationDetail({
       {/* Detail Body */}
       <div className="px-4 py-4 max-h-96 overflow-y-auto">
         <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1">{notif.title}</h4>
-        <p className="text-[11px] text-slate-500 dark:text-slate-500 mb-4">{timeAgo(notif.created_at)}</p>
+        <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-4">{timeAgo(notif.created_at)}</p>
 
         {isPasswordReset ? (
           <div className="space-y-3">
@@ -396,7 +396,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <IconComp className={`w-4 h-4 flex-shrink-0 ${highlight ? 'text-green-600' : 'text-slate-500 dark:text-slate-500'}`} />
+      <IconComp className={`w-4 h-4 flex-shrink-0 ${highlight ? 'text-green-600' : 'text-slate-600 dark:text-slate-400'}`} />
       <div className="flex-1 min-w-0">
         <span className="text-[11px] text-slate-600 dark:text-slate-400">{label}</span>
         <p className={`text-sm font-medium truncate ${highlight ? 'text-green-800' : 'text-slate-900 dark:text-white'}`}>{value}</p>
@@ -404,7 +404,7 @@ function DetailRow({
       {onCopy && value !== '-' && (
         <button
           onClick={() => onCopy(value)}
-          className="p-1 text-slate-500 dark:text-slate-500 hover:text-slate-600 rounded transition-colors flex-shrink-0"
+          className="p-1 text-slate-600 dark:text-slate-400 hover:text-slate-600 rounded transition-colors flex-shrink-0"
           title={copied ? 'Tersalin!' : 'Salin'}
           aria-label={copied ? 'Tersalin' : 'Salin'}
         >

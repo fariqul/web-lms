@@ -229,7 +229,7 @@ export default function AdminJadwalPage() {
             <div className="p-8 text-center">
               <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada jadwal untuk {DAYS[selectedDay - 1]}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol &quot;Tambah Jadwal&quot; untuk membuat jadwal baru</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -263,7 +263,7 @@ export default function AdminJadwalPage() {
                       <tr key={schedule.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                            <Clock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                             <span className="font-medium text-slate-900 dark:text-white">
                               {schedule.start_time.slice(0, 5)} - {schedule.end_time.slice(0, 5)}
                             </span>
@@ -279,13 +279,13 @@ export default function AdminJadwalPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                            <User className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                             <span className="text-slate-600 dark:text-slate-400">{getTeacherName(schedule)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                            <MapPin className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                             <span className="text-slate-600 dark:text-slate-400">{schedule.room || '-'}</span>
                           </div>
                         </td>

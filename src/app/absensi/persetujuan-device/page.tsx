@@ -321,7 +321,7 @@ export default function DeviceApprovalPage() {
                   {/* Request Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <Smartphone className="w-5 h-5 text-slate-500 dark:text-slate-500" />
+                      <Smartphone className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                       {getStatusBadge(request.status)}
                     </div>
                     

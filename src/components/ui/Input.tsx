@@ -31,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-500">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-600 dark:text-slate-400">
               {leftIcon}
             </div>
           )}
@@ -44,7 +44,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={clsx(
               'w-full rounded-xl border transition-all duration-200',
               'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
-              'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500 dark:text-slate-500',
+              'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-600 dark:text-slate-400',
               'placeholder:text-slate-400 dark:placeholder:text-slate-600 dark:text-slate-400',
               'dark:bg-slate-800 dark:text-slate-100',
               error
@@ -58,13 +58,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-500">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-600 dark:text-slate-400">
               {rightIcon}
             </div>
           )}
         </div>
         {error && <p id={errorId} className="mt-1.5 text-sm text-red-500 flex items-center gap-1" role="alert">{error}</p>}
-        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{helperText}</p>}
+        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{helperText}</p>}
       </div>
     );
   }
@@ -119,7 +119,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && <p id={errorId} className="mt-1.5 text-sm text-red-500" role="alert">{error}</p>}
-        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{helperText}</p>}
+        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{helperText}</p>}
       </div>
     );
   }
@@ -178,14 +178,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ))}
           </select>
           {/* Custom dropdown arrow */}
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500 dark:text-slate-500">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-600 dark:text-slate-400">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
         {error && <p id={errorId} className="mt-1.5 text-sm text-red-500" role="alert">{error}</p>}
-        {helperText && !error && <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{helperText}</p>}
+        {helperText && !error && <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{helperText}</p>}
       </div>
     );
   }

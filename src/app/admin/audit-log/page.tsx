@@ -167,7 +167,7 @@ export default function AuditLogPage() {
         <Card className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="relative sm:col-span-2 lg:col-span-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Cari…"
@@ -268,7 +268,7 @@ export default function AuditLogPage() {
                               hour: '2-digit', minute: '2-digit',
                             })}
                           </span>
-                          <span className="hidden sm:inline text-slate-500 dark:text-slate-500">{log.ip_address}</span>
+                          <span className="hidden sm:inline text-slate-600 dark:text-slate-400">{log.ip_address}</span>
                         </div>
                       </div>
                     </button>
@@ -315,7 +315,7 @@ export default function AuditLogPage() {
                           {log.user_agent && (
                             <div>
                               <span className="text-slate-600 dark:text-slate-400">Browser:</span>
-                              <span className="text-xs text-slate-500 dark:text-slate-500 ml-1">{log.user_agent.substring(0, 100)}</span>
+                              <span className="text-xs text-slate-600 dark:text-slate-400 ml-1">{log.user_agent.substring(0, 100)}</span>
                             </div>
                           )}
                         </div>

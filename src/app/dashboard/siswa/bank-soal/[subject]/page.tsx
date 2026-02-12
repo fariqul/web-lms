@@ -487,7 +487,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                 className={`p-2 rounded-lg transition-colors ${
                   currentAnswer?.isBookmarked 
                     ? 'bg-yellow-100 text-yellow-600' 
-                    : 'bg-slate-100 text-slate-500 dark:text-slate-500 hover:text-yellow-500'
+                    : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:text-yellow-500'
                 }`}
               >
                 {currentAnswer?.isBookmarked ? (

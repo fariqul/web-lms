@@ -197,7 +197,7 @@ export default function SiswaBankSoalPage() {
                       {questionCount > 0 ? `${questionCount} soal tersedia` : 'Belum ada soal'}
                     </p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-500" />
+                  <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 </div>
               </Card>
             );
@@ -209,7 +209,7 @@ export default function SiswaBankSoalPage() {
           <Card className="p-8 text-center">
             <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <p className="text-slate-600 dark:text-slate-400">Belum ada soal untuk kelas {selectedGrade}.</p>
-            <p className="text-slate-500 dark:text-slate-500 text-sm mt-1">Silakan hubungi guru untuk menambahkan soal.</p>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Silakan hubungi guru untuk menambahkan soal.</p>
           </Card>
         )}
 
@@ -276,7 +276,7 @@ export default function SiswaBankSoalPage() {
                       <h4 className="font-semibold text-slate-900 dark:text-white">Mode Tryout</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">Simulasi ujian dengan waktu terbatas</p>
                     </div>
-                    <Play className="w-5 h-5 text-slate-500 dark:text-slate-500 group-hover:text-orange-500" />
+                    <Play className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-orange-500" />
                   </div>
                   <div className="mt-3 flex gap-2">
                     <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">Timer</span>
@@ -298,7 +298,7 @@ export default function SiswaBankSoalPage() {
                       <h4 className="font-semibold text-slate-900 dark:text-white">Mode Belajar</h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400">Belajar santai dengan pembahasan</p>
                     </div>
-                    <Play className="w-5 h-5 text-slate-500 dark:text-slate-500 group-hover:text-sky-500" />
+                    <Play className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-sky-500" />
                   </div>
                   <div className="mt-3 flex gap-2">
                     <span className="px-2 py-1 bg-sky-100 text-sky-500 text-xs rounded-full">Tanpa Timer</span>

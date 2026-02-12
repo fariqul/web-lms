@@ -306,7 +306,7 @@ export default function MonitorUjianPage() {
                   <span className="hidden sm:inline">Live</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-slate-500 dark:text-slate-500">
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                   <WifiOff className="w-4 h-4" />
                   <span className="hidden sm:inline">Offline</span>
                 </span>
@@ -456,7 +456,7 @@ export default function MonitorUjianPage() {
               </h3>
               <button
                 onClick={() => setRealtimeEvents([])}
-                className="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-600"
+                className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-600"
               >
                 Bersihkan
               </button>
@@ -470,7 +470,7 @@ export default function MonitorUjianPage() {
                     evt.type === 'join' ? 'bg-teal-500' : 'bg-slate-400'
                   }`} />
                   <span className="text-slate-600 dark:text-slate-400 flex-1">{evt.message}</span>
-                  <span className="text-slate-500 dark:text-slate-500 flex-shrink-0">
+                  <span className="text-slate-600 dark:text-slate-400 flex-shrink-0">
                     {evt.time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
@@ -538,7 +538,7 @@ export default function MonitorUjianPage() {
                             <span className="font-medium tabular-nums">{participant.violation_count}</span>
                           </span>
                         ) : (
-                          <span className="text-slate-500 dark:text-slate-500">-</span>
+                          <span className="text-slate-600 dark:text-slate-400">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-center text-sm text-slate-600 dark:text-slate-400">
@@ -550,7 +550,7 @@ export default function MonitorUjianPage() {
                             {Number(participant.score).toFixed(1)}
                           </span>
                         ) : (
-                          <span className="text-slate-500 dark:text-slate-500">-</span>
+                          <span className="text-slate-600 dark:text-slate-400">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">

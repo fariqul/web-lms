@@ -152,7 +152,7 @@ export default function RiwayatAbsensiPage() {
                         <p className="text-sm text-slate-600 dark:text-slate-400">
                           {attendance.session?.created_at ? formatDate(attendance.session.created_at) : '-'}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
                           {attendance.session?.teacher?.name || 'Guru'} • {attendance.session?.class?.name || ''}
                         </p>
                       </div>
@@ -163,7 +163,7 @@ export default function RiwayatAbsensiPage() {
                         {statusConfig.label}
                       </span>
                       {attendance.scanned_at && (
-                        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                           {new Date(attendance.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       )}

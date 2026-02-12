@@ -351,7 +351,7 @@ export default function AdminUsersPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 dark:text-slate-500 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-600 dark:text-slate-400 hover:text-slate-600"
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -463,7 +463,7 @@ export default function AdminUsersPage() {
                   <button
                     type="button"
                     onClick={() => setResetPasswordData({ ...resetPasswordData, showPassword: !resetPasswordData.showPassword })}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 dark:text-slate-500 hover:text-slate-600"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-600 dark:text-slate-400 hover:text-slate-600"
                     aria-label={resetPasswordData.showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
                     {resetPasswordData.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

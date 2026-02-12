@@ -109,7 +109,7 @@ export default function LupaPasswordPage() {
                     Email Akun <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
                     <input
                       type="email"
                       placeholder="Email yang digunakan untuk login"
@@ -124,10 +124,10 @@ export default function LupaPasswordPage() {
                 {/* Nama Lengkap (optional) */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Nama Lengkap <span className="text-slate-500 dark:text-slate-500 text-xs">(opsional)</span>
+                    Nama Lengkap <span className="text-slate-600 dark:text-slate-400 text-xs">(opsional)</span>
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
                     <input
                       type="text"
                       placeholder="Nama lengkap Anda"
@@ -141,7 +141,7 @@ export default function LupaPasswordPage() {
                 {/* Contact Type */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Hubungi saya via <span className="text-slate-500 dark:text-slate-500 text-xs">(opsional)</span>
+                    Hubungi saya via <span className="text-slate-600 dark:text-slate-400 text-xs">(opsional)</span>
                   </label>
                   <div className="flex gap-2 mb-2">
                     <button
@@ -169,9 +169,9 @@ export default function LupaPasswordPage() {
                   </div>
                   <div className="relative">
                     {contactType === 'whatsapp' ? (
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
                     ) : (
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
                     )}
                     <input
                       type={contactType === 'email' ? 'email' : 'tel'}
@@ -185,7 +185,7 @@ export default function LupaPasswordPage() {
                       className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     Admin akan menghubungi Anda untuk memberitahu password baru
                   </p>
                 </div>

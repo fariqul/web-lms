@@ -138,7 +138,7 @@ export default function JadwalPage() {
           <Card className="p-8 text-center">
             <Calendar className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
             <p className="text-slate-600 dark:text-slate-400">Tidak ada jadwal untuk {DAYS[selectedDay - 1]}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Jadwal akan muncul jika sudah ditambahkan oleh admin</p>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -164,11 +164,11 @@ export default function JadwalPage() {
                       
                       <div className="mt-3 space-y-2">
                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <User className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                          <User className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                           <span>{schedule.teacher?.name || schedule.class_room?.name || '-'}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <MapPin className="w-4 h-4 text-slate-500 dark:text-slate-500" />
+                          <MapPin className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                           <span>{schedule.room || '-'}</span>
                         </div>
                       </div>
@@ -198,7 +198,7 @@ export default function JadwalPage() {
                     <p className={`text-lg font-bold ${daySchedules.length > 0 ? 'text-sky-500' : 'text-slate-400 dark:text-slate-600'}`}>
                       {daySchedules.length}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">mata pelajaran</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">mata pelajaran</p>
                   </div>
                 );
               })}

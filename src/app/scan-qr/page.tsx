@@ -246,7 +246,7 @@ export default function ScanQRPage() {
                 </p>
               </>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 dark:text-slate-500">
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 dark:text-slate-400">
                 <QrCode className="w-16 h-16 mb-4" />
                 <p className="text-sm">Kamera tidak aktif</p>
                 <p className="text-xs mt-2">Klik tombol di bawah untuk mulai scan</p>

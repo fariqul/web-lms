@@ -260,7 +260,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-600 dark:text-slate-400" />
                   <input
                     type="text"
                     placeholder="Cari nama siswa…"
@@ -285,11 +285,11 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                           key={student.id}
                           className="flex items-center px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
-                          <span className="w-10 text-sm text-slate-500 dark:text-slate-500">{index + 1}</span>
+                          <span className="w-10 text-sm text-slate-600 dark:text-slate-400">{index + 1}</span>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-slate-800 dark:text-white">{student.name}</p>
                             {student.nisn && (
-                              <p className="text-xs text-slate-500 dark:text-slate-500">NISN: {student.nisn}</p>
+                              <p className="text-xs text-slate-600 dark:text-slate-400">NISN: {student.nisn}</p>
                             )}
                           </div>
                           <div className="w-52 flex gap-1 justify-center">
@@ -305,7 +305,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                                         opt.value === 'sakit' ? 'ring-yellow-400' :
                                         'ring-red-400'
                                       }`
-                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 {opt.label}
@@ -351,7 +351,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
               <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <UserCheck className="w-12 h-12 mx-auto mb-2 text-slate-400 dark:text-slate-600" />
                 <p>Pilih kelas untuk mulai absensi manual</p>
-                <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Guru dapat menandai status setiap siswa: Hadir, Izin, Sakit, atau Alpa
                 </p>
               </div>

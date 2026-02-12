@@ -258,7 +258,7 @@ export default function ExamResultsPage() {
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Total Peserta</p>
                   <p className="text-xl font-bold text-slate-900 dark:text-white">{summary.total_students}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     {summary.completed} selesai · {summary.in_progress} mengerjakan · {summary.not_started + summary.missed} belum
                   </p>
                 </div>
@@ -285,7 +285,7 @@ export default function ExamResultsPage() {
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Lulus</p>
                   <p className="text-xl font-bold text-green-600">{passedCount}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Tertinggi: {summary.highest_score?.toFixed(1) ?? '-'}
                   </p>
                 </div>
@@ -299,7 +299,7 @@ export default function ExamResultsPage() {
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Tidak Lulus</p>
                   <p className="text-xl font-bold text-red-600">{failedCount > 0 ? failedCount : 0}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Terendah: {summary.lowest_score?.toFixed(1) ?? '-'}
                   </p>
                 </div>
@@ -311,7 +311,7 @@ export default function ExamResultsPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
               placeholder="Cari nama atau NIS siswa…"
@@ -353,7 +353,7 @@ export default function ExamResultsPage() {
             <div className="p-8 text-center">
               <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada hasil ujian</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Hasil akan muncul setelah siswa mengerjakan ujian</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Hasil akan muncul setelah siswa mengerjakan ujian</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -400,18 +400,18 @@ export default function ExamResultsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
                         {result.status === 'in_progress' ? (
-                          <span className="text-slate-500 dark:text-slate-500">-</span>
+                          <span className="text-slate-600 dark:text-slate-400">-</span>
                         ) : (
                           <>
                             <span className="text-green-600 font-medium tabular-nums">{result.total_correct}</span>
-                            <span className="text-slate-500 dark:text-slate-500 mx-1">/</span>
+                            <span className="text-slate-600 dark:text-slate-400 mx-1">/</span>
                             <span className="text-red-600 font-medium tabular-nums">{result.total_wrong}</span>
                           </>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
                         {result.status === 'in_progress' ? (
-                          <span className="text-slate-500 dark:text-slate-500">-</span>
+                          <span className="text-slate-600 dark:text-slate-400">-</span>
                         ) : (
                           <span className="font-medium text-slate-700 dark:text-slate-300 tabular-nums">
                             {result.total_score}/{result.max_score}

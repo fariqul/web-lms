@@ -126,7 +126,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
             {(['upload', 'preview', 'importing'] as const).map((s, i) => (
               <React.Fragment key={s}>
                 {i > 0 && <div className="w-8 h-0.5 bg-slate-200" />}
-                <div className={`flex items-center gap-2 ${step === s ? 'text-sky-500' : 'text-slate-500 dark:text-slate-500'}`}>
+                <div className={`flex items-center gap-2 ${step === s ? 'text-sky-500' : 'text-slate-600 dark:text-slate-400'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === s ? 'bg-sky-100 text-sky-500' : 'bg-slate-100'}`}>{i + 1}</div>
                   <span className="text-sm font-medium">{s === 'upload' ? 'Upload' : s === 'preview' ? 'Preview' : 'Import'}</span>
                 </div>
@@ -145,7 +145,7 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
                     {formData.file ? (
                       <div className="flex items-center justify-center gap-2 text-sky-500"><FileText className="w-8 h-8" /><span className="font-medium">{formData.file.name}</span></div>
                     ) : (
-                      <><Upload className="w-10 h-10 text-slate-500 dark:text-slate-500 mx-auto mb-2" /><p className="text-slate-600">Klik untuk upload atau drag & drop</p><p className="text-sm text-slate-500 dark:text-slate-500">PDF maksimal 10MB</p></>
+                      <><Upload className="w-10 h-10 text-slate-600 dark:text-slate-400 mx-auto mb-2" /><p className="text-slate-600">Klik untuk upload atau drag & drop</p><p className="text-sm text-slate-600 dark:text-slate-400">PDF maksimal 10MB</p></>
                     )}
                   </label>
                 </div>

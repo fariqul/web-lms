@@ -277,7 +277,7 @@ export default function NilaiPage() {
                 <p className={`text-xl font-bold ${getScoreColor(overallExamAvg)}`}>
                   {overallExamAvg.toFixed(1)}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500">{totalExams} ujian</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{totalExams} ujian</p>
               </div>
             </div>
           </Card>
@@ -291,7 +291,7 @@ export default function NilaiPage() {
                 <p className={`text-xl font-bold ${getScoreColor(overallAssignmentAvg)}`}>
                   {overallAssignmentAvg.toFixed(1)}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500">{totalAssignments} tugas</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{totalAssignments} tugas</p>
               </div>
             </div>
           </Card>
@@ -333,7 +333,7 @@ export default function NilaiPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
               placeholder="Cari nama atau NIS siswa…"
@@ -364,7 +364,7 @@ export default function NilaiPage() {
             <div className="p-8 text-center">
               <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada data nilai</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Nilai akan muncul setelah siswa mengerjakan ujian atau tugas</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Nilai akan muncul setelah siswa mengerjakan ujian atau tugas</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -499,7 +499,7 @@ export default function NilaiPage() {
                                       Nilai Ujian ({grade.exams.length})
                                     </h4>
                                     {grade.exams.length === 0 ? (
-                                      <p className="text-sm text-slate-500 dark:text-slate-500">Belum ada ujian yang dikerjakan</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Belum ada ujian yang dikerjakan</p>
                                     ) : (
                                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {grade.exams.map((exam, i) => (
@@ -554,7 +554,7 @@ export default function NilaiPage() {
                                                         setEditScore(exam.score.toString());
                                                         setEditingAssignment(null);
                                                       }}
-                                                      className="p-1 text-slate-500 dark:text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded"
+                                                      className="p-1 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded"
                                                       title="Edit nilai"
                                                     >
                                                       <Pencil className="w-3.5 h-3.5" />
@@ -578,7 +578,7 @@ export default function NilaiPage() {
                                       Nilai Tugas ({grade.assignments.length})
                                     </h4>
                                     {grade.assignments.length === 0 ? (
-                                      <p className="text-sm text-slate-500 dark:text-slate-500">Belum ada tugas yang dikumpulkan</p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">Belum ada tugas yang dikumpulkan</p>
                                     ) : (
                                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {grade.assignments.map((assignment, i) => (
@@ -639,7 +639,7 @@ export default function NilaiPage() {
                                                         setEditScore(assignment.score?.toString() || '');
                                                         setEditingExam(null);
                                                       }}
-                                                      className="p-1 text-slate-500 dark:text-slate-500 hover:text-sky-500 hover:bg-sky-50 rounded"
+                                                      className="p-1 text-slate-600 dark:text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded"
                                                       title="Edit nilai"
                                                       aria-label="Edit nilai tugas"
                                                     >

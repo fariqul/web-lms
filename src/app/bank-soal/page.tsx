@@ -243,7 +243,7 @@ export default function BankSoalPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input type="text" placeholder="Cari soal…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" aria-label="Cari soal" name="searchSoal" />
           </div>
           <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" aria-label="Filter mata pelajaran" name="filterSubject">
@@ -264,7 +264,7 @@ export default function BankSoalPage() {
             <Card className="p-8 text-center">
               <HelpCircle className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada soal</p>
-              <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Klik tombol &quot;Tambah Soal&quot; untuk membuat soal baru</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol &quot;Tambah Soal&quot; untuk membuat soal baru</p>
             </Card>
           ) : (
             filteredQuestions.map((question, index) => (
