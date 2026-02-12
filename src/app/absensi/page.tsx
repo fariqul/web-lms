@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Select, Table } from '@/components/ui';
-import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Smartphone, AlertTriangle } from 'lucide-react';
+import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Smartphone, AlertTriangle, UserCheck } from 'lucide-react';
 import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { QRCodeSVG } from 'qrcode.react';
@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import { useAttendanceSocket } from '@/hooks/useSocket';
 import { SessionHistoryTab, SessionHistory } from '@/components/absensi/SessionHistoryTab';
+import { ManualAttendanceTab } from '@/components/absensi/ManualAttendanceTab';
 
 interface AttendanceRecord {
   id: number;
@@ -64,7 +65,7 @@ export default function AbsensiPage() {
   // Session history states
   const [sessionHistory, setSessionHistory] = useState<SessionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'manual' | 'history'>('create');
   
   // Anti-cheat options
   const [requireSchoolNetwork, setRequireSchoolNetwork] = useState(false);
@@ -526,6 +527,17 @@ export default function AbsensiPage() {
             Buat Sesi
           </button>
           <button
+            onClick={() => setActiveTab('manual')}
+            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'manual'
+                ? 'border-teal-500 text-teal-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 inline mr-2" />
+            Absen Manual
+          </button>
+          <button
             onClick={() => setActiveTab('history')}
             className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
               activeTab === 'history'
@@ -698,6 +710,12 @@ export default function AbsensiPage() {
               </Card>
             )}
           </>
+        ) : activeTab === 'manual' ? (
+          <ManualAttendanceTab
+            classes={classes}
+            subjects={subjects}
+            onSessionCreated={fetchSessionHistory}
+          />
         ) : (
           <SessionHistoryTab
             sessions={sessionHistory}
