@@ -218,10 +218,11 @@ export default function DashboardLayout({ children }: SidebarProps) {
                   <p className="text-[11px] text-slate-400 capitalize">{user?.role}</p>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-sm">
-                  {user?.avatar ? (
+                  {(user?.photo || user?.avatar) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={user.avatar}
-                      alt={user.name}
+                      src={user.photo || user.avatar}
+                      alt={user?.name || ''}
                       className="w-full h-full object-cover"
                     />
                   ) : (
