@@ -3,7 +3,8 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { GraduationCap, Lock, Eye, EyeOff, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
+import { Lock, Eye, EyeOff, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
 import { authAPI } from '@/services/api';
 
 function ResetPasswordForm() {
@@ -161,8 +162,8 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 overflow-hidden">
+            <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={64} height={64} className="object-contain drop-shadow-md" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-1">Reset Password</h1>
           <p className="text-slate-500 text-sm">SMA 15 Makassar LMS</p>

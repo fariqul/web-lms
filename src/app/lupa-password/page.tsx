@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { GraduationCap, Mail, Phone, ArrowLeft, Loader2, CheckCircle, User } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Phone, ArrowLeft, Loader2, CheckCircle, User } from 'lucide-react';
 import { authAPI } from '@/services/api';
 
 export default function LupaPasswordPage() {
@@ -49,8 +50,8 @@ export default function LupaPasswordPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl shadow-lg mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 overflow-hidden">
+            <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={64} height={64} className="object-contain drop-shadow-md" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-1">Lupa Password</h1>
           <p className="text-slate-500 text-sm">SMA 15 Makassar LMS</p>

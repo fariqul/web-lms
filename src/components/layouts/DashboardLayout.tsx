@@ -134,8 +134,8 @@ export default function DashboardLayout({ children }: SidebarProps) {
         {/* Logo & Header */}
         <div className="px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0 p-1">
-              <Image src="/logo_sma15.png" alt="Logo SMA 15" width={32} height={32} className="object-contain" />
+            <div className="w-10 h-10 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <Image src="/logo_sma15.png" alt="Logo SMA 15" width={40} height={40} className="object-contain" />
             </div>
             <div className="min-w-0">
               <h1 className="font-bold text-[15px] text-white leading-tight tracking-tight">SMA 15 Makassar</h1>
