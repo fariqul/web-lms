@@ -70,7 +70,16 @@ export default function ExamResultsPage() {
       const response = await api.get(`/exams/${examId}/results`);
       const data = response.data?.data;
       if (data) {
-        setResults(data.results || []);
+        setResults((data.results || []).map((r: StudentResult) => ({
+          ...r,
+          total_score: Number(r.total_score) || 0,
+          max_score: Number(r.max_score) || 0,
+          percentage: Number(r.percentage) || 0,
+          score: r.score != null ? Number(r.score) : null,
+          total_correct: Number(r.total_correct) || 0,
+          total_wrong: Number(r.total_wrong) || 0,
+          total_answered: Number(r.total_answered) || 0,
+        })));
         const s = data.summary;
         if (s) {
           setSummary({
