@@ -152,8 +152,20 @@ export default function UjianPage() {
     }
   };
 
-  const upcomingExams = exams.filter((e) => e.status === 'scheduled' || e.status === 'active' || e.status === 'draft');
-  const completedExams = exams.filter((e) => e.status === 'completed');
+  const now = new Date();
+  const upcomingExams = exams.filter((e) => {
+    // If backend says 'completed', it's not upcoming
+    if (e.status === 'completed') return false;
+    // If end_time has passed, treat as completed even if backend status is still 'scheduled'
+    if (e.end_time && new Date(e.end_time) < now && e.status !== 'draft') return false;
+    return true;
+  });
+  const completedExams = exams.filter((e) => {
+    if (e.status === 'completed') return true;
+    // Treat scheduled/active exams with passed end_time as completed
+    if (e.end_time && new Date(e.end_time) < now && e.status !== 'draft') return true;
+    return false;
+  });
 
   const handleDeleteExam = (examId: number, examTitle: string) => {
     setDeleteExam({ id: examId, title: examTitle });
@@ -174,39 +186,59 @@ export default function UjianPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-            <FileEdit className="w-3 h-3" />
-            Draft
-          </span>
-        );
-      case 'scheduled':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-            <Clock className="w-3 h-3" />
-            Terjadwal
-          </span>
-        );
-      case 'ongoing':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-            <PlayCircle className="w-3 h-3" />
-            Sedang Berlangsung
-          </span>
-        );
-      case 'completed':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-            <CheckCircle className="w-3 h-3" />
-            Selesai
-          </span>
-        );
-      default:
-        return null;
+  const getStatusBadge = (exam: Exam) => {
+    const now = new Date();
+    const endTime = exam.end_time ? new Date(exam.end_time) : null;
+    const startTime = exam.start_time ? new Date(exam.start_time) : null;
+
+    // If end_time has passed and not draft, show as "Selesai"
+    if (exam.status === 'completed' || (endTime && endTime < now && exam.status !== 'draft')) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+          <CheckCircle className="w-3 h-3" />
+          Selesai
+        </span>
+      );
     }
+
+    // Currently active (between start and end time)
+    if (startTime && endTime && now >= startTime && now <= endTime) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+          <PlayCircle className="w-3 h-3" />
+          Sedang Berlangsung
+        </span>
+      );
+    }
+
+    if (exam.status === 'draft') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+          <FileEdit className="w-3 h-3" />
+          Draft
+        </span>
+      );
+    }
+
+    if (exam.status === 'scheduled') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+          <Clock className="w-3 h-3" />
+          Terjadwal
+        </span>
+      );
+    }
+
+    if (exam.status === 'active') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+          <PlayCircle className="w-3 h-3" />
+          Sedang Berlangsung
+        </span>
+      );
+    }
+
+    return null;
   };
 
   if (loading) {
@@ -256,7 +288,7 @@ export default function UjianPage() {
                         <p className="text-sm text-gray-500">{exam.subject}</p>
                       </div>
                     </div>
-                    {getStatusBadge(exam.status)}
+                    {getStatusBadge(exam)}
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
@@ -332,7 +364,7 @@ export default function UjianPage() {
                         <p className="text-sm text-gray-500">{exam.subject}</p>
                       </div>
                     </div>
-                    {getStatusBadge(exam.status)}
+                    {getStatusBadge(exam)}
                   </div>
                   <Link href={`/ujian/${exam.id}/results`}>
                     <Button variant="outline" fullWidth>

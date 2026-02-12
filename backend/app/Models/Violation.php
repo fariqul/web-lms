@@ -17,6 +17,7 @@ class Violation extends Model
         'description',
         'screenshot',
         'recorded_at',
+        'timestamp',
     ];
 
     protected $casts = [

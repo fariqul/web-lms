@@ -42,7 +42,7 @@ export default function NilaiSiswaPage() {
           id: exam.id,
           exam_title: exam.title,
           subject: exam.subject,
-          score: exam.my_result?.percentage ?? exam.my_result?.score ?? 0,
+          score: Number(exam.my_result?.percentage ?? exam.my_result?.score ?? 0) || 0,
           total_correct: exam.my_result?.total_correct || 0,
           total_wrong: exam.my_result?.total_wrong || 0,
           finished_at: exam.my_result?.finished_at || '',
@@ -65,7 +65,10 @@ export default function NilaiSiswaPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -208,9 +211,15 @@ export default function NilaiSiswaPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-green-600">{grade.total_correct}</span>
-                        <span className="text-gray-400 mx-1">/</span>
-                        <span className="text-red-600">{grade.total_wrong}</span>
+                        {grade.total_correct === 0 && grade.total_wrong === 0 ? (
+                          <span className="text-gray-400 text-sm">-</span>
+                        ) : (
+                          <>
+                            <span className="text-green-600 font-medium">{grade.total_correct}</span>
+                            <span className="text-gray-400 mx-1">/</span>
+                            <span className="text-red-600 font-medium">{grade.total_wrong}</span>
+                          </>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className={`inline-flex items-center justify-center w-12 h-12 rounded-full text-lg font-bold ${getScoreBg(grade.score)} ${getScoreColor(grade.score)}`}>

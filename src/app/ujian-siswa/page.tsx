@@ -93,8 +93,9 @@ export default function UjianSiswaPage() {
     const now = new Date();
     const startTime = new Date(exam.start_time);
     const endTime = new Date(exam.end_time);
+    const resultStatus = exam.my_result?.status;
 
-    if (exam.my_result?.status === 'completed') {
+    if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
       return { label: 'Selesai', color: 'bg-green-100 text-green-700', icon: CheckCircle };
     }
     if (now < startTime) {
@@ -103,7 +104,7 @@ export default function UjianSiswaPage() {
     if (now > endTime) {
       return { label: 'Berakhir', color: 'bg-red-100 text-red-700', icon: AlertCircle };
     }
-    if (exam.my_result?.status === 'in_progress') {
+    if (resultStatus === 'in_progress') {
       return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 text-yellow-700', icon: PlayCircle };
     }
     return { label: 'Tersedia', color: 'bg-blue-100 text-blue-700', icon: PlayCircle };
@@ -113,8 +114,14 @@ export default function UjianSiswaPage() {
     const now = new Date();
     const startTime = new Date(exam.start_time);
     const endTime = new Date(exam.end_time);
+    const resultStatus = exam.my_result?.status;
     
-    return now >= startTime && now <= endTime && exam.my_result?.status !== 'completed';
+    // Block if already completed/graded/submitted
+    if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
+      return false;
+    }
+    
+    return now >= startTime && now <= endTime;
   };
 
   const formatDateTime = (dateString: string) => {
@@ -173,14 +180,16 @@ export default function UjianSiswaPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      <span>{exam.duration_minutes} menit</span>
+                      <span>{exam.duration || exam.duration_minutes} menit</span>
                     </div>
                   </div>
 
-                  {exam.my_result?.status === 'completed' ? (
+                  {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (
                     <div className="bg-green-50 rounded-lg p-3 text-center">
                       <p className="text-sm text-gray-600">Nilai Anda</p>
-                      <p className="text-2xl font-bold text-green-600">{exam.my_result.score}</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {exam.my_result?.percentage ?? exam.my_result?.score ?? '-'}
+                      </p>
                     </div>
                   ) : canStartExam(exam) ? (
                     <Button

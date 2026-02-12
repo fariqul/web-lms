@@ -789,6 +789,7 @@ class ExamController extends Controller
             'description' => $request->description,
             'screenshot' => $screenshotPath,
             'recorded_at' => now(),
+            'timestamp' => now(),
         ]);
 
         // Update violation count

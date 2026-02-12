@@ -385,9 +385,11 @@ export default function EditSoalPage() {
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               exam?.status === 'draft' 
                 ? 'bg-gray-100 text-gray-700' 
-                : 'bg-green-100 text-green-700'
+                : exam?.status === 'scheduled'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-green-100 text-green-700'
             }`}>
-              {exam?.status === 'draft' ? 'Draft' : exam?.status === 'scheduled' ? 'Terjadwal' : 'Aktif'}
+              {exam?.status === 'draft' ? 'Draft' : exam?.status === 'scheduled' ? 'Terjadwal' : exam?.status === 'active' ? 'Aktif' : 'Selesai'}
             </span>
           </div>
         </div>
@@ -412,9 +414,11 @@ export default function EditSoalPage() {
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
-            Tambah Soal
-          </Button>
+          {exam?.status === 'draft' && (
+            <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+              Tambah Soal
+            </Button>
+          )}
           {exam?.status === 'draft' && (
             <Button 
               variant="outline" 
@@ -493,22 +497,26 @@ export default function EditSoalPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditQuestion(question)}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                      >
-                        <FileEdit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteQuestion(question.id!)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {exam?.status === 'draft' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditQuestion(question)}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          >
+                            <FileEdit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteQuestion(question.id!)}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
