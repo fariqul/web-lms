@@ -268,7 +268,7 @@ export default function ProgressPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Rata-rata Kelas</p>
-                    <p className={`text-xl font-bold ${getScoreColor(classReport.class_average ?? 0)}`}>{(classReport.class_average ?? 0).toFixed(1)}</p>
+                    <p className={`text-xl font-bold ${getScoreColor(Number(classReport.class_average ?? 0))}`}>{Number(classReport.class_average ?? 0).toFixed(1)}</p>
                   </div>
                 </div>
               </Card>
@@ -279,7 +279,7 @@ export default function ProgressPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Kehadiran</p>
-                    <p className="text-xl font-bold text-gray-900">{(classReport.attendance_rate ?? 0).toFixed(1)}%</p>
+                    <p className="text-xl font-bold text-gray-900">{Number(classReport.attendance_rate ?? 0).toFixed(1)}%</p>
                   </div>
                 </div>
               </Card>
@@ -304,7 +304,7 @@ export default function ProgressPage() {
                   <SimpleBarChart
                     data={classReport.subject_averages.map(sa => ({
                       name: sa.subject.length > 12 ? sa.subject.substring(0, 12) + '...' : sa.subject,
-                      value: Math.round(sa.average * 10) / 10,
+                      value: Math.round(Number(sa.average) * 10) / 10,
                     }))}
                     dataKey="value"
                     color="#0d9488"
@@ -339,9 +339,9 @@ export default function ProgressPage() {
                         <td className="py-3 px-4 text-gray-500 font-mono text-xs">{s.nisn}</td>
                         <td className="py-3 px-4 font-medium">{s.name}</td>
                         <td className="py-3 px-4">
-                          <span className={`font-semibold ${getScoreColor(s.average_score ?? 0)}`}>{(s.average_score ?? 0).toFixed(1)}</span>
+                          <span className={`font-semibold ${getScoreColor(Number(s.average_score ?? 0))}`}>{Number(s.average_score ?? 0).toFixed(1)}</span>
                         </td>
-                        <td className="py-3 px-4">{(s.attendance_rate ?? 0).toFixed(0)}%</td>
+                        <td className="py-3 px-4">{Number(s.attendance_rate ?? 0).toFixed(0)}%</td>
                         <td className="py-3 px-4 print:hidden">
                           <Button size="sm" variant="outline" onClick={() => fetchStudentReport(s.id)}>
                             Detail
@@ -387,12 +387,12 @@ export default function ProgressPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Card className="p-4 text-center">
                 <GraduationCap className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                <p className={`text-2xl font-bold ${getScoreColor(studentReport.summary.average_score ?? 0)}`}>{(studentReport.summary.average_score ?? 0).toFixed(1)}</p>
+                <p className={`text-2xl font-bold ${getScoreColor(Number(studentReport.summary.average_score ?? 0))}`}>{Number(studentReport.summary.average_score ?? 0).toFixed(1)}</p>
                 <p className="text-xs text-gray-500">Rata-rata Nilai</p>
               </Card>
               <Card className="p-4 text-center">
                 <ClipboardList className="w-6 h-6 text-teal-500 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{(studentReport.summary.attendance_rate ?? 0).toFixed(0)}%</p>
+                <p className="text-2xl font-bold text-gray-900">{Number(studentReport.summary.attendance_rate ?? 0).toFixed(0)}%</p>
                 <p className="text-xs text-gray-500">Kehadiran</p>
               </Card>
               <Card className="p-4 text-center">
@@ -428,12 +428,12 @@ export default function ProgressPage() {
                           <td className="py-3 px-4">{idx + 1}</td>
                           <td className="py-3 px-4 font-medium">{sa.subject}</td>
                           <td className="py-3 px-4">
-                            <span className={`font-semibold ${getScoreColor(sa.average ?? 0)}`}>{(sa.average ?? 0).toFixed(1)}</span>
+                            <span className={`font-semibold ${getScoreColor(Number(sa.average ?? 0))}`}>{Number(sa.average ?? 0).toFixed(1)}</span>
                           </td>
                           <td className="py-3 px-4">{sa.count}</td>
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${sa.average >= 90 ? 'bg-green-100 text-green-700' : sa.average >= 80 ? 'bg-blue-100 text-blue-700' : sa.average >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                              {sa.average >= 90 ? 'A' : sa.average >= 80 ? 'B' : sa.average >= 70 ? 'C' : 'D'}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 text-green-700' : Number(sa.average) >= 80 ? 'bg-blue-100 text-blue-700' : Number(sa.average) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                              {Number(sa.average) >= 90 ? 'A' : Number(sa.average) >= 80 ? 'B' : Number(sa.average) >= 70 ? 'C' : 'D'}
                             </span>
                           </td>
                         </tr>
@@ -493,7 +493,7 @@ export default function ProgressPage() {
                           <td className="py-3 px-4">{es.subject}</td>
                           <td className="py-3 px-4">{es.score}/{es.max_score}</td>
                           <td className="py-3 px-4">
-                            <span className={`font-semibold ${getScoreColor(es.percentage ?? 0)}`}>{(es.percentage ?? 0).toFixed(0)}%</span>
+                            <span className={`font-semibold ${getScoreColor(Number(es.percentage ?? 0))}`}>{Number(es.percentage ?? 0).toFixed(0)}%</span>
                           </td>
                           <td className="py-3 px-4 text-gray-500">
                             {new Date(es.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}

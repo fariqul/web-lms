@@ -417,7 +417,7 @@ export default function ExamResultsPage() {
                         ) : (
                           <div className={`inline-flex items-center justify-center w-11 h-11 rounded-full ${getScoreBg(result.percentage)}`}>
                             <span className={`text-sm font-bold ${getScoreColor(result.percentage)}`}>
-                              {result.percentage?.toFixed(0)}
+                              {Number(result.percentage ?? 0).toFixed(0)}
                             </span>
                           </div>
                         )}
