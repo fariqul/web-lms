@@ -19,6 +19,8 @@ export interface SEBConfig {
   quitPassword?: string;
   /** Enable URL filtering to restrict navigation */
   enableURLFilter: boolean;
+  /** Additional hostnames to allow through URL filter (e.g., API domain) */
+  allowedHosts?: string[];
   /** Allow user to navigate back */
   allowBrowseBack: boolean;
   /** Show the SEB taskbar */
@@ -173,20 +175,37 @@ export function generateSEBConfigXML(config: SEBConfig): string {
   entries.push(plistEntry('enableURLFilter', config.enableURLFilter));
   entries.push(plistEntry('blockPopUpWindows', config.blockPopUpWindows));
 
-  // URL filter rules — only allow the exam URL domain
+  // URL filter rules — allow the exam URL domain AND additional hosts (API, etc.)
   if (config.enableURLFilter) {
     try {
       const url = new URL(config.startURL);
       const baseHost = url.hostname;
-      // Allow the exam domain and its API
-      entries.push(plistEntry('URLFilterRules', [
+      
+      // Build filter rules — start with the frontend domain
+      const filterRules: { action: number; active: boolean; expression: string; regex: boolean }[] = [
         {
           action: 1, // allow
           active: true,
           expression: `${baseHost}/*`,
           regex: false,
         },
-      ]));
+      ];
+      
+      // Add extra allowed hosts (API domain, etc.)
+      if (config.allowedHosts) {
+        for (const host of config.allowedHosts) {
+          if (host && host !== baseHost) {
+            filterRules.push({
+              action: 1,
+              active: true,
+              expression: `${host}/*`,
+              regex: false,
+            });
+          }
+        }
+      }
+
+      entries.push(plistEntry('URLFilterRules', filterRules));
     } catch {
       // If URL parsing fails, skip filter rules
     }
@@ -280,14 +299,26 @@ export async function downloadSEBConfig(
   settings: SEBExamSettings,
   baseUrl?: string,
 ): Promise<void> {
-  // Determine the exam URL
+  // Determine the start URL — go to login page so students authenticate first
+  // SEB opens a fresh browser without existing session/cookies
   const origin = baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://web-lms-rowr.vercel.app');
-  const startURL = `${origin}/ujian/${examId}`;
+  const startURL = `${origin}/login`;
 
   // Hash the quit password if provided
   let hashedPassword: string | undefined;
   if (settings.sebQuitPassword) {
     hashedPassword = await hashPasswordSHA256(settings.sebQuitPassword);
+  }
+
+  // Detect the API host to whitelist in URL filter
+  const allowedHosts: string[] = [];
+  const apiUrlEnv = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : undefined;
+  if (apiUrlEnv) {
+    try {
+      const apiUrl = new URL(apiUrlEnv);
+      // Use host (includes port) for IP-based backends like 52.63.72.178:8000
+      allowedHosts.push(apiUrl.host);
+    } catch { /* ignore */ }
   }
 
   const config: SEBConfig = {
@@ -296,6 +327,7 @@ export async function downloadSEBConfig(
     allowQuit: settings.sebAllowQuit,
     quitPassword: hashedPassword,
     enableURLFilter: true,
+    allowedHosts,
     allowBrowseBack: false,
     showTaskbar: settings.sebShowTaskbar,
     showReloadButton: true,
