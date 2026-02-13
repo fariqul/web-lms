@@ -1,6 +1,9 @@
 'use client';
+/* eslint-disable react-compiler/react-compiler */
+// ^ Opt out of React Compiler — html5-qrcode does imperative DOM manipulation
+// that conflicts with the compiler's auto-memoization.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button } from '@/components/ui';
 import { Camera, QrCode, CheckCircle, AlertCircle, Loader2, CameraOff } from 'lucide-react';
@@ -8,25 +11,44 @@ import api from '@/services/api';
 
 type ScanStatus = 'idle' | 'scanning' | 'processing' | 'success' | 'error';
 
+// Type the html5-qrcode scanner instance
+interface Html5QrCodeInstance {
+  start: (
+    cameraIdOrConfig: { facingMode: string } | string,
+    config: { fps: number; qrbox: { width: number; height: number }; aspectRatio?: number },
+    onSuccess: (decodedText: string) => void,
+    onError: () => void,
+  ) => Promise<void>;
+  stop: () => Promise<void>;
+  clear: () => void;
+  getState: () => number;
+}
+
 export default function ScanQRPage() {
   const [status, setStatus] = useState<ScanStatus>('idle');
   const [message, setMessage] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [shouldStartScanner, setShouldStartScanner] = useState(false);
   const [manualToken, setManualToken] = useState('');
   const [lastScannedToken, setLastScannedToken] = useState('');
-  const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrCodeRef = useRef<unknown>(null);
+  const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const html5QrCodeRef = useRef<Html5QrCodeInstance | null>(null);
   const isProcessingRef = useRef(false);
-  const handleScanQRRef = useRef<(qrData: string) => void>(() => {});
+  const isMountedRef = useRef(true);
+  const isInitializingRef = useRef(false);
   const [pendingApproval, setPendingApproval] = useState(false);
 
+  // Track mount state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Generate device fingerprint
-  const getDeviceId = () => {
-    // Check if we have a stored device ID
+  const getDeviceId = useCallback(() => {
     let deviceId = localStorage.getItem('device_id');
     if (!deviceId) {
-      // Generate new device ID
       const components = [
         navigator.userAgent,
         navigator.language,
@@ -37,44 +59,63 @@ export default function ScanQRPage() {
       localStorage.setItem('device_id', deviceId);
     }
     return deviceId;
-  };
+  }, []);
 
-  const handleScanQR = async (qrData: string) => {
-    // Prevent duplicate scans using ref to avoid stale closure
-    if (isProcessingRef.current) {
-      return;
+  // Safely stop and clean up scanner
+  const destroyScanner = useCallback(async () => {
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) return;
+
+    try {
+      // html5-qrcode states: NOT_STARTED=1, SCANNING=2, PAUSED=3
+      const state = scanner.getState();
+      if (state === 2 || state === 3) {
+        await scanner.stop();
+      }
+      scanner.clear();
+    } catch (err) {
+      // Scanner might already be stopped, ignore
+      console.warn('Scanner cleanup:', err);
+    } finally {
+      html5QrCodeRef.current = null;
     }
-    
+  }, []);
+
+  const handleScanQR = useCallback(async (qrData: string) => {
+    if (isProcessingRef.current) return;
+
     isProcessingRef.current = true;
     setLastScannedToken(qrData);
     setPendingApproval(false);
-    
+
     try {
       setStatus('processing');
-      
-      // Submit attendance to API with device ID
+
       const response = await api.post('/attendance/submit', {
         qr_token: qrData,
         device_id: getDeviceId(),
       });
 
+      if (!isMountedRef.current) return;
+
       if (response.data?.success) {
         setStatus('success');
         setMessage(response.data?.message || 'Absensi berhasil dicatat!');
         // Stop scanner on success
-        stopCamera();
+        await destroyScanner();
+        setIsCameraActive(false);
       } else {
         setStatus('error');
         setMessage(response.data?.message || 'QR Code tidak valid');
         isProcessingRef.current = false;
       }
     } catch (error: unknown) {
+      if (!isMountedRef.current) return;
       console.error('Scan failed:', error);
       setStatus('error');
-      const err = error as { response?: { data?: { message?: string; error_code?: string; requires_approval?: boolean } } };
+      const err = error as { response?: { data?: { message?: string; error_code?: string } } };
       const errorCode = err.response?.data?.error_code;
-      
-      // Handle specific error codes
+
       if (errorCode === 'NETWORK_NOT_ALLOWED') {
         setMessage('⚠️ ' + (err.response?.data?.message || 'Harus menggunakan WiFi sekolah'));
       } else if (errorCode === 'DEVICE_SWITCH_PENDING') {
@@ -87,140 +128,179 @@ export default function ScanQRPage() {
       }
       isProcessingRef.current = false;
     }
-  };
+  }, [getDeviceId, destroyScanner]);
 
-  // Keep ref updated with latest handleScanQR
+  // Keep ref for the scanner callback (avoids stale closure in html5-qrcode)
+  const handleScanQRRef = useRef(handleScanQR);
   useEffect(() => {
     handleScanQRRef.current = handleScanQR;
-  });
+  }, [handleScanQR]);
 
-  const stopCamera = async () => {
-    try {
-      if (html5QrCodeRef.current) {
-        const scanner = html5QrCodeRef.current as { stop: () => Promise<void>; clear: () => void };
-        await scanner.stop();
-        scanner.clear();
-        html5QrCodeRef.current = null;
-      }
-    } catch (error) {
-      console.error('Error stopping camera:', error);
-    }
-    setIsCameraActive(false);
-    setShouldStartScanner(false);
-  };
+  const initializeScanner = useCallback(async () => {
+    // Prevent concurrent initialization
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
 
-  const initializeScanner = async () => {
     try {
+      // Always clean up any previous instance first
+      await destroyScanner();
+
       // Dynamically import html5-qrcode (client-side only)
       const { Html5Qrcode } = await import('html5-qrcode');
-      
+
+      if (!isMountedRef.current) return;
+
       const scannerId = 'qr-scanner';
-      
-      // Make sure the scanner element exists
       const scannerElement = document.getElementById(scannerId);
       if (!scannerElement) {
         console.error('Scanner element not found');
         setStatus('error');
         setMessage('Gagal menginisialisasi scanner');
+        setIsCameraActive(false);
         return;
       }
 
-      const html5QrCode = new Html5Qrcode(scannerId);
+      // Clear any leftover DOM from previous scanner
+      scannerElement.innerHTML = '';
+
+      const html5QrCode = new Html5Qrcode(scannerId) as unknown as Html5QrCodeInstance;
       html5QrCodeRef.current = html5QrCode;
 
+      // Calculate responsive qrbox based on container width
+      const containerWidth = scannerElement.clientWidth || 300;
+      const qrboxSize = Math.min(Math.floor(containerWidth * 0.7), 250);
+
       const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1,
+        fps: 5, // Lower FPS for better mobile compatibility
+        qrbox: { width: qrboxSize, height: qrboxSize },
       };
 
-      // Success callback
       const onScanSuccess = (decodedText: string) => {
-        // QR Code scanned successfully - use ref to avoid stale closure
         handleScanQRRef.current(decodedText);
       };
 
-      // Error callback (ignore scan errors)
       const onScanError = () => {
-        // Scan in progress, no QR detected yet (ignore errors)
+        // No QR detected yet — expected, ignore
       };
 
-      // Try back camera first, then fall back to front camera
+      // Try back camera first (most common for QR scanning)
+      let started = false;
       try {
         await html5QrCode.start(
           { facingMode: 'environment' },
           config,
           onScanSuccess,
-          onScanError
+          onScanError,
         );
-      } catch (backCameraError) {
-        console.warn('Back camera not available, trying front camera:', backCameraError);
+        started = true;
+      } catch (backErr) {
+        console.warn('Back camera unavailable, trying front:', backErr);
+      }
+
+      if (!started) {
         try {
           await html5QrCode.start(
             { facingMode: 'user' },
             config,
             onScanSuccess,
-            onScanError
+            onScanError,
           );
-        } catch (frontCameraError) {
-          console.error('Both cameras failed:', frontCameraError);
-          throw frontCameraError;
+          started = true;
+        } catch (frontErr) {
+          console.error('Both cameras failed:', frontErr);
+          throw frontErr;
         }
+      }
+
+      if (!isMountedRef.current) {
+        // Component unmounted during async init — clean up
+        await destroyScanner();
+        return;
       }
 
       setStatus('scanning');
     } catch (error) {
       console.error('Camera access failed:', error);
-      setStatus('error');
-      setMessage('Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.');
-      setIsCameraActive(false);
-      setShouldStartScanner(false);
+      if (isMountedRef.current) {
+        setStatus('error');
+        setMessage('Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.');
+        setIsCameraActive(false);
+      }
+    } finally {
+      isInitializingRef.current = false;
     }
-  };
+  }, [destroyScanner]);
 
-  // Effect to initialize scanner after element is rendered
+  // Start scanner after the DOM element is rendered
   useEffect(() => {
-    if (shouldStartScanner && isCameraActive) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        initializeScanner();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldStartScanner, isCameraActive]);
+    if (!isCameraActive) return;
 
-  const startCamera = () => {
-    // First show the scanner element, then initialize
+    // Wait for next frame to ensure the #qr-scanner element is in the DOM
+    let cancelled = false;
+    const frameId = requestAnimationFrame(() => {
+      if (!cancelled) {
+        // Extra delay for slow devices
+        const timer = setTimeout(() => {
+          if (!cancelled) initializeScanner();
+        }, 200);
+        // Store timer for cleanup
+        (frameId as unknown as { _timer?: NodeJS.Timeout })._timer = timer;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [isCameraActive, initializeScanner]);
+
+  const startCamera = useCallback(() => {
+    setStatus('idle');
+    setMessage('');
+    isProcessingRef.current = false;
     setIsCameraActive(true);
-    setShouldStartScanner(true);
-  };
+  }, []);
+
+  const stopCamera = useCallback(async () => {
+    await destroyScanner();
+    setIsCameraActive(false);
+  }, [destroyScanner]);
 
   // Manual token submit
-  const handleManualSubmit = () => {
+  const handleManualSubmit = useCallback(() => {
     if (!manualToken.trim()) {
       setStatus('error');
       setMessage('Masukkan QR token untuk submit absensi.');
       return;
     }
     handleScanQR(manualToken.trim());
-  };
+  }, [manualToken, handleScanQR]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (html5QrCodeRef.current) {
-        const scanner = html5QrCodeRef.current as { stop: () => Promise<void>; clear: () => void };
-        scanner.stop().catch(console.error);
+      const scanner = html5QrCodeRef.current;
+      if (scanner) {
+        try {
+          const state = scanner.getState();
+          if (state === 2 || state === 3) {
+            scanner.stop().catch(() => {});
+          }
+          scanner.clear();
+        } catch {
+          // ignore
+        }
+        html5QrCodeRef.current = null;
       }
     };
   }, []);
 
-  const resetStatus = () => {
+  const resetStatus = useCallback(() => {
     setStatus('idle');
     setMessage('');
     setLastScannedToken('');
     isProcessingRef.current = false;
-  };
+  }, []);
 
   return (
     <DashboardLayout>
@@ -232,14 +312,15 @@ export default function ScanQRPage() {
           />
 
           {/* Camera/Scanner View */}
-          <div className="relative aspect-square bg-slate-900 rounded-xl overflow-hidden mb-4">
+          <div className="relative aspect-square bg-slate-900 rounded-xl mb-4">
             {isCameraActive ? (
               <>
-                {/* QR Scanner will render here */}
+                {/* QR Scanner will render here — html5-qrcode manages its own DOM */}
                 <div 
                   id="qr-scanner" 
-                  ref={scannerRef}
-                  className="w-full h-full"
+                  ref={scannerContainerRef}
+                  className="w-full h-full rounded-xl overflow-hidden"
+                  style={{ minHeight: '280px' }}
                 />
                 <p className="absolute bottom-4 left-0 right-0 text-center text-white text-sm bg-black/50 py-2">
                   📷 Arahkan kamera ke QR Code
