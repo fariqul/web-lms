@@ -19,6 +19,9 @@ import {
   X,
   Shield,
   Download,
+  Zap,
+  Calendar,
+  AlertTriangle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -517,10 +520,15 @@ export default function EditSoalPage() {
               ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'
               : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
           }`}>
-            <span className="text-xl">{
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
               exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-                ? '⚡' : '📅'
-            }</span>
+                ? 'bg-teal-100 dark:bg-teal-800/40' : 'bg-amber-100 dark:bg-amber-800/40'
+            }`}>
+              {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
+                ? <Zap className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                : <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              }
+            </div>
             <div>
               <p className="text-sm font-medium text-slate-800 dark:text-white">
                 {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
@@ -588,7 +596,7 @@ export default function EditSoalPage() {
                     className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   {!sebSettings.sebQuitPassword && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">⚠️ Password wajib diisi agar guru/siswa bisa keluar SEB</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" /> Password wajib diisi agar guru/siswa bisa keluar SEB</p>
                   )}
                 </div>
               )}
@@ -596,7 +604,7 @@ export default function EditSoalPage() {
               {!sebSettings.sebAllowQuit && (
                 <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
                   <p className="text-xs text-red-700 dark:text-red-300">
-                    ⚠️ <strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
+                    <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" /><strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
                   </p>
                 </div>
               )}

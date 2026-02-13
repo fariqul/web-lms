@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
-import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download } from 'lucide-react';
+import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download, Zap, AlertTriangle, Info } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -482,7 +482,8 @@ export default function UjianPage() {
                     : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
-                ⚡ Mulai Saat Publish
+                <Zap className="w-4 h-4" />
+                Mulai Saat Publish
               </button>
               <button
                 type="button"
@@ -493,7 +494,8 @@ export default function UjianPage() {
                     : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
-                📅 Jadwalkan Waktu
+                <Calendar className="w-4 h-4" />
+                Jadwalkan Waktu
               </button>
             </div>
             {scheduleMode === 'immediate' && (
@@ -566,7 +568,7 @@ export default function UjianPage() {
                       placeholder="Wajib diisi — password yang guru bagikan untuk keluar"
                     />
                     {!sebSettings.sebQuitPassword && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">⚠️ Password wajib diisi agar guru/siswa bisa keluar SEB</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" /> Password wajib diisi agar guru/siswa bisa keluar SEB</p>
                     )}
                   </div>
                 )}
@@ -574,7 +576,7 @@ export default function UjianPage() {
                 {!sebSettings.sebAllowQuit && (
                   <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
                     <p className="text-xs text-red-700 dark:text-red-300">
-                      ⚠️ <strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
+                      <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" /><strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
                     </p>
                   </div>
                 )}
@@ -620,7 +622,7 @@ export default function UjianPage() {
 
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    💡 File konfigurasi SEB (.seb) dapat didownload setelah ujian dibuat. Bagikan file tersebut ke siswa untuk membuka ujian menggunakan Safe Exam Browser.
+                    <Info className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />File konfigurasi SEB (.seb) dapat didownload setelah ujian dibuat. Bagikan file tersebut ke siswa untuk membuka ujian menggunakan Safe Exam Browser.
                   </p>
                 </div>
               </div>
