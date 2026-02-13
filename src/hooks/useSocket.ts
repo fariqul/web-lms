@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 interface UseSocketOptions {
@@ -92,7 +92,7 @@ export function useSocket({
     };
   }, [autoConnect, connect, disconnect]);
 
-  return {
+  return useMemo(() => ({
     socket: socketRef.current,
     isConnected,
     emit,
@@ -100,50 +100,59 @@ export function useSocket({
     off,
     connect,
     disconnect,
-  };
+  }), [isConnected, emit, on, off, connect, disconnect]);
 }
 
 // Specialized hook for exam monitoring
 export function useExamSocket(examId: number) {
-  const socket = useSocket();
+  const { on, off, emit, isConnected, connect, disconnect } = useSocket();
 
   const joinExamRoom = useCallback(() => {
-    socket.emit('join-exam', { examId });
-  }, [socket, examId]);
+    emit('join-exam', { examId });
+  }, [emit, examId]);
 
   const leaveExamRoom = useCallback(() => {
-    socket.emit('leave-exam', { examId });
-  }, [socket, examId]);
+    emit('leave-exam', { examId });
+  }, [emit, examId]);
 
   const onStudentJoined = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`exam.${examId}.student-joined`, callback);
-  }, [socket, examId]);
+    on(`exam.${examId}.student-joined`, callback);
+  }, [on, examId]);
 
   const onStudentSubmitted = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`exam.${examId}.student-submitted`, callback);
-  }, [socket, examId]);
+    on(`exam.${examId}.student-submitted`, callback);
+  }, [on, examId]);
 
   const onViolationReported = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`exam.${examId}.violation`, callback);
-  }, [socket, examId]);
+    on(`exam.${examId}.violation`, callback);
+  }, [on, examId]);
 
   const onAnswerProgress = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`exam.${examId}.answer-progress`, callback);
-  }, [socket, examId]);
+    on(`exam.${examId}.answer-progress`, callback);
+  }, [on, examId]);
 
   const onSnapshot = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`exam.${examId}.snapshot`, callback);
-  }, [socket, examId]);
+    on(`exam.${examId}.snapshot`, callback);
+  }, [on, examId]);
 
   useEffect(() => {
-    joinExamRoom();
+    if (examId > 0) {
+      joinExamRoom();
+    }
     return () => {
-      leaveExamRoom();
+      if (examId > 0) {
+        leaveExamRoom();
+      }
     };
-  }, [joinExamRoom, leaveExamRoom]);
+  }, [examId, joinExamRoom, leaveExamRoom]);
 
-  return {
-    ...socket,
+  return useMemo(() => ({
+    isConnected,
+    emit,
+    on,
+    off,
+    connect,
+    disconnect,
     joinExamRoom,
     leaveExamRoom,
     onStudentJoined,
@@ -151,85 +160,99 @@ export function useExamSocket(examId: number) {
     onViolationReported,
     onAnswerProgress,
     onSnapshot,
-  };
+  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot]);
 }
 
 // Specialized hook for attendance monitoring
 export function useAttendanceSocket(sessionId: number) {
-  const socket = useSocket();
+  const { on, off, emit, isConnected, connect, disconnect } = useSocket();
 
   const joinSessionRoom = useCallback(() => {
-    socket.emit('join-attendance', { sessionId });
-  }, [socket, sessionId]);
+    emit('join-attendance', { sessionId });
+  }, [emit, sessionId]);
 
   const leaveSessionRoom = useCallback(() => {
-    socket.emit('leave-attendance', { sessionId });
-  }, [socket, sessionId]);
+    emit('leave-attendance', { sessionId });
+  }, [emit, sessionId]);
 
   const onStudentScanned = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`attendance.${sessionId}.scanned`, callback);
-  }, [socket, sessionId]);
+    on(`attendance.${sessionId}.scanned`, callback);
+  }, [on, sessionId]);
 
   const onQRRefreshed = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`attendance.${sessionId}.qr-refreshed`, callback);
-  }, [socket, sessionId]);
+    on(`attendance.${sessionId}.qr-refreshed`, callback);
+  }, [on, sessionId]);
 
   const onDeviceSwitchRequested = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`attendance.${sessionId}.device-switch-requested`, callback);
-  }, [socket, sessionId]);
+    on(`attendance.${sessionId}.device-switch-requested`, callback);
+  }, [on, sessionId]);
 
   const onDeviceSwitchHandled = useCallback((callback: (data: unknown) => void) => {
-    socket.on(`attendance.${sessionId}.device-switch-handled`, callback);
-  }, [socket, sessionId]);
+    on(`attendance.${sessionId}.device-switch-handled`, callback);
+  }, [on, sessionId]);
 
   useEffect(() => {
-    joinSessionRoom();
+    if (sessionId > 0) {
+      joinSessionRoom();
+    }
     return () => {
-      leaveSessionRoom();
+      if (sessionId > 0) {
+        leaveSessionRoom();
+      }
     };
-  }, [joinSessionRoom, leaveSessionRoom]);
+  }, [sessionId, joinSessionRoom, leaveSessionRoom]);
 
-  return {
-    ...socket,
+  return useMemo(() => ({
+    isConnected,
+    emit,
+    on,
+    off,
+    connect,
+    disconnect,
     joinSessionRoom,
     leaveSessionRoom,
     onStudentScanned,
     onQRRefreshed,
     onDeviceSwitchRequested,
     onDeviceSwitchHandled,
-  };
+  }), [isConnected, emit, on, off, connect, disconnect, joinSessionRoom, leaveSessionRoom, onStudentScanned, onQRRefreshed, onDeviceSwitchRequested, onDeviceSwitchHandled]);
 }
 
 // Hook for listening to device switch events across multiple attendance sessions
 export function useDeviceSwitchSocket(sessionIds: number[]) {
-  const socket = useSocket();
+  const { on, off, emit, isConnected, connect, disconnect } = useSocket();
 
   useEffect(() => {
     // Join all attendance session rooms
     for (const sessionId of sessionIds) {
-      socket.emit('join-attendance', { sessionId });
+      emit('join-attendance', { sessionId });
     }
 
     return () => {
       for (const sessionId of sessionIds) {
-        socket.emit('leave-attendance', { sessionId });
+        emit('leave-attendance', { sessionId });
       }
     };
-  }, [socket, sessionIds]);
+  }, [emit, sessionIds]);
 
   const onDeviceSwitchRequested = useCallback((callback: (data: unknown) => void) => {
     for (const sessionId of sessionIds) {
-      socket.on(`attendance.${sessionId}.device-switch-requested`, callback);
+      on(`attendance.${sessionId}.device-switch-requested`, callback);
     }
     return () => {
       for (const sessionId of sessionIds) {
-        socket.off(`attendance.${sessionId}.device-switch-requested`);
+        off(`attendance.${sessionId}.device-switch-requested`);
       }
     };
-  }, [socket, sessionIds]);
+  }, [on, off, sessionIds]);
 
-  return {
-    ...socket,
+  return useMemo(() => ({
+    isConnected,
+    emit,
+    on,
+    off,
+    connect,
+    disconnect,
     onDeviceSwitchRequested,
-  };
+  }), [isConnected, emit, on, off, connect, disconnect, onDeviceSwitchRequested]);
 }

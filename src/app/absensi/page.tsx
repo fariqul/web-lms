@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useId } from 'react';
+import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Select, Table } from '@/components/ui';
 import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Smartphone, AlertTriangle, UserCheck } from 'lucide-react';
@@ -245,8 +245,8 @@ export default function AbsensiPage() {
       interval = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev <= 1) {
-            // Auto refresh QR when timer reaches 0
-            generateQRToken();
+            // Trigger server-side QR refresh via ref (avoids side effects in state updater)
+            refreshQRRef.current();
             return 300;
           }
           return prev - 1;
@@ -303,20 +303,25 @@ export default function AbsensiPage() {
     }
   };
 
-  // Fetch pending device switch requests count
+  // Fetch pending device switch requests count (only check active sessions to avoid N+1 API storm)
   const fetchPendingDeviceRequests = async () => {
     try {
       const sessionsResponse = await api.get('/attendance-sessions/my-sessions');
       const sessions = sessionsResponse.data?.data || [];
       
+      // Only check active sessions (not all historical sessions)
+      const activeSessions = sessions.filter((s: { status: string }) => s.status === 'active');
+      
       let pendingCount = 0;
-      for (const session of sessions) {
+      // Limit to max 3 sessions to avoid rate limiting
+      const sessionsToCheck = activeSessions.slice(0, 3);
+      for (const session of sessionsToCheck) {
         try {
           const response = await api.get(`/attendance-sessions/${session.id}/device-switch-requests`);
           const requests = response.data?.data || [];
           pendingCount += requests.filter((r: { status: string }) => r.status === 'pending').length;
         } catch {
-          // Session might not have any requests
+          // Session might not have any requests, or rate limited
         }
       }
       
@@ -367,7 +372,29 @@ export default function AbsensiPage() {
     document.body.removeChild(link);
   };
 
-  const generateQRToken = useCallback(() => {
+  // Refresh QR token from server (anti-cheat: server-generated tokens only)
+  const refreshQRFromServer = useCallback(async () => {
+    if (!currentSessionId) return;
+    try {
+      const response = await api.post(`/attendance-sessions/${currentSessionId}/refresh-token`);
+      if (response.data?.data?.qr_token) {
+        setQrToken(response.data.data.qr_token);
+        setTimeRemaining(300);
+      }
+    } catch (error) {
+      console.error('Failed to refresh QR token:', error);
+      // Don't reset timer on error — will retry next countdown
+    }
+  }, [currentSessionId]);
+
+  // Ref to track server refresh without stale closure in timer
+  const refreshQRRef = useRef(refreshQRFromServer);
+  useEffect(() => {
+    refreshQRRef.current = refreshQRFromServer;
+  }, [refreshQRFromServer]);
+
+  // Fallback: local token generation (only used if server doesn't provide a token)
+  const generateQRTokenLocal = useCallback(() => {
     const token = 'QR-' + Date.now().toString(36).toUpperCase() + '-' + qrId.replace(/:/g, '').slice(0, 4).toUpperCase();
     setQrToken(token);
     setTimeRemaining(300);
@@ -400,7 +427,7 @@ export default function AbsensiPage() {
         setQrToken(response.data.data.qr_token);
       } else {
         // Fallback to local generated token
-        generateQRToken();
+        generateQRTokenLocal();
       }
 
       // Save session ID for later use (close session)
@@ -458,7 +485,7 @@ export default function AbsensiPage() {
   };
 
   const handleRefreshQR = () => {
-    generateQRToken();
+    refreshQRFromServer();
   };
 
   const formatTime = (seconds: number) => {
