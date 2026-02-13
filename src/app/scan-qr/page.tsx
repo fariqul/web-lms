@@ -1,43 +1,29 @@
 'use client';
-/* eslint-disable react-compiler/react-compiler */
-// ^ Opt out of React Compiler — html5-qrcode does imperative DOM manipulation
-// that conflicts with the compiler's auto-memoization.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button } from '@/components/ui';
-import { Camera, QrCode, CheckCircle, AlertCircle, Loader2, CameraOff } from 'lucide-react';
+import { Camera, QrCode, CheckCircle, AlertCircle, Loader2, CameraOff, SwitchCamera } from 'lucide-react';
 import api from '@/services/api';
 
 type ScanStatus = 'idle' | 'scanning' | 'processing' | 'success' | 'error';
-
-// Type the html5-qrcode scanner instance
-interface Html5QrCodeInstance {
-  start: (
-    cameraIdOrConfig: { facingMode: string } | string,
-    config: { fps: number; qrbox: { width: number; height: number }; aspectRatio?: number },
-    onSuccess: (decodedText: string) => void,
-    onError: () => void,
-  ) => Promise<void>;
-  stop: () => Promise<void>;
-  clear: () => void;
-  getState: () => number;
-}
 
 export default function ScanQRPage() {
   const [status, setStatus] = useState<ScanStatus>('idle');
   const [message, setMessage] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [manualToken, setManualToken] = useState('');
-  const [lastScannedToken, setLastScannedToken] = useState('');
-  const scannerContainerRef = useRef<HTMLDivElement>(null);
-  const html5QrCodeRef = useRef<Html5QrCodeInstance | null>(null);
+  const [pendingApproval, setPendingApproval] = useState(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationRef = useRef<number>(0);
   const isProcessingRef = useRef(false);
   const isMountedRef = useRef(true);
-  const isInitializingRef = useRef(false);
-  const [pendingApproval, setPendingApproval] = useState(false);
 
-  // Track mount state
+  // Track mounted state
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -61,31 +47,26 @@ export default function ScanQRPage() {
     return deviceId;
   }, []);
 
-  // Safely stop and clean up scanner
-  const destroyScanner = useCallback(async () => {
-    const scanner = html5QrCodeRef.current;
-    if (!scanner) return;
-
-    try {
-      // html5-qrcode states: NOT_STARTED=1, SCANNING=2, PAUSED=3
-      const state = scanner.getState();
-      if (state === 2 || state === 3) {
-        await scanner.stop();
-      }
-      scanner.clear();
-    } catch (err) {
-      // Scanner might already be stopped, ignore
-      console.warn('Scanner cleanup:', err);
-    } finally {
-      html5QrCodeRef.current = null;
+  // Stop camera stream
+  const stopCamera = useCallback(() => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = 0;
     }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
   }, []);
 
+  // Handle QR scan result
   const handleScanQR = useCallback(async (qrData: string) => {
     if (isProcessingRef.current) return;
-
     isProcessingRef.current = true;
-    setLastScannedToken(qrData);
     setPendingApproval(false);
 
     try {
@@ -101,9 +82,7 @@ export default function ScanQRPage() {
       if (response.data?.success) {
         setStatus('success');
         setMessage(response.data?.message || 'Absensi berhasil dicatat!');
-        // Stop scanner on success
-        await destroyScanner();
-        setIsCameraActive(false);
+        stopCamera();
       } else {
         setStatus('error');
         setMessage(response.data?.message || 'QR Code tidak valid');
@@ -128,143 +107,135 @@ export default function ScanQRPage() {
       }
       isProcessingRef.current = false;
     }
-  }, [getDeviceId, destroyScanner]);
+  }, [getDeviceId, stopCamera]);
 
-  // Keep ref for the scanner callback (avoids stale closure in html5-qrcode)
+  // Ref to latest handleScanQR to avoid stale closures in the scan loop
   const handleScanQRRef = useRef(handleScanQR);
   useEffect(() => {
     handleScanQRRef.current = handleScanQR;
   }, [handleScanQR]);
 
-  const initializeScanner = useCallback(async () => {
-    // Prevent concurrent initialization
-    if (isInitializingRef.current) return;
-    isInitializingRef.current = true;
+  // QR scanning loop using jsQR + canvas
+  const startScanLoop = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
 
-    try {
-      // Always clean up any previous instance first
-      await destroyScanner();
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
 
-      // Dynamically import html5-qrcode (client-side only)
-      const { Html5Qrcode } = await import('html5-qrcode');
+    let jsQRModule: typeof import('jsqr').default | null = null;
 
-      if (!isMountedRef.current) return;
+    // Pre-load jsQR module once
+    import('jsqr').then((mod) => {
+      jsQRModule = mod.default;
+    });
 
-      const scannerId = 'qr-scanner';
-      const scannerElement = document.getElementById(scannerId);
-      if (!scannerElement) {
-        console.error('Scanner element not found');
-        setStatus('error');
-        setMessage('Gagal menginisialisasi scanner');
-        setIsCameraActive(false);
-        return;
-      }
+    const scan = () => {
+      if (!isMountedRef.current || !streamRef.current) return;
 
-      // Clear any leftover DOM from previous scanner
-      scannerElement.innerHTML = '';
+      if (video.readyState === video.HAVE_ENOUGH_DATA && jsQRModule) {
+        // Size canvas to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
-      const html5QrCode = new Html5Qrcode(scannerId) as unknown as Html5QrCodeInstance;
-      html5QrCodeRef.current = html5QrCode;
+        // Draw current video frame
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Calculate responsive qrbox based on container width
-      const containerWidth = scannerElement.clientWidth || 300;
-      const qrboxSize = Math.min(Math.floor(containerWidth * 0.7), 250);
+        // Get image data for QR detection
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      const config = {
-        fps: 5, // Lower FPS for better mobile compatibility
-        qrbox: { width: qrboxSize, height: qrboxSize },
-      };
+        const code = jsQRModule(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
 
-      const onScanSuccess = (decodedText: string) => {
-        handleScanQRRef.current(decodedText);
-      };
-
-      const onScanError = () => {
-        // No QR detected yet — expected, ignore
-      };
-
-      // Try back camera first (most common for QR scanning)
-      let started = false;
-      try {
-        await html5QrCode.start(
-          { facingMode: 'environment' },
-          config,
-          onScanSuccess,
-          onScanError,
-        );
-        started = true;
-      } catch (backErr) {
-        console.warn('Back camera unavailable, trying front:', backErr);
-      }
-
-      if (!started) {
-        try {
-          await html5QrCode.start(
-            { facingMode: 'user' },
-            config,
-            onScanSuccess,
-            onScanError,
-          );
-          started = true;
-        } catch (frontErr) {
-          console.error('Both cameras failed:', frontErr);
-          throw frontErr;
+        if (code && code.data && !isProcessingRef.current) {
+          // Found a QR code — submit it
+          handleScanQRRef.current(code.data);
         }
       }
 
+      // Continue scanning
+      animationRef.current = requestAnimationFrame(scan);
+    };
+
+    // Start the loop
+    animationRef.current = requestAnimationFrame(scan);
+  }, []);
+
+  // Start camera and scanning
+  const startCamera = useCallback(async () => {
+    setStatus('idle');
+    setMessage('');
+    isProcessingRef.current = false;
+
+    try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+
       if (!isMountedRef.current) {
-        // Component unmounted during async init — clean up
-        await destroyScanner();
+        stream.getTracks().forEach(t => t.stop());
         return;
       }
 
-      setStatus('scanning');
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        // Wait for video to be ready, then start scanning
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().then(() => {
+            if (isMountedRef.current) {
+              setIsCameraActive(true);
+              setStatus('scanning');
+              startScanLoop();
+            }
+          }).catch((err) => {
+            console.error('Video play failed:', err);
+          });
+        };
+      }
     } catch (error) {
       console.error('Camera access failed:', error);
       if (isMountedRef.current) {
         setStatus('error');
         setMessage('Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.');
-        setIsCameraActive(false);
       }
-    } finally {
-      isInitializingRef.current = false;
     }
-  }, [destroyScanner]);
+  }, [facingMode, startScanLoop]);
 
-  // Start scanner after the DOM element is rendered
+  // Switch camera facing
+  const switchCamera = useCallback(() => {
+    stopCamera();
+    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+  }, [stopCamera]);
+
+  // Restart camera when facing mode changes
+  const facingModeChangedRef = useRef(false);
   useEffect(() => {
-    if (!isCameraActive) return;
+    if (facingModeChangedRef.current) {
+      facingModeChangedRef.current = false;
+      startCamera();
+    }
+  }, [facingMode, startCamera]);
 
-    // Wait for next frame to ensure the #qr-scanner element is in the DOM
-    let cancelled = false;
-    const frameId = requestAnimationFrame(() => {
-      if (!cancelled) {
-        // Extra delay for slow devices
-        const timer = setTimeout(() => {
-          if (!cancelled) initializeScanner();
-        }, 200);
-        // Store timer for cleanup
-        (frameId as unknown as { _timer?: NodeJS.Timeout })._timer = timer;
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frameId);
-    };
-  }, [isCameraActive, initializeScanner]);
-
-  const startCamera = useCallback(() => {
-    setStatus('idle');
-    setMessage('');
-    isProcessingRef.current = false;
-    setIsCameraActive(true);
-  }, []);
-
-  const stopCamera = useCallback(async () => {
-    await destroyScanner();
-    setIsCameraActive(false);
-  }, [destroyScanner]);
+  // Update switchCamera to flag the restart
+  const handleSwitchCamera = useCallback(() => {
+    facingModeChangedRef.current = true;
+    switchCamera();
+  }, [switchCamera]);
 
   // Manual token submit
   const handleManualSubmit = useCallback(() => {
@@ -279,18 +250,9 @@ export default function ScanQRPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      const scanner = html5QrCodeRef.current;
-      if (scanner) {
-        try {
-          const state = scanner.getState();
-          if (state === 2 || state === 3) {
-            scanner.stop().catch(() => {});
-          }
-          scanner.clear();
-        } catch {
-          // ignore
-        }
-        html5QrCodeRef.current = null;
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
       }
     };
   }, []);
@@ -298,7 +260,6 @@ export default function ScanQRPage() {
   const resetStatus = useCallback(() => {
     setStatus('idle');
     setMessage('');
-    setLastScannedToken('');
     isProcessingRef.current = false;
   }, []);
 
@@ -312,16 +273,41 @@ export default function ScanQRPage() {
           />
 
           {/* Camera/Scanner View */}
-          <div className="relative aspect-square bg-slate-900 rounded-xl mb-4">
-            {isCameraActive ? (
+          <div className="relative aspect-square bg-slate-900 rounded-xl overflow-hidden mb-4">
+            {isCameraActive || status === 'scanning' ? (
               <>
-                {/* QR Scanner will render here — html5-qrcode manages its own DOM */}
-                <div 
-                  id="qr-scanner" 
-                  ref={scannerContainerRef}
-                  className="w-full h-full rounded-xl overflow-hidden"
-                  style={{ minHeight: '280px' }}
+                {/* Native video element — full control, no library DOM manipulation */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                  style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
                 />
+                {/* Hidden canvas for QR frame extraction */}
+                <canvas ref={canvasRef} className="hidden" />
+
+                {/* Scan overlay - viewfinder */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Corner markers */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56">
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-lg" />
+                  </div>
+                </div>
+
+                {/* Camera switch button */}
+                <button
+                  onClick={handleSwitchCamera}
+                  className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10"
+                  title="Ganti kamera"
+                >
+                  <SwitchCamera className="w-5 h-5" />
+                </button>
+
                 <p className="absolute bottom-4 left-0 right-0 text-center text-white text-sm bg-black/50 py-2">
                   📷 Arahkan kamera ke QR Code
                 </p>
@@ -346,33 +332,33 @@ export default function ScanQRPage() {
 
           {/* Status Messages */}
           {status === 'success' && (
-            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg mb-4 dark:bg-green-900/20 dark:border-green-800">
               <CheckCircle className="w-8 h-8 text-green-600 flex-shrink-0" />
               <div>
-                <p className="font-semibold text-green-800">Absensi Berhasil! ✓</p>
-                <p className="text-sm text-green-600">{message}</p>
+                <p className="font-semibold text-green-800 dark:text-green-400">Absensi Berhasil! ✓</p>
+                <p className="text-sm text-green-600 dark:text-green-500">{message}</p>
               </div>
             </div>
           )}
 
           {status === 'error' && (
             <div className={`flex items-center gap-3 p-4 rounded-lg mb-4 ${
-              pendingApproval 
-                ? 'bg-yellow-50 border border-yellow-200' 
-                : 'bg-red-50 border border-red-200'
+              pendingApproval
+                ? 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
+                : 'bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800'
             }`}>
               <AlertCircle className={`w-6 h-6 flex-shrink-0 ${
                 pendingApproval ? 'text-yellow-600' : 'text-red-600'
               }`} />
               <div>
-                <p className={`font-medium ${pendingApproval ? 'text-yellow-800' : 'text-red-800'}`}>
+                <p className={`font-medium ${pendingApproval ? 'text-yellow-800 dark:text-yellow-400' : 'text-red-800 dark:text-red-400'}`}>
                   {pendingApproval ? 'Menunggu Persetujuan' : 'Gagal'}
                 </p>
-                <p className={`text-sm ${pendingApproval ? 'text-yellow-600' : 'text-red-600'}`}>
+                <p className={`text-sm ${pendingApproval ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-500'}`}>
                   {message}
                 </p>
                 {pendingApproval && (
-                  <p className="text-xs text-yellow-600 mt-2">
+                  <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-2">
                     Silakan hubungi guru untuk mendapatkan persetujuan. Coba scan ulang setelah disetujui.
                   </p>
                 )}
@@ -390,7 +376,7 @@ export default function ScanQRPage() {
                   leftIcon={<Camera className="w-5 h-5" />}
                   disabled={status === 'processing'}
                 >
-                  🔍 Mulai Scan QR Code
+                  Mulai Scan QR Code
                 </Button>
 
                 {/* Divider */}
@@ -402,7 +388,7 @@ export default function ScanQRPage() {
                     <span className="px-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400">atau</span>
                   </div>
                 </div>
-                
+
                 {/* Manual Token Input */}
                 <div className="space-y-2">
                   <label htmlFor="manualToken" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -414,7 +400,7 @@ export default function ScanQRPage() {
                     value={manualToken}
                     onChange={(e) => setManualToken(e.target.value)}
                     placeholder="Masukkan token dari QR…"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                     disabled={status === 'processing'}
                     name="manualToken"
                     autoComplete="off"
@@ -431,9 +417,9 @@ export default function ScanQRPage() {
                 </div>
               </>
             ) : (
-              <Button 
-                onClick={stopCamera} 
-                fullWidth 
+              <Button
+                onClick={stopCamera}
+                fullWidth
                 variant="outline"
                 leftIcon={<CameraOff className="w-5 h-5" />}
               >
@@ -463,34 +449,34 @@ export default function ScanQRPage() {
           <CardHeader title="Petunjuk" />
           <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 dark:bg-sky-900/30">
                 1
               </span>
               <span>Pastikan Anda berada di dalam ruangan kelas</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 dark:bg-sky-900/30">
                 2
               </span>
               <span>Klik <strong>&quot;Mulai Scan QR Code&quot;</strong> untuk mengaktifkan kamera</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 dark:bg-sky-900/30">
                 3
               </span>
               <span>Arahkan kamera ke QR Code yang ditampilkan guru</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 dark:bg-sky-900/30">
                 4
               </span>
               <span>QR Code akan otomatis ter-scan dan absensi langsung tercatat</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 dark:bg-red-900/30">
                 !
               </span>
-              <span className="text-red-600">Jangan bagikan QR Code ke teman (anti titip absen)</span>
+              <span className="text-red-600 dark:text-red-400">Jangan bagikan QR Code ke teman (anti titip absen)</span>
             </li>
           </ul>
         </Card>
