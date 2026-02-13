@@ -218,6 +218,12 @@ export const examAPI = {
     start_time: string;
     end_time: string;
     duration: number;
+    seb_required?: boolean;
+    seb_allow_quit?: boolean;
+    seb_quit_password?: string;
+    seb_block_screen_capture?: boolean;
+    seb_allow_virtual_machine?: boolean;
+    seb_show_taskbar?: boolean;
   }) => api.post('/exams', data),
   
   update: (id: number, data: Partial<{
@@ -228,6 +234,12 @@ export const examAPI = {
     end_time: string;
     duration: number;
     status: string;
+    seb_required: boolean;
+    seb_allow_quit: boolean;
+    seb_quit_password: string;
+    seb_block_screen_capture: boolean;
+    seb_allow_virtual_machine: boolean;
+    seb_show_taskbar: boolean;
   }>) => api.put(`/exams/${id}`, data),
   
   delete: (id: number) =>

@@ -68,6 +68,13 @@ export interface Exam {
   class?: Class;
   teacher?: User;
   my_result?: ExamResult;
+  // SEB (Safe Exam Browser) settings
+  seb_required?: boolean;
+  seb_allow_quit?: boolean;
+  seb_quit_password?: string;
+  seb_block_screen_capture?: boolean;
+  seb_allow_virtual_machine?: boolean;
+  seb_show_taskbar?: boolean;
 }
 
 export interface Question {

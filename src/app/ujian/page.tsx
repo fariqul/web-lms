@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
-import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2 } from 'lucide-react';
+import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 
 interface Exam {
   id: number;
@@ -21,6 +22,12 @@ interface Exam {
   duration: number;
   status: 'draft' | 'scheduled' | 'active' | 'completed';
   total_questions: number;
+  seb_required?: boolean;
+  seb_allow_quit?: boolean;
+  seb_quit_password?: string;
+  seb_block_screen_capture?: boolean;
+  seb_allow_virtual_machine?: boolean;
+  seb_show_taskbar?: boolean;
 }
 
 interface ClassOption {
@@ -64,6 +71,7 @@ export default function UjianPage() {
     start_time: '',
     duration: 60,
   });
+  const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
 
   useEffect(() => {
     fetchData();
@@ -119,6 +127,12 @@ export default function UjianPage() {
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         duration_minutes: formData.duration,
+        seb_required: sebSettings.sebRequired,
+        seb_allow_quit: sebSettings.sebAllowQuit,
+        seb_quit_password: sebSettings.sebQuitPassword || '',
+        seb_block_screen_capture: sebSettings.sebBlockScreenCapture,
+        seb_allow_virtual_machine: sebSettings.sebAllowVirtualMachine,
+        seb_show_taskbar: sebSettings.sebShowTaskbar,
       });
       
       // Redirect to edit page to add questions
@@ -137,6 +151,7 @@ export default function UjianPage() {
         start_time: '',
         duration: 60,
       });
+      setSebSettings({ ...DEFAULT_SEB_SETTINGS });
       fetchData();
     } catch (error: unknown) {
       console.error('Failed to create exam:', error);
@@ -310,6 +325,30 @@ export default function UjianPage() {
                     </div>
                   </div>
 
+                  {/* SEB Badge + Download */}
+                  {exam.seb_required && (
+                    <div className="flex items-center justify-between mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">SEB Required</span>
+                      </div>
+                      <button
+                        onClick={() => downloadSEBConfig(exam.title, exam.id, {
+                          sebRequired: true,
+                          sebAllowQuit: exam.seb_allow_quit ?? false,
+                          sebQuitPassword: exam.seb_quit_password ?? '',
+                          sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
+                          sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
+                          sebShowTaskbar: exam.seb_show_taskbar ?? true,
+                        })}
+                        className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download .seb
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Link href={`/ujian/${exam.id}/edit`} className="flex-1">
                       <Button variant="outline" fullWidth>
@@ -424,6 +463,99 @@ export default function UjianPage() {
             min={10}
             max={240}
           />
+
+          {/* SEB Settings Section */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <div className="flex-1">
+                <h4 className="font-medium text-slate-800 dark:text-white text-sm">Safe Exam Browser (SEB)</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Wajibkan siswa menggunakan SEB untuk keamanan ujian</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={sebSettings.sebRequired}
+                  onChange={(e) => setSebSettings({ ...sebSettings, sebRequired: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-500 peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {sebSettings.sebRequired && (
+              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={sebSettings.sebAllowQuit}
+                      onChange={(e) => setSebSettings({ ...sebSettings, sebAllowQuit: e.target.checked })}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {sebSettings.sebAllowQuit && (
+                  <Input
+                    label="Password untuk keluar SEB"
+                    type="text"
+                    value={sebSettings.sebQuitPassword}
+                    onChange={(e) => setSebSettings({ ...sebSettings, sebQuitPassword: e.target.value })}
+                    placeholder="Kosongkan jika tidak perlu password"
+                  />
+                )}
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-slate-700 dark:text-slate-300">Blokir screen capture</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={sebSettings.sebBlockScreenCapture}
+                      onChange={(e) => setSebSettings({ ...sebSettings, sebBlockScreenCapture: e.target.checked })}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan Virtual Machine</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={sebSettings.sebAllowVirtualMachine}
+                      onChange={(e) => setSebSettings({ ...sebSettings, sebAllowVirtualMachine: e.target.checked })}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-slate-700 dark:text-slate-300">Tampilkan taskbar SEB</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={sebSettings.sebShowTaskbar}
+                      onChange={(e) => setSebSettings({ ...sebSettings, sebShowTaskbar: e.target.checked })}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    💡 File konfigurasi SEB (.seb) dapat didownload setelah ujian dibuat. Bagikan file tersebut ke siswa untuk membuka ujian menggunakan Safe Exam Browser.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Batal

@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
 import { examAPI } from '@/services/api';
 import { Exam } from '@/types';
-import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer } from 'lucide-react';
+import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield } from 'lucide-react';
 
 // Live countdown hook
 function useCountdown(targetDate: string) {
@@ -186,6 +186,12 @@ export default function UjianSiswaPage() {
                       <Clock className="w-4 h-4" />
                       <span>{exam.duration || exam.duration_minutes} menit</span>
                     </div>
+                    {exam.seb_required && (
+                      <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                        <Shield className="w-4 h-4" />
+                        <span className="font-medium">Wajib Safe Exam Browser</span>
+                      </div>
+                    )}
                   </div>
 
                   {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (

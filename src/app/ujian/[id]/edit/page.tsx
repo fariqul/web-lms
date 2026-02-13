@@ -17,9 +17,12 @@ import {
   Send,
   ImagePlus,
   X,
+  Shield,
+  Download,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 
 interface Option {
   id?: number;
@@ -46,6 +49,12 @@ interface ExamData {
   status: string;
   start_time: string;
   end_time: string;
+  seb_required?: boolean;
+  seb_allow_quit?: boolean;
+  seb_quit_password?: string;
+  seb_block_screen_capture?: boolean;
+  seb_allow_virtual_machine?: boolean;
+  seb_show_taskbar?: boolean;
 }
 
 export default function EditSoalPage() {
@@ -98,6 +107,12 @@ export default function EditSoalPage() {
           status: data.status,
           start_time: data.start_time,
           end_time: data.end_time,
+          seb_required: data.seb_required ?? false,
+          seb_allow_quit: data.seb_allow_quit ?? false,
+          seb_quit_password: data.seb_quit_password ?? '',
+          seb_block_screen_capture: data.seb_block_screen_capture ?? true,
+          seb_allow_virtual_machine: data.seb_allow_virtual_machine ?? false,
+          seb_show_taskbar: data.seb_show_taskbar ?? true,
         });
 
         // Map questions
@@ -411,6 +426,51 @@ export default function EditSoalPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">Durasi (menit)</p>
           </Card>
         </div>
+
+        {/* SEB Settings Panel */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <Shield className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-slate-800 dark:text-white text-sm">Safe Exam Browser (SEB)</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {exam?.seb_required ? 'SEB wajib digunakan untuk ujian ini' : 'SEB tidak diwajibkan'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {exam?.seb_required && (
+                <button
+                  onClick={() => {
+                    if (!exam) return;
+                    downloadSEBConfig(exam.title, exam.id, {
+                      sebRequired: true,
+                      sebAllowQuit: exam.seb_allow_quit ?? false,
+                      sebQuitPassword: exam.seb_quit_password ?? '',
+                      sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
+                      sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
+                      sebShowTaskbar: exam.seb_show_taskbar ?? true,
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download .seb
+                </button>
+              )}
+              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                exam?.seb_required
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {exam?.seb_required ? '✓ Aktif' : 'Nonaktif'}
+              </span>
+            </div>
+          </div>
+        </Card>
 
         {/* Actions */}
         <div className="flex gap-3">

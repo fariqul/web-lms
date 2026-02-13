@@ -15,9 +15,13 @@ import {
   Flag,
   Loader2,
   ArrowLeft,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { isSEBBrowser } from '@/utils/seb';
 
 interface Question {
   id: number;
@@ -35,6 +39,7 @@ interface ExamData {
   duration: number;
   totalQuestions: number;
   questions: Question[];
+  sebRequired: boolean;
 }
 
 export default function ExamTakingPage() {
@@ -56,6 +61,7 @@ export default function ExamTakingPage() {
   const [examNotFound, setExamNotFound] = useState(false);
   const [startingExam, setStartingExam] = useState(false);
   const autoSubmittedRef = React.useRef(false);
+  const [usingSEB, setUsingSEB] = useState(false);
 
   // Force submit handler
   const handleForceSubmit = async () => {
@@ -91,6 +97,11 @@ export default function ExamTakingPage() {
     fetchExam();
   }, [examId]);
 
+  // Check SEB browser on mount
+  useEffect(() => {
+    setUsingSEB(isSEBBrowser());
+  }, []);
+
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
     if (isStarted && !isCameraActive) {
@@ -116,6 +127,7 @@ export default function ExamTakingPage() {
           duration: examData.duration_minutes || examData.duration || 90,
           totalQuestions: examData.total_questions || examData.questions_count || questionsList.length || 0,
           questions: questionsList,
+          sebRequired: examData.seb_required ?? false,
         });
         // Only set questions if they're actually returned (guru/admin)
         // For students, questions come from the /start endpoint
@@ -323,10 +335,52 @@ export default function ExamTakingPage() {
                 <li>• Kamera akan aktif selama ujian berlangsung</li>
                 <li>• Keluar dari fullscreen dianggap kecurangan</li>
                 <li>• Pastikan koneksi internet stabil</li>
+                {exam.sebRequired && (
+                  <li className="font-semibold">• Ujian ini WAJIB menggunakan Safe Exam Browser (SEB)</li>
+                )}
               </ul>
             </div>
+
+            {/* SEB Detection Block */}
+            {exam.sebRequired && !usingSEB && (
+              <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded-lg p-5 mb-6 text-left">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-red-800 dark:text-red-400 mb-1">Safe Exam Browser Diperlukan</h3>
+                    <p className="text-sm text-red-700 dark:text-red-300 mb-3">
+                      Ujian ini hanya dapat dikerjakan menggunakan Safe Exam Browser (SEB). 
+                      Anda tidak terdeteksi menggunakan SEB.
+                    </p>
+                    <div className="space-y-2 text-sm text-red-600 dark:text-red-400">
+                      <p className="font-medium">Langkah-langkah:</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        <li>Download file konfigurasi .seb dari guru Anda</li>
+                        <li>Install <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-red-800">Safe Exam Browser</a> jika belum terinstall</li>
+                        <li>Buka file .seb yang sudah didownload — SEB akan otomatis terbuka</li>
+                        <li>Login kembali dan mulai ujian</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {exam.sebRequired && usingSEB && (
+              <div className="bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">Safe Exam Browser terdeteksi ✓</span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <Button onClick={handleStartExam} fullWidth disabled={startingExam}>
+              <Button
+                onClick={handleStartExam}
+                fullWidth
+                disabled={startingExam || (exam.sebRequired && !usingSEB)}
+              >
                 {startingExam ? (
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 ) : (
