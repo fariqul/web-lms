@@ -41,9 +41,17 @@ export function useExamMode({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const snapshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track whether anti-cheat monitoring is active (after first fullscreen enter)
+  const monitoringActiveRef = useRef(false);
+  // Track fullscreen state via ref to avoid stale closure in event handlers
+  const isFullscreenRef = useRef(false);
 
   // Report violation to server
   const reportViolation = useCallback(async (type: string, description?: string) => {
+    // Only report violations once monitoring is active
+    if (!monitoringActiveRef.current) return;
+    
     try {
       const response = await monitoringAPI.reportViolation({
         exam_id: examId,
@@ -75,6 +83,12 @@ export function useExamMode({
     try {
       await document.documentElement.requestFullscreen();
       setIsFullscreen(true);
+      isFullscreenRef.current = true;
+      // Activate monitoring after first successful fullscreen entry
+      // Small delay to avoid immediate fullscreenchange triggering a false violation
+      setTimeout(() => {
+        monitoringActiveRef.current = true;
+      }, 1000);
     } catch (error) {
       console.error('Fullscreen request failed:', error);
     }
@@ -85,6 +99,7 @@ export function useExamMode({
       document.exitFullscreen();
     }
     setIsFullscreen(false);
+    isFullscreenRef.current = false;
   }, []);
 
   // Camera management
@@ -149,19 +164,21 @@ export function useExamMode({
 
   // Event listeners for anti-cheat
   useEffect(() => {
-    // Fullscreen change detection
+    // Fullscreen change detection — use ref to avoid dependency on isFullscreen state
     const handleFullscreenChange = () => {
       const isNowFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isNowFullscreen);
       
-      if (!isNowFullscreen && isFullscreen) {
+      // Report violation only if monitoring is active and was previously fullscreen
+      if (!isNowFullscreen && isFullscreenRef.current && monitoringActiveRef.current) {
         reportViolation('fullscreen_exit', 'Keluar dari mode fullscreen');
       }
+      isFullscreenRef.current = isNowFullscreen;
     };
 
     // Tab visibility change detection
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden && monitoringActiveRef.current) {
         reportViolation('tab_switch', 'Pindah tab browser');
       }
     };
@@ -213,7 +230,7 @@ export function useExamMode({
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFullscreen, reportViolation]);
+  }, [reportViolation]);
 
   // Camera monitoring & snapshot interval
   useEffect(() => {
@@ -245,6 +262,7 @@ export function useExamMode({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      monitoringActiveRef.current = false;
       stopCamera();
       if (snapshotIntervalRef.current) {
         clearInterval(snapshotIntervalRef.current);

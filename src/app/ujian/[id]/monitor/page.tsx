@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Wifi,
   WifiOff,
+  X,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
@@ -71,6 +72,7 @@ export default function MonitorUjianPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
+  const [snapshotModal, setSnapshotModal] = useState<{ student: Student; snapshot: { image_path: string; captured_at: string } } | null>(null);
 
   // WebSocket for real-time updates
   const examSocket = useExamSocket(examId);
@@ -254,6 +256,11 @@ export default function MonitorUjianPage() {
       return `${hours}j ${minutes}m`;
     }
     return `${minutes}m ${seconds}d`;
+  };
+
+  const resolveSnapshotUrl = (imagePath: string) => {
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${imagePath}`;
   };
 
   if (loading) {
@@ -568,6 +575,7 @@ export default function MonitorUjianPage() {
                           )}
                           {participant.status === 'in_progress' && participant.latest_snapshot && (
                             <button
+                              onClick={() => setSnapshotModal({ student: participant.student, snapshot: participant.latest_snapshot! })}
                               className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
                               title="Lihat Kamera"
                               aria-label="Lihat kamera siswa"
@@ -601,6 +609,62 @@ export default function MonitorUjianPage() {
           </div>
         </div>
       </div>
+
+      {/* Snapshot Modal */}
+      {snapshotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSnapshotModal(null)}>
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-teal-50 dark:bg-teal-900/30 rounded-full flex items-center justify-center">
+                  <Camera className="w-4 h-4 text-teal-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900 dark:text-white">{snapshotModal.student.name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Foto terakhir: {new Date(snapshotModal.snapshot.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSnapshotModal(null)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                aria-label="Tutup"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Snapshot Image */}
+            <div className="p-4">
+              <div className="relative bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden">
+                <img
+                  src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
+                  alt={`Snapshot ${snapshotModal.student.name}`}
+                  className="w-full aspect-video object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.innerHTML = '<div class="flex items-center justify-center aspect-video text-slate-400"><p class="text-sm">Gagal memuat gambar</p></div>';
+                  }}
+                />
+                {/* Live indicator */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  Monitoring Aktif
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 text-center">
+                Foto diambil otomatis setiap 60 detik dari kamera siswa
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
