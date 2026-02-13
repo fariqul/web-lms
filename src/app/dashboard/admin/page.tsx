@@ -212,19 +212,19 @@ export default function AdminDashboard() {
             icon={<Users className="w-8 h-8" />}
             title="Kelola Pengguna"
             href="/admin/users"
-            color="orange"
+            color="teal"
           />
           <QuickActionCard
             icon={<GraduationCap className="w-8 h-8" />}
             title="Kelola Kelas"
             href="/admin/kelas"
-            color="orange"
+            color="teal"
           />
           <QuickActionCard
             icon={<Calendar className="w-8 h-8" />}
             title="Manajemen Jadwal"
             href="/admin/jadwal"
-            color="orange"
+            color="teal"
           />
         </div>
 
