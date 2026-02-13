@@ -113,6 +113,11 @@ export default function UjianPage() {
       toast.warning('Mohon lengkapi semua field yang diperlukan');
       return;
     }
+
+    if (sebSettings.sebRequired && sebSettings.sebAllowQuit && !sebSettings.sebQuitPassword.trim()) {
+      toast.warning('Password quit SEB wajib diisi agar bisa keluar dari SEB');
+      return;
+    }
     
     setSubmitting(true);
     try {
@@ -339,7 +344,7 @@ export default function UjianPage() {
                       <button
                         onClick={() => downloadSEBConfig(exam.title, exam.id, {
                           sebRequired: true,
-                          sebAllowQuit: exam.seb_allow_quit ?? false,
+                          sebAllowQuit: exam.seb_allow_quit ?? true,
                           sebQuitPassword: exam.seb_quit_password ?? '',
                           sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
                           sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
@@ -490,7 +495,10 @@ export default function UjianPage() {
             {sebSettings.sebRequired && (
               <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
+                  <div>
+                    <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Siswa bisa keluar SEB dengan password</p>
+                  </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -503,13 +511,26 @@ export default function UjianPage() {
                 </div>
 
                 {sebSettings.sebAllowQuit && (
-                  <Input
-                    label="Password untuk keluar SEB"
-                    type="text"
-                    value={sebSettings.sebQuitPassword}
-                    onChange={(e) => setSebSettings({ ...sebSettings, sebQuitPassword: e.target.value })}
-                    placeholder="Kosongkan jika tidak perlu password"
-                  />
+                  <div>
+                    <Input
+                      label="Password untuk keluar SEB *"
+                      type="text"
+                      value={sebSettings.sebQuitPassword}
+                      onChange={(e) => setSebSettings({ ...sebSettings, sebQuitPassword: e.target.value })}
+                      placeholder="Wajib diisi — password yang guru bagikan untuk keluar"
+                    />
+                    {!sebSettings.sebQuitPassword && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">⚠️ Password wajib diisi agar guru/siswa bisa keluar SEB</p>
+                    )}
+                  </div>
+                )}
+
+                {!sebSettings.sebAllowQuit && (
+                  <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      ⚠️ <strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
+                    </p>
+                  </div>
                 )}
 
                 <div className="flex items-center justify-between">

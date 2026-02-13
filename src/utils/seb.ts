@@ -62,7 +62,7 @@ export interface SEBExamSettings {
 
 export const DEFAULT_SEB_SETTINGS: SEBExamSettings = {
   sebRequired: false,
-  sebAllowQuit: false,
+  sebAllowQuit: true,
   sebQuitPassword: '',
   sebBlockScreenCapture: true,
   sebAllowVirtualMachine: false,
@@ -162,8 +162,11 @@ export function generateSEBConfigXML(config: SEBConfig): string {
   // Quit settings
   entries.push(plistEntry('allowQuit', config.allowQuit));
   if (config.quitPassword) {
+    // SEB expects the SHA-256 hash in hashedQuitPassword
     entries.push(plistEntry('hashedQuitPassword', config.quitPassword));
   }
+  // Also set the confirm quit option so a prompt appears
+  entries.push(plistEntry('quitURLConfirm', true));
 
   // Navigation
   entries.push(plistEntry('allowBrowseBack', config.allowBrowseBack));
@@ -211,7 +214,8 @@ export function generateSEBConfigXML(config: SEBConfig): string {
   entries.push(plistEntry('enablePrintScreen', false));
   entries.push(plistEntry('enableCtrlEsc', false));
   entries.push(plistEntry('enableAltEsc', false));
-  entries.push(plistEntry('enableAltF4', false));
+  // Allow Alt+F4 and Ctrl+Q only when quit is allowed (so user can trigger quit dialog)
+  entries.push(plistEntry('enableAltF4', config.allowQuit));
   entries.push(plistEntry('enableStartMenu', false));
   entries.push(plistEntry('enableF1', false));
   entries.push(plistEntry('enableF3', false));
@@ -255,23 +259,42 @@ ${xmlContent}
 // ────────────────────────────────────────────────
 
 /**
- * Generate and download a .seb config file.
+ * Hash a password string using SHA-256 (Web Crypto API).
+ * Returns the hex-encoded hash that SEB expects for hashedQuitPassword.
  */
-export function downloadSEBConfig(
+async function hashPasswordSHA256(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Generate and download a .seb config file.
+ * Password is hashed with SHA-256 before embedding in config.
+ */
+export async function downloadSEBConfig(
   examTitle: string,
   examId: number,
   settings: SEBExamSettings,
   baseUrl?: string,
-): void {
+): Promise<void> {
   // Determine the exam URL
   const origin = baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://web-lms-rowr.vercel.app');
   const startURL = `${origin}/ujian/${examId}`;
+
+  // Hash the quit password if provided
+  let hashedPassword: string | undefined;
+  if (settings.sebQuitPassword) {
+    hashedPassword = await hashPasswordSHA256(settings.sebQuitPassword);
+  }
 
   const config: SEBConfig = {
     startURL,
     examTitle,
     allowQuit: settings.sebAllowQuit,
-    quitPassword: settings.sebQuitPassword || undefined,
+    quitPassword: hashedPassword,
     enableURLFilter: true,
     allowBrowseBack: false,
     showTaskbar: settings.sebShowTaskbar,

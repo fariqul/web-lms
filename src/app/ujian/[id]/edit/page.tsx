@@ -110,7 +110,7 @@ export default function EditSoalPage() {
           start_time: data.start_time,
           end_time: data.end_time,
           seb_required: data.seb_required ?? false,
-          seb_allow_quit: data.seb_allow_quit ?? false,
+          seb_allow_quit: data.seb_allow_quit ?? true,
           seb_quit_password: data.seb_quit_password ?? '',
           seb_block_screen_capture: data.seb_block_screen_capture ?? true,
           seb_allow_virtual_machine: data.seb_allow_virtual_machine ?? false,
@@ -126,7 +126,7 @@ export default function EditSoalPage() {
         if (hasSebFromApi) {
           setSebSettings({
             sebRequired: true,
-            sebAllowQuit: data.seb_allow_quit ?? false,
+            sebAllowQuit: data.seb_allow_quit ?? true,
             sebQuitPassword: data.seb_quit_password ?? '',
             sebBlockScreenCapture: data.seb_block_screen_capture ?? true,
             sebAllowVirtualMachine: data.seb_allow_virtual_machine ?? false,
@@ -379,6 +379,10 @@ export default function EditSoalPage() {
   };
 
   const handleSaveSebSettings = async () => {
+    if (sebSettings.sebRequired && sebSettings.sebAllowQuit && !sebSettings.sebQuitPassword.trim()) {
+      toast.warning('Password quit SEB wajib diisi agar bisa keluar dari SEB');
+      return;
+    }
     setSavingSeb(true);
     try {
       // Save to backend
@@ -513,7 +517,10 @@ export default function EditSoalPage() {
           {sebSettings.sebRequired && (
             <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
               <div className="flex items-center justify-between">
-                <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
+                <div>
+                  <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Siswa bisa keluar SEB dengan password</p>
+                </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -527,14 +534,25 @@ export default function EditSoalPage() {
 
               {sebSettings.sebAllowQuit && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password untuk keluar SEB</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password untuk keluar SEB <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={sebSettings.sebQuitPassword}
                     onChange={(e) => setSebSettings({ ...sebSettings, sebQuitPassword: e.target.value })}
-                    placeholder="Kosongkan jika tidak perlu password"
+                    placeholder="Wajib diisi — password yang guru bagikan untuk keluar"
                     className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                  {!sebSettings.sebQuitPassword && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">⚠️ Password wajib diisi agar guru/siswa bisa keluar SEB</p>
+                  )}
+                </div>
+              )}
+
+              {!sebSettings.sebAllowQuit && (
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                  <p className="text-xs text-red-700 dark:text-red-300">
+                    ⚠️ <strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
+                  </p>
                 </div>
               )}
 
