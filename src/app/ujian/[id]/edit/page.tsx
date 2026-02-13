@@ -75,6 +75,8 @@ export default function EditSoalPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
+  const [savingSeb, setSavingSeb] = useState(false);
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
     question_type: 'multiple_choice',
@@ -114,6 +116,27 @@ export default function EditSoalPage() {
           seb_allow_virtual_machine: data.seb_allow_virtual_machine ?? false,
           seb_show_taskbar: data.seb_show_taskbar ?? true,
         });
+
+        // Initialize SEB settings from API, with localStorage fallback
+        const storedSeb = localStorage.getItem(`seb_settings_${data.id}`);
+        const localSeb = storedSeb ? JSON.parse(storedSeb) as SEBExamSettings : null;
+        
+        const hasSebFromApi = data.seb_required === true;
+        
+        if (hasSebFromApi) {
+          setSebSettings({
+            sebRequired: true,
+            sebAllowQuit: data.seb_allow_quit ?? false,
+            sebQuitPassword: data.seb_quit_password ?? '',
+            sebBlockScreenCapture: data.seb_block_screen_capture ?? true,
+            sebAllowVirtualMachine: data.seb_allow_virtual_machine ?? false,
+            sebShowTaskbar: data.seb_show_taskbar ?? true,
+          });
+        } else if (localSeb) {
+          setSebSettings(localSeb);
+        } else {
+          setSebSettings({ ...DEFAULT_SEB_SETTINGS });
+        }
 
         // Map questions
         if (data.questions) {
@@ -355,6 +378,45 @@ export default function EditSoalPage() {
     }
   };
 
+  const handleSaveSebSettings = async () => {
+    setSavingSeb(true);
+    try {
+      // Save to backend
+      await api.put(`/exams/${examId}`, {
+        seb_required: sebSettings.sebRequired,
+        seb_allow_quit: sebSettings.sebAllowQuit,
+        seb_quit_password: sebSettings.sebQuitPassword || '',
+        seb_block_screen_capture: sebSettings.sebBlockScreenCapture,
+        seb_allow_virtual_machine: sebSettings.sebAllowVirtualMachine,
+        seb_show_taskbar: sebSettings.sebShowTaskbar,
+      });
+      
+      // Also save to localStorage as fallback
+      if (sebSettings.sebRequired) {
+        localStorage.setItem(`seb_settings_${examId}`, JSON.stringify(sebSettings));
+      } else {
+        localStorage.removeItem(`seb_settings_${examId}`);
+      }
+      
+      // Update local exam state
+      setExam(prev => prev ? {
+        ...prev,
+        seb_required: sebSettings.sebRequired,
+        seb_allow_quit: sebSettings.sebAllowQuit,
+        seb_quit_password: sebSettings.sebQuitPassword,
+        seb_block_screen_capture: sebSettings.sebBlockScreenCapture,
+        seb_allow_virtual_machine: sebSettings.sebAllowVirtualMachine,
+        seb_show_taskbar: sebSettings.sebShowTaskbar,
+      } : null);
+      
+      toast.success('Pengaturan SEB berhasil disimpan');
+    } catch {
+      toast.error('Gagal menyimpan pengaturan SEB');
+    } finally {
+      setSavingSeb(false);
+    }
+  };
+
   const handleOptionChange = (index: number, value: string) => {
     const updatedOptions = [...newQuestion.options];
     updatedOptions[index].text = value;
@@ -428,47 +490,121 @@ export default function EditSoalPage() {
         </div>
 
         {/* SEB Settings Panel */}
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-slate-800 dark:text-white text-sm">Safe Exam Browser (SEB)</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {exam?.seb_required ? 'SEB wajib digunakan untuk ujian ini' : 'SEB tidak diwajibkan'}
-                </p>
-              </div>
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <Shield className="w-5 h-5 text-blue-600" />
             </div>
-            <div className="flex items-center gap-2">
-              {exam?.seb_required && (
+            <div className="flex-1">
+              <h3 className="font-medium text-slate-800 dark:text-white text-sm">Safe Exam Browser (SEB)</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Wajibkan siswa menggunakan SEB untuk keamanan ujian</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={sebSettings.sebRequired}
+                onChange={(e) => setSebSettings({ ...sebSettings, sebRequired: e.target.checked })}
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-500 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {sebSettings.sebRequired && (
+            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={sebSettings.sebAllowQuit}
+                    onChange={(e) => setSebSettings({ ...sebSettings, sebAllowQuit: e.target.checked })}
+                  />
+                  <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              {sebSettings.sebAllowQuit && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password untuk keluar SEB</label>
+                  <input
+                    type="text"
+                    value={sebSettings.sebQuitPassword}
+                    onChange={(e) => setSebSettings({ ...sebSettings, sebQuitPassword: e.target.value })}
+                    placeholder="Kosongkan jika tidak perlu password"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-slate-700 dark:text-slate-300">Blokir screen capture</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={sebSettings.sebBlockScreenCapture}
+                    onChange={(e) => setSebSettings({ ...sebSettings, sebBlockScreenCapture: e.target.checked })}
+                  />
+                  <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan Virtual Machine</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={sebSettings.sebAllowVirtualMachine}
+                    onChange={(e) => setSebSettings({ ...sebSettings, sebAllowVirtualMachine: e.target.checked })}
+                  />
+                  <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-slate-700 dark:text-slate-300">Tampilkan taskbar SEB</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={sebSettings.sebShowTaskbar}
+                    onChange={(e) => setSebSettings({ ...sebSettings, sebShowTaskbar: e.target.checked })}
+                  />
+                  <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
                 <button
                   onClick={() => {
                     if (!exam) return;
-                    downloadSEBConfig(exam.title, exam.id, {
-                      sebRequired: true,
-                      sebAllowQuit: exam.seb_allow_quit ?? false,
-                      sebQuitPassword: exam.seb_quit_password ?? '',
-                      sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
-                      sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
-                      sebShowTaskbar: exam.seb_show_taskbar ?? true,
-                    });
+                    downloadSEBConfig(exam.title, exam.id, sebSettings);
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download .seb
                 </button>
-              )}
-              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                exam?.seb_required
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-              }`}>
-                {exam?.seb_required ? '✓ Aktif' : 'Nonaktif'}
-              </span>
+              </div>
             </div>
+          )}
+
+          <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
+            <button
+              onClick={handleSaveSebSettings}
+              disabled={savingSeb}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {savingSeb ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Simpan Pengaturan SEB
+            </button>
           </div>
         </Card>
 

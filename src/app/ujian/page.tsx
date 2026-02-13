@@ -138,6 +138,10 @@ export default function UjianPage() {
       // Redirect to edit page to add questions
       const newExamId = response.data?.data?.id;
       if (newExamId) {
+        // Save SEB settings to localStorage as fallback (backend may not persist yet)
+        if (sebSettings.sebRequired) {
+          localStorage.setItem(`seb_settings_${newExamId}`, JSON.stringify(sebSettings));
+        }
         router.push(`/ujian/${newExamId}/edit`);
       } else {
         setIsModalOpen(false);

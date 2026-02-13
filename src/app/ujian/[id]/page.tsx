@@ -120,6 +120,11 @@ export default function ExamTakingPage() {
       
       if (examData) {
         const questionsList = examData.questions || [];
+        // Check SEB requirement: API first, localStorage fallback
+        const storedSeb = localStorage.getItem(`seb_settings_${examData.id}`);
+        const localSebRequired = storedSeb ? (JSON.parse(storedSeb) as { sebRequired?: boolean }).sebRequired === true : false;
+        const sebRequired = examData.seb_required === true || localSebRequired;
+        
         setExam({
           id: examData.id,
           title: examData.title,
@@ -127,7 +132,7 @@ export default function ExamTakingPage() {
           duration: examData.duration_minutes || examData.duration || 90,
           totalQuestions: examData.total_questions || examData.questions_count || questionsList.length || 0,
           questions: questionsList,
-          sebRequired: examData.seb_required ?? false,
+          sebRequired,
         });
         // Only set questions if they're actually returned (guru/admin)
         // For students, questions come from the /start endpoint
