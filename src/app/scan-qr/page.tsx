@@ -274,20 +274,20 @@ export default function ScanQRPage() {
 
           {/* Camera/Scanner View */}
           <div className="relative aspect-square bg-slate-900 rounded-xl overflow-hidden mb-4">
-            {isCameraActive || status === 'scanning' ? (
-              <>
-                {/* Native video element — full control, no library DOM manipulation */}
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                  style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
-                />
-                {/* Hidden canvas for QR frame extraction */}
-                <canvas ref={canvasRef} className="hidden" />
+            {/* Video element always rendered so ref is available when startCamera runs */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover ${isCameraActive ? '' : 'hidden'}`}
+              style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+            />
+            {/* Hidden canvas for QR frame extraction */}
+            <canvas ref={canvasRef} className="hidden" />
 
+            {isCameraActive ? (
+              <>
                 {/* Scan overlay - viewfinder */}
                 <div className="absolute inset-0 pointer-events-none">
                   {/* Corner markers */}
@@ -309,7 +309,7 @@ export default function ScanQRPage() {
                 </button>
 
                 <p className="absolute bottom-4 left-0 right-0 text-center text-white text-sm bg-black/50 py-2">
-                  📷 Arahkan kamera ke QR Code
+                  Arahkan kamera ke QR Code
                 </p>
               </>
             ) : (
