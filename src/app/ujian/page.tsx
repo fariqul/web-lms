@@ -64,6 +64,7 @@ export default function UjianPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteExam, setDeleteExam] = useState<{id: number, title: string} | null>(null);
+  const [scheduleMode, setScheduleMode] = useState<'immediate' | 'scheduled'>('immediate');
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
@@ -109,8 +110,13 @@ export default function UjianPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.subject || !formData.class_id || !formData.start_time) {
+    if (!formData.title || !formData.subject || !formData.class_id) {
       toast.warning('Mohon lengkapi semua field yang diperlukan');
+      return;
+    }
+
+    if (scheduleMode === 'scheduled' && !formData.start_time) {
+      toast.warning('Pilih waktu mulai ujian');
       return;
     }
 
@@ -121,8 +127,11 @@ export default function UjianPage() {
     
     setSubmitting(true);
     try {
-      // Calculate end_time based on start_time + duration
-      const startTime = new Date(formData.start_time);
+      // Calculate start/end times
+      // For immediate mode, use a far-future placeholder — real time gets set on publish
+      const startTime = scheduleMode === 'scheduled'
+        ? new Date(formData.start_time)
+        : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // placeholder
       const endTime = new Date(startTime.getTime() + formData.duration * 60 * 1000);
       
       const response = await api.post('/exams', {
@@ -132,6 +141,7 @@ export default function UjianPage() {
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         duration_minutes: formData.duration,
+        schedule_mode: scheduleMode,
         seb_required: sebSettings.sebRequired,
         seb_allow_quit: sebSettings.sebAllowQuit,
         seb_quit_password: sebSettings.sebQuitPassword || '',
@@ -160,6 +170,7 @@ export default function UjianPage() {
         start_time: '',
         duration: 60,
       });
+      setScheduleMode('immediate');
       setSebSettings({ ...DEFAULT_SEB_SETTINGS });
       fetchData();
     } catch (error: unknown) {
@@ -458,12 +469,47 @@ export default function UjianPage() {
             value={formData.class_id}
             onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
           />
-          <Input
-            label="Waktu Mulai"
-            type="datetime-local"
-            value={formData.start_time}
-            onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-          />
+          {/* Schedule Mode */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Waktu Mulai Ujian</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setScheduleMode('immediate')}
+                className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+                  scheduleMode === 'immediate'
+                    ? 'bg-teal-50 border-teal-300 text-teal-700 dark:bg-teal-900/30 dark:border-teal-700 dark:text-teal-300 ring-2 ring-teal-500/20'
+                    : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                ⚡ Mulai Saat Publish
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleMode('scheduled')}
+                className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+                  scheduleMode === 'scheduled'
+                    ? 'bg-teal-50 border-teal-300 text-teal-700 dark:bg-teal-900/30 dark:border-teal-700 dark:text-teal-300 ring-2 ring-teal-500/20'
+                    : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                📅 Jadwalkan Waktu
+              </button>
+            </div>
+            {scheduleMode === 'immediate' && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Ujian akan dimulai otomatis saat Anda menekan tombol Publish. Buat soal terlebih dahulu tanpa khawatir waktu.
+              </p>
+            )}
+            {scheduleMode === 'scheduled' && (
+              <Input
+                label="Tanggal & Jam Mulai"
+                type="datetime-local"
+                value={formData.start_time}
+                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+              />
+            )}
+          </div>
           <Input
             label="Durasi (menit)"
             type="number"

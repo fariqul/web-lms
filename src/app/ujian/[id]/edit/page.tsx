@@ -347,6 +347,23 @@ export default function EditSoalPage() {
 
   const confirmPublish = async () => {
     try {
+      // If exam start_time is a far-future placeholder (immediate mode),
+      // update it to NOW before publishing
+      if (exam?.start_time) {
+        const startTime = new Date(exam.start_time);
+        const now = new Date();
+        // If start_time is more than 30 days from now, it was set as "immediate" placeholder
+        if (startTime.getTime() - now.getTime() > 30 * 24 * 60 * 60 * 1000) {
+          const newStart = now.toISOString();
+          const duration = exam.duration || 90;
+          const newEnd = new Date(now.getTime() + duration * 60 * 1000).toISOString();
+          await api.put(`/exams/${examId}`, {
+            start_time: newStart,
+            end_time: newEnd,
+          });
+        }
+      }
+
       await api.post(`/exams/${examId}/publish`);
       toast.success('Ujian berhasil dipublikasi');
       router.push('/ujian');
@@ -492,6 +509,34 @@ export default function EditSoalPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">Durasi (menit)</p>
           </Card>
         </div>
+
+        {/* Schedule Info Banner */}
+        {exam?.status === 'draft' && (
+          <div className={`rounded-xl p-4 flex items-center gap-3 ${
+            exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
+              ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'
+              : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+          }`}>
+            <span className="text-xl">{
+              exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
+                ? '⚡' : '📅'
+            }</span>
+            <div>
+              <p className="text-sm font-medium text-slate-800 dark:text-white">
+                {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
+                  ? 'Mulai saat publish'
+                  : `Dijadwalkan: ${new Date(exam.start_time).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}`
+                }
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
+                  ? 'Ujian akan langsung aktif saat Anda menekan Publish. Selesaikan soal terlebih dahulu.'
+                  : 'Ujian akan aktif sesuai jadwal setelah dipublish.'
+                }
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* SEB Settings Panel */}
         <Card className="p-4 space-y-4">
@@ -1129,7 +1174,11 @@ export default function EditSoalPage() {
         onClose={() => setShowPublishConfirm(false)}
         onConfirm={confirmPublish}
         title="Publikasi Ujian"
-        message="Yakin ingin mempublikasi ujian ini? Siswa akan dapat melihat ujian sesuai jadwal."
+        message={
+          exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
+            ? 'Ujian akan langsung dimulai sekarang saat Anda menekan Publikasi. Pastikan semua soal sudah lengkap.'
+            : `Yakin ingin mempublikasi ujian ini? Ujian dijadwalkan mulai ${exam?.start_time ? new Date(exam.start_time).toLocaleString('id-ID') : '-'}.`
+        }
         confirmText="Publikasi"
         variant="warning"
       />
