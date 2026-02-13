@@ -22,10 +22,19 @@ import {
   Zap,
   Calendar,
   AlertTriangle,
+  ChevronDown,
+  ClipboardPaste,
+  Library,
+  Copy,
+  FileSpreadsheet,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
+import { ImportTextModal } from '@/components/ujian/ImportTextModal';
+import { ImportBankSoalModal } from '@/components/ujian/ImportBankSoalModal';
+import { DuplicateExamModal } from '@/components/ujian/DuplicateExamModal';
+import { ImportExcelModal } from '@/components/ujian/ImportExcelModal';
 
 interface Option {
   id?: number;
@@ -78,6 +87,12 @@ export default function EditSoalPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [showImportMenu, setShowImportMenu] = useState(false);
+  const [showImportText, setShowImportText] = useState(false);
+  const [showImportBankSoal, setShowImportBankSoal] = useState(false);
+  const [showDuplicateExam, setShowDuplicateExam] = useState(false);
+  const [showImportExcel, setShowImportExcel] = useState(false);
+  const importMenuRef = React.useRef<HTMLDivElement>(null);
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
   const [savingSeb, setSavingSeb] = useState(false);
   const [newQuestion, setNewQuestion] = useState<Question>({
@@ -398,6 +413,65 @@ export default function EditSoalPage() {
     }
   };
 
+  // Close import menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setShowImportMenu(false);
+      }
+    };
+    if (showImportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showImportMenu]);
+
+  // Bulk import handler — creates questions one by one via API
+  const handleBulkImport = async (importedQuestions: {
+    question_text: string;
+    question_type: 'multiple_choice' | 'essay';
+    points: number;
+    options: { text: string; is_correct: boolean }[];
+  }[]) => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < importedQuestions.length; i++) {
+      const q = importedQuestions[i];
+      try {
+        const formData = new FormData();
+        formData.append('question_text', q.question_text);
+        formData.append('question_type', q.question_type);
+        formData.append('points', String(q.points));
+        formData.append('order', String(questions.length + successCount + 1));
+
+        if (q.question_type === 'multiple_choice') {
+          q.options.forEach((opt, idx) => {
+            formData.append(`options[${idx}][option_text]`, opt.text);
+            formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+            formData.append(`options[${idx}][order]`, String(idx + 1));
+          });
+        }
+
+        await api.post(`/exams/${examId}/questions`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    // Refresh questions list
+    await fetchExamData();
+
+    if (failCount === 0) {
+      toast.success(`${successCount} soal berhasil diimpor`);
+    } else {
+      toast.warning(`${successCount} soal berhasil, ${failCount} gagal diimpor`);
+    }
+  };
+
   const handleSaveSebSettings = async () => {
     if (sebSettings.sebRequired && sebSettings.sebAllowQuit && !sebSettings.sebQuitPassword.trim()) {
       toast.warning('Password quit SEB wajib diisi agar bisa keluar dari SEB');
@@ -680,11 +754,81 @@ export default function EditSoalPage() {
         </Card>
 
         {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {exam?.status === 'draft' && (
             <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
               Tambah Soal
             </Button>
+          )}
+          {exam?.status === 'draft' && (
+            <div className="relative" ref={importMenuRef}>
+              <button
+                onClick={() => setShowImportMenu(!showImportMenu)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Import Soal
+                <ChevronDown className={`w-4 h-4 transition-transform ${showImportMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showImportMenu && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 z-50 overflow-hidden">
+                  <div className="p-1.5">
+                    <button
+                      onClick={() => { setShowImportText(true); setShowImportMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0 group-hover:bg-violet-200 dark:group-hover:bg-violet-800/40 transition-colors">
+                        <ClipboardPaste className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-slate-800 dark:text-white">Tempel Teks</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Copy-paste soal format teks</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => { setShowImportBankSoal(true); setShowImportMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/40 transition-colors">
+                        <Library className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-slate-800 dark:text-white">Bank Soal</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Pilih dari koleksi bank soal</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => { setShowDuplicateExam(true); setShowImportMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 group-hover:bg-amber-200 dark:group-hover:bg-amber-800/40 transition-colors">
+                        <Copy className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-slate-800 dark:text-white">Duplikat Ujian</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Salin soal dari ujian lain</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => { setShowImportExcel(true); setShowImportMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800/40 transition-colors">
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-slate-800 dark:text-white">Excel / CSV</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Upload file spreadsheet</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {exam?.status === 'draft' && (
             <Button 
@@ -709,7 +853,7 @@ export default function EditSoalPage() {
             <div className="text-center py-12 text-slate-600 dark:text-slate-400">
               <FileEdit className="w-16 h-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg font-medium">Belum ada soal</p>
-              <p className="text-sm mt-1">Klik "Tambah Soal" untuk menambah soal baru</p>
+              <p className="text-sm mt-1">Tambah soal manual atau gunakan Import Soal untuk menambah lebih cepat</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -1189,6 +1333,36 @@ export default function EditSoalPage() {
         }
         confirmText="Publikasi"
         variant="warning"
+      />
+
+      {/* Import Modals */}
+      <ImportTextModal
+        isOpen={showImportText}
+        onClose={() => setShowImportText(false)}
+        onImport={handleBulkImport}
+        existingCount={questions.length}
+      />
+
+      <ImportBankSoalModal
+        isOpen={showImportBankSoal}
+        onClose={() => setShowImportBankSoal(false)}
+        onImport={handleBulkImport}
+        existingCount={questions.length}
+      />
+
+      <DuplicateExamModal
+        isOpen={showDuplicateExam}
+        onClose={() => setShowDuplicateExam(false)}
+        onImport={handleBulkImport}
+        currentExamId={examId}
+        existingCount={questions.length}
+      />
+
+      <ImportExcelModal
+        isOpen={showImportExcel}
+        onClose={() => setShowImportExcel(false)}
+        onImport={handleBulkImport}
+        existingCount={questions.length}
       />
     </DashboardLayout>
   );
