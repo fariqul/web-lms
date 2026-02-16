@@ -42,8 +42,22 @@ export default function LoginPage() {
       await login(loginId, password);
       router.push('/dashboard');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Email/NIS atau password salah';
-      setError(errorMessage);
+      // Extract user-friendly error message
+      const axiosError = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = axiosError?.response?.status;
+      const serverMessage = axiosError?.response?.data?.message;
+
+      if (status === 401 || status === 403) {
+        setError('Email/NIS atau password salah. Silakan coba lagi.');
+      } else if (status === 422) {
+        setError(serverMessage || 'Data login tidak valid. Periksa kembali email/NIS dan password.');
+      } else if (status === 429) {
+        setError('Terlalu banyak percobaan login. Silakan tunggu beberapa menit.');
+      } else if (!navigator.onLine) {
+        setError('Tidak ada koneksi internet. Periksa jaringan Anda.');
+      } else {
+        setError('Gagal terhubung ke server. Silakan coba lagi nanti.');
+      }
     } finally {
       setIsLoading(false);
     }
