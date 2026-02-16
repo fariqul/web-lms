@@ -23,7 +23,7 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
     <Component
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={clsx(
-        'bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]',
+        'bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] card-hover',
         paddingClasses[padding],
         onClick && 'cursor-pointer text-left w-full hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-[var(--shadow-md)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.99]',
         className
@@ -75,7 +75,7 @@ export function StatCard({ value, label, icon, color = 'blue', trend }: StatCard
   };
 
   return (
-    <div className={clsx('rounded-2xl p-5 text-white bg-gradient-to-br shadow-lg', colorClasses[color])}>
+    <div className={clsx('rounded-2xl p-5 text-white bg-gradient-to-br shadow-lg stat-card-hover ring-1 ring-white/10', colorClasses[color])}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-3xl font-extrabold tracking-tight tabular-nums">{value}</p>
@@ -86,7 +86,7 @@ export function StatCard({ value, label, icon, color = 'blue', trend }: StatCard
             </p>
           )}
         </div>
-        {icon && <div className="opacity-70 bg-white/10 rounded-xl p-2.5">{icon}</div>}
+        {icon && <div className="opacity-80 bg-white/15 rounded-xl p-2.5 shadow-inner">{icon}</div>}
       </div>
     </div>
   );
@@ -117,7 +117,7 @@ export function QuickActionCard({
   };
 
   const sharedClasses = clsx(
-    'flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.97]',
+    'flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.97] hover:-translate-y-1 hover:shadow-md',
     colorClasses[color]
   );
 
@@ -171,7 +171,7 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-sm">
       {icon && (
         <div
           className={clsx(

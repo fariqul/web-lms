@@ -128,7 +128,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
       <aside
         className={clsx(
           'fixed top-0 left-0 z-50 h-full w-[260px] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:translate-x-0',
-          'bg-[#0f172a] border-r border-white/[0.06]',
+          'bg-[#0f172a] border-r border-white/[0.06] shadow-xl shadow-black/20',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -169,14 +169,14 @@ export default function DashboardLayout({ children }: SidebarProps) {
                 className={clsx(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset',
                   isActive
-                    ? 'bg-blue-800/20 text-sky-400 border-l-2 border-sky-500 -ml-px pl-[11px]'
+                    ? 'bg-gradient-to-r from-blue-800/25 to-cyan-800/15 text-sky-400 border-l-2 border-sky-500 -ml-px pl-[11px] shadow-sm shadow-sky-500/10'
                     : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-sky-500' : 'text-slate-400 group-hover:text-slate-300')} />
+                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0 transition-colors', isActive ? 'text-sky-400' : 'text-slate-500 group-hover:text-slate-300')} />
                 <span className="text-[13px] font-medium">{item.name}</span>
-                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />}
+                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-400 shadow-sm shadow-sky-400/50" />}
               </Link>
             );
           })}

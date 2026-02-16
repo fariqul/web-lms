@@ -40,26 +40,33 @@ export function SimpleBarChart({
   showGrid = true,
   showLegend = false,
 }: BarChartProps) {
+  const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
+  const gridColor = isDark ? 'rgba(148,163,184,0.08)' : 'rgba(226,232,240,0.6)';
+  const tooltipBg = isDark ? '#1e293b' : '#FFF';
+  const tooltipBorder = isDark ? '#334155' : '#E5E7EB';
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />}
+        {showGrid && <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />}
         <XAxis
           dataKey={xAxisKey}
           tick={{ fill: '#6B7280', fontSize: 12 }}
-          axisLine={{ stroke: '#E5E7EB' }}
+          axisLine={{ stroke: gridColor }}
+          tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={{ stroke: '#E5E7EB' }} />
+        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#FFF',
-            border: '1px solid #E5E7EB',
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            backgroundColor: tooltipBg,
+            border: `1px solid ${tooltipBorder}`,
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+            padding: '8px 12px',
           }}
         />
         {showLegend && <Legend />}
-        <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+        <Bar dataKey={dataKey} fill={color} radius={[6, 6, 0, 0]} animationDuration={800} animationEasing="ease-out" />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -81,18 +88,20 @@ export function MultiBarChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.5)" vertical={false} />
         <XAxis
           dataKey={xAxisKey}
           tick={{ fill: '#6B7280', fontSize: 12 }}
-          axisLine={{ stroke: '#E5E7EB' }}
+          axisLine={false}
+          tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={{ stroke: '#E5E7EB' }} />
+        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#FFF',
             border: '1px solid #E5E7EB',
-            borderRadius: '8px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
           }}
         />
         <Legend />
@@ -102,7 +111,9 @@ export function MultiBarChart({
             dataKey={bar.dataKey}
             name={bar.name || bar.dataKey}
             fill={bar.color}
-            radius={[4, 4, 0, 0]}
+            radius={[6, 6, 0, 0]}
+            animationDuration={800}
+            animationEasing="ease-out"
           />
         ))}
       </BarChart>
@@ -126,18 +137,20 @@ export function SimpleLineChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.5)" vertical={false} />
         <XAxis
           dataKey={xAxisKey}
           tick={{ fill: '#6B7280', fontSize: 12 }}
-          axisLine={{ stroke: '#E5E7EB' }}
+          axisLine={false}
+          tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={{ stroke: '#E5E7EB' }} />
+        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#FFF',
             border: '1px solid #E5E7EB',
-            borderRadius: '8px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
           }}
         />
         <Legend />
@@ -198,7 +211,8 @@ export function SimplePieChart({
           contentStyle={{
             backgroundColor: '#FFF',
             border: '1px solid #E5E7EB',
-            borderRadius: '8px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
           }}
         />
         <Legend />
@@ -225,25 +239,27 @@ export function AttendanceChart({ data, height = 300 }: AttendanceChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.5)" vertical={false} />
         <XAxis
           dataKey="day"
           tick={{ fill: '#6B7280', fontSize: 11 }}
-          axisLine={{ stroke: '#E5E7EB' }}
+          axisLine={false}
+          tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={{ stroke: '#E5E7EB' }} />
+        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#FFF',
             border: '1px solid #E5E7EB',
-            borderRadius: '8px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
           }}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
-        <Bar dataKey="hadir" name="Hadir" fill="#22C55E" radius={[2, 2, 0, 0]} />
-        <Bar dataKey="izin" name="Izin" fill="#3B82F6" radius={[2, 2, 0, 0]} />
-        <Bar dataKey="sakit" name="Sakit" fill="#F59E0B" radius={[2, 2, 0, 0]} />
-        <Bar dataKey="alpha" name="Alpha" fill="#EF4444" radius={[2, 2, 0, 0]} />
+        <Bar dataKey="hadir" name="Hadir" fill="#22C55E" radius={[6, 6, 0, 0]} animationDuration={800} animationEasing="ease-out" />
+        <Bar dataKey="izin" name="Izin" fill="#3B82F6" radius={[6, 6, 0, 0]} animationDuration={800} animationEasing="ease-out" />
+        <Bar dataKey="sakit" name="Sakit" fill="#F59E0B" radius={[6, 6, 0, 0]} animationDuration={800} animationEasing="ease-out" />
+        <Bar dataKey="alpha" name="Alpha" fill="#EF4444" radius={[6, 6, 0, 0]} animationDuration={800} animationEasing="ease-out" />
       </BarChart>
     </ResponsiveContainer>
   );

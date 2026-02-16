@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import api, { assignmentAPI, announcementAPI } from '@/services/api';
+import { getTimeGreeting, getConditionTextColor, getConditionHex } from '@/lib/dashboard-utils';
 
 interface ScheduleItem {
   id: number;
@@ -314,10 +315,10 @@ export default function SiswaDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-[1280px] mx-auto">
+      <div className="space-y-6 max-w-[1280px] mx-auto stagger-children">
 
         {/* ── Welcome Header ─────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-500 dark:from-sky-800 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-800/20 hero-radial">
           {/* Decorative circles */}
           <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
           <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
@@ -332,8 +333,9 @@ export default function SiswaDashboard() {
                 )}
               </div>
               <div className="min-w-0">
+                <p className="text-xs text-blue-200/70 mb-0.5">{getTimeGreeting().emoji} {getTimeGreeting().greeting}</p>
                 <h1 className="text-lg font-bold text-white truncate">
-                  Halo, {user?.name?.split(' ')[0]}! 👋
+                  Halo, {user?.name?.split(' ')[0]}!
                 </h1>
                 <p className="text-sm text-blue-100/80">
                   {user?.class?.name || 'Siswa'} &middot; NISN {user?.nisn || '-'}
@@ -359,7 +361,7 @@ export default function SiswaDashboard() {
         </div>
 
         {/* ── Quick Actions ──────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
           {[
             { href: '/scan-qr', icon: QrCode, label: 'Scan QR', sub: 'Absensi', color: 'from-cyan-500 to-cyan-600' },
             { href: '/ujian-siswa', icon: FileText, label: 'Ujian', sub: `${stats.upcoming_exams_count} tersedia`, color: 'from-violet-500 to-violet-600' },
@@ -369,7 +371,7 @@ export default function SiswaDashboard() {
             <Link
               key={action.href}
               href={action.href}
-              className="group relative flex items-center gap-3 p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)] hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all duration-200 cursor-pointer"
+              className="group relative flex items-center gap-3 p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 hover:-translate-y-1 transition-all duration-200 cursor-pointer"
             >
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-sm`}>
                 <action.icon className="w-5 h-5 text-white" />
@@ -388,17 +390,17 @@ export default function SiswaDashboard() {
         </div>
 
         {/* ── Stats Strip ────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-children">
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] card-hover">
             <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center">
               <TrendingUp className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
               <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-wide">Kehadiran</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{attendancePct > 0 ? `${attendancePct}%` : '-'}</p>
+              <p className={`text-lg font-bold tabular-nums ${attendancePct > 0 ? getConditionTextColor(attendancePct) : 'text-slate-900 dark:text-white'}`}>{attendancePct > 0 ? `${attendancePct}%` : '-'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] card-hover">
             <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center">
               <GraduationCap className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
             </div>
@@ -407,7 +409,7 @@ export default function SiswaDashboard() {
               <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{stats.completed_exams_count}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] card-hover">
             <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
               <Calendar className="w-4.5 h-4.5 text-blue-800 dark:text-blue-400" />
             </div>
@@ -416,7 +418,7 @@ export default function SiswaDashboard() {
               <p className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{todaySchedule.length}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] card-hover">
             <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/50 flex items-center justify-center">
               <ClipboardList className="w-4.5 h-4.5 text-orange-500 dark:text-orange-400" />
             </div>
@@ -489,7 +491,7 @@ export default function SiswaDashboard() {
                       )}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums leading-none">
+                      <span className={`text-xl font-bold tabular-nums leading-none ${attendancePct > 0 ? getConditionTextColor(attendancePct) : 'text-slate-900 dark:text-white'}`}>
                         {attendancePct > 0 ? attendancePct : 0}
                       </span>
                       <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">persen</span>

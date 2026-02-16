@@ -21,6 +21,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import api from '@/services/api';
+import { getTimeGreeting } from '@/lib/dashboard-utils';
 
 interface Activity {
   type: string;
@@ -195,19 +196,20 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 stagger-children">
         {/* Welcome Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20 hero-radial">
           <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
           <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
           <div className="relative">
+            <p className="text-sm text-slate-400 mb-1">{getTimeGreeting().emoji} {getTimeGreeting().greeting}</p>
             <h1 className="text-2xl font-bold text-white">Panel Admin</h1>
             <p className="text-slate-300/80">Kelola pengguna, kelas, dan seluruh sistem LMS</p>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
           <QuickActionCard
             icon={<Users className="w-8 h-8" />}
             title="Kelola Pengguna"
@@ -231,7 +233,7 @@ export default function AdminDashboard() {
         {/* Statistics */}
         <div>
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Statistik Pengguna</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
             <StatCard
               value={stats.totalStudents}
               label="Siswa Aktif"
