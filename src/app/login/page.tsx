@@ -39,7 +39,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(loginId, password);
+      await login(loginId.trim().toLowerCase(), password);
       router.push('/dashboard');
     } catch (err: unknown) {
       // Extract user-friendly error message
