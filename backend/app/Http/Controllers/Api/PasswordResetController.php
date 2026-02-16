@@ -24,7 +24,7 @@ class PasswordResetController extends Controller
             'nama' => 'nullable|string|max:100',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', strtolower($request->email))->first();
 
         if (!$user) {
             // Return success even if user not found to prevent email enumeration
@@ -97,7 +97,7 @@ class PasswordResetController extends Controller
 
         // Find token record
         $record = DB::table('password_reset_tokens')
-            ->where('email', $request->email)
+            ->where('email', strtolower($request->email))
             ->first();
 
         if (!$record) {
@@ -117,7 +117,7 @@ class PasswordResetController extends Controller
 
         // Check if token is expired (60 minutes)
         if (now()->diffInMinutes($record->created_at) > 60) {
-            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            DB::table('password_reset_tokens')->where('email', strtolower($request->email))->delete();
             return response()->json([
                 'success' => false,
                 'message' => 'Token reset password sudah kadaluarsa. Silakan request ulang.',
@@ -125,7 +125,7 @@ class PasswordResetController extends Controller
         }
 
         // Update password
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', strtolower($request->email))->first();
 
         if (!$user) {
             return response()->json([
@@ -139,7 +139,7 @@ class PasswordResetController extends Controller
         ]);
 
         // Delete used token
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        DB::table('password_reset_tokens')->where('email', strtolower($request->email))->delete();
 
         // Revoke all existing tokens (force re-login)
         $user->tokens()->delete();

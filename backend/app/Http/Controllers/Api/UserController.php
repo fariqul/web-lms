@@ -71,6 +71,7 @@ class UserController extends Controller
 
         $user = new User();
         $user->fill($request->only(['name', 'email', 'nisn', 'nip', 'class_id']));
+        $user->email = strtolower($request->email);
         $user->password = Hash::make($request->password);
         $user->role = $request->role;
         $user->save();
@@ -122,7 +123,7 @@ class UserController extends Controller
             $user->name = $request->name;
         }
         if ($request->has('email')) {
-            $user->email = $request->email;
+            $user->email = strtolower($request->email);
         }
         if ($request->has('password')) {
             $user->password = Hash::make($request->password);

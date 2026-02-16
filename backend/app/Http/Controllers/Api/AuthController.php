@@ -21,11 +21,11 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $loginField = $request->login;
+        $loginField = trim($request->login);
 
         // Determine if login is email or NISN
         if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
-            $user = User::where('email', $loginField)->first();
+            $user = User::where('email', strtolower($loginField))->first();
         } else {
             // Treat as NISN for student login
             $user = User::where('nisn', $loginField)->first();
