@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
@@ -20,6 +20,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [cursorPhase, setCursorPhase] = useState<'blink' | 'solid' | 'hidden'>('blink');
+
+  const ANIMATED_TEXT = 'Learning Management System SMA 15';
+  const CHAR_DELAY = 50;
+  const CHAR_ANIM = 400;
+
+  useEffect(() => {
+    const total = ANIMATED_TEXT.length * CHAR_DELAY + CHAR_ANIM;
+    const t1 = setTimeout(() => setCursorPhase('solid'), total);
+    const t2 = setTimeout(() => setCursorPhase('hidden'), total + 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,20 +102,35 @@ export default function LoginPage() {
             <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={112} height={112} className="object-contain w-full h-full drop-shadow-lg" />
           </div>
           <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">SMA 15 Makassar</h1>
-          <p className="text-lg text-slate-400 font-medium">Learning Management System</p>
-          <div className="mt-10 grid grid-cols-3 gap-4">
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
-              <p className="text-2xl font-bold text-cyan-400">QR</p>
-              <p className="text-xs text-slate-400 mt-1">Absensi Digital</p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
-              <p className="text-2xl font-bold text-blue-400">CBT</p>
-              <p className="text-xs text-slate-400 mt-1">Ujian Online</p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 ring-1 ring-white/10">
-              <p className="text-2xl font-bold text-sky-400">LMS</p>
-              <p className="text-xs text-slate-400 mt-1">E-Learning</p>
-            </div>
+
+          {/* Animated Text Reveal */}
+          <div className="mt-2 flex items-center justify-center min-h-[2rem]">
+            <p
+              className="text-[1.15rem] font-semibold tracking-[0.04em] text-sky-300"
+              style={{ textShadow: '0 0 30px rgba(56, 189, 248, 0.15)' }}
+            >
+              {ANIMATED_TEXT.split('').map((char, i) => (
+                <span
+                  key={i}
+                  className="inline-block opacity-0"
+                  style={{
+                    animation: `charReveal ${CHAR_ANIM}ms ease-out forwards`,
+                    animationDelay: `${i * CHAR_DELAY}ms`,
+                  }}
+                >
+                  {char === ' ' ? '\u00A0' : char}
+                </span>
+              ))}
+              <span
+                className={`inline-block w-[2px] h-5 rounded-full ml-1 align-middle bg-sky-400 ${
+                  cursorPhase === 'blink'
+                    ? 'animate-[cursorBlink_0.8s_ease-in-out_infinite]'
+                    : cursorPhase === 'solid'
+                      ? 'opacity-70 transition-opacity duration-300'
+                      : 'opacity-0 transition-opacity duration-700'
+                }`}
+              />
+            </p>
           </div>
         </div>
       </div>
