@@ -105,10 +105,10 @@ export default function NilaiSiswaPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-green-600';
-    if (score >= 70) return 'text-sky-500';
-    if (score >= 55) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 85) return 'text-green-700';
+    if (score >= 70) return 'text-sky-600';
+    if (score >= 55) return 'text-yellow-700';
+    return 'text-red-700';
   };
 
   const getScoreBg = (score: number) => {

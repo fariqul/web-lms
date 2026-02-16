@@ -159,7 +159,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="mt-2 px-3 flex-1 overflow-y-auto pb-4" aria-label="Menu utama" style={{ maxHeight: 'calc(100vh - 145px)' }}>
-          <p className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest px-3 mb-2">Menu</p>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-2">Menu</p>
           {filteredNavigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
@@ -170,11 +170,11 @@ export default function DashboardLayout({ children }: SidebarProps) {
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset',
                   isActive
                     ? 'bg-blue-800/20 text-sky-400 border-l-2 border-sky-500 -ml-px pl-[11px]'
-                    : 'text-slate-500 dark:text-slate-500 hover:bg-white/[0.06] hover:text-slate-200'
+                    : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-sky-500' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-300')} />
+                <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0', isActive ? 'text-sky-500' : 'text-slate-400 group-hover:text-slate-300')} />
                 <span className="text-[13px] font-medium">{item.name}</span>
                 {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500" />}
               </Link>
