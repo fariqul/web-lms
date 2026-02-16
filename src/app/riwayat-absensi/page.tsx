@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card } from '@/components/ui';
 import { attendanceAPI } from '@/services/api';
+import api from '@/services/api';
 import { ClipboardList, CheckCircle, XCircle, Clock, AlertCircle, Download, Filter, ChevronDown, FileSpreadsheet } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -40,6 +41,7 @@ export default function RiwayatAbsensiPage() {
   const [loading, setLoading] = useState(true);
   const [filterSubject, setFilterSubject] = useState('');
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [backendStats, setBackendStats] = useState<{ total_sessions: number; hadir: number; izin: number; sakit: number; alpha: number; percentage: number } | null>(null);
 
   useEffect(() => {
     fetchAttendanceHistory();
@@ -56,9 +58,33 @@ export default function RiwayatAbsensiPage() {
 
   const fetchAttendanceHistory = async () => {
     try {
-      const response = await attendanceAPI.getStudentHistory();
-      const data = response.data.data.data || response.data.data;
+      const [historyRes, statsRes] = await Promise.all([
+        attendanceAPI.getStudentHistory(),
+        api.get('/my-attendance-stats').catch(() => ({ data: { data: null } })),
+      ]);
+
+      // Get ALL attendance records (handle pagination)
+      const rawData = historyRes.data.data;
+      let data: AttendanceRecord[];
+      if (rawData?.data && Array.isArray(rawData.data)) {
+        // Paginated response - fetch all pages if needed
+        data = rawData.data;
+        const totalRecords = rawData.total || data.length;
+        if (data.length < totalRecords) {
+          // Fetch remaining records
+          const allRes = await api.get('/attendance/history', { params: { per_page: totalRecords } });
+          const allData = allRes.data.data;
+          data = allData?.data || allData || data;
+        }
+      } else {
+        data = rawData || [];
+      }
       setAttendances(data);
+
+      // Backend stats (accurate: uses total sessions as denominator)
+      if (statsRes.data?.data) {
+        setBackendStats(statsRes.data.data);
+      }
     } catch (error) {
       console.error('Failed to fetch attendance history:', error);
     } finally {
@@ -105,7 +131,28 @@ export default function RiwayatAbsensiPage() {
   }, [filteredAttendances]);
 
   const total = stats.hadir + stats.izin + stats.sakit + stats.alpha;
-  const attendancePercentage = total > 0 ? Math.round((stats.hadir / total) * 100) : 0;
+
+  // Use backend stats for overall percentage when no filter is applied (accurate: hadir / totalSessions)
+  // Use frontend calculation for filtered view (per-subject)
+  const attendancePercentage = useMemo(() => {
+    if (!filterSubject && backendStats) {
+      return backendStats.percentage;
+    }
+    return total > 0 ? Math.round((stats.hadir / total) * 100) : 0;
+  }, [filterSubject, backendStats, stats.hadir, total]);
+
+  // For overall stats display, use backend values when no filter
+  const displayStats = useMemo(() => {
+    if (!filterSubject && backendStats) {
+      return {
+        hadir: backendStats.hadir,
+        izin: backendStats.izin,
+        sakit: backendStats.sakit,
+        alpha: backendStats.alpha,
+      };
+    }
+    return stats;
+  }, [filterSubject, backendStats, stats]);
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -341,19 +388,19 @@ export default function RiwayatAbsensiPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">Kehadiran</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-green-600">{stats.hadir}</p>
+            <p className="text-3xl font-bold text-green-600">{displayStats.hadir}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Hadir</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-sky-600">{stats.izin}</p>
+            <p className="text-3xl font-bold text-sky-600">{displayStats.izin}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Izin</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-yellow-600">{stats.sakit}</p>
+            <p className="text-3xl font-bold text-yellow-600">{displayStats.sakit}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Sakit</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-red-600">{stats.alpha}</p>
+            <p className="text-3xl font-bold text-red-600">{displayStats.alpha}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Alpha</p>
           </Card>
         </div>
