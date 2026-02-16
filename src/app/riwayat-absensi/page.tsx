@@ -234,77 +234,76 @@ export default function RiwayatAbsensiPage() {
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-800 via-blue-700 to-cyan-600 dark:from-blue-900 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-900/20">
           <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
           <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
-          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Riwayat Absensi</h1>
-              <p className="text-blue-100/80">Lihat dan download rekap kehadiran Anda</p>
-            </div>
-            {/* Download Button */}
-            {attendances.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowDownloadMenu(!showDownloadMenu); }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl text-sm font-medium transition-all backdrop-blur-sm border border-white/20 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Rekap
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showDownloadMenu ? 'rotate-180' : ''}`} />
-                </button>
-                {showDownloadMenu && (
-                  <div
-                    className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden animate-slideDown"
-                    onClick={(e) => e.stopPropagation()}
+          <div className="relative">
+            <h1 className="text-2xl font-bold text-white">Riwayat Absensi</h1>
+            <p className="text-blue-100/80">Lihat dan download rekap kehadiran Anda</p>
+          </div>
+        </div>
+
+        {/* Download Button - outside banner to avoid overflow clipping */}
+        {!loading && attendances.length > 0 && (
+          <div className="flex justify-end relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDownloadMenu(!showDownloadMenu); }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-sm font-medium transition-colors cursor-pointer shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              Download Rekap
+              <ChevronDown className={`w-4 h-4 transition-transform ${showDownloadMenu ? 'rotate-180' : ''}`} />
+            </button>
+            {showDownloadMenu && (
+              <div
+                className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden animate-slideDown"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-3 border-b border-slate-100 dark:border-slate-700">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pilih Rekap</p>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {/* Download All */}
+                  <button
+                    onClick={() => { handleDownloadAll(); setShowDownloadMenu(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left cursor-pointer"
                   >
-                    <div className="p-3 border-b border-slate-100 dark:border-slate-700">
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pilih Rekap</p>
+                    <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center flex-shrink-0">
+                      <FileSpreadsheet className="w-4 h-4 text-sky-600" />
                     </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {/* Download All */}
-                      <button
-                        onClick={() => { handleDownloadAll(); setShowDownloadMenu(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left cursor-pointer"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center flex-shrink-0">
-                          <FileSpreadsheet className="w-4 h-4 text-sky-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Semua Mata Pelajaran</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Rekap lengkap + ringkasan</p>
-                        </div>
-                      </button>
-                      {/* Per Subject */}
-                      {subjects.length > 0 && (
-                        <div className="border-t border-slate-100 dark:border-slate-700">
-                          <p className="px-4 py-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Per Mata Pelajaran</p>
-                          {subjects.map(subj => {
-                            const stat = subjectStats.find(s => s.subject === subj);
-                            return (
-                              <button
-                                key={subj}
-                                onClick={() => { handleDownloadBySubject(subj); setShowDownloadMenu(false); }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left cursor-pointer"
-                              >
-                                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-                                  <ClipboardList className="w-4 h-4 text-slate-500" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{subj}</p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {stat?.total || 0} pertemuan • {stat?.percentage || 0}% hadir
-                                  </p>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">Semua Mata Pelajaran</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Rekap lengkap + ringkasan</p>
                     </div>
-                  </div>
-                )}
+                  </button>
+                  {/* Per Subject */}
+                  {subjects.length > 0 && (
+                    <div className="border-t border-slate-100 dark:border-slate-700">
+                      <p className="px-4 py-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Per Mata Pelajaran</p>
+                      {subjects.map(subj => {
+                        const stat = subjectStats.find(s => s.subject === subj);
+                        return (
+                          <button
+                            key={subj}
+                            onClick={() => { handleDownloadBySubject(subj); setShowDownloadMenu(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left cursor-pointer"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                              <ClipboardList className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{subj}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {stat?.total || 0} pertemuan • {stat?.percentage || 0}% hadir
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* Filter & Stats Row */}
         {!loading && attendances.length > 0 && (
