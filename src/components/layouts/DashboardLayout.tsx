@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--surface)]">
+    <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -197,11 +197,11 @@ export default function DashboardLayout({ children }: SidebarProps) {
       {/* Main Content */}
       <div className="lg:ml-[260px]">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur-xl border-b border-[var(--border)]">
+        <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-xl border-b border-border">
           <div className="flex items-center justify-between px-4 lg:px-6 h-[60px]">
             {/* Mobile menu button */}
             <button
-              className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+              className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer"
               onClick={() => setSidebarOpen(true)}
               aria-label="Buka menu navigasi"
             >
@@ -215,10 +215,10 @@ export default function DashboardLayout({ children }: SidebarProps) {
             <div className="flex items-center gap-2">
               <ThemeToggleSimple />
               <NotificationDropdown />
-              <div className="hidden sm:flex items-center gap-3 ml-2 pl-3 border-l border-[var(--border)]">
+              <div className="hidden sm:flex items-center gap-3 ml-2 pl-3 border-l border-border">
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-white leading-tight">{user?.name?.split(' ')[0]}</p>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400 capitalize">{user?.role}</p>
+                  <p className="text-sm font-semibold text-foreground leading-tight">{user?.name?.split(' ')[0]}</p>
+                  <p className="text-[11px] text-muted-foreground capitalize">{user?.role}</p>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-700 to-cyan-500 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-sm">
                   {(user?.photo || user?.avatar) ? (

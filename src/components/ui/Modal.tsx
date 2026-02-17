@@ -119,19 +119,19 @@ export function Modal({
           aria-labelledby={title ? titleId : undefined}
           tabIndex={-1}
           className={clsx(
-            'relative w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl outline-none border border-slate-100 dark:border-slate-700 animate-scaleIn',
+            'relative w-full bg-card text-card-foreground rounded-2xl shadow-2xl outline-none border border-border animate-scaleIn',
             sizeClasses[size]
           )}
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              {title && <h3 id={titleId} className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h3>}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              {title && <h3 id={titleId} className="text-lg font-bold text-foreground">{title}</h3>}
               {showCloseButton && (
                 <button
                   onClick={onClose}
                   aria-label="Tutup dialog"
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -173,8 +173,8 @@ export function ConfirmDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm" showCloseButton={false}>
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">{title}</h3>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">{message}</p>
+        <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+        <p className="text-muted-foreground mb-6">{message}</p>
         <div className="flex gap-3 justify-center">
           <Button
             variant="outline"

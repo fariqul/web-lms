@@ -40,7 +40,7 @@ export function ThemeToggleSimple() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
       aria-label={resolvedTheme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
     >
       {resolvedTheme === 'dark' ? (

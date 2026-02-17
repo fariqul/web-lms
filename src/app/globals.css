@@ -1,68 +1,136 @@
 @import "tailwindcss";
 
+/* ============================================================
+   COLOR PALETTE — Generated from brand #1E40AF using
+   11-shade scale + semantic tokens + dark mode inversion.
+   ============================================================ */
+
 :root {
-  /* ─── Color System ─── */
+  /* ─── Primary Scale (Blue, Brand = 800) ─── */
+  --primary-50:  #EFF6FF;
+  --primary-100: #DBEAFE;
+  --primary-200: #BFDBFE;
+  --primary-300: #93C5FD;
+  --primary-400: #60A5FA;
+  --primary-500: #3B82F6;
+  --primary-600: #2563EB;
+  --primary-700: #1D4ED8;
+  --primary-800: #1E40AF;
+  --primary-900: #1E3A8A;
+  --primary-950: #172554;
+
+  /* ─── Semantic Tokens (Light Mode) ─── */
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+
+  --card: #FFFFFF;
+  --card-foreground: #1E293B;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+
   --primary: #1E40AF;
+  --primary-foreground: #FFFFFF;
   --primary-hover: #1E3A8A;
   --primary-light: #DBEAFE;
-  --primary-50: #EFF6FF;
-  --secondary: #06B6D4;
-  --secondary-hover: #0891B2;
-  --accent: #FB923C;
-  --accent-hover: #F97316;
+
+  --secondary: #F1F5F9;
+  --secondary-foreground: #1E293B;
+
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+
+  --accent: #EFF6FF;
+  --accent-foreground: #1E40AF;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #1E40AF;
+  --border-focus: var(--ring);
+
+  /* ─── Brand Colors (Cyan, Orange) ─── */
+  --brand-secondary: #06B6D4;
+  --brand-secondary-hover: #0891B2;
+  --brand-accent: #FB923C;
+  --brand-accent-hover: #F97316;
   --link: #0EA5E9;
   --link-hover: #0284C7;
 
-  /* Surfaces */
-  --surface: #F5F7FA;
-  --surface-card: #ffffff;
-  --surface-elevated: #ffffff;
-
-  /* Text */
-  --foreground: #1F2937;
-  --foreground-muted: #6B7280;
+  /* ─── Surface Aliases (Backwards Compat) ─── */
+  --surface: var(--background);
+  --surface-card: var(--card);
+  --surface-elevated: var(--popover);
+  --foreground-muted: var(--muted-foreground);
   --foreground-subtle: #9CA3AF;
 
-  /* Sidebar */
+  /* ─── Sidebar ─── */
   --sidebar: #0F172A;
   --sidebar-hover: #1E293B;
   --sidebar-active: rgba(30, 64, 175, 0.15);
   --sidebar-text: #F8FAFC;
   --sidebar-text-active: #ffffff;
 
-  /* Borders */
-  --border: #e2e8f0;
-  --border-focus: var(--primary);
-
-  /* Shadows */
+  /* ─── Shadows ─── */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 3px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.04), 0 4px 6px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 4px 6px -2px rgba(0, 0, 0, 0.03), 0 10px 15px -3px rgba(0, 0, 0, 0.06);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 
-  /* Radii */
+  /* ─── Radii ─── */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
-
-  --background: var(--surface);
+  --radius: 0.5rem;
 }
 
+/* ─── Tailwind v4 @theme — Expose semantic tokens as utilities ─── */
 @theme inline {
+  /* Semantic Surfaces */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Actions */
   --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
   --color-primary-light: var(--primary-light);
+
+  /* Secondary & Muted */
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Accent & Destructive */
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Borders & Rings */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand Colors */
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
   --color-link: var(--link);
+
+  /* Typography */
   --font-sans: var(--font-jakarta);
 }
 
 body {
-  background: var(--surface);
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -266,41 +334,86 @@ body {
   scrollbar-color: #4b5563 #1f2937;
 }
 
-/* ===== Dark Mode Styles ===== */
+/* ===== Dark Mode — Semantic Token Overrides ===== */
 .dark {
-  --surface: #0f172a;
-  --surface-card: #1e293b;
-  --surface-elevated: #1e293b;
-  --foreground: #f1f5f9;
-  --foreground-muted: #94a3b8;
-  --foreground-subtle: #64748b;
+  /* ─── Semantic Tokens (Inverted) ─── */
+  --background: #0F172A;
+  --foreground: #F1F5F9;
+
+  --card: #1E293B;
+  --card-foreground: #F1F5F9;
+
+  --popover: #1E293B;
+  --popover-foreground: #F1F5F9;
+
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #2563EB;
+  --primary-light: #172554;
+
+  --secondary: #1E293B;
+  --secondary-foreground: #F1F5F9;
+
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+
+  --accent: #172554;
+  --accent-foreground: #DBEAFE;
+
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+
   --border: #334155;
+  --input: #475569;
+  --ring: #3B82F6;
+
+  /* Brand colors (brighter for dark bg) */
+  --brand-secondary: #22D3EE;
+  --brand-accent: #FB923C;
+  --link: #38BDF8;
+  --link-hover: #7DD3FC;
+
+  /* Surface aliases */
+  --surface: var(--background);
+  --surface-card: var(--card);
+  --surface-elevated: var(--popover);
+  --foreground-muted: var(--muted-foreground);
+  --foreground-subtle: #64748B;
+
+  /* Shadows — deeper in dark mode */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.03);
   color-scheme: dark;
 }
 
-/* Dark mode base overrides */
+/* Dark mode body */
 .dark body {
-  background: var(--surface);
+  background: var(--background);
   color: var(--foreground);
 }
 
-/* Cards and surfaces */
+/* ===== Dark Mode — Utility Compatibility Layer =====
+   These overrides handle raw Tailwind classes (bg-white, text-slate-*, etc.)
+   used in components that haven't been migrated to semantic tokens yet.
+   Gradually remove as components adopt bg-card, text-foreground, etc. */
+
+/* --- Backgrounds --- */
 .dark .bg-white {
-  background-color: var(--surface-card) !important;
+  background-color: var(--card) !important;
 }
 
-.dark .bg-gray-50 {
+.dark .bg-gray-50,
+.dark .bg-slate-50 {
   background-color: #162032 !important;
 }
 
-.dark .bg-gray-100 {
-  background-color: var(--surface) !important;
+.dark .bg-gray-100,
+.dark .bg-slate-100 {
+  background-color: var(--background) !important;
 }
 
-/* Text colors */
+/* --- Text: Gray scale --- */
 .dark .text-gray-900 {
   color: #f9fafb !important;
 }
@@ -321,9 +434,9 @@ body {
   color: #6b7280 !important;
 }
 
-/* Slate text colors */
+/* --- Text: Slate scale --- */
 .dark .text-slate-900 {
-  color: #f1f5f9 !important;
+  color: var(--foreground) !important;
 }
 
 .dark .text-slate-800 {
@@ -346,243 +459,145 @@ body {
   color: #94a3b8 !important;
 }
 
-/* Slate backgrounds */
-.dark .bg-slate-50 {
-  background-color: #1e293b !important;
-}
-
-.dark .bg-slate-100 {
-  background-color: #1e293b !important;
-}
-
-/* Slate borders */
-.dark .border-slate-200,
-.dark .border-slate-100 {
-  border-color: #334155 !important;
-}
-
-.dark .border-slate-300 {
-  border-color: #475569 !important;
-}
-
-/* Slate dividers */
-.dark .divide-slate-100 > :not(:first-child) {
-  border-color: #334155 !important;
-}
-
-.dark .divide-slate-200 > :not(:first-child) {
-  border-color: #334155 !important;
-}
-
-/* Slate text extras */
 .dark .text-slate-300 {
   color: #64748b !important;
 }
 
-.dark .text-slate-200 {
-  color: #475569 !important;
+/* --- Borders --- */
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .border-gray-200,
+.dark .border-gray-100 {
+  border-color: var(--border) !important;
 }
 
-/* Hover backgrounds */
-.dark .hover\:bg-slate-50:hover {
-  background-color: #1e293b !important;
-}
-
-.dark .hover\:bg-slate-100:hover {
-  background-color: #334155 !important;
-}
-
-.dark .hover\:border-slate-200:hover {
+.dark .border-slate-300,
+.dark .border-gray-300 {
   border-color: #475569 !important;
 }
 
-/* Icon tinted backgrounds in dark mode */
-.dark .bg-emerald-50 {
-  background-color: rgba(16, 185, 129, 0.1) !important;
+/* --- Dividers --- */
+.dark .divide-slate-100 > :not(:first-child),
+.dark .divide-slate-200 > :not(:first-child) {
+  border-color: var(--border) !important;
 }
 
-.dark .bg-violet-50 {
-  background-color: rgba(139, 92, 246, 0.1) !important;
+/* --- Hover states --- */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover {
+  background-color: var(--card) !important;
 }
 
-.dark .bg-purple-50 {
-  background-color: rgba(168, 85, 247, 0.1) !important;
+.dark .hover\:bg-slate-100:hover {
+  background-color: var(--border) !important;
 }
 
-.dark .bg-amber-50 {
-  background-color: rgba(245, 158, 11, 0.1) !important;
-}
+/* --- Colored tinted backgrounds (50-level) --- */
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+.dark .bg-violet-50  { background-color: rgba(139, 92, 246, 0.1) !important; }
+.dark .bg-purple-50  { background-color: rgba(168, 85, 247, 0.1) !important; }
+.dark .bg-amber-50   { background-color: rgba(245, 158, 11, 0.1) !important; }
+.dark .bg-teal-50    { background-color: rgba(20, 184, 166, 0.1) !important; }
+.dark .bg-red-50     { background-color: rgba(239, 68, 68, 0.1) !important; }
+.dark .bg-sky-50     { background-color: rgba(14, 165, 233, 0.1) !important; }
+.dark .bg-blue-50    { background-color: rgba(30, 64, 175, 0.1) !important; }
+.dark .bg-orange-50  { background-color: rgba(251, 146, 60, 0.1) !important; }
+.dark .bg-cyan-50    { background-color: rgba(6, 182, 212, 0.1) !important; }
+.dark .bg-green-50   { background-color: rgba(34, 197, 94, 0.1) !important; }
+.dark .bg-yellow-50  { background-color: rgba(234, 179, 8, 0.1) !important; }
 
-.dark .bg-amber-100 {
-  background-color: rgba(245, 158, 11, 0.15) !important;
-}
+/* --- Colored tinted backgrounds (100-level) --- */
+.dark .bg-amber-100   { background-color: rgba(245, 158, 11, 0.15) !important; }
+.dark .bg-teal-100    { background-color: rgba(20, 184, 166, 0.15) !important; }
+.dark .bg-sky-100     { background-color: rgba(14, 165, 233, 0.15) !important; }
+.dark .bg-blue-100    { background-color: rgba(30, 64, 175, 0.15) !important; }
+.dark .bg-cyan-100    { background-color: rgba(6, 182, 212, 0.15) !important; }
+.dark .bg-green-100   { background-color: rgba(34, 197, 94, 0.15) !important; }
+.dark .bg-red-100     { background-color: rgba(239, 68, 68, 0.15) !important; }
+.dark .bg-orange-100  { background-color: rgba(249, 115, 22, 0.15) !important; }
+.dark .bg-yellow-100  { background-color: rgba(234, 179, 8, 0.15) !important; }
+.dark .bg-violet-100  { background-color: rgba(139, 92, 246, 0.15) !important; }
 
-.dark .bg-teal-50 {
-  background-color: rgba(20, 184, 166, 0.1) !important;
-}
-
-.dark .bg-red-50 {
-  background-color: rgba(239, 68, 68, 0.1) !important;
-}
-
-.dark .bg-sky-50 {
-  background-color: rgba(14, 165, 233, 0.1) !important;
-}
-
-.dark .bg-blue-50 {
-  background-color: rgba(30, 64, 175, 0.1) !important;
-}
-
-.dark .bg-orange-50 {
-  background-color: rgba(251, 146, 60, 0.1) !important;
-}
-
-.dark .bg-cyan-50 {
-  background-color: rgba(6, 182, 212, 0.1) !important;
-}
-
-/* Colored 100-level backgrounds */
-.dark .bg-teal-100 {
-  background-color: rgba(20, 184, 166, 0.15) !important;
-}
-
-.dark .bg-sky-100 {
-  background-color: rgba(14, 165, 233, 0.15) !important;
-}
-
-.dark .bg-blue-100 {
-  background-color: rgba(30, 64, 175, 0.15) !important;
-}
-
-.dark .bg-cyan-100 {
-  background-color: rgba(6, 182, 212, 0.15) !important;
-}
-
-.dark .bg-green-100 {
-  background-color: rgba(34, 197, 94, 0.15) !important;
-}
-
-.dark .bg-red-100 {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-}
-
-.dark .bg-orange-100 {
-  background-color: rgba(249, 115, 22, 0.15) !important;
-}
-
-.dark .bg-yellow-100 {
-  background-color: rgba(234, 179, 8, 0.15) !important;
-}
-
-.dark .bg-violet-100 {
-  background-color: rgba(139, 92, 246, 0.15) !important;
-}
-
-/* Gradient from-* overrides */
+/* --- Gradient overrides --- */
 .dark .from-teal-50,
 .dark .from-sky-50 {
   --tw-gradient-from: rgba(14, 165, 233, 0.1) !important;
 }
-
 .dark .to-emerald-50,
 .dark .to-sky-50 {
   --tw-gradient-to: rgba(16, 185, 129, 0.1) !important;
 }
 
-/* Border overrides for colored borders */
+/* --- Colored border overrides --- */
 .dark .border-teal-200,
-.dark .border-sky-200 {
-  border-color: rgba(14, 165, 233, 0.3) !important;
-}
-
-.dark .border-sky-300 {
-  border-color: rgba(14, 165, 233, 0.4) !important;
-}
-
+.dark .border-sky-200  { border-color: rgba(14, 165, 233, 0.3) !important; }
+.dark .border-sky-300  { border-color: rgba(14, 165, 233, 0.4) !important; }
 .dark .border-amber-200,
-.dark .border-orange-200 {
-  border-color: rgba(251, 146, 60, 0.3) !important;
-}
+.dark .border-orange-200 { border-color: rgba(251, 146, 60, 0.3) !important; }
+.dark .border-orange-100 { border-color: rgba(251, 146, 60, 0.2) !important; }
+.dark .border-blue-100   { border-color: rgba(30, 64, 175, 0.2) !important; }
+.dark .border-red-200    { border-color: rgba(239, 68, 68, 0.3) !important; }
 
-.dark .border-orange-100 {
-  border-color: rgba(251, 146, 60, 0.2) !important;
-}
-
-.dark .border-blue-100 {
-  border-color: rgba(30, 64, 175, 0.2) !important;
-}
-
-.dark .border-red-200 {
-  border-color: rgba(239, 68, 68, 0.3) !important;
-}
-
-/* SVG stroke for donut chart background */
+/* SVG overrides */
 .dark circle[stroke="#f1f5f9"] {
-  stroke: #334155 !important;
+  stroke: var(--border) !important;
 }
 
-/* Borders */
-.dark .border-gray-200,
-.dark .border-gray-100 {
-  border-color: #374151 !important;
-}
-
-.dark .border-gray-300 {
-  border-color: #4b5563 !important;
-}
-
-/* Form inputs */
+/* --- Form inputs --- */
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: #1f2937;
-  border-color: #4b5563;
-  color: #f3f4f6;
+  background-color: var(--card);
+  border-color: var(--input);
+  color: var(--foreground);
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #6b7280;
+  color: var(--muted-foreground);
 }
 
 .dark input:focus,
 .dark select:focus,
 .dark textarea:focus {
-  border-color: #0ea5e9;
+  border-color: var(--ring);
 }
 
-/* Tables */
+/* --- Tables --- */
 .dark table th {
   background-color: #1a2332;
   color: #d1d5db;
 }
 
 .dark table td {
-  border-color: #374151;
+  border-color: var(--border);
 }
 
 .dark tr:hover {
   background-color: #1a2332 !important;
 }
 
-/* Shadows become more subtle in dark mode */
+/* --- Shadows in dark mode --- */
 .dark [class*="shadow"] {
   --tw-shadow-color: rgba(0, 0, 0, 0.3);
 }
 
-/* Colored text overrides for dark mode readability */
-.dark .text-green-600 { color: #4ade80 !important; }
-.dark .text-green-700 { color: #4ade80 !important; }
+/* --- Colored text for dark mode readability --- */
+.dark .text-green-600  { color: #4ade80 !important; }
+.dark .text-green-700  { color: #4ade80 !important; }
 .dark .text-yellow-600 { color: #facc15 !important; }
 .dark .text-yellow-700 { color: #fbbf24 !important; }
-.dark .text-red-600 { color: #f87171 !important; }
-.dark .text-red-700 { color: #f87171 !important; }
+.dark .text-red-600    { color: #f87171 !important; }
+.dark .text-red-700    { color: #f87171 !important; }
 .dark .text-orange-600 { color: #fb923c !important; }
-.dark .text-amber-600 { color: #fbbf24 !important; }
-.dark .text-teal-600 { color: #2dd4bf !important; }
-.dark .text-sky-500 { color: #38bdf8 !important; }
+.dark .text-amber-600  { color: #fbbf24 !important; }
+.dark .text-teal-600   { color: #2dd4bf !important; }
+.dark .text-sky-500    { color: #38bdf8 !important; }
+.dark .text-blue-600   { color: #60a5fa !important; }
+.dark .text-blue-700   { color: #60a5fa !important; }
+.dark .text-blue-800   { color: #93c5fd !important; }
 
-/* Scrollbar in dark mode */
+/* --- Scrollbar in dark mode --- */
 .dark ::-webkit-scrollbar-track {
   background: #1f2937;
 }

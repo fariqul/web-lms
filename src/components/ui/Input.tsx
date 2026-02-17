@@ -24,14 +24,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          <label htmlFor={inputId} className="block text-sm font-semibold text-foreground mb-1.5">
             {label}
             {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-600 dark:text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
               {leftIcon}
             </div>
           )}
@@ -43,13 +43,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={describedBy}
             className={clsx(
               'w-full rounded-xl border transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
-              'disabled:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-600 dark:text-slate-400',
-              'placeholder:text-slate-400 dark:placeholder:text-slate-600 dark:text-slate-400',
-              'dark:bg-slate-800 dark:text-slate-100',
+              'focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring',
+              'disabled:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground',
+              'placeholder:text-muted-foreground/60',
+              'bg-card text-foreground',
               error
                 ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
-                : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500',
+                : 'border-input hover:border-input/80',
               leftIcon ? 'pl-10' : 'pl-4',
               rightIcon ? 'pr-10' : 'pr-4',
               'py-2.5 text-sm',
@@ -58,13 +58,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-600 dark:text-slate-400">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-muted-foreground">
               {rightIcon}
             </div>
           )}
         </div>
         {error && <p id={errorId} className="mt-1.5 text-sm text-red-500 flex items-center gap-1" role="alert">{error}</p>}
-        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{helperText}</p>}
+        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-muted-foreground">{helperText}</p>}
       </div>
     );
   }
@@ -93,7 +93,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={textareaId} className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          <label htmlFor={textareaId} className="block text-sm font-semibold text-foreground mb-1.5">
             {label}
             {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
           </label>
@@ -106,20 +106,20 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-describedby={describedBy}
           className={clsx(
             'w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
-            'disabled:bg-slate-50 disabled:cursor-not-allowed',
-            'placeholder:text-slate-400 dark:placeholder:text-slate-600 dark:text-slate-400',
-            'dark:bg-slate-800 dark:text-slate-100',
+            'focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring',
+            'disabled:bg-muted disabled:cursor-not-allowed',
+            'placeholder:text-muted-foreground/60',
+            'bg-card text-foreground',
             'resize-none',
             error
               ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500'
-              : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500',
+              : 'border-input hover:border-input/80',
             className
           )}
           {...props}
         />
         {error && <p id={errorId} className="mt-1.5 text-sm text-red-500" role="alert">{error}</p>}
-        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{helperText}</p>}
+        {helperText && !error && <p id={helperId} className="mt-1.5 text-sm text-muted-foreground">{helperText}</p>}
       </div>
     );
   }
@@ -144,7 +144,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          <label htmlFor={selectId} className="block text-sm font-semibold text-foreground mb-1.5">
             {label}
             {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
           </label>
@@ -158,10 +158,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             aria-describedby={error ? errorId : undefined}
             className={clsx(
               'w-full rounded-xl border px-4 py-2.5 pr-10 text-sm transition-all duration-200 cursor-pointer',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
-              'disabled:bg-slate-50 disabled:cursor-not-allowed',
-              'appearance-none bg-white dark:bg-slate-800 dark:text-slate-100',
-              error ? 'border-red-400' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500',
+              'focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring',
+              'disabled:bg-muted disabled:cursor-not-allowed',
+              'appearance-none bg-card text-foreground',
+              error ? 'border-red-400' : 'border-input hover:border-input/80',
               className
             )}
             {...props}
@@ -178,14 +178,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ))}
           </select>
           {/* Custom dropdown arrow */}
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-600 dark:text-slate-400">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-muted-foreground">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
         {error && <p id={errorId} className="mt-1.5 text-sm text-red-500" role="alert">{error}</p>}
-        {helperText && !error && <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{helperText}</p>}
+        {helperText && !error && <p className="mt-1.5 text-sm text-muted-foreground">{helperText}</p>}
       </div>
     );
   }
@@ -211,8 +211,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             id={checkboxId}
             type="checkbox"
             className={clsx(
-              'w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-800 cursor-pointer',
-              'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+              'w-4 h-4 rounded border-border text-primary cursor-pointer',
+              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               'disabled:cursor-not-allowed disabled:opacity-50',
               className
             )}
@@ -220,7 +220,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           />
         </div>
         <div className="ml-3">
-          <label htmlFor={checkboxId} className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+          <label htmlFor={checkboxId} className="text-sm text-foreground cursor-pointer select-none">
             {label}
           </label>
           {error && <p className="text-sm text-red-500 mt-0.5" role="alert">{error}</p>}

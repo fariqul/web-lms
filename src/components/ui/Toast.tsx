@@ -51,10 +51,10 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   };
 
   const bgColors = {
-    success: 'bg-white dark:bg-slate-800 border-l-4 border-l-emerald-500 border-slate-100 dark:border-slate-700',
-    error: 'bg-white dark:bg-slate-800 border-l-4 border-l-red-500 border-slate-100 dark:border-slate-700',
-    warning: 'bg-white dark:bg-slate-800 border-l-4 border-l-amber-500 border-slate-100 dark:border-slate-700',
-    info: 'bg-white dark:bg-slate-800 border-l-4 border-l-sky-500 border-slate-100 dark:border-slate-700',
+    success: 'bg-card border-l-4 border-l-emerald-500 border-border',
+    error: 'bg-card border-l-4 border-l-red-500 border-border',
+    warning: 'bg-card border-l-4 border-l-amber-500 border-border',
+    info: 'bg-card border-l-4 border-l-sky-500 border-border',
   };
 
   return (
@@ -65,13 +65,13 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       role="alert"
     >
       {icons[toast.type]}
-      <p className="text-sm text-slate-800 dark:text-slate-200 flex-1 pt-0.5">{toast.message}</p>
+      <p className="text-sm text-foreground flex-1 pt-0.5">{toast.message}</p>
       <button
         onClick={() => {
           setIsExiting(true);
           setTimeout(() => onRemove(toast.id), 300);
         }}
-        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0 cursor-pointer rounded-lg p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer rounded-lg p-0.5 hover:bg-muted transition-colors"
         aria-label="Tutup notifikasi"
       >
         <X className="w-4 h-4" />

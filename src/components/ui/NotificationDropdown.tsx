@@ -32,7 +32,7 @@ const typeColors: Record<string, string> = {
   attendance: 'text-sky-500 bg-sky-50',
   assignment: 'text-orange-500 bg-orange-50',
   announcement: 'text-indigo-500 bg-indigo-50',
-  system: 'text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800',
+  system: 'text-muted-foreground bg-muted',
   password_reset_request: 'text-red-500 bg-red-50',
 };
 
@@ -169,7 +169,7 @@ export function NotificationDropdown() {
       {/* Bell Button */}
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+        className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
         aria-label={`Notifikasi${unreadCount > 0 ? ` (${unreadCount} belum dibaca)` : ''}`}
       >
         <Bell className="w-5 h-5" />
@@ -182,10 +182,10 @@ export function NotificationDropdown() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-[100] animate-fadeIn">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-popover text-popover-foreground rounded-xl shadow-2xl border border-border z-[100] animate-fadeIn">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Notifikasi</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <h3 className="font-semibold text-foreground text-sm">Notifikasi</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
@@ -212,12 +212,12 @@ export function NotificationDropdown() {
               <div className="max-h-96 overflow-y-auto">
                 {loading ? (
                   <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-slate-600 dark:text-slate-400" />
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : notifications.length === 0 ? (
                   <div className="text-center py-8">
-                    <Bell className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto mb-2" />
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Belum ada notifikasi</p>
+                    <Bell className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Belum ada notifikasi</p>
                   </div>
                 ) : (
                   notifications.map(notif => {
@@ -229,23 +229,23 @@ export function NotificationDropdown() {
                         type="button"
                         key={notif.id}
                         onClick={() => handleViewDetail(notif)}
-                        className={`flex gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer w-full text-left ${!notif.read_at ? 'bg-sky-50/40' : ''}`}
+                        className={`flex gap-3 px-4 py-3 border-b border-border/50 hover:bg-muted transition-colors cursor-pointer w-full text-left ${!notif.read_at ? 'bg-sky-50/40 dark:bg-sky-950/20' : ''}`}
                       >
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${!notif.read_at ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700'}`}>
+                          <p className={`text-sm ${!notif.read_at ? 'font-semibold text-foreground' : 'text-foreground/80'}`}>
                             {notif.title}
                           </p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">{notif.message}</p>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">{timeAgo(notif.created_at)}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">{timeAgo(notif.created_at)}</p>
                         </div>
                         <div className="flex flex-col gap-1 flex-shrink-0">
                           {!notif.read_at && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
-                              className="p-1 text-slate-600 dark:text-slate-400 hover:text-sky-500 rounded"
+                              className="p-1 text-muted-foreground hover:text-sky-500 rounded"
                               title="Tandai dibaca"
                               aria-label="Tandai dibaca"
                             >
@@ -254,7 +254,7 @@ export function NotificationDropdown() {
                           )}
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(notif.id); }}
-                            className="p-1 text-slate-600 dark:text-slate-400 hover:text-red-500 rounded"
+                            className="p-1 text-muted-foreground hover:text-red-500 rounded"
                             title="Hapus"
                             aria-label="Hapus notifikasi"
                           >
@@ -269,7 +269,7 @@ export function NotificationDropdown() {
 
               {/* Footer */}
               {notifications.length > 0 && (
-                <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700 text-center">
+                <div className="px-4 py-2 border-t border-border text-center">
                   <button
                     onClick={() => { setOpen(false); window.location.href = '/pengumuman'; }}
                     className="text-xs text-sky-500 hover:text-sky-700 font-medium"
@@ -311,19 +311,19 @@ function NotificationDetail({
   return (
     <>
       {/* Detail Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-        <button onClick={onBack} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="Kembali" aria-label="Kembali">
-          <ArrowLeft className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+        <button onClick={onBack} className="p-1 hover:bg-muted rounded-lg transition-colors" title="Kembali" aria-label="Kembali">
+          <ArrowLeft className="w-4 h-4 text-muted-foreground" />
         </button>
         <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
           <Icon className="w-3.5 h-3.5" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</span>
+          <span className="text-xs font-medium text-muted-foreground">{label}</span>
         </div>
         <button
           onClick={() => onDelete(notif.id)}
-          className="p-1 text-slate-600 dark:text-slate-400 hover:text-red-500 rounded-lg transition-colors"
+          className="p-1 text-muted-foreground hover:text-red-500 rounded-lg transition-colors"
           title="Hapus notifikasi"
           aria-label="Hapus notifikasi"
         >
@@ -333,13 +333,13 @@ function NotificationDetail({
 
       {/* Detail Body */}
       <div className="px-4 py-4 max-h-96 overflow-y-auto">
-        <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1">{notif.title}</h4>
-        <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-4">{timeAgo(notif.created_at)}</p>
+        <h4 className="font-semibold text-foreground text-sm mb-1">{notif.title}</h4>
+        <p className="text-[11px] text-muted-foreground mb-4">{timeAgo(notif.created_at)}</p>
 
         {isPasswordReset ? (
           <div className="space-y-3">
             {/* User Info Card */}
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 space-y-2.5">
+            <div className="bg-muted rounded-lg p-3 space-y-2.5">
               <DetailRow icon={User} label="Nama" value={String(data.user_name || '-')} onCopy={onCopy} copied={copied} />
               <DetailRow icon={Mail} label="Email Akun" value={String(data.user_email || '-')} onCopy={onCopy} copied={copied} />
               <DetailRow icon={Shield} label="Role" value={roleLabel} />
@@ -369,7 +369,7 @@ function NotificationDetail({
           </div>
         ) : (
           /* Generic notification detail */
-          <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+          <div className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">
             {notif.message}
           </div>
         )}
@@ -396,15 +396,15 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <IconComp className={`w-4 h-4 flex-shrink-0 ${highlight ? 'text-green-600' : 'text-slate-600 dark:text-slate-400'}`} />
+      <IconComp className={`w-4 h-4 flex-shrink-0 ${highlight ? 'text-green-600' : 'text-muted-foreground'}`} />
       <div className="flex-1 min-w-0">
-        <span className="text-[11px] text-slate-600 dark:text-slate-400">{label}</span>
-        <p className={`text-sm font-medium truncate ${highlight ? 'text-green-800' : 'text-slate-900 dark:text-white'}`}>{value}</p>
+        <span className="text-[11px] text-muted-foreground">{label}</span>
+        <p className={`text-sm font-medium truncate ${highlight ? 'text-green-800' : 'text-foreground'}`}>{value}</p>
       </div>
       {onCopy && value !== '-' && (
         <button
           onClick={() => onCopy(value)}
-          className="p-1 text-slate-600 dark:text-slate-400 hover:text-slate-600 rounded transition-colors flex-shrink-0"
+          className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors flex-shrink-0"
           title={copied ? 'Tersalin!' : 'Salin'}
           aria-label={copied ? 'Tersalin' : 'Salin'}
         >

@@ -64,7 +64,7 @@ export function DashboardSkeleton() {
       {/* Quick actions skeleton */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 flex flex-col items-center gap-3">
+          <div key={i} className="bg-card rounded-2xl border border-border p-4 flex flex-col items-center gap-3">
             <Skeleton variant="circular" width={48} height={48} />
             <Skeleton variant="text" width="70%" />
           </div>
@@ -74,7 +74,7 @@ export function DashboardSkeleton() {
       {/* Stats strip skeleton */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 space-y-2">
+          <div key={i} className="bg-card rounded-2xl border border-border p-4 space-y-2">
             <Skeleton variant="text" width="60%" height={12} />
             <Skeleton variant="text" width="40%" height={24} />
           </div>
@@ -84,7 +84,7 @@ export function DashboardSkeleton() {
       {/* Content grid skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 space-y-4">
+          <div key={i} className="bg-card rounded-2xl border border-border p-5 space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton variant="text" width="60%" height={18} />
               <Skeleton variant="rounded" width={60} height={24} />
@@ -113,16 +113,16 @@ export function DashboardSkeleton() {
  */
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex gap-4">
+      <div className="px-5 py-3 border-b border-border flex gap-4">
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} variant="text" width={`${100 / cols}%`} height={14} />
         ))}
       </div>
       {/* Rows */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="px-5 py-3.5 border-b border-slate-50 dark:border-slate-700/50 flex gap-4 items-center">
+        <div key={i} className="px-5 py-3.5 border-b border-border/50 flex gap-4 items-center">
           {Array.from({ length: cols }).map((_, j) => (
             <Skeleton key={j} variant="text" width={`${100 / cols}%`} height={14} />
           ))}

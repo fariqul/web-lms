@@ -23,9 +23,9 @@ export function Card({ children, className, padding = 'md', onClick }: CardProps
     <Component
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={clsx(
-        'bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-[var(--shadow-card)] card-hover',
+        'bg-card text-card-foreground rounded-2xl border border-border shadow-[var(--shadow-card)] card-hover',
         paddingClasses[padding],
-        onClick && 'cursor-pointer text-left w-full hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-[var(--shadow-md)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.99]',
+        onClick && 'cursor-pointer text-left w-full hover:border-border/80 hover:shadow-[var(--shadow-md)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]',
         className
       )}
     >
@@ -45,8 +45,8 @@ export function CardHeader({ title, subtitle, action, className }: CardHeaderPro
   return (
     <div className={clsx('flex items-center justify-between mb-4', className)}>
       <div>
-        <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
-        {subtitle && <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+        <h3 className="font-semibold text-foreground">{title}</h3>
+        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -171,7 +171,7 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-sm">
+    <div className="flex items-center gap-3 p-3 bg-muted rounded-xl border border-border transition-all duration-200 hover:bg-muted/80 hover:-translate-y-0.5 hover:shadow-sm">
       {icon && (
         <div
           className={clsx(
@@ -183,8 +183,8 @@ export function InfoCard({ icon, iconColor, title, subtitle, badge, action }: In
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{title}</p>
-        {subtitle && <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{subtitle}</p>}
+        <p className="font-semibold text-foreground truncate">{title}</p>
+        {subtitle && <p className="text-sm text-muted-foreground truncate">{subtitle}</p>}
       </div>
       {badge && (
         <span className={clsx('text-xs px-2 py-1 rounded-full flex-shrink-0 font-medium', badgeColors[badge.color])}>
