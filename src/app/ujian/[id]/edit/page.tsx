@@ -559,10 +559,10 @@ export default function EditSoalPage() {
           <div className="flex gap-2">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               exam?.status === 'draft' 
-                ? 'bg-slate-100 text-slate-700 dark:text-slate-300' 
+                ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300' 
                 : exam?.status === 'scheduled'
-                  ? 'bg-teal-50 text-teal-700'
-                  : 'bg-green-100 text-green-700'
+                  ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400'
+                  : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
             }`}>
               {exam?.status === 'draft' ? 'Draft' : exam?.status === 'scheduled' ? 'Terjadwal' : exam?.status === 'active' ? 'Aktif' : 'Selesai'}
             </span>
@@ -572,17 +572,17 @@ export default function EditSoalPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-teal-600">{questions.length}</p>
+            <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">{questions.length}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Total Soal</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-teal-600">
+            <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">
               {questions.reduce((sum, q) => sum + q.points, 0)}
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Total Poin</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-purple-600">{exam?.duration}</p>
+            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{exam?.duration}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Durasi (menit)</p>
           </Card>
         </div>
@@ -835,7 +835,7 @@ export default function EditSoalPage() {
               variant="outline" 
               onClick={handlePublish}
               leftIcon={<Send className="w-4 h-4" />}
-              className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+              className="bg-green-50 dark:bg-green-900/20 border-green-300 text-green-700 dark:text-green-400 hover:bg-green-100"
             >
               Publish Ujian
             </Button>
@@ -883,7 +883,7 @@ export default function EditSoalPage() {
                             <div
                               key={optIdx}
                               className={`flex items-center gap-2 text-sm ${
-                                opt.is_correct ? 'text-green-600 font-medium' : 'text-slate-600 dark:text-slate-400'
+                                opt.is_correct ? 'text-green-600 dark:text-green-400 font-medium' : 'text-slate-600 dark:text-slate-400'
                               }`}
                             >
                               <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs">
@@ -901,7 +901,7 @@ export default function EditSoalPage() {
                       )}
                       
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
-                        <span className="px-2 py-0.5 bg-slate-100 rounded">
+                        <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/50 rounded">
                           {question.question_type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
                         </span>
                         <span>{question.points} poin</span>
@@ -914,7 +914,7 @@ export default function EditSoalPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditQuestion(question)}
-                            className="text-teal-600 border-teal-200 hover:bg-teal-50"
+                            className="text-teal-600 border-teal-200 dark:border-teal-800/50 hover:bg-teal-50 dark:hover:bg-teal-900/20"
                             aria-label="Edit soal"
                           >
                             <FileEdit className="w-4 h-4" />
@@ -923,7 +923,7 @@ export default function EditSoalPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteQuestion(question.id!)}
-                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            className="text-red-600 border-red-200 dark:border-red-800/50 hover:bg-red-50"
                             aria-label="Hapus soal"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1080,7 +1080,7 @@ export default function EditSoalPage() {
                       onChange={() => handleCorrectAnswerChange(index)}
                       className="text-teal-600"
                     />
-                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-medium">
+                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
                       {String.fromCharCode(65 + index)}
                     </span>
                     <input
@@ -1266,7 +1266,7 @@ export default function EditSoalPage() {
                       onChange={() => handleCorrectAnswerChange(index)}
                       className="text-teal-600"
                     />
-                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-medium">
+                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
                       {String.fromCharCode(65 + index)}
                     </span>
                     <input

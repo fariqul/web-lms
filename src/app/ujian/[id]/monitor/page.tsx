@@ -215,7 +215,7 @@ export default function MonitorUjianPage() {
       case 'not_started':
         return <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">Belum Mulai</span>;
       case 'in_progress':
-        return <span className="px-2 py-1 bg-teal-50 text-teal-600 text-xs rounded-full">Mengerjakan</span>;
+        return <span className="px-2 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 text-xs rounded-full">Mengerjakan</span>;
       case 'completed':
         return <span className="px-2 py-1 bg-green-100 text-green-600 text-xs rounded-full">Selesai</span>;
       default:
@@ -387,7 +387,7 @@ export default function MonitorUjianPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
                 <Clock className="w-5 h-5 text-slate-600 dark:text-slate-400" />
               </div>
               <div>
@@ -398,7 +398,7 @@ export default function MonitorUjianPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-teal-50 dark:bg-teal-900/20 rounded-lg flex items-center justify-center">
                 <Monitor className="w-5 h-5 text-teal-600" />
               </div>
               <div>
@@ -445,7 +445,7 @@ export default function MonitorUjianPage() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === tab.value
                   ? 'bg-teal-600 text-white'
-                  : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
               }`}
             >
               {tab.label}
@@ -565,7 +565,7 @@ export default function MonitorUjianPage() {
                           {participant.status !== 'not_started' && (
                             <Link href={`/ujian/${examId}/hasil/${participant.student.id}`}>
                               <button
-                                className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg"
+                                className="p-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg"
                                 title="Lihat Detail"
                                 aria-label="Lihat detail siswa"
                               >

@@ -86,10 +86,10 @@ export default function MateriSiswaPage() {
 
   const getTypeBg = (type: string) => {
     switch (type) {
-      case 'video': return 'bg-red-100';
+      case 'video': return 'bg-red-100 dark:bg-red-900/30';
       case 'document': return 'bg-sky-50';
-      case 'link': return 'bg-green-100';
-      default: return 'bg-slate-100';
+      case 'link': return 'bg-green-100 dark:bg-green-900/30';
+      default: return 'bg-slate-100 dark:bg-slate-700/50';
     }
   };
 
@@ -130,8 +130,8 @@ export default function MateriSiswaPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                <Play className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <Play className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Video</p>
@@ -143,8 +143,8 @@ export default function MateriSiswaPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Mata Pelajaran</p>
@@ -205,7 +205,7 @@ export default function MateriSiswaPage() {
                   <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                     {material.subject}
                   </span>
-                  <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
+                  <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                     {getTypeLabel(material.type)}
                   </span>
                 </div>

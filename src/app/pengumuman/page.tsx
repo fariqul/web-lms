@@ -206,12 +206,12 @@ export default function PengumumanPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      announcement.priority === 'urgent' ? 'bg-red-100' : 
-                      announcement.priority === 'important' ? 'bg-orange-100' : 'bg-sky-50'
+                      announcement.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/30' : 
+                      announcement.priority === 'important' ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-sky-50'
                     }`}>
                       {announcement.priority !== 'normal' ? (
                         <Megaphone className={`w-6 h-6 ${
-                          announcement.priority === 'urgent' ? 'text-red-600' : 'text-orange-600'
+                          announcement.priority === 'urgent' ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'
                         }`} />
                       ) : (
                         <Bell className="w-6 h-6 text-sky-500" />
@@ -223,18 +223,18 @@ export default function PengumumanPage() {
                         {announcement.priority !== 'normal' && (
                           <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                             announcement.priority === 'urgent' 
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-orange-100 text-orange-700'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                              : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
                           }`}>
                             {getPriorityLabel(announcement.priority)}
                           </span>
                         )}
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                           announcement.target === 'all' 
-                            ? 'bg-slate-100 text-slate-700 dark:text-slate-300'
+                            ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300'
                             : announcement.target === 'guru'
-                            ? 'bg-sky-100 text-sky-700'
-                            : 'bg-sky-50 text-sky-700'
+                            ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400'
+                            : 'bg-sky-50 text-sky-700 dark:text-sky-400'
                         }`}>
                           {getTargetLabel(announcement.target)}
                         </span>
@@ -375,18 +375,18 @@ export default function PengumumanPage() {
                   {selectedAnnouncement.priority !== 'normal' && (
                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                       selectedAnnouncement.priority === 'urgent' 
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-orange-100 text-orange-700'
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
                     }`}>
                       {getPriorityLabel(selectedAnnouncement.priority)}
                     </span>
                   )}
                   <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                     selectedAnnouncement.target === 'all' 
-                      ? 'bg-slate-100 text-slate-700 dark:text-slate-300'
+                      ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300'
                       : selectedAnnouncement.target === 'guru'
-                      ? 'bg-sky-100 text-sky-700'
-                      : 'bg-sky-50 text-sky-700'
+                      ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400'
+                      : 'bg-sky-50 text-sky-700 dark:text-sky-400'
                   }`}>
                     {getTargetLabel(selectedAnnouncement.target)}
                   </span>

@@ -209,8 +209,8 @@ export default function HasilSiswaPage() {
             </div>
           </div>
           {getUngradedEssayCount() > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2">
-              <p className="text-sm text-orange-700 font-medium">
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700/50 rounded-lg px-4 py-2">
+              <p className="text-sm text-orange-700 dark:text-orange-400 font-medium">
                 <HelpCircle className="w-4 h-4 inline mr-1" />
                 {getUngradedEssayCount()} soal essay belum dinilai
               </p>
@@ -349,8 +349,8 @@ export default function HasilSiswaPage() {
                     <div className="flex items-center gap-3 mb-3">
                       <span className={`px-2 py-0.5 text-xs rounded ${
                         answer.question.type === 'multiple_choice'
-                          ? 'bg-teal-50 text-teal-600'
-                          : 'bg-purple-50 text-purple-600'
+                          ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400'
+                          : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
                       }`}>
                         {answer.question.type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
                       </span>
@@ -375,9 +375,9 @@ export default function HasilSiswaPage() {
                               key={optIdx}
                               className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg ${
                                 isCorrectAnswer
-                                  ? 'bg-green-50 text-green-700 border border-green-200'
+                                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700/50'
                                   : isStudentAnswer && !isCorrectAnswer
-                                  ? 'bg-red-50 text-red-700 border border-red-200'
+                                  ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700/50'
                                   : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                               }`}
                             >
@@ -408,12 +408,12 @@ export default function HasilSiswaPage() {
                         </div>
 
                         {/* Grading form for essay */}
-                        <div className="mt-3 bg-teal-50 rounded-lg p-4 border border-teal-100">
-                          <h4 className="text-sm font-semibold text-teal-800 mb-3 flex items-center gap-2">
+                        <div className="mt-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg p-4 border border-teal-100 dark:border-teal-700/40">
+                          <h4 className="text-sm font-semibold text-teal-800 dark:text-teal-300 mb-3 flex items-center gap-2">
                             <Award className="w-4 h-4" />
                             Penilaian Essay
                             {answer.graded_at && (
-                              <span className="text-xs font-normal text-teal-500 ml-2">
+                              <span className="text-xs font-normal text-teal-500 dark:text-teal-400 ml-2">
                                 (dinilai {formatDateTime(answer.graded_at)})
                               </span>
                             )}
@@ -421,7 +421,7 @@ export default function HasilSiswaPage() {
                           
                           <div className="flex items-end gap-4 flex-wrap">
                             <div>
-                              <label className="block text-xs text-teal-700 mb-1">
+                              <label className="block text-xs text-teal-700 dark:text-teal-400 mb-1">
                                 Nilai (maks {answer.question.points})
                               </label>
                               <input
@@ -433,12 +433,12 @@ export default function HasilSiswaPage() {
                                   ...gradingScores,
                                   [answer.id]: Math.min(Number(e.target.value), answer.question.points),
                                 })}
-                                className="w-24 px-3 py-2 border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 text-center font-bold"
+                                className="w-24 px-3 py-2 border border-teal-200 dark:border-teal-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 text-center font-bold bg-white dark:bg-slate-800 text-foreground"
                                 placeholder="0"
                               />
                             </div>
                             <div className="flex-1 min-w-[200px]">
-                              <label className="block text-xs text-teal-700 mb-1">
+                              <label className="block text-xs text-teal-700 dark:text-teal-400 mb-1">
                                 Feedback (opsional)
                               </label>
                               <input
@@ -448,7 +448,7 @@ export default function HasilSiswaPage() {
                                   ...gradingFeedback,
                                   [answer.id]: e.target.value,
                                 })}
-                                className="w-full px-3 py-2 border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                className="w-full px-3 py-2 border border-teal-200 dark:border-teal-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-slate-800 text-foreground"
                                 placeholder="Berikan komentar…"
                               />
                             </div>
@@ -470,7 +470,7 @@ export default function HasilSiswaPage() {
 
                           {/* Show existing feedback */}
                           {answer.feedback && (
-                            <div className="mt-3 flex items-start gap-2 text-sm text-teal-700">
+                            <div className="mt-3 flex items-start gap-2 text-sm text-teal-700 dark:text-teal-400">
                               <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" />
                               <span>{answer.feedback}</span>
                             </div>

@@ -137,14 +137,14 @@ export default function AdminKelasPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleOpenModal(item)}
-            className="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg transition-colors"
+            className="p-1.5 text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors"
             aria-label="Edit kelas"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDeleteClick(item)}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             aria-label="Hapus kelas"
           >
             <Trash2 className="w-4 h-4" />
@@ -170,7 +170,7 @@ export default function AdminKelasPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="text-center">
-            <p className="text-3xl font-bold text-orange-600">{classes.length}</p>
+            <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{classes.length}</p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Total Kelas</p>
           </Card>
           <Card className="text-center">
@@ -178,13 +178,13 @@ export default function AdminKelasPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">Total Siswa</p>
           </Card>
           <Card className="text-center">
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">
               {classes.filter((c) => c.grade_level === 'XII').length}
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Kelas XII</p>
           </Card>
           <Card className="text-center">
-            <p className="text-3xl font-bold text-purple-600">
+            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
               {classes.filter((c) => c.grade_level === 'XI').length}
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-400">Kelas XI</p>

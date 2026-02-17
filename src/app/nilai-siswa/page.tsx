@@ -105,17 +105,17 @@ export default function NilaiSiswaPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-green-700';
+    if (score >= 85) return 'text-green-700 dark:text-green-400';
     if (score >= 70) return 'text-sky-600';
-    if (score >= 55) return 'text-yellow-700';
-    return 'text-red-700';
+    if (score >= 55) return 'text-yellow-700 dark:text-yellow-400';
+    return 'text-red-700 dark:text-red-400';
   };
 
   const getScoreBg = (score: number) => {
-    if (score >= 85) return 'bg-green-100';
+    if (score >= 85) return 'bg-green-100 dark:bg-green-900/30';
     if (score >= 70) return 'bg-sky-50';
-    if (score >= 55) return 'bg-yellow-100';
-    return 'bg-red-100';
+    if (score >= 55) return 'bg-yellow-100 dark:bg-yellow-900/30';
+    return 'bg-red-100 dark:bg-red-900/30';
   };
 
   // Calculate stats
@@ -178,7 +178,7 @@ export default function NilaiSiswaPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-lg flex items-center justify-center">
                 <BookCheck className="w-6 h-6 text-sky-500" />
               </div>
               <div>
@@ -190,7 +190,7 @@ export default function NilaiSiswaPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                 <ClipboardList className="w-6 h-6 text-purple-600" />
               </div>
               <div>
@@ -202,12 +202,12 @@ export default function NilaiSiswaPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Award className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <Award className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Dinilai</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {examGrades.length + gradedAssignments.length}
                 </p>
               </div>
@@ -216,7 +216,7 @@ export default function NilaiSiswaPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg w-fit">
           {tabs.map(tab => (
             <button
               key={tab.key}
@@ -267,14 +267,14 @@ export default function NilaiSiswaPage() {
                           <div className="font-medium text-slate-900 dark:text-white">{grade.exam_title}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-sm rounded-full">{grade.subject}</span>
+                          <span className="px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm rounded-full">{grade.subject}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {grade.total_correct === 0 && grade.total_wrong === 0 ? (
                             <span className="text-slate-600 dark:text-slate-400 text-sm">-</span>
                           ) : (
                             <>
-                              <span className="text-green-600 font-medium">{grade.total_correct}</span>
+                              <span className="text-green-600 dark:text-green-400 font-medium">{grade.total_correct}</span>
                               <span className="text-slate-600 dark:text-slate-400 mx-1">/</span>
                               <span className="text-red-600 font-medium">{grade.total_wrong}</span>
                             </>
@@ -288,12 +288,12 @@ export default function NilaiSiswaPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {['graded', 'completed'].includes(grade.result_status) ? (
                             grade.passed ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-700 text-sm rounded-full">Lulus</span>
+                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm rounded-full">Lulus</span>
                             ) : (
-                              <span className="px-2 py-1 bg-red-100 text-red-700 text-sm rounded-full">Remedial</span>
+                              <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm rounded-full">Remedial</span>
                             )
                           ) : (
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">Menunggu Nilai</span>
+                            <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-sm rounded-full">Menunggu Nilai</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatDate(grade.finished_at)}</td>
@@ -340,7 +340,7 @@ export default function NilaiSiswaPage() {
                           <div className="font-medium text-slate-900 dark:text-white">{grade.assignment_title}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-sm rounded-full">{grade.subject}</span>
+                          <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm rounded-full">{grade.subject}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {grade.score !== null ? (
@@ -360,11 +360,11 @@ export default function NilaiSiswaPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {grade.status === 'graded' ? (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-sm rounded-full">Dinilai</span>
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm rounded-full">Dinilai</span>
                           ) : grade.status === 'late' ? (
-                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-sm rounded-full">Terlambat</span>
+                            <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-sm rounded-full">Terlambat</span>
                           ) : (
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full">Menunggu Nilai</span>
+                            <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-sm rounded-full">Menunggu Nilai</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatDate(grade.submitted_at)}</td>

@@ -213,13 +213,13 @@ export default function TugasSiswaPage() {
       <div className="space-y-6">
         {/* Success/Error Messages */}
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-400">
             <CheckCircle className="w-5 h-5" />
             <span>{success}</span>
           </div>
         )}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
             <button onClick={() => setError('')} className="ml-auto" aria-label="Tutup pesan error">
@@ -266,7 +266,7 @@ export default function TugasSiswaPage() {
               <Clock className="w-4 h-4" />
               Belum Dikerjakan
               {pendingCount > 0 && (
-                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full text-xs">
                   {pendingCount}
                 </span>
               )}
@@ -302,7 +302,7 @@ export default function TugasSiswaPage() {
               <CheckCircle className="w-4 h-4" />
               Sudah Dinilai
               {gradedCount > 0 && (
-                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs">
                   {gradedCount}
                 </span>
               )}
@@ -326,9 +326,9 @@ export default function TugasSiswaPage() {
               <Card key={assignment.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    assignment.my_submission?.status === 'graded' ? 'bg-green-100' :
+                    assignment.my_submission?.status === 'graded' ? 'bg-green-100 dark:bg-green-900/30' :
                     assignment.has_submitted ? 'bg-sky-50' :
-                    isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-orange-100'
+                    isOverdue(assignment.deadline) ? 'bg-red-100 dark:bg-red-900/30' : 'bg-orange-100 dark:bg-orange-900/30'
                   }`}>
                     {assignment.my_submission?.status === 'graded' ? (
                       <CheckCircle className="w-5 h-5 text-green-500" />
@@ -346,14 +346,14 @@ export default function TugasSiswaPage() {
                         <h3 className="font-semibold text-slate-900 dark:text-white">{assignment.title}</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{assignment.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 text-xs rounded-full">
                             {assignment.subject}
                           </span>
-                          <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                             {assignment.teacher?.name || 'Guru'}
                           </span>
                           {assignment.my_submission?.status === 'late' && (
-                            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full">
+                            <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs rounded-full">
                               Terlambat
                             </span>
                           )}
@@ -465,7 +465,7 @@ export default function TugasSiswaPage() {
                 </div>
 
                 {isOverdue(selectedAssignment.deadline) && (
-                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-2 text-orange-700">
+                  <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-lg flex items-center gap-2 text-orange-700 dark:text-orange-400">
                     <AlertTriangle className="w-5 h-5" />
                     <span className="text-sm">Deadline sudah lewat. Tugas akan ditandai terlambat.</span>
                   </div>
@@ -473,7 +473,7 @@ export default function TugasSiswaPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-700 dark:text-red-400 text-sm">
                       {error}
                     </div>
                   )}

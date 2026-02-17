@@ -161,10 +161,10 @@ export default function BankSoalPage() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'mudah': return 'bg-green-100 text-green-700';
-      case 'sedang': return 'bg-yellow-100 text-yellow-700';
-      case 'sulit': return 'bg-red-100 text-red-700';
-      default: return 'bg-slate-100 text-slate-700 dark:text-slate-300';
+      case 'mudah': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+      case 'sedang': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+      case 'sulit': return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+      default: return 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300';
     }
   };
 
@@ -226,19 +226,19 @@ export default function BankSoalPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center"><CheckCircle className="w-5 h-5 text-green-600" /></div>
+              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"><CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" /></div>
               <div><p className="text-sm text-slate-600 dark:text-slate-400">Pilihan Ganda</p><p className="text-xl font-bold text-slate-900">{questions.filter(q => q.type === 'pilihan_ganda').length}</p></div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center"><Edit className="w-5 h-5 text-purple-600" /></div>
+              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center"><Edit className="w-5 h-5 text-purple-600 dark:text-purple-400" /></div>
               <div><p className="text-sm text-slate-600 dark:text-slate-400">Essay</p><p className="text-xl font-bold text-slate-900">{questions.filter(q => q.type === 'essay').length}</p></div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center"><Filter className="w-5 h-5 text-sky-500" /></div>
+              <div className="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center"><Filter className="w-5 h-5 text-sky-500" /></div>
               <div><p className="text-sm text-slate-600 dark:text-slate-400">Mata Pelajaran</p><p className="text-xl font-bold text-slate-900">{subjects.length}</p></div>
             </div>
           </Card>
@@ -274,7 +274,7 @@ export default function BankSoalPage() {
             filteredQuestions.map((question, index) => (
               <Card key={question.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 font-semibold text-slate-600 dark:text-slate-400">{index + 1}</div>
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center flex-shrink-0 font-semibold text-slate-600 dark:text-slate-400">{index + 1}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -282,15 +282,15 @@ export default function BankSoalPage() {
                         {question.type === 'pilihan_ganda' && question.options && (
                           <div className="mt-2 space-y-1">
                             {question.options.map((opt, i) => (
-                              <p key={i} className={`text-sm ${opt === question.correct_answer ? 'text-green-600 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
+                              <p key={i} className={`text-sm ${opt === question.correct_answer ? 'text-green-600 dark:text-green-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
                                 {String.fromCharCode(65 + i)}. {opt} {opt === question.correct_answer && '✓'}
                               </p>
                             ))}
                           </div>
                         )}
                         <div className="flex flex-wrap gap-2 mt-3">
-                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">{question.subject}</span>
-                          <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">{question.class_name}</span>
+                          <span className="px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-xs rounded-full">{question.subject}</span>
+                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 text-xs rounded-full">{question.class_name}</span>
                           <span className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(question.difficulty)}`}>{getDifficultyLabel(question.difficulty)}</span>
                           <span className="px-2 py-1 bg-sky-50 text-sky-500 text-xs rounded-full">{question.type === 'pilihan_ganda' ? 'Pilihan Ganda' : 'Essay'}</span>
                         </div>

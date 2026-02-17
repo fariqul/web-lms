@@ -349,7 +349,7 @@ export default function MateriPage() {
   const renderForm = (isEdit: boolean = false) => (
     <form onSubmit={isEdit ? handleUpdate : handleSubmit} className="p-4 space-y-4">
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400">
           <AlertCircle className="w-5 h-5" />
           <span className="text-sm">{error}</span>
         </div>
@@ -555,7 +555,7 @@ export default function MateriPage() {
       <div className="space-y-6">
         {/* Success Message */}
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-400">
             <CheckCircle className="w-5 h-5" />
             <span>{success}</span>
           </div>
@@ -608,8 +608,8 @@ export default function MateriPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <Video className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Video className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Video</p>
@@ -621,8 +621,8 @@ export default function MateriPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <LinkIcon className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <LinkIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Link Eksternal</p>
@@ -648,7 +648,7 @@ export default function MateriPage() {
             filteredMaterials.map((material) => (
               <Card key={material.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center flex-shrink-0">
                     {getTypeIcon(material.type)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -660,7 +660,7 @@ export default function MateriPage() {
                           <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
                             {material.subject}
                           </span>
-                          <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                             {material.class_room?.name || '-'}
                           </span>
                           <span className="px-2 py-1 bg-sky-50 text-sky-500 text-xs rounded-full">
@@ -775,7 +775,7 @@ export default function MateriPage() {
               </div>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center">
                     {getTypeIcon(selectedMaterial.type)}
                   </div>
                   <div>

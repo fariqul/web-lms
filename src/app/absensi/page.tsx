@@ -501,7 +501,7 @@ export default function AbsensiPage() {
       key: 'status',
       header: 'Status',
       render: (item: AttendanceRecord) => (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs">
           <CheckCircle className="w-3 h-3" />
           {item.status}
         </span>
@@ -525,17 +525,17 @@ export default function AbsensiPage() {
         {/* Pending Device Requests Alert */}
         {pendingDeviceRequests > 0 && (
           <Link href="/absensi/persetujuan-device">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-yellow-100 transition-colors">
-              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
               <div className="flex-1">
-                <h3 className="font-medium text-yellow-800">
+                <h3 className="font-medium text-yellow-800 dark:text-yellow-300">
                   {pendingDeviceRequests} permintaan pindah perangkat menunggu persetujuan
                 </h3>
-                <p className="text-sm text-yellow-700">
+                <p className="text-sm text-yellow-700 dark:text-yellow-400">
                   Klik untuk melihat dan memproses permintaan
                 </p>
               </div>
-              <Smartphone className="w-5 h-5 text-yellow-600" />
+              <Smartphone className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
             </div>
           </Link>
         )}
@@ -630,8 +630,8 @@ export default function AbsensiPage() {
           ) : (
             <div className="space-y-6">
               {/* Active Session Info */}
-              <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
-                <div className="flex items-center gap-2 text-sky-700 mb-2">
+              <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/50 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-sky-700 dark:text-sky-400 mb-2">
                   <span className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
                   <span className="font-medium">Sesi Aktif</span>
                 </div>
@@ -672,9 +672,9 @@ export default function AbsensiPage() {
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-sky-50 rounded-lg p-4 text-center">
+                <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-4 text-center">
                   <p className="text-2xl font-bold text-sky-500">{attendanceRecords.length}</p>
-                  <p className="text-sm text-sky-700">Sudah Absen</p>
+                  <p className="text-sm text-sky-700 dark:text-sky-400">Sudah Absen</p>
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 text-center">
                   <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{totalStudents - attendanceRecords.length}</p>

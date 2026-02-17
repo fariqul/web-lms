@@ -168,9 +168,9 @@ export default function ProgressPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-700';
-    if (score >= 60) return 'text-yellow-700';
-    return 'text-red-700';
+    if (score >= 80) return 'text-green-700 dark:text-green-400';
+    if (score >= 60) return 'text-yellow-700 dark:text-yellow-400';
+    return 'text-red-700 dark:text-red-400';
   };
 
   if (loading) {
@@ -256,7 +256,7 @@ export default function ProgressPage() {
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center">
                     <Users className="w-5 h-5 text-sky-500" />
                   </div>
                   <div>
@@ -267,7 +267,7 @@ export default function ProgressPage() {
               </Card>
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
                     <BarChart3 className="w-5 h-5 text-sky-500" />
                   </div>
                   <div>
@@ -278,8 +278,8 @@ export default function ProgressPage() {
               </Card>
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 text-green-600" />
+                  <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Kehadiran</p>
@@ -289,7 +289,7 @@ export default function ProgressPage() {
               </Card>
               <Card className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                     <BookOpen className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
@@ -336,7 +336,7 @@ export default function ProgressPage() {
                     {classReport.students.map((s) => (
                       <tr key={s.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${s.rank <= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-600 dark:text-slate-400'}`}>
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${s.rank <= 3 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400'}`}>
                             {s.rank}
                           </span>
                         </td>
@@ -436,7 +436,7 @@ export default function ProgressPage() {
                           </td>
                           <td className="py-3 px-4">{sa.count}</td>
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 text-green-700' : Number(sa.average) >= 80 ? 'bg-sky-50 text-sky-700' : Number(sa.average) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${Number(sa.average) >= 90 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : Number(sa.average) >= 80 ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400' : Number(sa.average) >= 70 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
                               {Number(sa.average) >= 90 ? 'A' : Number(sa.average) >= 80 ? 'B' : Number(sa.average) >= 70 ? 'C' : 'D'}
                             </span>
                           </td>
@@ -456,20 +456,20 @@ export default function ProgressPage() {
                   <p className="text-lg font-bold text-slate-900 dark:text-white">{studentReport.attendance_summary.total_sessions}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Total Sesi</p>
                 </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <p className="text-lg font-bold text-green-600">{studentReport.attendance_summary.hadir}</p>
+                <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{studentReport.attendance_summary.hadir}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Hadir</p>
                 </div>
-                <div className="text-center p-3 bg-sky-50 rounded-lg">
+                <div className="text-center p-3 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
                   <p className="text-lg font-bold text-sky-500">{studentReport.attendance_summary.izin}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Izin</p>
                 </div>
-                <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                  <p className="text-lg font-bold text-yellow-600">{studentReport.attendance_summary.sakit}</p>
+                <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{studentReport.attendance_summary.sakit}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Sakit</p>
                 </div>
-                <div className="text-center p-3 bg-red-50 rounded-lg">
-                  <p className="text-lg font-bold text-red-600">{studentReport.attendance_summary.alpha}</p>
+                <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{studentReport.attendance_summary.alpha}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">Alpha</p>
                 </div>
               </div>

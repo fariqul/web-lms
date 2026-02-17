@@ -339,13 +339,13 @@ export default function TugasGuruPage() {
       <div className="space-y-6">
         {/* Success/Error Messages */}
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-400">
             <CheckCircle className="w-5 h-5" />
             <span>{success}</span>
           </div>
         )}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
             <button onClick={() => setError('')} className="ml-auto">
@@ -397,8 +397,8 @@ export default function TugasGuruPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Aktif</p>
@@ -410,8 +410,8 @@ export default function TugasGuruPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-orange-600" />
+              <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Perlu Dinilai</p>
@@ -436,8 +436,8 @@ export default function TugasGuruPage() {
               <Card key={assignment.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    assignment.status === 'closed' ? 'bg-slate-100' :
-                    isOverdue(assignment.deadline) ? 'bg-red-100' : 'bg-sky-100'
+                    assignment.status === 'closed' ? 'bg-slate-100 dark:bg-slate-700/50' :
+                    isOverdue(assignment.deadline) ? 'bg-red-100 dark:bg-red-900/30' : 'bg-sky-100 dark:bg-sky-900/30'
                   }`}>
                     <ClipboardList className={`w-5 h-5 ${
                       assignment.status === 'closed' ? 'text-slate-600 dark:text-slate-400' :
@@ -450,15 +450,15 @@ export default function TugasGuruPage() {
                         <h3 className="font-semibold text-slate-900 dark:text-white">{assignment.title}</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{assignment.description}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="px-2 py-1 bg-sky-100 text-sky-700 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 text-xs rounded-full">
                             {assignment.subject}
                           </span>
-                          <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 text-xs rounded-full">
                             {assignment.class_room?.name || '-'}
                           </span>
                           <span className={`px-2 py-1 text-xs rounded-full ${
-                            assignment.status === 'closed' ? 'bg-slate-100 text-slate-600 dark:text-slate-400' :
-                            isOverdue(assignment.deadline) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                            assignment.status === 'closed' ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400' :
+                            isOverdue(assignment.deadline) ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                           }`}>
                             {assignment.status === 'closed' ? 'Ditutup' :
                              isOverdue(assignment.deadline) ? 'Lewat Deadline' : 'Aktif'}
@@ -532,7 +532,7 @@ export default function TugasGuruPage() {
               </div>
               <form onSubmit={showEditModal ? handleUpdate : handleSubmit} className="p-4 space-y-4">
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-700 dark:text-red-400 text-sm">
                     {error}
                   </div>
                 )}
@@ -717,8 +717,8 @@ export default function TugasGuruPage() {
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                               <span className={`px-2 py-1 text-xs rounded-full ${
-                                submission.status === 'graded' ? 'bg-green-100 text-green-700' :
-                                submission.status === 'late' ? 'bg-orange-100 text-orange-700' :
+                                submission.status === 'graded' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                submission.status === 'late' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
                                 'bg-sky-50 text-sky-700'
                               }`}>
                                 {submission.status === 'graded' ? 'Sudah Dinilai' :

@@ -40,10 +40,10 @@ function CountdownDisplay({ startTime }: { startTime: string }) {
   if (isExpired) return null;
 
   return (
-    <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4">
+    <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/50 rounded-lg p-3 mb-4">
       <div className="flex items-center gap-2 mb-2">
         <Timer className="w-4 h-4 text-sky-500" />
-        <span className="text-xs font-medium text-sky-700">Dimulai dalam</span>
+        <span className="text-xs font-medium text-sky-700 dark:text-sky-400">Dimulai dalam</span>
       </div>
       <div className="flex gap-2 justify-center">
         {days > 0 && (
@@ -96,18 +96,18 @@ export default function UjianSiswaPage() {
     const resultStatus = exam.my_result?.status;
 
     if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
-      return { label: 'Selesai', color: 'bg-green-100 text-green-700', icon: CheckCircle };
+      return { label: 'Selesai', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: CheckCircle };
     }
     if (now < startTime) {
-      return { label: 'Belum Mulai', color: 'bg-slate-100 text-slate-700 dark:text-slate-300', icon: Clock };
+      return { label: 'Belum Mulai', color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300', icon: Clock };
     }
     if (now > endTime) {
-      return { label: 'Berakhir', color: 'bg-red-100 text-red-700', icon: AlertCircle };
+      return { label: 'Berakhir', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: AlertCircle };
     }
     if (resultStatus === 'in_progress') {
-      return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 text-yellow-700', icon: PlayCircle };
+      return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', icon: PlayCircle };
     }
-    return { label: 'Tersedia', color: 'bg-sky-50 text-sky-700', icon: PlayCircle };
+    return { label: 'Tersedia', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: PlayCircle };
   };
 
   const canStartExam = (exam: Exam) => {
@@ -165,7 +165,7 @@ export default function UjianSiswaPage() {
               return (
                 <Card key={exam.id} className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-lg flex items-center justify-center">
                       <GraduationCap className="w-6 h-6 text-sky-500" />
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${status.color}`}>
@@ -195,9 +195,9 @@ export default function UjianSiswaPage() {
                   </div>
 
                   {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (
-                    <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
                       <p className="text-sm text-slate-600 dark:text-slate-400">Nilai Anda</p>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {exam.my_result?.percentage ?? exam.my_result?.score ?? '-'}
                       </p>
                     </div>

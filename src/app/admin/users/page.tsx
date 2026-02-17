@@ -202,10 +202,10 @@ export default function AdminUsersPage() {
       render: (item: User) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
           item.role === 'admin'
-            ? 'bg-orange-100 text-orange-700'
+            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
             : item.role === 'guru'
-            ? 'bg-sky-100 text-sky-700'
-            : 'bg-sky-50 text-sky-700'
+            ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400'
+            : 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400'
         }`}>
           {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
         </span>
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => handleOpenModal(item)}
-            className="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg transition-colors"
+            className="p-1.5 text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors"
             title="Edit"
             aria-label="Edit pengguna"
           >
@@ -231,7 +231,7 @@ export default function AdminUsersPage() {
           </button>
           <button
             onClick={() => handleResetPasswordClick(item)}
-            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+            className="p-1.5 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
             title="Reset Password"
             aria-label="Reset password"
           >
@@ -239,7 +239,7 @@ export default function AdminUsersPage() {
           </button>
           <button
             onClick={() => handleDeleteClick(item)}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             title="Hapus"
             aria-label="Hapus pengguna"
           >
@@ -345,7 +345,7 @@ export default function AdminUsersPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                   placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
                 />
                 <button
@@ -436,13 +436,13 @@ export default function AdminUsersPage() {
       >
         <form onSubmit={handleResetPassword} className="space-y-4">
           {resetSuccess ? (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg text-green-700 dark:text-green-400 text-sm text-center">
               {resetSuccess}
             </div>
           ) : (
             <>
-              <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
-                <p className="text-sm text-sky-700">
+              <div className="p-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/50 rounded-lg">
+                <p className="text-sm text-sky-700 dark:text-sky-400">
                   Reset password untuk: <strong>{selectedUser?.name}</strong>
                 </p>
                 <p className="text-xs text-sky-500 mt-1">{selectedUser?.email}</p>
@@ -457,7 +457,7 @@ export default function AdminUsersPage() {
                     onChange={(e) => setResetPasswordData({ ...resetPasswordData, password: e.target.value })}
                     required
                     minLength={8}
-                    className="w-full rounded-lg border border-slate-300 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 py-2.5 text-sm pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                     placeholder="Min. 8 karakter (huruf besar, kecil, angka)"
                   />
                   <button

@@ -74,19 +74,19 @@ export default function JadwalPage() {
 
   const getSubjectColor = (subject: string) => {
     const colors: Record<string, string> = {
-      'Matematika': 'bg-sky-50 text-sky-700 border-sky-200',
-      'Fisika': 'bg-purple-100 text-purple-700 border-purple-200',
-      'Kimia': 'bg-green-100 text-green-700 border-green-200',
-      'Biologi': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      'Bahasa Indonesia': 'bg-red-100 text-red-700 border-red-200',
-      'Bahasa Inggris': 'bg-indigo-100 text-indigo-700 border-indigo-200',
-      'Sejarah': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      'Ekonomi': 'bg-orange-100 text-orange-700 border-orange-200',
-      'Olahraga': 'bg-sky-100 text-sky-700 border-sky-200',
-      'Seni Budaya': 'bg-pink-100 text-pink-700 border-pink-200',
-      'Informatika': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+      'Matematika': 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-700/50',
+      'Fisika': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200',
+      'Kimia': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200',
+      'Biologi': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700/50',
+      'Bahasa Indonesia': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200',
+      'Bahasa Inggris': 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200',
+      'Sejarah': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200',
+      'Ekonomi': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200',
+      'Olahraga': 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200',
+      'Seni Budaya': 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 border-pink-200',
+      'Informatika': 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 border-cyan-200',
     };
-    return colors[subject] || 'bg-slate-100 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    return colors[subject] || 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
   };
 
   if (loading) {
@@ -153,9 +153,9 @@ export default function JadwalPage() {
                   <div className="flex items-start gap-4">
                     {/* Time */}
                     <div className="flex-shrink-0 w-20 text-center">
-                      <div className="bg-slate-100 rounded-lg p-2">
+                      <div className="bg-slate-100 dark:bg-slate-700/50 rounded-lg p-2">
                         <p className="text-sm font-bold text-slate-900 dark:text-white">{schedule.start_time}</p>
-                        <div className="w-4 h-0.5 bg-slate-300 mx-auto my-1" />
+                        <div className="w-4 h-0.5 bg-slate-300 dark:bg-slate-600 mx-auto my-1" />
                         <p className="text-sm text-slate-600 dark:text-slate-400">{schedule.end_time}</p>
                       </div>
                     </div>
@@ -194,7 +194,7 @@ export default function JadwalPage() {
                   <div 
                     key={day} 
                     className={`text-center p-2 rounded-lg cursor-pointer transition-colors ${
-                      selectedDay === index + 1 ? 'bg-sky-100' : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      selectedDay === index + 1 ? 'bg-sky-100 dark:bg-sky-900/30' : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setSelectedDay(index + 1)}
                   >

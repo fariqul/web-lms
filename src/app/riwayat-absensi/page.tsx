@@ -157,15 +157,15 @@ export default function RiwayatAbsensiPage() {
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'hadir':
-        return { label: 'Hadir', color: 'bg-green-100 text-green-700', icon: CheckCircle };
+        return { label: 'Hadir', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: CheckCircle };
       case 'izin':
-        return { label: 'Izin', color: 'bg-sky-50 text-sky-700', icon: Clock };
+        return { label: 'Izin', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: Clock };
       case 'sakit':
-        return { label: 'Sakit', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle };
+        return { label: 'Sakit', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', icon: AlertCircle };
       case 'alpha':
-        return { label: 'Alpha', color: 'bg-red-100 text-red-700', icon: XCircle };
+        return { label: 'Alpha', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: XCircle };
       default:
-        return { label: status, color: 'bg-slate-100 text-slate-700 dark:text-slate-300', icon: Clock };
+        return { label: status, color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300', icon: Clock };
     }
   };
 
@@ -433,15 +433,15 @@ export default function RiwayatAbsensiPage() {
                     <tr key={s.subject} className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">{s.subject}</td>
                       <td className="py-3 px-4 text-center text-slate-600 dark:text-slate-400">{s.total}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-green-700">{s.hadir}</td>
+                      <td className="py-3 px-4 text-center font-semibold text-green-700 dark:text-green-400">{s.hadir}</td>
                       <td className="py-3 px-4 text-center font-semibold text-sky-600">{s.izin}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-yellow-700">{s.sakit}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-red-700">{s.alpha}</td>
+                      <td className="py-3 px-4 text-center font-semibold text-yellow-700 dark:text-yellow-400">{s.sakit}</td>
+                      <td className="py-3 px-4 text-center font-semibold text-red-700 dark:text-red-400">{s.alpha}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                          s.percentage >= 80 ? 'bg-green-100 text-green-700' :
-                          s.percentage >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
+                          s.percentage >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                          s.percentage >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                         }`}>
                           {s.percentage}%
                         </span>
@@ -493,7 +493,7 @@ export default function RiwayatAbsensiPage() {
                 return (
                   <div key={attendance.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                      <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700/50 rounded-lg flex items-center justify-center">
                         <ClipboardList className="w-6 h-6 text-slate-500" />
                       </div>
                       <div>

@@ -176,21 +176,21 @@ export default function DeviceApprovalPage() {
     switch (status) {
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
             <Clock className="w-3 h-3" />
             Menunggu
           </span>
         );
       case 'approved':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
             <CheckCircle className="w-3 h-3" />
             Disetujui
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
             <XCircle className="w-3 h-3" />
             Ditolak
           </span>
@@ -253,21 +253,21 @@ export default function DeviceApprovalPage() {
 
         {/* New request flash alert */}
         {newRequestAlert && (
-          <div className="bg-orange-50 border border-orange-300 rounded-lg p-4 flex items-center gap-3 animate-pulse">
-            <Bell className="w-5 h-5 text-orange-600" />
-            <p className="font-medium text-orange-800">Permintaan pindah perangkat baru masuk!</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700/50 rounded-lg p-4 flex items-center gap-3 animate-pulse">
+            <Bell className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            <p className="font-medium text-orange-800 dark:text-orange-300">Permintaan pindah perangkat baru masuk!</p>
           </div>
         )}
 
         {/* Alert for pending requests */}
         {pendingCount > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
             <div>
-              <h3 className="font-medium text-yellow-800">
+              <h3 className="font-medium text-yellow-800 dark:text-yellow-300">
                 {pendingCount} permintaan menunggu persetujuan
               </h3>
-              <p className="text-sm text-yellow-700 mt-1">
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                 Siswa tidak dapat melanjutkan absensi sampai permintaan diproses
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function DeviceApprovalPage() {
               {tab.label}
               {tab.count > 0 && (
                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  filter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600 dark:text-slate-400'
+                  filter === tab.key ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400' : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400'
                 }`}>
                   {tab.count}
                 </span>
@@ -357,7 +357,7 @@ export default function DeviceApprovalPage() {
                       
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-slate-600 dark:text-slate-400">Device ID:</span>
-                        <code className="text-xs bg-slate-100 px-2 py-0.5 rounded font-mono">
+                        <code className="text-xs bg-slate-100 dark:bg-slate-700/50 px-2 py-0.5 rounded font-mono">
                           {request.device_id.substring(0, 20)}…
                         </code>
                       </div>

@@ -413,6 +413,14 @@ body {
   background-color: var(--background) !important;
 }
 
+.dark .bg-slate-200 {
+  background-color: var(--border) !important;
+}
+
+.dark .bg-slate-300 {
+  background-color: #475569 !important;
+}
+
 /* --- Text: Gray scale --- */
 .dark .text-gray-900 {
   color: #f9fafb !important;
@@ -492,31 +500,39 @@ body {
   background-color: var(--border) !important;
 }
 
-/* --- Colored tinted backgrounds (50-level) --- */
-.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
-.dark .bg-violet-50  { background-color: rgba(139, 92, 246, 0.1) !important; }
-.dark .bg-purple-50  { background-color: rgba(168, 85, 247, 0.1) !important; }
-.dark .bg-amber-50   { background-color: rgba(245, 158, 11, 0.1) !important; }
-.dark .bg-teal-50    { background-color: rgba(20, 184, 166, 0.1) !important; }
-.dark .bg-red-50     { background-color: rgba(239, 68, 68, 0.1) !important; }
-.dark .bg-sky-50     { background-color: rgba(14, 165, 233, 0.1) !important; }
-.dark .bg-blue-50    { background-color: rgba(30, 64, 175, 0.1) !important; }
-.dark .bg-orange-50  { background-color: rgba(251, 146, 60, 0.1) !important; }
-.dark .bg-cyan-50    { background-color: rgba(6, 182, 212, 0.1) !important; }
-.dark .bg-green-50   { background-color: rgba(34, 197, 94, 0.1) !important; }
-.dark .bg-yellow-50  { background-color: rgba(234, 179, 8, 0.1) !important; }
+/* --- Colored tinted backgrounds (50-level) — subtle tints on dark surfaces --- */
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.10) !important; }
+.dark .bg-violet-50  { background-color: rgba(139, 92, 246, 0.10) !important; }
+.dark .bg-purple-50  { background-color: rgba(168, 85, 247, 0.10) !important; }
+.dark .bg-amber-50   { background-color: rgba(245, 158, 11, 0.10) !important; }
+.dark .bg-teal-50    { background-color: rgba(20, 184, 166, 0.10) !important; }
+.dark .bg-red-50     { background-color: rgba(239, 68, 68, 0.10) !important; }
+.dark .bg-sky-50     { background-color: rgba(14, 165, 233, 0.10) !important; }
+.dark .bg-blue-50    { background-color: rgba(59, 130, 246, 0.10) !important; }
+.dark .bg-orange-50  { background-color: rgba(251, 146, 60, 0.10) !important; }
+.dark .bg-cyan-50    { background-color: rgba(6, 182, 212, 0.10) !important; }
+.dark .bg-green-50   { background-color: rgba(34, 197, 94, 0.10) !important; }
+.dark .bg-yellow-50  { background-color: rgba(234, 179, 8, 0.10) !important; }
+.dark .bg-indigo-50  { background-color: rgba(99, 102, 241, 0.10) !important; }
+.dark .bg-pink-50    { background-color: rgba(236, 72, 153, 0.10) !important; }
+.dark .bg-rose-50    { background-color: rgba(244, 63, 94, 0.10) !important; }
 
-/* --- Colored tinted backgrounds (100-level) --- */
+/* --- Colored tinted backgrounds (100-level) — stronger tints for badges/icons --- */
 .dark .bg-amber-100   { background-color: rgba(245, 158, 11, 0.15) !important; }
 .dark .bg-teal-100    { background-color: rgba(20, 184, 166, 0.15) !important; }
 .dark .bg-sky-100     { background-color: rgba(14, 165, 233, 0.15) !important; }
-.dark .bg-blue-100    { background-color: rgba(30, 64, 175, 0.15) !important; }
+.dark .bg-blue-100    { background-color: rgba(59, 130, 246, 0.15) !important; }
 .dark .bg-cyan-100    { background-color: rgba(6, 182, 212, 0.15) !important; }
 .dark .bg-green-100   { background-color: rgba(34, 197, 94, 0.15) !important; }
 .dark .bg-red-100     { background-color: rgba(239, 68, 68, 0.15) !important; }
 .dark .bg-orange-100  { background-color: rgba(249, 115, 22, 0.15) !important; }
 .dark .bg-yellow-100  { background-color: rgba(234, 179, 8, 0.15) !important; }
 .dark .bg-violet-100  { background-color: rgba(139, 92, 246, 0.15) !important; }
+.dark .bg-purple-100  { background-color: rgba(168, 85, 247, 0.15) !important; }
+.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .bg-indigo-100  { background-color: rgba(99, 102, 241, 0.15) !important; }
+.dark .bg-pink-100    { background-color: rgba(236, 72, 153, 0.15) !important; }
+.dark .bg-rose-100    { background-color: rgba(244, 63, 94, 0.15) !important; }
 
 /* --- Gradient overrides --- */
 .dark .from-teal-50,
@@ -527,16 +543,42 @@ body {
 .dark .to-sky-50 {
   --tw-gradient-to: rgba(16, 185, 129, 0.1) !important;
 }
+.dark .from-teal-100 {
+  --tw-gradient-from: rgba(20, 184, 166, 0.15) !important;
+}
+.dark .to-teal-100 {
+  --tw-gradient-to: rgba(20, 184, 166, 0.15) !important;
+}
+.dark .from-gray-800 {
+  --tw-gradient-from: #1e293b !important;
+}
+.dark .to-gray-600 {
+  --tw-gradient-to: #334155 !important;
+}
 
-/* --- Colored border overrides --- */
+/* --- Colored border overrides (comprehensive) --- */
 .dark .border-teal-200,
+.dark .border-teal-100,
 .dark .border-sky-200  { border-color: rgba(14, 165, 233, 0.3) !important; }
 .dark .border-sky-300  { border-color: rgba(14, 165, 233, 0.4) !important; }
 .dark .border-amber-200,
 .dark .border-orange-200 { border-color: rgba(251, 146, 60, 0.3) !important; }
-.dark .border-orange-100 { border-color: rgba(251, 146, 60, 0.2) !important; }
-.dark .border-blue-100   { border-color: rgba(30, 64, 175, 0.2) !important; }
+.dark .border-orange-100,
+.dark .border-orange-300 { border-color: rgba(251, 146, 60, 0.25) !important; }
+.dark .border-blue-100   { border-color: rgba(59, 130, 246, 0.2) !important; }
+.dark .border-blue-200   { border-color: rgba(59, 130, 246, 0.3) !important; }
 .dark .border-red-200    { border-color: rgba(239, 68, 68, 0.3) !important; }
+.dark .border-red-500    { border-color: rgba(239, 68, 68, 0.5) !important; }
+.dark .border-green-200  { border-color: rgba(34, 197, 94, 0.3) !important; }
+.dark .border-green-500  { border-color: rgba(34, 197, 94, 0.5) !important; }
+.dark .border-yellow-200 { border-color: rgba(234, 179, 8, 0.3) !important; }
+.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3) !important; }
+.dark .border-violet-200 { border-color: rgba(139, 92, 246, 0.3) !important; }
+.dark .border-cyan-200   { border-color: rgba(6, 182, 212, 0.3) !important; }
+.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3) !important; }
+.dark .border-pink-200   { border-color: rgba(236, 72, 153, 0.3) !important; }
+.dark .border-emerald-200{ border-color: rgba(16, 185, 129, 0.3) !important; }
+.dark .border-rose-200   { border-color: rgba(244, 63, 94, 0.3) !important; }
 
 /* SVG overrides */
 .dark circle[stroke="#f1f5f9"] {
@@ -582,20 +624,76 @@ body {
   --tw-shadow-color: rgba(0, 0, 0, 0.3);
 }
 
-/* --- Colored text for dark mode readability --- */
+/* --- Colored text for dark mode readability (comprehensive) --- */
+/* Green */
 .dark .text-green-600  { color: #4ade80 !important; }
 .dark .text-green-700  { color: #4ade80 !important; }
+.dark .text-green-800  { color: #86efac !important; }
+/* Emerald */
+.dark .text-emerald-600 { color: #34d399 !important; }
+.dark .text-emerald-700 { color: #34d399 !important; }
+/* Yellow */
 .dark .text-yellow-600 { color: #facc15 !important; }
-.dark .text-yellow-700 { color: #fbbf24 !important; }
+.dark .text-yellow-700 { color: #fde047 !important; }
+.dark .text-yellow-800 { color: #fde047 !important; }
+/* Red */
 .dark .text-red-600    { color: #f87171 !important; }
-.dark .text-red-700    { color: #f87171 !important; }
-.dark .text-orange-600 { color: #fb923c !important; }
+.dark .text-red-700    { color: #fca5a5 !important; }
+.dark .text-red-800    { color: #fca5a5 !important; }
+/* Orange */
+.dark .text-orange-500 { color: #fb923c !important; }
+.dark .text-orange-600 { color: #fdba74 !important; }
+.dark .text-orange-700 { color: #fdba74 !important; }
+.dark .text-orange-800 { color: #fed7aa !important; }
+/* Amber */
 .dark .text-amber-600  { color: #fbbf24 !important; }
-.dark .text-teal-600   { color: #2dd4bf !important; }
-.dark .text-sky-500    { color: #38bdf8 !important; }
+.dark .text-amber-700  { color: #fcd34d !important; }
+.dark .text-amber-800  { color: #fde68a !important; }
+/* Blue */
 .dark .text-blue-600   { color: #60a5fa !important; }
-.dark .text-blue-700   { color: #60a5fa !important; }
+.dark .text-blue-700   { color: #93c5fd !important; }
 .dark .text-blue-800   { color: #93c5fd !important; }
+/* Sky */
+.dark .text-sky-500    { color: #38bdf8 !important; }
+.dark .text-sky-600    { color: #7dd3fc !important; }
+.dark .text-sky-700    { color: #7dd3fc !important; }
+/* Cyan */
+.dark .text-cyan-600   { color: #22d3ee !important; }
+.dark .text-cyan-700   { color: #67e8f9 !important; }
+/* Teal */
+.dark .text-teal-600   { color: #2dd4bf !important; }
+.dark .text-teal-700   { color: #5eead4 !important; }
+.dark .text-teal-800   { color: #99f6e4 !important; }
+/* Purple */
+.dark .text-purple-600 { color: #c084fc !important; }
+.dark .text-purple-700 { color: #d8b4fe !important; }
+.dark .text-purple-800 { color: #d8b4fe !important; }
+/* Violet */
+.dark .text-violet-600 { color: #a78bfa !important; }
+.dark .text-violet-700 { color: #c4b5fd !important; }
+/* Indigo */
+.dark .text-indigo-600 { color: #818cf8 !important; }
+.dark .text-indigo-700 { color: #a5b4fc !important; }
+/* Pink */
+.dark .text-pink-600   { color: #f472b6 !important; }
+.dark .text-pink-700   { color: #f9a8d4 !important; }
+/* Rose */
+.dark .text-rose-600   { color: #fb7185 !important; }
+.dark .text-rose-700   { color: #fda4af !important; }
+
+/* --- Hover bg overrides for colored 50/100 levels --- */
+.dark .hover\:bg-green-100:hover  { background-color: rgba(34, 197, 94, 0.20) !important; }
+.dark .hover\:bg-green-50:hover   { background-color: rgba(34, 197, 94, 0.15) !important; }
+.dark .hover\:bg-red-100:hover    { background-color: rgba(239, 68, 68, 0.20) !important; }
+.dark .hover\:bg-red-50:hover     { background-color: rgba(239, 68, 68, 0.12) !important; }
+.dark .hover\:bg-blue-100:hover   { background-color: rgba(59, 130, 246, 0.20) !important; }
+.dark .hover\:bg-teal-50:hover    { background-color: rgba(20, 184, 166, 0.15) !important; }
+.dark .hover\:bg-sky-50:hover     { background-color: rgba(14, 165, 233, 0.15) !important; }
+.dark .hover\:bg-yellow-100:hover { background-color: rgba(234, 179, 8, 0.20) !important; }
+.dark .hover\:bg-orange-100:hover { background-color: rgba(249, 115, 22, 0.20) !important; }
+.dark .hover\:bg-orange-50:hover  { background-color: rgba(249, 115, 22, 0.12) !important; }
+.dark .hover\:bg-purple-100:hover { background-color: rgba(168, 85, 247, 0.20) !important; }
+.dark .hover\:bg-slate-200:hover  { background-color: rgba(148, 163, 184, 0.15) !important; }
 
 /* --- Scrollbar in dark mode --- */
 .dark ::-webkit-scrollbar-track {

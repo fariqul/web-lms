@@ -137,15 +137,15 @@ export default function NilaiPage() {
   });
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-700';
-    if (score >= 60) return 'text-yellow-700';
-    return 'text-red-700';
+    if (score >= 80) return 'text-green-700 dark:text-green-400';
+    if (score >= 60) return 'text-yellow-700 dark:text-yellow-400';
+    return 'text-red-700 dark:text-red-400';
   };
 
   const getScoreBg = (score: number) => {
-    if (score >= 80) return 'bg-green-100';
-    if (score >= 60) return 'bg-yellow-100';
-    return 'bg-red-100';
+    if (score >= 80) return 'bg-green-100 dark:bg-green-900/30';
+    if (score >= 60) return 'bg-yellow-100 dark:bg-yellow-900/30';
+    return 'bg-red-100 dark:bg-red-900/30';
   };
 
   const handleEditExamScore = async (studentId: number, resultId: number) => {
@@ -237,7 +237,7 @@ export default function NilaiPage() {
         </div>
 
         {/* View Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg w-fit">
           {[
             { key: 'gabungan' as ViewTab, label: 'Gabungan', icon: Layers },
             { key: 'ujian' as ViewTab, label: 'Ujian', icon: BookCheck },
@@ -287,7 +287,7 @@ export default function NilaiPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                 <ClipboardList className="w-5 h-5 text-purple-600" />
               </div>
               <div>
@@ -301,7 +301,7 @@ export default function NilaiPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
                 <Award className="w-5 h-5 text-sky-500" />
               </div>
               <div>
@@ -429,7 +429,7 @@ export default function NilaiPage() {
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 text-sm rounded-full">
+                            <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 text-sm rounded-full">
                               {grade.class_name}
                             </span>
                           </td>
@@ -466,11 +466,11 @@ export default function NilaiPage() {
                           )}
                           <td className="px-4 py-4 whitespace-nowrap text-center">
                             {displayAvg >= 75 ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-700 text-sm rounded-full">
+                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm rounded-full">
                                 Lulus
                               </span>
                             ) : (
-                              <span className="px-2 py-1 bg-red-100 text-red-700 text-sm rounded-full">
+                              <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm rounded-full">
                                 Remedial
                               </span>
                             )}
@@ -532,14 +532,14 @@ export default function NilaiPage() {
                                                     <button
                                                       onClick={() => handleEditExamScore(grade.id, exam.result_id)}
                                                       disabled={saving}
-                                                      className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                      className="p-1 text-green-600 dark:text-green-400 hover:bg-green-50 rounded"
                                                       aria-label="Simpan nilai"
                                                     >
                                                       <Check className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                       onClick={() => { setEditingExam(null); setEditScore(''); }}
-                                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                      className="p-1 text-red-600 dark:text-red-400 hover:bg-red-50 rounded"
                                                       aria-label="Batal edit"
                                                     >
                                                       <X className="w-4 h-4" />
@@ -611,14 +611,14 @@ export default function NilaiPage() {
                                                     <button
                                                       onClick={() => handleEditAssignmentScore(grade.id, assignment.submission_id)}
                                                       disabled={saving}
-                                                      className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                      className="p-1 text-green-600 dark:text-green-400 hover:bg-green-50 rounded"
                                                       aria-label="Simpan nilai"
                                                     >
                                                       <Check className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                       onClick={() => { setEditingAssignment(null); setEditScore(''); }}
-                                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                      className="p-1 text-red-600 dark:text-red-400 hover:bg-red-50 rounded"
                                                       aria-label="Batal edit"
                                                     >
                                                       <X className="w-4 h-4" />
@@ -633,7 +633,7 @@ export default function NilaiPage() {
                                                         </span>
                                                       </div>
                                                     ) : (
-                                                      <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">
+                                                      <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded">
                                                         Belum dinilai
                                                       </span>
                                                     )}

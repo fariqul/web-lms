@@ -240,22 +240,22 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
 
   const getOptionStyle = (option: string) => {
     if (!currentAnswer?.selectedAnswer) {
-      return 'border-slate-200 dark:border-slate-700 hover:border-teal-400 hover:bg-teal-50';
+      return 'border-slate-200 dark:border-slate-700 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20';
     }
 
     if (mode === 'tryout' && !isFinished) {
       // During tryout, just highlight selected
       return currentAnswer.selectedAnswer === option
-        ? 'border-teal-500 bg-teal-50'
+        ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
         : 'border-slate-200 dark:border-slate-700';
     }
 
     // In belajar mode or after tryout finished
     if (option === currentQuestion?.correct_answer) {
-      return 'border-green-500 bg-green-50';
+      return 'border-green-500 bg-green-50 dark:bg-green-900/20';
     }
     if (currentAnswer.selectedAnswer === option && !currentAnswer.isCorrect) {
-      return 'border-red-500 bg-red-50';
+      return 'border-red-500 bg-red-50 dark:bg-red-900/20';
     }
     return 'border-slate-200 dark:border-slate-700 opacity-50';
   };
@@ -309,7 +309,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="p-8 text-center">
             <div className={`w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center ${
-              score >= 80 ? 'bg-green-100' : score >= 60 ? 'bg-yellow-100' : 'bg-red-100'
+              score >= 80 ? 'bg-green-100 dark:bg-green-900/30' : score >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-red-100 dark:bg-red-900/30'
             }`}>
               <Award className={`w-12 h-12 ${
                 score >= 80 ? 'text-green-500' : score >= 60 ? 'text-yellow-500' : 'text-red-500'
@@ -325,15 +325,15 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
             <p className="text-slate-600 dark:text-slate-400 mb-8">Skor Anda</p>
 
             <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="p-4 bg-green-50 rounded-xl">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
                 <CheckCircle className="w-6 h-6 text-green-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-green-600">{correct}</div>
-                <div className="text-sm text-green-600">Benar</div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{correct}</div>
+                <div className="text-sm text-green-600 dark:text-green-400">Benar</div>
               </div>
-              <div className="p-4 bg-red-50 rounded-xl">
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
                 <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-red-600">{incorrect}</div>
-                <div className="text-sm text-red-600">Salah</div>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">{incorrect}</div>
+                <div className="text-sm text-red-600 dark:text-red-400">Salah</div>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
                 <AlertCircle className="w-6 h-6 text-slate-600 dark:text-slate-400 mx-auto mb-2" />
@@ -356,10 +356,10 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                     }}
                     className={`w-10 h-10 rounded-lg font-medium transition-colors ${
                       answer.isCorrect === true
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40'
                         : answer.isCorrect === false
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-slate-100 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                     }`}
                   >
                     {idx + 1}
@@ -455,10 +455,10 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                     : answers[idx].selectedAnswer !== null
                     ? mode === 'belajar'
                       ? answers[idx].isCorrect
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                      : 'bg-teal-100 text-teal-700'
-                    : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                      : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
                 } ${answers[idx].isBookmarked ? 'ring-2 ring-yellow-400' : ''}`}
               >
                 {idx + 1}
@@ -486,8 +486,8 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                 onClick={handleBookmark}
                 className={`p-2 rounded-lg transition-colors ${
                   currentAnswer?.isBookmarked 
-                    ? 'bg-yellow-100 text-yellow-600' 
-                    : 'bg-slate-100 text-slate-600 dark:text-slate-400 hover:text-yellow-500'
+                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:text-yellow-500'
                 }`}
               >
                 {currentAnswer?.isBookmarked ? (
@@ -511,7 +511,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                   className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${getOptionStyle(option)}`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-medium flex-shrink-0">
+                    <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-sm font-medium flex-shrink-0">
                       {String.fromCharCode(65 + idx)}
                     </span>
                     <span className="flex-1">{option}</span>
@@ -530,7 +530,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
             {/* Explanation for Belajar mode */}
             {mode === 'belajar' && showExplanation && currentAnswer?.selectedAnswer && (
               <div className={`mt-6 p-4 rounded-xl ${
-                currentAnswer.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'
+                currentAnswer.isCorrect ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50' : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50'
               }`}>
                 <div className="flex items-start gap-3">
                   <Lightbulb className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
@@ -538,11 +538,11 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                   }`} />
                   <div>
                     <h4 className={`font-semibold mb-1 ${
-                      currentAnswer.isCorrect ? 'text-green-700' : 'text-amber-700'
+                      currentAnswer.isCorrect ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'
                     }`}>
                       {currentAnswer.isCorrect ? 'Benar! 🎉' : 'Pembahasan'}
                     </h4>
-                    <p className={currentAnswer.isCorrect ? 'text-green-600' : 'text-amber-600'}>
+                    <p className={currentAnswer.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
                       {currentQuestion.explanation}
                     </p>
                   </div>

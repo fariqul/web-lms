@@ -229,7 +229,7 @@ export default function UjianPage() {
     // If end_time has passed and not draft, show as "Selesai"
     if (exam.status === 'completed' || (endTime && endTime < now && exam.status !== 'draft')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 rounded-full text-xs">
           <CheckCircle className="w-3 h-3" />
           Selesai
         </span>
@@ -239,7 +239,7 @@ export default function UjianPage() {
     // Currently active (between start and end time)
     if (startTime && endTime && now >= startTime && now <= endTime) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs">
           <PlayCircle className="w-3 h-3" />
           Sedang Berlangsung
         </span>
@@ -248,7 +248,7 @@ export default function UjianPage() {
 
     if (exam.status === 'draft') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 rounded-full text-xs">
           <FileEdit className="w-3 h-3" />
           Draft
         </span>
@@ -257,7 +257,7 @@ export default function UjianPage() {
 
     if (exam.status === 'scheduled') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 rounded-full text-xs">
           <Clock className="w-3 h-3" />
           Terjadwal
         </span>
@@ -266,7 +266,7 @@ export default function UjianPage() {
 
     if (exam.status === 'active') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs">
           <PlayCircle className="w-3 h-3" />
           Sedang Berlangsung
         </span>
@@ -319,7 +319,7 @@ export default function UjianPage() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center">
                         <FileEdit className="w-6 h-6 text-sky-500" />
                       </div>
                       <div>
@@ -349,7 +349,7 @@ export default function UjianPage() {
                   {exam.seb_required && (
                     <div className="flex items-center justify-between mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-blue-600" />
+                        <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         <span className="text-xs font-medium text-blue-700 dark:text-blue-300">SEB Required</span>
                       </div>
                       <button
@@ -386,7 +386,7 @@ export default function UjianPage() {
                       <Button
                         variant="outline"
                         onClick={() => handleDeleteExam(exam.id, exam.title)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
                         aria-label="Hapus ujian"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -420,7 +420,7 @@ export default function UjianPage() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700/50 rounded-xl flex items-center justify-center">
                         <CheckCircle className="w-6 h-6 text-slate-600 dark:text-slate-400" />
                       </div>
                       <div>
@@ -524,7 +524,7 @@ export default function UjianPage() {
           {/* SEB Settings Section */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-4">
             <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-blue-600" />
+              <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               <div className="flex-1">
                 <h4 className="font-medium text-slate-800 dark:text-white text-sm">Safe Exam Browser (SEB)</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Wajibkan siswa menggunakan SEB untuk keamanan ujian</p>

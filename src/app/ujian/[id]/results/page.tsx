@@ -139,15 +139,15 @@ export default function ExamResultsPage() {
     });
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-700';
-    if (score >= 60) return 'text-yellow-700';
-    return 'text-red-700';
+    if (score >= 80) return 'text-green-700 dark:text-green-400';
+    if (score >= 60) return 'text-yellow-700 dark:text-yellow-400';
+    return 'text-red-700 dark:text-red-400';
   };
 
   const getScoreBg = (score: number) => {
-    if (score >= 80) return 'bg-green-100';
-    if (score >= 60) return 'bg-yellow-100';
-    return 'bg-red-100';
+    if (score >= 80) return 'bg-green-100 dark:bg-green-900/30';
+    if (score >= 60) return 'bg-yellow-100 dark:bg-yellow-900/30';
+    return 'bg-red-100 dark:bg-red-900/30';
   };
 
   const formatDate = (dateString: string | null) => {
@@ -168,37 +168,37 @@ export default function ExamResultsPage() {
       case 'completed':
       case 'graded':
         return (
-          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
             Selesai
           </span>
         );
       case 'in_progress':
         return (
-          <span className="px-2 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-xs font-medium rounded-full">
             Mengerjakan
           </span>
         );
       case 'submitted':
         return (
-          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium rounded-full">
             Dikumpulkan
           </span>
         );
       case 'not_started':
         return (
-          <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium rounded-full">
             Belum Mulai
           </span>
         );
       case 'missed':
         return (
-          <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium rounded-full">
             Tidak Mengerjakan
           </span>
         );
       default:
         return (
-          <span className="px-2 py-1 bg-slate-100 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full">
+          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full">
             {status}
           </span>
         );
@@ -252,8 +252,8 @@ export default function ExamResultsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Total Peserta</p>
@@ -266,8 +266,8 @@ export default function ExamResultsPage() {
             </Card>
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/20 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Rata-rata Nilai</p>
@@ -279,8 +279,8 @@ export default function ExamResultsPage() {
             </Card>
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Lulus</p>
@@ -293,8 +293,8 @@ export default function ExamResultsPage() {
             </Card>
             <Card className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                  <TrendingDown className="w-5 h-5 text-red-600" />
+                <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Tidak Lulus</p>
@@ -438,7 +438,7 @@ export default function ExamResultsPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-center print:hidden">
                         {result.status !== 'not_started' && result.status !== 'missed' ? (
                           <Link href={`/ujian/${examId}/hasil/${result.student_id}`}>
-                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg" title="Lihat detail" aria-label="Lihat detail hasil">
+                            <button className="p-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg" title="Lihat detail" aria-label="Lihat detail hasil">
                               <Eye className="w-4 h-4" />
                             </button>
                           </Link>

@@ -145,10 +145,10 @@ export default function AkunPage() {
 
   const getRoleBadgeColor = () => {
     switch (user?.role) {
-      case 'admin': return 'bg-orange-100 text-orange-700';
-      case 'guru': return 'bg-sky-100 text-sky-700';
-      case 'siswa': return 'bg-sky-50 text-sky-700';
-      default: return 'bg-slate-100 text-slate-700 dark:text-slate-300';
+      case 'admin': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400';
+      case 'guru': return 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400';
+      case 'siswa': return 'bg-sky-50 text-sky-700 dark:text-sky-400';
+      default: return 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300';
     }
   };
 

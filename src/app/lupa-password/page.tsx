@@ -60,7 +60,7 @@ export default function LupaPasswordPage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-[var(--shadow-card)] border border-slate-100 dark:border-slate-700 p-8">
           {success ? (
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Permintaan Terkirim!</h2>
@@ -97,7 +97,7 @@ export default function LupaPasswordPage() {
               </p>
 
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 rounded-lg text-sm">
                   {error}
                 </div>
               )}
@@ -149,8 +149,8 @@ export default function LupaPasswordPage() {
                       onClick={() => setContactType('whatsapp')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         contactType === 'whatsapp'
-                          ? 'border-green-500 bg-green-50 text-green-700'
-                          : 'border-slate-300 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                          : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       📱 WhatsApp
@@ -160,8 +160,8 @@ export default function LupaPasswordPage() {
                       onClick={() => setContactType('email')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
                         contactType === 'email'
-                          ? 'border-blue-500 bg-sky-50 text-sky-700'
-                          : 'border-slate-300 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'border-blue-500 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400'
+                          : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       ✉️ Email

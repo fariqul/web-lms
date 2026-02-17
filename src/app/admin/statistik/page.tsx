@@ -153,8 +153,8 @@ export default function AdminStatistikPage() {
         <div className="grid md:grid-cols-3 gap-6">
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <h3 className="font-semibold text-slate-900 dark:text-white">Aktivitas Bulan Ini</h3>
             </div>
@@ -176,7 +176,7 @@ export default function AdminStatistikPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-sky-50 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-sky-50 dark:bg-sky-900/20 rounded-lg flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-sky-500" />
               </div>
               <h3 className="font-semibold text-slate-900 dark:text-white">Jadwal Hari Ini</h3>
@@ -199,15 +199,15 @@ export default function AdminStatistikPage() {
 
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <GraduationCap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <h3 className="font-semibold text-slate-900 dark:text-white">Performa Akademik</h3>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-slate-600 dark:text-slate-400">Rata-rata Kehadiran</span>
-                <span className="font-semibold text-green-600">{academicPerformance.attendance_percentage}%</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">{academicPerformance.attendance_percentage}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600 dark:text-slate-400">Rata-rata Nilai Ujian</span>
@@ -215,7 +215,7 @@ export default function AdminStatistikPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600 dark:text-slate-400">Tingkat Kelulusan</span>
-                <span className="font-semibold text-green-600">{academicPerformance.pass_rate}%</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">{academicPerformance.pass_rate}%</span>
               </div>
             </div>
           </Card>

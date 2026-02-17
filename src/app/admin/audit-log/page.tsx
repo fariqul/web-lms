@@ -29,21 +29,21 @@ interface AuditLog {
 }
 
 const actionLabels: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  'user.create': { label: 'Buat User', color: 'bg-green-100 text-green-700', icon: UserPlus },
-  'user.update': { label: 'Edit User', color: 'bg-sky-50 text-sky-700', icon: Edit },
-  'user.delete': { label: 'Hapus User', color: 'bg-red-100 text-red-700', icon: UserMinus },
-  'user.reset_password': { label: 'Reset Password', color: 'bg-yellow-100 text-yellow-700', icon: Key },
-  'class.create': { label: 'Buat Kelas', color: 'bg-green-100 text-green-700', icon: UserPlus },
-  'class.update': { label: 'Edit Kelas', color: 'bg-sky-50 text-sky-700', icon: Edit },
-  'class.delete': { label: 'Hapus Kelas', color: 'bg-red-100 text-red-700', icon: Trash2 },
-  'exam.create': { label: 'Buat Ujian', color: 'bg-green-100 text-green-700', icon: FileText },
-  'exam.update': { label: 'Edit Ujian', color: 'bg-sky-50 text-sky-700', icon: Edit },
-  'exam.delete': { label: 'Hapus Ujian', color: 'bg-red-100 text-red-700', icon: Trash2 },
-  'attendance.start': { label: 'Mulai Absensi', color: 'bg-sky-100 text-sky-700', icon: Clock },
-  'attendance.close': { label: 'Tutup Absensi', color: 'bg-slate-100 text-slate-600 dark:text-slate-400', icon: Clock },
-  'settings.update': { label: 'Ubah Pengaturan', color: 'bg-purple-100 text-purple-700', icon: Settings },
-  'login': { label: 'Login', color: 'bg-sky-50 text-sky-700', icon: Key },
-  'logout': { label: 'Logout', color: 'bg-slate-100 text-slate-600 dark:text-slate-400', icon: Key },
+  'user.create': { label: 'Buat User', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: UserPlus },
+  'user.update': { label: 'Edit User', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: Edit },
+  'user.delete': { label: 'Hapus User', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: UserMinus },
+  'user.reset_password': { label: 'Reset Password', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', icon: Key },
+  'class.create': { label: 'Buat Kelas', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: UserPlus },
+  'class.update': { label: 'Edit Kelas', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: Edit },
+  'class.delete': { label: 'Hapus Kelas', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: Trash2 },
+  'exam.create': { label: 'Buat Ujian', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: FileText },
+  'exam.update': { label: 'Edit Ujian', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: Edit },
+  'exam.delete': { label: 'Hapus Ujian', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: Trash2 },
+  'attendance.start': { label: 'Mulai Absensi', color: 'bg-sky-100 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: Clock },
+  'attendance.close': { label: 'Tutup Absensi', color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400', icon: Clock },
+  'settings.update': { label: 'Ubah Pengaturan', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400', icon: Settings },
+  'login': { label: 'Login', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: Key },
+  'logout': { label: 'Logout', color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400', icon: Key },
 };
 
 export default function AuditLogPage() {
@@ -105,7 +105,7 @@ export default function AuditLogPage() {
   }, [filterAction, filterUser, dateFrom, dateTo]);
 
   const getActionInfo = (action: string) => {
-    return actionLabels[action] || { label: action, color: 'bg-slate-100 text-slate-600 dark:text-slate-400', icon: Eye };
+    return actionLabels[action] || { label: action, color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400', icon: Eye };
   };
 
   const filteredLogs = searchQuery
@@ -264,7 +264,7 @@ export default function AuditLogPage() {
                             <User className="w-3 h-3" />
                             {log.user_name}
                           </span>
-                          <span className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">{log.user_role}</span>
+                          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700/50 rounded text-[10px]">{log.user_role}</span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {new Date(log.created_at).toLocaleString('id-ID', { 
@@ -301,7 +301,7 @@ export default function AuditLogPage() {
                           {log.old_values && Object.keys(log.old_values).length > 0 && (
                             <div>
                               <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">Nilai Sebelum:</p>
-                              <pre className="bg-red-50 text-red-800 p-2 rounded text-xs overflow-x-auto">
+                              <pre className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 p-2 rounded text-xs overflow-x-auto">
                                 {JSON.stringify(log.old_values, null, 2)}
                               </pre>
                             </div>
@@ -310,7 +310,7 @@ export default function AuditLogPage() {
                           {log.new_values && Object.keys(log.new_values).length > 0 && (
                             <div>
                               <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">Nilai Sesudah:</p>
-                              <pre className="bg-green-50 text-green-800 p-2 rounded text-xs overflow-x-auto">
+                              <pre className="bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-400 p-2 rounded text-xs overflow-x-auto">
                                 {JSON.stringify(log.new_values, null, 2)}
                               </pre>
                             </div>

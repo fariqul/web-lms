@@ -183,14 +183,14 @@ export default function JaringanSekolahPage() {
         </div>
 
         {/* Current IP Info */}
-        <Card className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 border-sky-200">
+        <Card className="p-4 bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-900/30 border-sky-200 dark:border-sky-800/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
               <Globe className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
               <p className="text-sm text-sky-500 font-medium">IP Address Anda Saat Ini</p>
-              <p className="text-xl font-bold text-teal-900">
+              <p className="text-xl font-bold text-teal-900 dark:text-teal-100">
                 {checkingIp ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -211,8 +211,8 @@ export default function JaringanSekolahPage() {
             </button>
             <div className={`px-4 py-2 rounded-full flex items-center gap-2 ${
               isCurrentIpInNetwork 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-yellow-100 text-yellow-700'
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
             }`}>
               {isCurrentIpInNetwork ? (
                 <>
@@ -229,7 +229,7 @@ export default function JaringanSekolahPage() {
           </div>
           {/* Debug info - show raw IP details */}
           {(ipDebugInfo.raw_ip || ipDebugInfo.x_forwarded_for || ipDebugInfo.x_real_ip) && (
-            <div className="mt-3 pt-3 border-t border-sky-200 text-xs text-sky-500 space-y-1">
+            <div className="mt-3 pt-3 border-t border-sky-200 dark:border-sky-800/50 text-xs text-sky-500 space-y-1">
               {ipDebugInfo.raw_ip && (
                 <p>Raw Server IP: <span className="font-mono">{ipDebugInfo.raw_ip}</span></p>
               )}
@@ -337,10 +337,10 @@ export default function JaringanSekolahPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      network.is_active ? 'bg-green-100' : 'bg-slate-100'
+                      network.is_active ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-700/50'
                     }`}>
                       <Wifi className={`w-5 h-5 ${
-                        network.is_active ? 'text-green-600' : 'text-slate-600 dark:text-slate-400'
+                        network.is_active ? 'text-green-600 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'
                       }`} />
                     </div>
                     <div>
@@ -354,22 +354,22 @@ export default function JaringanSekolahPage() {
                       onClick={() => handleToggleActive(network)}
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
                         network.is_active
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-slate-100 text-slate-600 dark:text-slate-400'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400'
                       }`}
                     >
                       {network.is_active ? 'Aktif' : 'Nonaktif'}
                     </button>
                     <button
                       onClick={() => handleEdit(network)}
-                      className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg"
+                      className="p-2 text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg"
                       aria-label="Edit jaringan"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(network.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                       aria-label="Hapus jaringan"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -382,12 +382,12 @@ export default function JaringanSekolahPage() {
         </Card>
 
         {/* Info Card */}
-        <Card className="p-4 bg-yellow-50 border-yellow-200">
+        <Card className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/50">
           <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-yellow-800">Penting</p>
-              <p className="text-sm text-yellow-700 mt-1">
+              <p className="font-medium text-yellow-800 dark:text-yellow-300">Penting</p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                 Jika tidak ada jaringan yang dikonfigurasi atau semua dinonaktifkan, siswa dapat absensi 
                 dari jaringan manapun. Untuk mengaktifkan validasi jaringan, guru harus mengaktifkan 
                 opsi &quot;Wajibkan WiFi Sekolah&quot; saat membuat sesi absensi.
