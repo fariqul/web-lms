@@ -62,6 +62,13 @@ export default function ExamTakingPage() {
   const [startingExam, setStartingExam] = useState(false);
   const autoSubmittedRef = React.useRef(false);
   const [usingSEB, setUsingSEB] = useState(false);
+  const resumeAttemptedRef = React.useRef(false);
+
+  // Clear exam session flags (call before navigating away after submit)
+  const clearExamSession = () => {
+    sessionStorage.removeItem(`exam_active_${examId}`);
+    sessionStorage.removeItem(`exam_question_${examId}`);
+  };
 
   // Force submit handler
   const handleForceSubmit = async () => {
@@ -71,9 +78,11 @@ export default function ExamTakingPage() {
         answers,
         time_spent: (exam?.duration || 90) * 60 - timeRemaining,
       });
+      clearExamSession();
       router.push('/ujian-siswa?reason=force_submit');
     } catch (error) {
       console.error('Failed to submit exam:', error);
+      clearExamSession();
       router.push('/ujian-siswa');
     }
   };
@@ -101,6 +110,100 @@ export default function ExamTakingPage() {
   useEffect(() => {
     setUsingSEB(isSEBBrowser());
   }, []);
+
+  // Auto-resume exam after page refresh (SEB or browser refresh)
+  useEffect(() => {
+    if (!exam || resumeAttemptedRef.current || isStarted) return;
+    const sessionKey = `exam_active_${examId}`;
+    const wasActive = sessionStorage.getItem(sessionKey);
+    if (wasActive === 'true') {
+      resumeAttemptedRef.current = true;
+      // Exam was in progress — auto-resume by calling start again
+      (async () => {
+        setStartingExam(true);
+        try {
+          const response = await api.post(`/exams/${examId}/start`);
+          const startData = response.data?.data;
+          if (startData?.questions && startData.questions.length > 0) {
+            const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; options?: string[]; image?: string }, idx: number) => ({
+              id: q.id,
+              number: q.order || idx + 1,
+              type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
+              text: q.question_text,
+              options: q.options || [],
+              image: q.image || null,
+            }));
+            setQuestions(mappedQuestions);
+            if (startData.existing_answers) {
+              const restored: Record<number, string> = {};
+              Object.entries(startData.existing_answers).forEach(([qId, ans]) => {
+                const answer = ans as { answer?: string };
+                if (answer?.answer) {
+                  restored[Number(qId)] = answer.answer;
+                }
+              });
+              setAnswers(restored);
+            }
+            if (startData.remaining_time !== undefined) {
+              const remaining = Math.max(1, Math.floor(startData.remaining_time));
+              setTimeRemaining(remaining);
+            }
+            // Restore current question from sessionStorage
+            const savedQ = sessionStorage.getItem(`exam_question_${examId}`);
+            if (savedQ) setCurrentQuestion(Number(savedQ) || 0);
+            await enterFullscreen();
+            setIsStarted(true);
+            toast.info('Ujian dilanjutkan setelah refresh.');
+          }
+        } catch {
+          // If start fails, the session was already finished or expired — clear flag
+          sessionStorage.removeItem(sessionKey);
+        } finally {
+          setStartingExam(false);
+        }
+      })();
+    }
+  }, [exam]);
+
+  // Persist exam-active flag and current question to sessionStorage
+  useEffect(() => {
+    if (isStarted) {
+      sessionStorage.setItem(`exam_active_${examId}`, 'true');
+    }
+  }, [isStarted, examId]);
+
+  useEffect(() => {
+    if (isStarted) {
+      sessionStorage.setItem(`exam_question_${examId}`, String(currentQuestion));
+    }
+  }, [currentQuestion, isStarted, examId]);
+
+  // Prevent back navigation during exam (SEB + regular browser)
+  useEffect(() => {
+    if (!isStarted) return;
+
+    // Push a dummy state so back button hits our handler instead of leaving
+    window.history.pushState({ examLock: true }, '');
+
+    const handlePopState = () => {
+      // Re-push state to prevent actually navigating back
+      window.history.pushState({ examLock: true }, '');
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Modern browsers show a generic message; setting returnValue is required
+      e.returnValue = '';
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isStarted]);
 
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
@@ -176,10 +279,12 @@ export default function ExamTakingPage() {
     setSubmitting(true);
     try {
       await api.post(`/exams/${examId}/finish`);
+      clearExamSession();
       toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
       router.push('/ujian-siswa?submitted=true');
     } catch (error) {
       console.error('Failed to auto-submit exam:', error);
+      clearExamSession();
       router.push('/ujian-siswa?reason=time_up');
     }
   };
@@ -279,6 +384,7 @@ export default function ExamTakingPage() {
     setSubmitting(true);
     try {
       await api.post(`/exams/${examId}/finish`);
+      clearExamSession();
       router.push('/ujian-siswa?submitted=true');
     } catch (error) {
       console.error('Failed to submit exam:', error);
@@ -447,8 +553,8 @@ export default function ExamTakingPage() {
             <Card className="p-6">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Soal {question?.number || currentQuestion + 1}</span>
-                  <h2 className="text-lg font-medium text-slate-800 dark:text-white mt-1">{question?.text || 'Soal tidak tersedia'}</h2>
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Soal {question?.number || currentQuestion + 1}</span>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white mt-1">{question?.text || 'Soal tidak tersedia'}</h2>
                   {question?.image && (
                     <div className="mt-3">
                       <img
@@ -476,10 +582,10 @@ export default function ExamTakingPage() {
                   {question.options.map((option, index) => (
                     <label
                       key={index}
-                      className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                      className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                         answers[question.id] === option
-                          ? 'border-teal-500 bg-teal-50'
-                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'border-teal-500 bg-teal-100 dark:bg-teal-900/30 dark:border-teal-400'
+                          : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                       }`}
                     >
                       <input
@@ -487,10 +593,18 @@ export default function ExamTakingPage() {
                         name={`question-${question.id}`}
                         checked={answers[question.id] === option}
                         onChange={() => handleAnswer(question.id, option)}
-                        className="w-4 h-4 text-teal-600"
+                        className="w-4 h-4 text-teal-600 accent-teal-600"
                       />
-                      <span className="ml-3 font-medium text-slate-700 dark:text-slate-300">{String.fromCharCode(65 + index)}.</span>
-                      <span className="ml-2 text-slate-600 dark:text-slate-400">{option}</span>
+                      <span className={`ml-3 font-semibold ${
+                        answers[question.id] === option
+                          ? 'text-teal-800 dark:text-teal-300'
+                          : 'text-slate-900 dark:text-slate-200'
+                      }`}>{String.fromCharCode(65 + index)}.</span>
+                      <span className={`ml-2 ${
+                        answers[question.id] === option
+                          ? 'text-teal-700 dark:text-teal-300 font-medium'
+                          : 'text-slate-800 dark:text-slate-300'
+                      }`}>{option}</span>
                     </label>
                   ))}
                 </div>
