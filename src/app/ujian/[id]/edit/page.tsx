@@ -346,7 +346,11 @@ export default function EditSoalPage() {
     if (deleteQuestionId === null) return;
     try {
       await api.delete(`/questions/${deleteQuestionId}`);
-      setQuestions(questions.filter(q => q.id !== deleteQuestionId));
+      // Remove deleted question and renumber remaining ones sequentially
+      const remaining = questions
+        .filter(q => q.id !== deleteQuestionId)
+        .map((q, idx) => ({ ...q, order: idx + 1 }));
+      setQuestions(remaining);
     } catch (error) {
       console.error('Failed to delete question:', error);
       toast.error('Gagal menghapus soal');

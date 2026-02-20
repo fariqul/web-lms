@@ -6,7 +6,8 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
 import { examAPI } from '@/services/api';
 import { Exam } from '@/types';
-import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield } from 'lucide-react';
+import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield, Download } from 'lucide-react';
+import { downloadSEBConfig, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 
 // Live countdown hook
 function useCountdown(targetDate: string) {
@@ -187,9 +188,19 @@ export default function UjianSiswaPage() {
                       <span>{exam.duration || exam.duration_minutes} menit</span>
                     </div>
                     {exam.seb_required && (
-                      <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                        <Shield className="w-4 h-4" />
-                        <span className="font-medium">Wajib Safe Exam Browser</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                          <Shield className="w-4 h-4" />
+                          <span className="font-medium">Wajib SEB</span>
+                        </div>
+                        <button
+                          onClick={() => downloadSEBConfig(exam.title, exam.id, { ...DEFAULT_SEB_SETTINGS, sebRequired: true })}
+                          className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md transition-colors"
+                          title="Download file konfigurasi SEB"
+                        >
+                          <Download className="w-3 h-3" />
+                          Download SEB
+                        </button>
                       </div>
                     )}
                   </div>

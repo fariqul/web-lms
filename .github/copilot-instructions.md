@@ -46,5 +46,5 @@ src/
 
 ## Backend Requirements
 - Laravel 11 API server (separate project)
-- Supabase PostgreSQL database
-- Supabase Storage for images
+- aws ec2 server for hosting backend and database
+- mysql database for data storage

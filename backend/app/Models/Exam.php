@@ -25,6 +25,8 @@ class Exam extends Model
         'shuffle_options',
         'show_result',
         'passing_score',
+        'seb_required',
+        'seb_config',
     ];
 
     protected $casts = [
@@ -33,6 +35,8 @@ class Exam extends Model
         'shuffle_questions' => 'boolean',
         'shuffle_options' => 'boolean',
         'show_result' => 'boolean',
+        'seb_required' => 'boolean',
+        'seb_config' => 'array',
     ];
 
     public function class()

@@ -335,6 +335,15 @@ class ExamController extends Controller
             }
         }
 
+        // Flatten seb_config into top-level fields for frontend compatibility
+        if ($exam->seb_required && is_array($exam->seb_config)) {
+            $exam->seb_allow_quit = $exam->seb_config['allow_quit'] ?? true;
+            $exam->seb_quit_password = $exam->seb_config['quit_password'] ?? '';
+            $exam->seb_block_screen_capture = $exam->seb_config['block_screen_capture'] ?? true;
+            $exam->seb_allow_virtual_machine = $exam->seb_config['allow_virtual_machine'] ?? false;
+            $exam->seb_show_taskbar = $exam->seb_config['show_taskbar'] ?? true;
+        }
+
         return response()->json([
             'success' => true,
             'data' => $exam,
@@ -370,11 +379,29 @@ class ExamController extends Controller
             'shuffle_options' => 'boolean',
             'show_result' => 'boolean',
             'max_violations' => 'sometimes|integer|min:0',
+            'seb_required' => 'boolean',
+            'seb_config' => 'nullable|array',
         ]);
 
         // Map duration_minutes to duration if sent from frontend
         if ($request->has('duration_minutes') && !$request->has('duration')) {
             $exam->duration = $request->duration_minutes;
+        }
+
+        // Handle SEB settings: store config as JSON
+        if ($request->has('seb_required')) {
+            $exam->seb_required = $request->boolean('seb_required');
+            if ($request->boolean('seb_required')) {
+                $exam->seb_config = [
+                    'allow_quit' => $request->input('seb_allow_quit', true),
+                    'quit_password' => $request->input('seb_quit_password', ''),
+                    'block_screen_capture' => $request->input('seb_block_screen_capture', true),
+                    'allow_virtual_machine' => $request->input('seb_allow_virtual_machine', false),
+                    'show_taskbar' => $request->input('seb_show_taskbar', true),
+                ];
+            } else {
+                $exam->seb_config = null;
+            }
         }
 
         // Status is NOT allowed via fill to prevent manipulation
@@ -498,7 +525,7 @@ class ExamController extends Controller
             'options' => $optionsArray,
             'correct_answer' => $correctAnswer,
             'points' => $request->points ?? 10,
-            'order' => $exam->questions()->count() + 1,
+            'order' => ($exam->questions()->max('order') ?? 0) + 1,
         ]);
 
         // Update exam total_questions count
@@ -616,7 +643,16 @@ class ExamController extends Controller
             ], 403);
         }
         
+        $deletedOrder = $question->order;
         $question->delete();
+
+        // Renumber remaining questions sequentially
+        $exam->questions()->where('order', '>', $deletedOrder)
+            ->decrement('order');
+        
+        // Update total_questions count
+        $exam->total_questions = $exam->questions()->count();
+        $exam->save();
 
         return response()->json([
             'success' => true,
@@ -645,6 +681,18 @@ class ExamController extends Controller
                 'success' => false,
                 'message' => 'Ujian tidak dalam waktu pelaksanaan',
             ], 422);
+        }
+
+        // SEB enforcement: check User-Agent for Safe Exam Browser
+        if ($exam->seb_required) {
+            $ua = $request->header('User-Agent', '');
+            $isSEB = preg_match('/SEB\/\d|SafeExamBrowser|SEB_iOS|SEB_macOS/i', $ua);
+            if (!$isSEB) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ujian ini wajib menggunakan Safe Exam Browser (SEB). Silakan buka ujian melalui SEB.',
+                ], 403);
+            }
         }
 
         // Check if student belongs to the class

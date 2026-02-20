@@ -18,10 +18,11 @@ import {
   Shield,
   ShieldAlert,
   ShieldCheck,
+  Download,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
-import { isSEBBrowser } from '@/utils/seb';
+import { isSEBBrowser, downloadSEBConfig, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 
 interface Question {
   id: number;
@@ -466,11 +467,18 @@ export default function ExamTakingPage() {
                     <div className="space-y-2 text-sm text-red-600 dark:text-red-400">
                       <p className="font-medium">Langkah-langkah:</p>
                       <ol className="list-decimal list-inside space-y-1">
-                        <li>Download file konfigurasi .seb dari guru Anda</li>
+                        <li>Download file konfigurasi .seb menggunakan tombol di bawah</li>
                         <li>Install <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-red-800">Safe Exam Browser</a> jika belum terinstall</li>
                         <li>Buka file .seb yang sudah didownload — SEB akan otomatis terbuka</li>
                         <li>Login kembali dan mulai ujian</li>
                       </ol>
+                      <button
+                        onClick={() => downloadSEBConfig(exam.title, examId, { ...DEFAULT_SEB_SETTINGS, sebRequired: true })}
+                        className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Konfigurasi SEB
+                      </button>
                     </div>
                   </div>
                 </div>
