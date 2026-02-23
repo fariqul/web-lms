@@ -96,15 +96,16 @@ export default function ExamTakingPage() {
   const {
     isFullscreen,
     isCameraActive,
+    isMobile,
     violationCount,
     maxViolations,
     enterFullscreen,
     startCamera,
+    activateMonitoring,
     videoRef,
   } = useExamMode({
     examId,
     onViolation: () => {},
-
     onForceSubmit: handleForceSubmit,
   });
 
@@ -451,18 +452,30 @@ export default function ExamTakingPage() {
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/50 rounded-lg p-4 mb-6 text-left">
               <h3 className="font-medium text-yellow-800 dark:text-yellow-300 mb-2">⚠️ Perhatian:</h3>
               <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
-                <li>• Ujian akan berjalan dalam mode fullscreen</li>
-                <li>• Kamera akan aktif selama ujian berlangsung</li>
-                <li>• Keluar dari fullscreen dianggap kecurangan</li>
-                <li>• Pastikan koneksi internet stabil</li>
-                {exam.sebRequired && (
+                {isMobile ? (
+                  <>
+                    <li>• <strong>Jangan pindah tab atau buka aplikasi lain</strong> — akan terdeteksi sebagai pelanggaran</li>
+                    <li>• Kamera akan aktif selama ujian berlangsung</li>
+                    <li>• Pastikan koneksi internet stabil</li>
+                    <li>• Gunakan mode <strong>Jangan Ganggu</strong> untuk menghindari notifikasi</li>
+                    <li>• <strong>Disarankan:</strong> Aktifkan <strong>{/iPhone|iPad/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') ? 'Guided Access (Pengaturan → Aksesibilitas → Guided Access)' : 'Screen Pinning / Sematkan Layar'}</strong> untuk keamanan tambahan</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Ujian akan berjalan dalam mode fullscreen</li>
+                    <li>• Kamera akan aktif selama ujian berlangsung</li>
+                    <li>• Keluar dari fullscreen dianggap kecurangan</li>
+                    <li>• Pastikan koneksi internet stabil</li>
+                  </>
+                )}
+                {exam.sebRequired && !isMobile && (
                   <li className="font-semibold">• Ujian ini WAJIB menggunakan Safe Exam Browser (SEB)</li>
                 )}
               </ul>
             </div>
 
-            {/* SEB Detection Block */}
-            {exam.sebRequired && !usingSEB && (
+            {/* SEB Detection Block — only for desktop */}
+            {exam.sebRequired && !usingSEB && !isMobile && (
               <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded-lg p-5 mb-6 text-left">
                 <div className="flex items-start gap-3">
                   <ShieldAlert className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
@@ -500,7 +513,7 @@ export default function ExamTakingPage() {
               </div>
             )}
 
-            {exam.sebRequired && usingSEB && (
+            {exam.sebRequired && usingSEB && !isMobile && (
               <div className="bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800 rounded-lg p-4 mb-6">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-green-600" />
@@ -513,7 +526,7 @@ export default function ExamTakingPage() {
               <Button
                 onClick={handleStartExam}
                 fullWidth
-                disabled={startingExam || (exam.sebRequired && !usingSEB)}
+                disabled={startingExam || (exam.sebRequired && !usingSEB && !isMobile)}
               >
                 {startingExam ? (
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -539,7 +552,7 @@ export default function ExamTakingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}>
       <div className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div>

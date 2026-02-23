@@ -691,14 +691,19 @@ class ExamController extends Controller
         }
 
         // SEB enforcement: check User-Agent for Safe Exam Browser
+        // Skip SEB check for mobile devices (SEB not available on mobile)
         if ($exam->seb_required) {
             $ua = $request->header('User-Agent', '');
-            $isSEB = preg_match('/SEB\/\d|SafeExamBrowser|SEB_iOS|SEB_macOS/i', $ua);
-            if (!$isSEB) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ujian ini wajib menggunakan Safe Exam Browser (SEB). Silakan buka ujian melalui SEB.',
-                ], 403);
+            $isMobile = preg_match('/Android|iPhone|iPad|iPod|Mobile|webOS|Opera Mini/i', $ua);
+            
+            if (!$isMobile) {
+                $isSEB = preg_match('/SEB\/\d|SafeExamBrowser|SEB_iOS|SEB_macOS/i', $ua);
+                if (!$isSEB) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ujian ini wajib menggunakan Safe Exam Browser (SEB). Silakan buka ujian melalui SEB.',
+                    ], 403);
+                }
             }
         }
 

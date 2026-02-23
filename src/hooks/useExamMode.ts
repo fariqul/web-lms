@@ -14,6 +14,7 @@ interface UseExamModeOptions {
 interface UseExamModeReturn {
   isFullscreen: boolean;
   isCameraActive: boolean;
+  isMobile: boolean;
   violations: string[];
   violationCount: number;
   maxViolations: number | null;
@@ -22,7 +23,16 @@ interface UseExamModeReturn {
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   captureSnapshot: () => Promise<string | null>;
+  activateMonitoring: () => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+}
+
+// Detect mobile device
+function detectMobile(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || ('ontouchstart' in window && navigator.maxTouchPoints > 2)
+    || (window.innerWidth <= 768);
 }
 
 export function useExamMode({
@@ -34,6 +44,7 @@ export function useExamMode({
 }: UseExamModeOptions): UseExamModeReturn {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isMobile] = useState(() => detectMobile());
   const [violations, setViolations] = useState<string[]>([]);
   const [violationCount, setViolationCount] = useState(0);
   const [maxViolations, setMaxViolations] = useState<number | null>(null);
@@ -42,15 +53,23 @@ export function useExamMode({
   const streamRef = useRef<MediaStream | null>(null);
   const snapshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Track whether anti-cheat monitoring is active (after first fullscreen enter)
+  // Track whether anti-cheat monitoring is active
   const monitoringActiveRef = useRef(false);
   // Track fullscreen state via ref to avoid stale closure in event handlers
   const isFullscreenRef = useRef(false);
+  // Debounce rapid-fire violation reports on mobile
+  const lastViolationTimeRef = useRef(0);
+  const VIOLATION_DEBOUNCE_MS = 2000;
 
-  // Report violation to server
+  // Report violation to server (with debounce for mobile)
   const reportViolation = useCallback(async (type: string, description?: string) => {
     // Only report violations once monitoring is active
     if (!monitoringActiveRef.current) return;
+    
+    // Debounce rapid violations (mobile fires multiple events)
+    const now = Date.now();
+    if (now - lastViolationTimeRef.current < VIOLATION_DEBOUNCE_MS) return;
+    lastViolationTimeRef.current = now;
     
     try {
       const response = await monitoringAPI.reportViolation({
@@ -78,21 +97,35 @@ export function useExamMode({
     }
   }, [examId, onViolation, onForceSubmit]);
 
+  // Activate monitoring — can be called independently of fullscreen
+  const activateMonitoring = useCallback(() => {
+    if (monitoringActiveRef.current) return;
+    // Small delay to avoid immediate false positives
+    setTimeout(() => {
+      monitoringActiveRef.current = true;
+    }, 1500);
+  }, []);
+
   // Fullscreen management
   const enterFullscreen = useCallback(async () => {
     try {
-      await document.documentElement.requestFullscreen();
+      // On mobile, fullscreen API may not work — that's OK
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
       setIsFullscreen(true);
       isFullscreenRef.current = true;
-      // Activate monitoring after first successful fullscreen entry
-      // Small delay to avoid immediate fullscreenchange triggering a false violation
-      setTimeout(() => {
-        monitoringActiveRef.current = true;
-      }, 1000);
     } catch (error) {
-      console.error('Fullscreen request failed:', error);
+      console.error('Fullscreen request failed (expected on mobile):', error);
+      // On mobile, treat as "fullscreen" even if API fails
+      if (isMobile) {
+        setIsFullscreen(true);
+        isFullscreenRef.current = true;
+      }
     }
-  }, []);
+    // Always activate monitoring regardless of fullscreen success
+    activateMonitoring();
+  }, [isMobile, activateMonitoring]);
 
   const exitFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
@@ -170,16 +203,35 @@ export function useExamMode({
       setIsFullscreen(isNowFullscreen);
       
       // Report violation only if monitoring is active and was previously fullscreen
-      if (!isNowFullscreen && isFullscreenRef.current && monitoringActiveRef.current) {
+      // Skip on mobile since fullscreen API is unreliable
+      if (!isMobile && !isNowFullscreen && isFullscreenRef.current && monitoringActiveRef.current) {
         reportViolation('fullscreen_exit', 'Keluar dari mode fullscreen');
       }
       isFullscreenRef.current = isNowFullscreen;
     };
 
-    // Tab visibility change detection
+    // Tab visibility change detection (works on both mobile & desktop)
     const handleVisibilityChange = () => {
       if (document.hidden && monitoringActiveRef.current) {
-        reportViolation('tab_switch', 'Pindah tab browser');
+        reportViolation('tab_switch', 'Pindah tab/aplikasi');
+      }
+    };
+
+    // Window blur/focus — more reliable on mobile for app switching
+    const handleWindowBlur = () => {
+      if (monitoringActiveRef.current) {
+        reportViolation('tab_switch', 'Keluar dari halaman ujian');
+      }
+    };
+
+    // pagehide — Safari mobile fallback (fires when user switches apps)
+    const handlePageHide = (e: PageTransitionEvent) => {
+      if (!e.persisted && monitoringActiveRef.current) {
+        // Page is actually being unloaded, not just hidden
+        return;
+      }
+      if (monitoringActiveRef.current) {
+        reportViolation('tab_switch', 'Meninggalkan halaman ujian');
       }
     };
 
@@ -194,9 +246,16 @@ export function useExamMode({
       reportViolation('copy_paste', 'Mencoba menempel teks');
     };
 
-    // Context menu prevention
+    // Context menu prevention (long-press on mobile)
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
+    };
+
+    // Touch selection prevention on mobile
+    const handleSelectStart = (e: Event) => {
+      if (monitoringActiveRef.current) {
+        e.preventDefault();
+      }
     };
 
     // Key combination prevention
@@ -213,24 +272,39 @@ export function useExamMode({
       }
     };
 
+    // Multi-touch detection (possible screenshot gesture on mobile)
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length >= 3 && monitoringActiveRef.current) {
+        reportViolation('screenshot_attempt', 'Gerakan multi-touch terdeteksi (kemungkinan screenshot)');
+      }
+    };
+
     // Add event listeners
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('pagehide', handlePageHide);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
     document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('selectstart', handleSelectStart);
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
 
     // Cleanup
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('pagehide', handlePageHide);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
       document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('selectstart', handleSelectStart);
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('touchstart', handleTouchStart);
     };
-  }, [reportViolation]);
+  }, [reportViolation, isMobile]);
 
   // Camera monitoring & snapshot interval
   useEffect(() => {
@@ -273,6 +347,7 @@ export function useExamMode({
   return {
     isFullscreen,
     isCameraActive,
+    isMobile,
     violations,
     violationCount,
     maxViolations,
@@ -281,6 +356,7 @@ export function useExamMode({
     startCamera,
     stopCamera,
     captureSnapshot,
+    activateMonitoring,
     videoRef,
   };
 }
