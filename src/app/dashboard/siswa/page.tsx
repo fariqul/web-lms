@@ -41,9 +41,6 @@ interface ExamResult {
   id: number;
   title: string;
   subject: string;
-  score?: number;
-  max_score: number;
-  status: string;
   completed_at?: string;
 }
 
@@ -152,13 +149,10 @@ export default function SiswaDashboard() {
       );
 
       // Set exam results
-      const results: ExamResult[] = completed.slice(0, 6).map((e: { id: number; title: string; subject: string; max_score: number; my_result?: { score?: number; percentage?: number; total_score?: number; completed_at?: string } }) => ({
+      const results: ExamResult[] = completed.slice(0, 6).map((e: { id: number; title: string; subject: string; my_result?: { completed_at?: string } }) => ({
         id: e.id,
         title: e.title,
         subject: e.subject,
-        score: e.my_result?.percentage ?? e.my_result?.score ?? e.my_result?.total_score,
-        max_score: e.max_score || 100,
-        status: (e.my_result?.percentage ?? e.my_result?.score ?? 0) >= 70 ? 'Pass' : 'Fail',
         completed_at: e.my_result?.completed_at,
       }));
       setExamResults(results);
@@ -235,15 +229,6 @@ export default function SiswaDashboard() {
   const formatAnnouncementDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  const getGrade = (score: number, maxScore: number) => {
-    const percentage = (score / maxScore) * 100;
-    if (percentage >= 90) return 'A';
-    if (percentage >= 80) return 'B';
-    if (percentage >= 70) return 'C';
-    if (percentage >= 60) return 'D';
-    return 'F';
   };
 
   const getScheduleStatus = (startTime: string, endTime: string) => {
@@ -522,35 +507,29 @@ export default function SiswaDashboard() {
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Hasil Ujian Terbaru</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Riwayat Ujian Terbaru</h3>
                 </div>
                 <Link href="/nilai-siswa" className="text-xs text-sky-500 hover:text-sky-600 font-medium flex items-center gap-1">
-                  Semua Nilai <ChevronRight className="w-3.5 h-3.5" />
+                  Semua Riwayat <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
               {examResults.length > 0 ? (
                 <div className="px-5 pb-4">
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {examResults.map((exam) => {
-                      const grade = exam.score ? getGrade(exam.score, exam.max_score) : null;
-                      const gradeColor = grade === 'A' ? 'text-emerald-600 bg-emerald-50' :
-                        grade === 'B' ? 'text-sky-600 bg-sky-50' :
-                        grade === 'C' ? 'text-orange-500 bg-orange-50' :
-                        grade === 'F' ? 'text-red-600 bg-red-50' : 'text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800';
                       return (
                         <div key={exam.id} className="flex items-center gap-3 py-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${gradeColor}`}>
-                            {grade || '-'}
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-50 dark:bg-green-900/30">
+                            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{exam.title}</p>
                             <p className="text-[11px] text-slate-600 dark:text-slate-400">{exam.subject}</p>
                           </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{exam.score ?? '-'}<span className="text-slate-400 dark:text-slate-500 font-normal">/{exam.max_score}</span></p>
-                            <span className={`text-[10px] font-medium ${exam.status === 'Pass' ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {exam.status === 'Pass' ? 'Lulus' : 'Tidak Lulus'}
+                          <div className="flex-shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-medium rounded-full">
+                              Selesai
                             </span>
                           </div>
                         </div>

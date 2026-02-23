@@ -57,7 +57,7 @@ const navigation: NavItem[] = [
   { name: 'Tugas Saya', href: '/tugas-siswa', icon: FileText, roles: ['siswa'] },
   { name: 'Riwayat Absensi', href: '/riwayat-absensi', icon: ClipboardList, roles: ['siswa'] },
   { name: 'Materi Pelajaran', href: '/materi-siswa', icon: BookOpen, roles: ['siswa'] },
-  { name: 'Nilai Saya', href: '/nilai-siswa', icon: BarChart3, roles: ['siswa'] },
+  { name: 'Riwayat Pengumpulan', href: '/nilai-siswa', icon: ClipboardList, roles: ['siswa'] },
   // Shared
   { name: 'Jadwal', href: '/jadwal', icon: Calendar, roles: ['guru', 'siswa'] },
   // Admin only

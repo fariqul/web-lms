@@ -213,11 +213,12 @@ export default function UjianSiswaPage() {
                   </div>
 
                   {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Nilai Anda</p>
-                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        {exam.my_result?.percentage ?? exam.my_result?.score ?? '-'}
-                      </p>
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-3 flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-green-700 dark:text-green-400">Selesai Dikerjakan</p>
+                        <p className="text-xs text-green-600/70 dark:text-green-400/70">Ujian telah berhasil diselesaikan</p>
+                      </div>
                     </div>
                   ) : canStartExam(exam) ? (
                     <Button
