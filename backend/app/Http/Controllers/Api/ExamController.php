@@ -218,8 +218,7 @@ class ExamController extends Controller
             $examIds = $exams->pluck('id');
             $myResults = ExamResult::where('student_id', $user->id)
                 ->whereIn('exam_id', $examIds)
-                ->get(['id', 'exam_id', 'status', 'total_score', 'max_score', 'percentage', 'score',
-                        'total_correct', 'total_wrong', 'total_answered', 'submitted_at', 'finished_at'])
+                ->get(['id', 'exam_id', 'status', 'submitted_at', 'finished_at'])
                 ->keyBy('exam_id');
 
             $exams->getCollection()->transform(function ($exam) use ($myResults) {
@@ -329,7 +328,7 @@ class ExamController extends Controller
 
             $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
-                ->first(['id', 'status', 'total_score', 'percentage', 'started_at', 'submitted_at']);
+                ->first(['id', 'status', 'started_at', 'submitted_at']);
             $exam->my_result = $result;
 
             // Check if student can access exam

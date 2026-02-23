@@ -53,6 +53,10 @@ class AssignmentController extends Controller
                     ->where('student_id', $user->id)
                     ->first();
                 
+                if ($submission) {
+                    // Hide score from students - only show submission status
+                    $submission->makeHidden(['score']);
+                }
                 $assignment->my_submission = $submission;
                 $assignment->has_submitted = $submission !== null;
                 return $assignment;
@@ -146,11 +150,15 @@ class AssignmentController extends Controller
             $assignment->load(['submissions.student:id,name,nisn']);
         }
         
-        // Include own submission for student
+        // Include own submission for student (without score)
         if ($user->role === 'siswa') {
-            $assignment->my_submission = $assignment->submissions()
+            $submission = $assignment->submissions()
                 ->where('student_id', $user->id)
                 ->first();
+            if ($submission) {
+                $submission->makeHidden(['score']);
+            }
+            $assignment->my_submission = $submission;
         }
 
         return response()->json([
