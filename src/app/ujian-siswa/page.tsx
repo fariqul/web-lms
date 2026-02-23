@@ -7,7 +7,7 @@ import { Card, Button } from '@/components/ui';
 import { examAPI } from '@/services/api';
 import { Exam } from '@/types';
 import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield, Download } from 'lucide-react';
-import { downloadSEBConfig, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
+import { downloadSEBConfig } from '@/utils/seb';
 
 // Live countdown hook
 function useCountdown(targetDate: string) {
@@ -194,7 +194,14 @@ export default function UjianSiswaPage() {
                           <span className="font-medium">Wajib SEB</span>
                         </div>
                         <button
-                          onClick={() => downloadSEBConfig(exam.title, exam.id, { ...DEFAULT_SEB_SETTINGS, sebRequired: true })}
+                          onClick={() => downloadSEBConfig(exam.title, exam.id, {
+                            sebRequired: true,
+                            sebAllowQuit: exam.seb_allow_quit ?? false,
+                            sebQuitPassword: exam.seb_quit_password || '',
+                            sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
+                            sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
+                            sebShowTaskbar: exam.seb_show_taskbar ?? true,
+                          })}
                           className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md transition-colors"
                           title="Download file konfigurasi SEB"
                         >

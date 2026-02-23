@@ -224,6 +224,14 @@ class ExamController extends Controller
 
             $exams->getCollection()->transform(function ($exam) use ($myResults) {
                 $exam->my_result = $myResults[$exam->id] ?? null;
+                // Flatten SEB config for frontend
+                if ($exam->seb_required && is_array($exam->seb_config)) {
+                    $exam->seb_allow_quit = $exam->seb_config['allow_quit'] ?? true;
+                    $exam->seb_quit_password = $exam->seb_config['quit_password'] ?? '';
+                    $exam->seb_block_screen_capture = $exam->seb_config['block_screen_capture'] ?? true;
+                    $exam->seb_allow_virtual_machine = $exam->seb_config['allow_virtual_machine'] ?? false;
+                    $exam->seb_show_taskbar = $exam->seb_config['show_taskbar'] ?? true;
+                }
                 return $exam;
             });
         }
@@ -769,7 +777,7 @@ class ExamController extends Controller
                 'result' => $result,
                 'questions' => $questions,
                 'existing_answers' => $existingAnswers,
-                'remaining_time' => $exam->duration * 60 - $result->started_at->diffInSeconds(now()),
+                'remaining_time' => max(0, now()->diffInSeconds($exam->start_time->addMinutes($exam->duration), false)),
             ],
         ]);
     }

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
-import { isSEBBrowser, downloadSEBConfig, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
+import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 
 interface Question {
   id: number;
@@ -41,6 +41,11 @@ interface ExamData {
   totalQuestions: number;
   questions: Question[];
   sebRequired: boolean;
+  sebAllowQuit: boolean;
+  sebQuitPassword: string;
+  sebBlockScreenCapture: boolean;
+  sebAllowVirtualMachine: boolean;
+  sebShowTaskbar: boolean;
 }
 
 export default function ExamTakingPage() {
@@ -224,10 +229,8 @@ export default function ExamTakingPage() {
       
       if (examData) {
         const questionsList = examData.questions || [];
-        // Check SEB requirement: API first, localStorage fallback
-        const storedSeb = localStorage.getItem(`seb_settings_${examData.id}`);
-        const localSebRequired = storedSeb ? (JSON.parse(storedSeb) as { sebRequired?: boolean }).sebRequired === true : false;
-        const sebRequired = examData.seb_required === true || localSebRequired;
+        // Check SEB requirement from API
+        const sebRequired = examData.seb_required === true;
         
         setExam({
           id: examData.id,
@@ -237,6 +240,11 @@ export default function ExamTakingPage() {
           totalQuestions: examData.total_questions || examData.questions_count || questionsList.length || 0,
           questions: questionsList,
           sebRequired,
+          sebAllowQuit: examData.seb_allow_quit ?? false,
+          sebQuitPassword: examData.seb_quit_password ?? '',
+          sebBlockScreenCapture: examData.seb_block_screen_capture ?? true,
+          sebAllowVirtualMachine: examData.seb_allow_virtual_machine ?? false,
+          sebShowTaskbar: examData.seb_show_taskbar ?? true,
         });
         // Only set questions if they're actually returned (guru/admin)
         // For students, questions come from the /start endpoint
@@ -473,7 +481,14 @@ export default function ExamTakingPage() {
                         <li>Login kembali dan mulai ujian</li>
                       </ol>
                       <button
-                        onClick={() => downloadSEBConfig(exam.title, examId, { ...DEFAULT_SEB_SETTINGS, sebRequired: true })}
+                        onClick={() => downloadSEBConfig(exam.title, examId, {
+                          sebRequired: true,
+                          sebAllowQuit: exam.sebAllowQuit,
+                          sebQuitPassword: exam.sebQuitPassword,
+                          sebBlockScreenCapture: exam.sebBlockScreenCapture,
+                          sebAllowVirtualMachine: exam.sebAllowVirtualMachine,
+                          sebShowTaskbar: exam.sebShowTaskbar,
+                        })}
                         className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                       >
                         <Download className="w-4 h-4" />
