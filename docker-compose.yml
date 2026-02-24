@@ -82,14 +82,12 @@ services:
     networks:
       - lms-network
 
-  # Cloudflare Tunnel (exposes nginx to internet securely)
+  # Cloudflare Quick Tunnel (exposes nginx to internet securely, no domain needed)
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: lms-tunnel
     restart: unless-stopped
-    command: tunnel run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --url http://nginx:80
     depends_on:
       - nginx
     networks:
