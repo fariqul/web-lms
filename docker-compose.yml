@@ -33,21 +33,21 @@ services:
       APP_NAME: "LMS SMA 15 Makassar"
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: https://sma15lms.duckdns.org
+      APP_URL: ${APP_URL:-https://lms-api.example.com}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: sma15_lms
-      DB_USERNAME: lms_user
-      DB_PASSWORD: LmsSekolah123!
+      DB_DATABASE: ${DB_DATABASE:-sma15_lms}
+      DB_USERNAME: ${DB_USERNAME:-lms_user}
+      DB_PASSWORD: ${DB_PASSWORD:-LmsSekolah123!}
       SESSION_DRIVER: database
       SESSION_LIFETIME: 120
       SESSION_SECURE_COOKIE: "false"
-      SANCTUM_STATEFUL_DOMAINS: "web-lms-rowr.vercel.app,sma15lms.duckdns.org,52.63.72.178"
-      CORS_ALLOWED_ORIGINS: "https://web-lms-rowr.vercel.app,https://sma15lms.duckdns.org,http://52.63.72.178"
-      FRONTEND_URL: "https://web-lms-rowr.vercel.app"
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-web-lms-rowr.vercel.app}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://web-lms-rowr.vercel.app}
+      FRONTEND_URL: ${FRONTEND_URL:-https://web-lms-rowr.vercel.app}
       SOCKET_SERVER_URL: "http://socket:6001"
-      SOCKET_INTERNAL_SECRET: "lms-socket-secret-key-2026"
+      SOCKET_INTERNAL_SECRET: ${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
     volumes:
       - backend_storage:/var/www/html/storage
     networks:
@@ -62,8 +62,8 @@ services:
     restart: unless-stopped
     environment:
       SOCKET_PORT: 6001
-      SOCKET_INTERNAL_SECRET: "lms-socket-secret-key-2026"
-      CORS_ORIGINS: "https://web-lms-rowr.vercel.app,https://sma15lms.duckdns.org,http://localhost:3000"
+      SOCKET_INTERNAL_SECRET: ${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
+      CORS_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://web-lms-rowr.vercel.app}
     networks:
       - lms-network
 
@@ -74,14 +74,24 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - backend
       - socket
+    networks:
+      - lms-network
+
+  # Cloudflare Tunnel (exposes nginx to internet securely)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: lms-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - nginx
     networks:
       - lms-network
 
