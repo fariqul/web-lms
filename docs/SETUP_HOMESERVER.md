@@ -1,7 +1,8 @@
 # 🏠 Setup Home Server LMS - PC Sekolah
 
 Panduan lengkap setup backend LMS di PC sekolah yang nyala 24 jam.  
-**Arsitektur:** Frontend (Vercel gratis) ← internet → Cloudflare Tunnel → PC Sekolah (Docker)
+**Arsitektur:** Frontend (Vercel gratis) ← internet → Cloudflare Quick Tunnel → PC Sekolah (Docker)  
+**Biaya: Rp 0 (100% gratis)**
 
 ---
 
@@ -9,8 +10,11 @@ Panduan lengkap setup backend LMS di PC sekolah yang nyala 24 jam.
 
 - PC Windows yang nyala 24 jam
 - Koneksi internet stabil
-- Akun GitHub (untuk clone project)
-- Akun Cloudflare (gratis) — https://dash.cloudflare.com
+- Docker Desktop terinstall
+- Git terinstall
+
+> **Tidak perlu** akun Cloudflare, domain, atau konfigurasi apapun di web Cloudflare.  
+> Quick Tunnel otomatis membuat URL HTTPS tanpa setup.
 
 ---
 
@@ -45,75 +49,7 @@ cd lms-server
 
 ---
 
-## Langkah 3: Buat Cloudflare Tunnel (GRATIS)
-
-### 3a. Daftar Cloudflare Zero Trust
-1. Buka https://one.dash.cloudflare.com
-2. Login/daftar akun Cloudflare (gratis)
-3. Pilih plan **Free** (0$/bulan)
-
-### 3b. Buat Tunnel
-1. Di dashboard Zero Trust, klik **Networks** → **Tunnels**
-2. Klik **Create a tunnel**
-3. Pilih **Cloudflared** → Next
-4. Beri nama tunnel: `lms-sma15`
-5. **PENTING:** Copy **Tunnel Token** yang muncul (string panjang)
-6. Klik Next
-
-### 3c. Konfigurasi Public Hostname
-Di halaman "Route tunnel", tambahkan **2 hostname**:
-
-**Hostname 1 — Backend API:**
-| Field | Value |
-|-------|-------|
-| Subdomain | `lms-api` (atau nama lain) |
-| Domain | Pilih domain Cloudflare kamu* |
-| Type | HTTP |
-| URL | `nginx:80` |
-
-**Hostname 2 — Socket.io (untuk WebSocket):**
-| Field | Value |
-|-------|-------|
-| Subdomain | `lms-api` (SAMA dengan di atas) |
-| Domain | Sama |
-| Path | `/socket.io/` |
-| Type | HTTP |
-| URL | `nginx:80` |
-
-> *Catatan tentang domain: Cloudflare Tunnel memerlukan domain yang terdaftar di Cloudflare.
-> - **GRATIS**: Jika kamu sudah punya domain, tambahkan ke Cloudflare (gratis)
-> - **MURAH**: Beli domain `.my.id` (~Rp 15rb/tahun) di Niagahoster/IDCloudHost lalu pindahkan NS ke Cloudflare
-> - **ALTERNATIF GRATIS**: Pakai Quick Tunnel (lihat Langkah 3d)
-
-### 3d. Alternatif: Quick Tunnel (100% Gratis, tanpa domain)
-
-Jika tidak mau beli domain, gunakan Quick Tunnel. URL akan random tapi tetap HTTPS.
-
-**SKIP langkah 3b-3c**, dan ganti service `cloudflared` di `docker-compose.yml`:
-
-```yaml
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: lms-tunnel
-    restart: unless-stopped
-    command: tunnel --url http://nginx:80
-    depends_on:
-      - nginx
-    networks:
-      - lms-network
-```
-
-Setelah start, cek URL di log:
-```powershell
-docker logs lms-tunnel
-# Cari baris: "Your quick Tunnel has been created! Visit it at: https://xxxxx.trycloudflare.com"
-```
-
-⚠️ **Kekurangan Quick Tunnel:** URL berubah setiap restart container. Harus update env di Vercel setiap kali.
-
----
-
-## Langkah 4: Konfigurasi Environment
+## Langkah 3: Konfigurasi Environment
 
 ```powershell
 cd C:\lms-server
@@ -122,29 +58,11 @@ cd C:\lms-server
 copy .env.homeserver .env
 ```
 
-Edit file `.env` dengan Notepad:
-```powershell
-notepad .env
-```
-
-Isi nilai berikut:
-
-```env
-# URL Cloudflare Tunnel kamu (dari Langkah 3)
-APP_URL=https://lms-api.domain-kamu.my.id
-
-# Frontend Vercel (sudah benar)
-FRONTEND_URL=https://web-lms-rowr.vercel.app
-CORS_ALLOWED_ORIGINS=https://web-lms-rowr.vercel.app
-SANCTUM_STATEFUL_DOMAINS=web-lms-rowr.vercel.app
-
-# Token Cloudflare Tunnel (dari Langkah 3b step 5)
-CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoixxxxxx...
-```
+Untuk sekarang biarkan `.env` apa adanya. Kita akan update `APP_URL` setelah tunnel jalan di Langkah 5.
 
 ---
 
-## Langkah 5: Build & Start Semua Services
+## Langkah 4: Build & Start Semua Services
 
 ```powershell
 cd C:\lms-server
@@ -175,32 +93,60 @@ docker exec lms-backend php artisan key:generate --force
 docker compose restart backend
 ```
 
-### Verifikasi
+---
+
+## Langkah 5: Cek URL Quick Tunnel & Update ENV
+
+### 5a. Dapatkan URL Tunnel
 ```powershell
-# Cek backend berjalan
-docker exec lms-backend php artisan --version
-
-# Cek database terkoneksi
-docker exec lms-backend php artisan migrate:status
-
-# Cek tunnel (Named Tunnel)
 docker logs lms-tunnel
-
-# Test API (ganti URL)
-curl https://lms-api.domain-kamu.my.id/api/health
 ```
+
+Cari baris seperti ini di output:
+```
+Your quick Tunnel has been created! Visit it at:
+https://random-kata-kata.trycloudflare.com
+```
+
+**Copy URL tersebut** (contoh: `https://apple-banana-charlie.trycloudflare.com`)
+
+### 5b. Update `.env`
+```powershell
+notepad C:\lms-server\.env
+```
+
+Ganti baris `APP_URL`:
+```env
+APP_URL=https://apple-banana-charlie.trycloudflare.com
+```
+
+Save & close Notepad.
+
+### 5c. Restart Backend
+```powershell
+cd C:\lms-server
+docker compose restart backend socket
+```
+
+### 5d. Verifikasi
+Buka browser, akses URL tunnel + `/api/health`:
+```
+https://apple-banana-charlie.trycloudflare.com/api/health
+```
+
+Jika muncul response JSON → backend berhasil diakses dari internet! ✅
 
 ---
 
 ## Langkah 6: Update Vercel Environment
 
 1. Buka https://vercel.com → Project LMS → **Settings** → **Environment Variables**
-2. Update/tambahkan:
+2. Update/tambahkan (ganti URL dengan URL tunnel kamu):
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_API_URL` | `https://lms-api.domain-kamu.my.id/api` |
-| `NEXT_PUBLIC_SOCKET_URL` | `https://lms-api.domain-kamu.my.id` |
+| `NEXT_PUBLIC_API_URL` | `https://apple-banana-charlie.trycloudflare.com/api` |
+| `NEXT_PUBLIC_SOCKET_URL` | `https://apple-banana-charlie.trycloudflare.com` |
 | `NEXT_PUBLIC_APP_NAME` | `SMA 15 Makassar LMS` |
 | `NEXT_PUBLIC_APP_URL` | `https://web-lms-rowr.vercel.app` |
 
@@ -228,6 +174,27 @@ Docker Desktop sudah diset auto-start, dan `docker-compose.yml` sudah pakai `res
 
 ---
 
+## ⚠️ Penting: URL Berubah saat Tunnel Restart
+
+Quick Tunnel memberikan URL **random**. URL ini **tetap sama selama container `lms-tunnel` tidak restart**.
+
+**Kapan URL berubah:**
+- PC mati/restart
+- `docker compose down` lalu `up`
+- Container `lms-tunnel` crash
+
+**Kapan URL TIDAK berubah:**
+- PC nyala terus tanpa gangguan (bisa berminggu-minggu)
+- `docker compose restart backend` (tunnel tetap jalan)
+
+**Jika URL berubah, lakukan:**
+1. Cek URL baru: `docker logs lms-tunnel`
+2. Update `.env` → `APP_URL=https://url-baru.trycloudflare.com`
+3. `docker compose restart backend socket`
+4. Update env di Vercel → Redeploy
+
+---
+
 ## 🔧 Perintah Maintenance
 
 ```powershell
@@ -242,6 +209,9 @@ docker compose logs -f
 # Lihat log container tertentu
 docker logs lms-backend -f
 docker logs lms-tunnel -f
+
+# Cek URL tunnel saat ini
+docker logs lms-tunnel 2>&1 | findstr "trycloudflare"
 
 # Restart semua
 docker compose restart
@@ -276,9 +246,8 @@ docker exec lms-backend php artisan config:clear
 |------|-------|
 | Frontend (Vercel) | **Rp 0** |
 | Backend + DB (PC Sekolah) | **Rp 0** (listrik sudah jalan) |
-| Cloudflare Tunnel | **Rp 0** |
-| Domain `.my.id` (opsional) | ~Rp 15.000/tahun |
-| **TOTAL** | **Rp 0 - 15.000/tahun** |
+| Cloudflare Quick Tunnel | **Rp 0** (tanpa akun/domain) |
+| **TOTAL** | **Rp 0** |
 
 ---
 
@@ -297,18 +266,22 @@ docker exec lms-backend php artisan migrate:status
 docker exec lms-backend php artisan migrate --force
 ```
 
-### Tunnel tidak connect
-- Pastikan `CLOUDFLARE_TUNNEL_TOKEN` benar di `.env`
-- Pastikan tunnel active di dashboard Cloudflare Zero Trust
-- Cek: `docker logs lms-tunnel`
+### Tunnel tidak connect / tidak ada URL
+```powershell
+# Restart tunnel saja
+docker compose restart cloudflared
 
-### CORS error di frontend  
+# Cek log
+docker logs lms-tunnel
+```
+
+### CORS error di frontend
 - Pastikan `CORS_ALLOWED_ORIGINS` di `.env` match dengan URL Vercel
-- Pastikan pakai HTTPS (Cloudflare Tunnel otomatis HTTPS)
+- Pastikan pakai HTTPS (Quick Tunnel otomatis HTTPS)
 
 ### WebSocket tidak connect
-- Pastikan hostname Socket.io path (`/socket.io/`) dikonfigurasi di Cloudflare Tunnel
-- Di Cloudflare Tunnel settings, enable **WebSocket** pada hostname tersebut
+- Quick Tunnel mendukung WebSocket secara default
+- Pastikan `NEXT_PUBLIC_SOCKET_URL` di Vercel sama dengan URL tunnel (tanpa `/api`)
 
 ### Migrasi data dari AWS
 Jika ada data di server AWS lama:
