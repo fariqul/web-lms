@@ -296,8 +296,8 @@ export default function EditSoalPage() {
       }
       return null;
     });
-    setOptionImagePreviews(optPreviews.length === 4 ? optPreviews : [null, null, null, null]);
-    setOptionImageFiles([null, null, null, null]);
+    setOptionImagePreviews(optPreviews);
+    setOptionImageFiles(new Array(question.options.length).fill(null));
     setEditingQuestion(question.id!);
     setIsEditModalOpen(true);
   };
@@ -443,8 +443,8 @@ export default function EditSoalPage() {
     });
     setImageFile(null);
     setImagePreview(null);
-    setOptionImageFiles([null, null, null, null]);
-    setOptionImagePreviews([null, null, null, null]);
+    setOptionImageFiles(new Array(4).fill(null));
+    setOptionImagePreviews(new Array(4).fill(null));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -564,6 +564,35 @@ export default function EditSoalPage() {
       is_correct: i === index,
     }));
     setNewQuestion({ ...newQuestion, options: updatedOptions });
+  };
+
+  const handleAddOption = () => {
+    if (newQuestion.options.length >= 8) {
+      toast.warning('Maksimal 8 opsi jawaban');
+      return;
+    }
+    setNewQuestion({
+      ...newQuestion,
+      options: [...newQuestion.options, { text: '', is_correct: false }],
+    });
+    setOptionImageFiles(prev => [...prev, null]);
+    setOptionImagePreviews(prev => [...prev, null]);
+  };
+
+  const handleRemoveOption = (index: number) => {
+    if (newQuestion.options.length <= 2) {
+      toast.warning('Minimal 2 opsi jawaban');
+      return;
+    }
+    const wasCorrect = newQuestion.options[index].is_correct;
+    const updatedOptions = newQuestion.options.filter((_, i) => i !== index);
+    // If removed option was the correct one, set first option as correct
+    if (wasCorrect && updatedOptions.length > 0) {
+      updatedOptions[0].is_correct = true;
+    }
+    setNewQuestion({ ...newQuestion, options: updatedOptions });
+    setOptionImageFiles(prev => prev.filter((_, i) => i !== index));
+    setOptionImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   if (loading) {
@@ -1127,7 +1156,7 @@ export default function EditSoalPage() {
                         onChange={() => handleCorrectAnswerChange(index)}
                         className="text-teal-600"
                       />
-                      <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
+                      <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium text-sm">
                         {String.fromCharCode(65 + index)}
                       </span>
                       <input
@@ -1149,6 +1178,16 @@ export default function EditSoalPage() {
                       >
                         <ImagePlus className="w-4 h-4" />
                       </button>
+                      {newQuestion.options.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOption(index)}
+                          className="p-2 rounded-lg border border-slate-300 hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
+                          title="Hapus opsi ini"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                       <input
                         ref={(el) => { optionFileInputRefs.current[index] = el; }}
                         type="file"
@@ -1203,9 +1242,21 @@ export default function EditSoalPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                Klik ikon gambar untuk menambahkan gambar pada opsi (rumus, pola, dll.)
-              </p>
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {newQuestion.options.length} opsi • Klik ikon gambar untuk menambahkan gambar pada opsi
+                </p>
+                {newQuestion.options.length < 8 && (
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="flex items-center gap-1 text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Opsi
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1402,6 +1453,16 @@ export default function EditSoalPage() {
                       >
                         <ImagePlus className="w-4 h-4" />
                       </button>
+                      {newQuestion.options.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOption(index)}
+                          className="p-2 rounded-lg border border-slate-300 hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
+                          title="Hapus opsi ini"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                       <input
                         ref={(el) => { optionFileInputRefs.current[index] = el; }}
                         type="file"
@@ -1460,9 +1521,21 @@ export default function EditSoalPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                Klik ikon gambar untuk menambahkan gambar pada opsi (rumus, pola, dll.)
-              </p>
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {newQuestion.options.length} opsi • Klik ikon gambar untuk menambahkan gambar pada opsi
+                </p>
+                {newQuestion.options.length < 8 && (
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="flex items-center gap-1 text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Opsi
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
