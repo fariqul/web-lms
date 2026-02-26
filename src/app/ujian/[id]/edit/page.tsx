@@ -45,6 +45,7 @@ interface Option {
 
 interface Question {
   id?: number;
+  passage?: string | null;
   question_text: string;
   question_type: 'multiple_choice' | 'essay';
   points: number;
@@ -102,6 +103,7 @@ export default function EditSoalPage() {
   const [savingSeb, setSavingSeb] = useState(false);
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
+    passage: '',
     question_type: 'multiple_choice',
     points: 10,
     order: 0,
@@ -166,6 +168,7 @@ export default function EditSoalPage() {
         if (data.questions) {
           const mappedQuestions = data.questions.map((q: {
             id: number;
+            passage?: string | null;
             question_text: string;
             question_type: string;
             points: number;
@@ -174,6 +177,7 @@ export default function EditSoalPage() {
             options?: { id: number; option_text: string; is_correct: boolean; image?: string | null }[];
           }, index: number) => ({
             id: q.id,
+            passage: q.passage || null,
             question_text: q.question_text,
             question_type: q.question_type || 'multiple_choice',
             points: q.points || 10,
@@ -224,6 +228,9 @@ export default function EditSoalPage() {
       formData.append('question_type', newQuestion.question_type);
       formData.append('points', String(newQuestion.points));
       formData.append('order', String(questions.length + 1));
+      if (newQuestion.passage?.trim()) {
+        formData.append('passage', newQuestion.passage);
+      }
       
       if (imageFile) {
         formData.append('image', imageFile);
@@ -264,6 +271,7 @@ export default function EditSoalPage() {
   const handleEditQuestion = (question: Question) => {
     setNewQuestion({
       id: question.id,
+      passage: question.passage || '',
       question_text: question.question_text,
       question_type: question.question_type,
       points: question.points,
@@ -327,6 +335,7 @@ export default function EditSoalPage() {
       formData.append('question_text', newQuestion.question_text);
       formData.append('question_type', newQuestion.question_type);
       formData.append('points', String(newQuestion.points));
+      formData.append('passage', newQuestion.passage?.trim() || '');
       formData.append('_method', 'PUT');
 
       if (imageFile) {
@@ -431,6 +440,7 @@ export default function EditSoalPage() {
   const resetNewQuestion = () => {
     setNewQuestion({
       question_text: '',
+      passage: '',
       question_type: 'multiple_choice',
       points: 10,
       order: 0,
@@ -931,7 +941,13 @@ export default function EditSoalPage() {
                       <span className="font-bold text-lg text-slate-600 dark:text-slate-400">{index + 1}</span>
                     </div>
                     <div className="flex-1">
-                      <p className="text-slate-800 dark:text-white mb-2">{question.question_text}</p>
+                      {question.passage && (
+                        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Cerita Soal</span>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line">{question.passage}</p>
+                        </div>
+                      )}
+                      <p className="text-slate-800 dark:text-white mb-2 whitespace-pre-line">{question.question_text}</p>
                       
                       {question.image && (
                         <div className="mb-3">
@@ -1054,6 +1070,38 @@ export default function EditSoalPage() {
             </div>
           </div>
 
+          {/* Passage / Cerita Soal */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Cerita Soal <span className="text-xs font-normal text-slate-400">(Opsional — untuk beberapa soal yang mengacu pada satu cerita/teks)</span>
+            </label>
+            <textarea
+              value={newQuestion.passage || ''}
+              onChange={(e) => setNewQuestion({ ...newQuestion, passage: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-white"
+              placeholder="Masukkan cerita/teks bacaan yang terkait dengan soal ini…"
+            />
+            {questions.length > 0 && [...new Set(questions.filter(q => q.passage).map(q => q.passage!))].length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Pakai cerita dari soal sebelumnya:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {[...new Set(questions.filter(q => q.passage).map(q => q.passage!))].map((p, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewQuestion({ ...newQuestion, passage: p })}
+                      className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 truncate max-w-[200px]"
+                      title={p}
+                    >
+                      {p.length > 40 ? p.substring(0, 40) + '…' : p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Question Text */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -1063,7 +1111,7 @@ export default function EditSoalPage() {
               value={newQuestion.question_text}
               onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
               rows={4}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-white"
               placeholder="Masukkan teks soal…"
             />
           </div>
@@ -1329,6 +1377,38 @@ export default function EditSoalPage() {
             </div>
           </div>
 
+          {/* Passage / Cerita Soal */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Cerita Soal <span className="text-xs font-normal text-slate-400">(Opsional)</span>
+            </label>
+            <textarea
+              value={newQuestion.passage || ''}
+              onChange={(e) => setNewQuestion({ ...newQuestion, passage: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-white"
+              placeholder="Masukkan cerita/teks bacaan yang terkait dengan soal ini…"
+            />
+            {questions.length > 0 && [...new Set(questions.filter(q => q.passage).map(q => q.passage!))].length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Pakai cerita dari soal sebelumnya:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {[...new Set(questions.filter(q => q.passage).map(q => q.passage!))].map((p, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewQuestion({ ...newQuestion, passage: p })}
+                      className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 truncate max-w-[200px]"
+                      title={p}
+                    >
+                      {p.length > 40 ? p.substring(0, 40) + '…' : p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Question Text */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -1338,7 +1418,7 @@ export default function EditSoalPage() {
               value={newQuestion.question_text}
               onChange={(e) => setNewQuestion({ ...newQuestion, question_text: e.target.value })}
               rows={4}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-800 dark:text-white"
               placeholder="Masukkan teks soal…"
             />
           </div>

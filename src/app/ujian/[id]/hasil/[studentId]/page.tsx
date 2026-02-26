@@ -47,6 +47,7 @@ interface ExamResultData {
 
 interface QuestionData {
   id: number;
+  passage?: string | null;
   question_text: string;
   type: string;
   correct_answer: string;
@@ -343,8 +344,15 @@ export default function HasilSiswaPage() {
                   </div>
 
                   <div className="flex-1 min-w-0">
+                    {/* Passage / Cerita Soal */}
+                    {answer.question.passage && (
+                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Bacaan</span>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line">{answer.question.passage}</p>
+                      </div>
+                    )}
                     {/* Question text */}
-                    <p className="text-slate-800 dark:text-white font-medium mb-2">{answer.question.question_text}</p>
+                    <p className="text-slate-800 dark:text-white font-medium mb-2 whitespace-pre-line">{answer.question.question_text}</p>
                     
                     <div className="flex items-center gap-3 mb-3">
                       <span className={`px-2 py-0.5 text-xs rounded ${

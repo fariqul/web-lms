@@ -34,6 +34,7 @@ interface Question {
   number: number;
   type: 'multiple_choice' | 'essay';
   text: string;
+  passage?: string | null;
   options?: QuestionOption[];
   image?: string | null;
 }
@@ -137,11 +138,12 @@ export default function ExamTakingPage() {
           const response = await api.post(`/exams/${examId}/start`);
           const startData = response.data?.data;
           if (startData?.questions && startData.questions.length > 0) {
-            const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; options?: string[]; image?: string }, idx: number) => ({
+            const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: string[]; image?: string }, idx: number) => ({
               id: q.id,
               number: q.order || idx + 1,
               type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
               text: q.question_text,
+              passage: q.passage || null,
               options: q.options || [],
               image: q.image || null,
             }));
@@ -324,11 +326,12 @@ export default function ExamTakingPage() {
 
       if (startData?.questions && startData.questions.length > 0) {
         // Map questions from start endpoint
-        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
+        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
           id: q.id,
           number: q.order || idx + 1,
           type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
           text: q.question_text,
+          passage: q.passage || null,
           options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
             typeof opt === 'string' ? { text: opt, image: null } : { text: opt.text || '', image: opt.image || null }
           ),
@@ -594,10 +597,17 @@ export default function ExamTakingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <Card className="p-6">
+              {/* Passage / Cerita Soal */}
+              {question?.passage && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Bacaan</span>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 whitespace-pre-line leading-relaxed">{question.passage}</p>
+                </div>
+              )}
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Soal {question?.number || currentQuestion + 1}</span>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white mt-1">{question?.text || 'Soal tidak tersedia'}</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white mt-1 whitespace-pre-line">{question?.text || 'Soal tidak tersedia'}</h2>
                   {question?.image && (
                     <div className="mt-3">
                       <img

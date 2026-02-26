@@ -550,6 +550,7 @@ class ExamController extends Controller
         $request->validate([
             'question_text' => 'required|string',
             'question_type' => 'required|in:multiple_choice,essay',
+            'passage' => 'nullable|string',
             'options' => 'required_if:question_type,multiple_choice|array',
             'options.*.option_text' => 'required_if:question_type,multiple_choice|string',
             'options.*.is_correct' => 'required_if:question_type,multiple_choice|boolean',
@@ -586,6 +587,7 @@ class ExamController extends Controller
 
         $question = Question::create([
             'exam_id' => $exam->id,
+            'passage' => $request->passage,
             'question_text' => $request->question_text,
             'type' => $request->question_type,
             'image' => $imagePath,
@@ -650,6 +652,10 @@ class ExamController extends Controller
 
         if ($request->has('question_text')) {
             $question->question_text = $request->question_text;
+        }
+
+        if ($request->has('passage')) {
+            $question->passage = $request->passage ?: null;
         }
 
         if ($request->has('points')) {
