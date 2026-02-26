@@ -36,4 +36,12 @@ class ClassRoom extends Model
     {
         return $this->hasMany(Exam::class, 'class_id');
     }
+
+    /**
+     * Exams assigned via pivot table (multi-class support)
+     */
+    public function assignedExams()
+    {
+        return $this->belongsToMany(Exam::class, 'exam_class', 'class_id', 'exam_id')->withTimestamps();
+    }
 }

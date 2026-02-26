@@ -30,12 +30,12 @@ class ExportController extends Controller
 
         // If specific exam
         if ($request->exam_id) {
-            $exam = Exam::with(['class', 'results.student'])->findOrFail($request->exam_id);
+            $exam = Exam::with(['class', 'classes:id,name', 'results.student'])->findOrFail($request->exam_id);
             $results = $exam->results()->with('student:id,name,nisn')->orderBy('total_score', 'desc')->get();
 
             $data = [
                 'title' => 'Nilai Ujian: ' . $exam->title,
-                'class' => $exam->class->name ?? '-',
+                'class' => $exam->classes->count() > 0 ? $exam->classes->pluck('name')->join(', ') : ($exam->class->name ?? '-'),
                 'subject' => $exam->subject,
                 'date' => $exam->start_time?->format('d/m/Y'),
                 'headers' => ['No', 'Nama', 'NISN', 'Skor', 'Maks', 'Persentase', 'Status'],
@@ -64,7 +64,10 @@ class ExportController extends Controller
                 ->orderByDesc('total_score');
 
             if ($classId) {
-                $query->whereHas('exam', fn($q) => $q->where('class_id', $classId));
+                $query->whereHas('exam', function ($q) use ($classId) {
+                    $q->where('class_id', $classId)
+                      ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $classId));
+                });
             }
 
             $results = $query->get();

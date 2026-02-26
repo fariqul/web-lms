@@ -302,7 +302,7 @@ export default function MonitorUjianPage() {
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Monitor Ujian</h1>
-              <p className="text-slate-600 dark:text-slate-400">{exam.title} - {examDetail?.class?.name || examDetail?.subject || '-'}</p>
+              <p className="text-slate-600 dark:text-slate-400">{exam.title} - {examDetail?.classes && examDetail.classes.length > 0 ? examDetail.classes.map((c: { id: number; name: string }) => c.name).join(', ') : (examDetail?.class?.name || examDetail?.subject || '-')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

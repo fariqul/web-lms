@@ -57,6 +57,7 @@ interface ExamData {
   title: string;
   subject: string;
   class_name?: string;
+  classes?: { id: number; name: string }[];
   duration: number;
   status: string;
   start_time: string;
@@ -123,6 +124,7 @@ export default function EditSoalPage() {
           title: data.title,
           subject: data.subject,
           class_name: data.class?.name,
+          classes: data.classes || [],
           duration: data.duration,
           status: data.status,
           start_time: data.start_time,
@@ -556,7 +558,7 @@ export default function EditSoalPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{exam?.title}</h1>
               <p className="text-slate-600 dark:text-slate-400">
-                {exam?.subject} • {exam?.class_name} • {exam?.duration} menit
+                {exam?.subject} • {exam?.classes && exam.classes.length > 0 ? exam.classes.map((c: { id: number; name: string }) => c.name).join(', ') : exam?.class_name} • {exam?.duration} menit
               </p>
             </div>
           </div>

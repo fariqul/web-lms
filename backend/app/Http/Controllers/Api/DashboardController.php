@@ -366,7 +366,7 @@ class DashboardController extends Controller
             ->get(['id', 'subject', 'class_id', 'status', 'valid_from', 'valid_until']);
 
         // Upcoming exams
-        $upcomingExams = Exam::with('class:id,name')
+        $upcomingExams = Exam::with(['class:id,name', 'classes:id,name'])
             ->where('teacher_id', $user->id)
             ->where('start_time', '>', $now)
             ->orderBy('start_time')
@@ -374,7 +374,7 @@ class DashboardController extends Controller
             ->get(['id', 'title', 'subject', 'class_id', 'start_time', 'duration']);
 
         // Active exams with student count - optimized dengan subquery
-        $activeExams = Exam::with('class:id,name')
+        $activeExams = Exam::with(['class:id,name', 'classes:id,name'])
             ->withCount(['results as students_taking' => function ($q) {
                 $q->where('status', 'in_progress');
             }])
@@ -497,9 +497,12 @@ class DashboardController extends Controller
             ->whereDate('valid_from', $today)
             ->get(['id', 'subject', 'teacher_id', 'class_id', 'status', 'valid_from']);
 
-        // Upcoming exams
+        // Upcoming exams (check both direct class_id and pivot)
         $upcomingExams = Exam::with(['teacher:id,name', 'class:id,name'])
-            ->where('class_id', $user->class_id)
+            ->where(function ($q) use ($user) {
+                $q->where('class_id', $user->class_id)
+                  ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $user->class_id));
+            })
             ->where('status', 'published')
             ->where('start_time', '>', $now)
             ->orderBy('start_time')
@@ -507,7 +510,10 @@ class DashboardController extends Controller
             ->get(['id', 'title', 'subject', 'teacher_id', 'class_id', 'start_time', 'duration']);
 
         // Active exams dengan student result - optimized
-        $activeExamIds = Exam::where('class_id', $user->class_id)
+        $activeExamIds = Exam::where(function ($q) use ($user) {
+                $q->where('class_id', $user->class_id)
+                  ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $user->class_id));
+            })
             ->where('status', 'published')
             ->where('start_time', '<=', $now)
             ->where('end_time', '>=', $now)

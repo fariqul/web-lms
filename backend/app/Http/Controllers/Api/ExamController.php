@@ -188,12 +188,15 @@ class ExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Exam::with(['teacher:id,name', 'class:id,name']);
+        $query = Exam::with(['teacher:id,name', 'class:id,name', 'classes:id,name']);
 
         if ($user->role === 'guru') {
             $query->where('teacher_id', $user->id);
         } elseif ($user->role === 'siswa') {
-            $query->where('class_id', $user->class_id);
+            $query->where(function ($q) use ($user) {
+                $q->where('class_id', $user->class_id)
+                  ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $user->class_id));
+            });
             // Only filter by status if not explicitly provided
             if (!$request->has('status')) {
                 $query->whereIn('status', ['scheduled', 'active']);
@@ -205,9 +208,13 @@ class ExamController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter by class
+        // Filter by class (check both direct class_id and pivot table)
         if ($request->has('class_id')) {
-            $query->where('class_id', $request->class_id);
+            $reqClassId = $request->class_id;
+            $query->where(function ($q) use ($reqClassId) {
+                $q->where('class_id', $reqClassId)
+                  ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $reqClassId));
+            });
         }
 
         $exams = $query->orderBy('start_time', 'desc')
@@ -246,20 +253,37 @@ class ExamController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // Support both single class_id and multiple class_ids
+        $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'class_id' => 'required|exists:classes,id',
             'subject' => 'required|string|max:255',
             'duration_minutes' => 'required|integer|min:1',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
-        ]);
+        ];
+
+        if ($request->has('class_ids')) {
+            $rules['class_ids'] = 'required|array|min:1';
+            $rules['class_ids.*'] = 'exists:classes,id';
+        } else {
+            $rules['class_id'] = 'required|exists:classes,id';
+        }
+
+        $request->validate($rules);
+
+        // Determine class IDs
+        $classIds = $request->has('class_ids')
+            ? $request->class_ids
+            : [$request->class_id];
+
+        // Use the first class as the primary class_id (backward compatibility)
+        $primaryClassId = $classIds[0];
 
         $exam = Exam::create([
             'title' => $request->title,
             'description' => $request->description,
-            'class_id' => $request->class_id,
+            'class_id' => $primaryClassId,
             'teacher_id' => $request->user()->id,
             'subject' => $request->subject,
             'duration' => $request->duration_minutes,
@@ -267,6 +291,10 @@ class ExamController extends Controller
             'end_time' => $request->end_time,
             'status' => 'draft',
         ]);
+
+        // Sync all classes to pivot table
+        $exam->classes()->sync($classIds);
+        $exam->load('classes:id,name');
 
         return response()->json([
             'success' => true,
@@ -281,14 +309,18 @@ class ExamController extends Controller
     public function show(Request $request, Exam $exam)
     {
         $user = $request->user();
-        $exam->load(['teacher:id,name', 'class:id,name']);
+        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name']);
 
-        // Students can only view exams for their class
-        if ($user->role === 'siswa' && $exam->class_id !== $user->class_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki akses ke ujian ini',
-            ], 403);
+        // Students can only view exams for their class (check both direct and pivot)
+        if ($user->role === 'siswa') {
+            $hasAccess = $exam->class_id === $user->class_id
+                || $exam->classes()->where('classes.id', $user->class_id)->exists();
+            if (!$hasAccess) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses ke ujian ini',
+                ], 403);
+            }
         }
 
         // Teachers can only view their own exams (or admin)
@@ -376,6 +408,8 @@ class ExamController extends Controller
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'class_id' => 'sometimes|exists:classes,id',
+            'class_ids' => 'sometimes|array|min:1',
+            'class_ids.*' => 'exists:classes,id',
             'subject' => 'sometimes|string|max:255',
             'duration' => 'sometimes|integer|min:1',
             'duration_minutes' => 'sometimes|integer|min:1', // alias
@@ -418,6 +452,14 @@ class ExamController extends Controller
             'passing_score', 'shuffle_questions', 'shuffle_options',
             'show_result', 'max_violations'
         ]));
+
+        // Sync multi-class if class_ids provided
+        if ($request->has('class_ids')) {
+            $classIds = $request->class_ids;
+            $exam->class_id = $classIds[0]; // primary class for backward compat
+            $exam->classes()->sync($classIds);
+        }
+
         $exam->save();
 
         return response()->json([
@@ -707,8 +749,12 @@ class ExamController extends Controller
             }
         }
 
-        // Check if student belongs to the class
-        if ($user->class_id !== $exam->class_id) {
+        // Check if student belongs to one of the exam's classes
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+        if (!in_array($user->class_id, $examClassIds)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak terdaftar di kelas ini',
@@ -1068,9 +1114,13 @@ class ExamController extends Controller
             ->where('exam_id', $exam->id)
             ->get();
 
-        // Get all students in the exam's class who haven't taken the exam
+        // Get all students in the exam's classes who haven't taken the exam
         $studentIdsWithResults = $results->pluck('student_id')->toArray();
-        $allStudents = User::where('class_id', $exam->class_id)
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+        $allStudents = User::whereIn('class_id', $examClassIds)
             ->where('role', 'siswa')
             ->whereNotIn('id', $studentIdsWithResults)
             ->select('id', 'name', 'nisn')
@@ -1285,11 +1335,15 @@ class ExamController extends Controller
         }
 
         // Load exam with class info
-        $exam->load('class');
+        $exam->load(['class', 'classes:id,name']);
         
-        // Get all students in the class
+        // Get all students in the exam's classes
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
         $allStudents = User::where('role', 'siswa')
-            ->where('class_id', $exam->class_id)
+            ->whereIn('class_id', $examClassIds)
             ->select('id', 'name', 'nisn')
             ->get();
 

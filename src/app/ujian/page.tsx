@@ -17,6 +17,7 @@ interface Exam {
   subject: string;
   class_id: number;
   class_name?: string;
+  classes?: { id: number; name: string }[];
   start_time: string;
   end_time: string;
   duration: number;
@@ -68,7 +69,7 @@ export default function UjianPage() {
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
-    class_id: '',
+    class_ids: [] as string[],
     start_time: '',
     duration: 60,
   });
@@ -110,7 +111,7 @@ export default function UjianPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.subject || !formData.class_id) {
+    if (!formData.title || !formData.subject || formData.class_ids.length === 0) {
       toast.warning('Mohon lengkapi semua field yang diperlukan');
       return;
     }
@@ -137,7 +138,8 @@ export default function UjianPage() {
       const response = await api.post('/exams', {
         title: formData.title,
         subject: formData.subject,
-        class_id: parseInt(formData.class_id),
+        class_id: parseInt(formData.class_ids[0]),
+        class_ids: formData.class_ids.map(id => parseInt(id)),
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         duration_minutes: formData.duration,
@@ -166,7 +168,7 @@ export default function UjianPage() {
       setFormData({
         title: '',
         subject: '',
-        class_id: '',
+        class_ids: [],
         start_time: '',
         duration: 60,
       });
@@ -341,7 +343,7 @@ export default function UjianPage() {
                     </div>
                     <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                       <Users className="w-4 h-4" />
-                      <span>{exam.class_name || 'Semua Kelas'}</span>
+                      <span>{exam.classes && exam.classes.length > 0 ? exam.classes.map(c => c.name).join(', ') : (exam.class_name || 'Semua Kelas')}</span>
                     </div>
                   </div>
 
@@ -463,12 +465,62 @@ export default function UjianPage() {
             value={formData.subject}
             onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
           />
-          <Select
-            label="Kelas"
-            options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
-            value={formData.class_id}
-            onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-          />
+          {/* Multi-class selection */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kelas <span className="text-red-500">*</span></label>
+            {classes.length === 0 ? (
+              <p className="text-sm text-slate-500">Memuat kelas...</p>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formData.class_ids.length === classes.length) {
+                        setFormData({ ...formData, class_ids: [] });
+                      } else {
+                        setFormData({ ...formData, class_ids: classes.map(c => c.value) });
+                      }
+                    }}
+                    className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium"
+                  >
+                    {formData.class_ids.length === classes.length ? 'Hapus Semua' : 'Pilih Semua'}
+                  </button>
+                  {formData.class_ids.length > 0 && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {formData.class_ids.length} kelas dipilih
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                  {classes.map((cls) => (
+                    <label
+                      key={cls.value}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all text-sm ${
+                        formData.class_ids.includes(cls.value)
+                          ? 'bg-sky-50 dark:bg-sky-900/30 border border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300'
+                          : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.class_ids.includes(cls.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, class_ids: [...formData.class_ids, cls.value] });
+                          } else {
+                            setFormData({ ...formData, class_ids: formData.class_ids.filter(id => id !== cls.value) });
+                          }
+                        }}
+                        className="w-4 h-4 text-sky-600 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded focus:ring-sky-500"
+                      />
+                      <span className="font-medium">{cls.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           {/* Schedule Mode */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Waktu Mulai Ujian</label>

@@ -44,6 +44,15 @@ class Exam extends Model
         return $this->belongsTo(ClassRoom::class, 'class_id');
     }
 
+    /**
+     * Multi-class relationship via pivot table.
+     * An exam can be assigned to multiple classes.
+     */
+    public function classes()
+    {
+        return $this->belongsToMany(ClassRoom::class, 'exam_class', 'exam_id', 'class_id')->withTimestamps();
+    }
+
     public function teacher()
     {
         return $this->belongsTo(User::class, 'teacher_id');
