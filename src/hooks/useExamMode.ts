@@ -135,9 +135,13 @@ export function useExamMode({
     isFullscreenRef.current = false;
   }, []);
 
-  // Camera management
+  // Camera management with retry
+  const cameraRetryRef = useRef(0);
+  const MAX_CAMERA_RETRIES = 3;
+
   const startCamera = useCallback(async () => {
     try {
+      console.log('[Camera] Requesting camera access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 640, height: 480 },
         audio: false,
@@ -150,9 +154,22 @@ export function useExamMode({
       
       streamRef.current = stream;
       setIsCameraActive(true);
+      cameraRetryRef.current = 0;
+      console.log('[Camera] Camera started successfully');
     } catch (error) {
-      console.error('Camera access failed:', error);
-      reportViolation('camera_off', 'Kamera tidak dapat diakses');
+      console.error('[Camera] Camera access failed:', error);
+      cameraRetryRef.current += 1;
+      
+      if (cameraRetryRef.current < MAX_CAMERA_RETRIES) {
+        console.log(`[Camera] Retrying... (${cameraRetryRef.current}/${MAX_CAMERA_RETRIES})`);
+        // Retry after increasing delay
+        setTimeout(() => {
+          startCamera();
+        }, cameraRetryRef.current * 2000);
+      } else {
+        console.error('[Camera] All retries exhausted');
+        reportViolation('camera_off', 'Kamera tidak dapat diakses');
+      }
     }
   }, [reportViolation]);
 
@@ -324,20 +341,10 @@ export function useExamMode({
     };
   }, [reportViolation, isMobile]);
 
-  // Camera monitoring & snapshot interval
+  // Camera health check (snapshot capturing is handled by the exam page)
   useEffect(() => {
     if (enableCamera && isCameraActive) {
-      // Capture first snapshot after a short delay (let camera stabilize)
-      const firstSnapshotTimer = setTimeout(() => {
-        captureSnapshot();
-      }, 3000);
-
-      // Periodic snapshot
-      snapshotIntervalRef.current = setInterval(() => {
-        captureSnapshot();
-      }, snapshotInterval * 1000);
-
-      // Camera status check
+      // Camera status check - detect if camera is turned off
       const checkCamera = setInterval(() => {
         if (streamRef.current) {
           const videoTrack = streamRef.current.getVideoTracks()[0];
@@ -348,14 +355,10 @@ export function useExamMode({
       }, 5000);
 
       return () => {
-        clearTimeout(firstSnapshotTimer);
-        if (snapshotIntervalRef.current) {
-          clearInterval(snapshotIntervalRef.current);
-        }
         clearInterval(checkCamera);
       };
     }
-  }, [enableCamera, isCameraActive, snapshotInterval, captureSnapshot, reportViolation]);
+  }, [enableCamera, isCameraActive, reportViolation]);
 
   // Cleanup on unmount
   useEffect(() => {

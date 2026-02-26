@@ -108,12 +108,15 @@ export default function ExamTakingPage() {
     enterFullscreen,
     startCamera,
     activateMonitoring,
+    captureSnapshot,
     videoRef,
   } = useExamMode({
     examId,
     onViolation: () => {},
     onForceSubmit: handleForceSubmit,
   });
+  const [snapshotStatus, setSnapshotStatus] = useState<'idle' | 'capturing' | 'success' | 'error'>('idle');
+  const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchExam();
@@ -228,7 +231,48 @@ export default function ExamTakingPage() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isStarted]);
+  }, [isStarted, isCameraActive, startCamera]);
+
+  // Track snapshot status for visual feedback
+  useEffect(() => {
+    if (!isStarted || !isCameraActive) return;
+
+    const snapshotCheck = setInterval(async () => {
+      try {
+        setSnapshotStatus('capturing');
+        const result = await captureSnapshot();
+        if (result) {
+          setSnapshotStatus('success');
+          setLastSnapshotTime(new Date());
+        } else {
+          setSnapshotStatus('error');
+        }
+      } catch {
+        setSnapshotStatus('error');
+      }
+    }, 30000);
+
+    // First snapshot after 3s
+    const firstTimer = setTimeout(async () => {
+      try {
+        setSnapshotStatus('capturing');
+        const result = await captureSnapshot();
+        if (result) {
+          setSnapshotStatus('success');
+          setLastSnapshotTime(new Date());
+        } else {
+          setSnapshotStatus('error');
+        }
+      } catch {
+        setSnapshotStatus('error');
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(snapshotCheck);
+      clearTimeout(firstTimer);
+    };
+  }, [isStarted, isCameraActive, captureSnapshot]);
 
   const fetchExam = async () => {
     try {
@@ -741,9 +785,42 @@ export default function ExamTakingPage() {
                 </div>
               </div>
               <div className="mt-6">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Kamera Pengawas</p>
-                <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Kamera Pengawas</p>
+                  <div className="flex items-center gap-1">
+                    {isCameraActive ? (
+                      <span className="flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                        Aktif
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[10px] text-red-500">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                        Mati
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden relative">
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  {isCameraActive && snapshotStatus !== 'idle' && (
+                    <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                        snapshotStatus === 'success' ? 'bg-green-600/80 text-white' :
+                        snapshotStatus === 'capturing' ? 'bg-yellow-600/80 text-white' :
+                        'bg-red-600/80 text-white'
+                      }`}>
+                        {snapshotStatus === 'success' ? '✓ Snapshot OK' :
+                         snapshotStatus === 'capturing' ? '⏳ Capturing...' :
+                         '✗ Snapshot gagal'}
+                      </span>
+                      {lastSnapshotTime && (
+                        <span className="text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                          {lastSnapshotTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

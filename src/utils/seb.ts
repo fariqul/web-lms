@@ -41,6 +41,10 @@ export interface SEBConfig {
   allowVirtualMachine: boolean;
   /** Allow screen sharing / screen capture */
   allowScreenCapture: boolean;
+  /** Allow webcam video capture (for proctoring) */
+  allowVideoCapture: boolean;
+  /** Allow audio capture */
+  allowAudioCapture: boolean;
   /** Enable logging */
   enableLogging: boolean;
   /** Exam title for display */
@@ -222,6 +226,8 @@ export function generateSEBConfigXML(config: SEBConfig): string {
   entries.push(plistEntry('enableAudio', config.enableAudio));
   entries.push(plistEntry('allowVirtualMachine', config.allowVirtualMachine));
   entries.push(plistEntry('allowScreenCapture', config.allowScreenCapture));
+  entries.push(plistEntry('allowVideoCapture', config.allowVideoCapture));
+  entries.push(plistEntry('allowAudioCapture', config.allowAudioCapture));
   entries.push(plistEntry('enableLogging', config.enableLogging));
 
   // Additional security settings for exam mode
@@ -338,6 +344,8 @@ export async function downloadSEBConfig(
     enableAudio: false,
     allowVirtualMachine: settings.sebAllowVirtualMachine,
     allowScreenCapture: !settings.sebBlockScreenCapture,
+    allowVideoCapture: true,
+    allowAudioCapture: false,
     enableLogging: true,
   };
 
