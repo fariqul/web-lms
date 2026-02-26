@@ -20,6 +20,8 @@ import {
   Wifi,
   WifiOff,
   X,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
@@ -73,6 +75,7 @@ export default function MonitorUjianPage() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
   const [snapshotModal, setSnapshotModal] = useState<{ student: Student; snapshot: { image_path: string; captured_at: string } } | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   // WebSocket for real-time updates
   const examSocket = useExamSocket(examId);
@@ -486,8 +489,125 @@ export default function MonitorUjianPage() {
           </Card>
         )}
 
+        {/* View Mode Toggle */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Daftar Peserta</h3>
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              Tabel
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Kamera
+            </button>
+          </div>
+        </div>
+
+        {/* Camera Grid View */}
+        {viewMode === 'grid' && (
+          <Card className="p-4">
+            {(() => {
+              const snapshotParticipants = filteredParticipants.filter(p => p.status === 'in_progress');
+              if (snapshotParticipants.length === 0) {
+                return (
+                  <div className="py-16 text-center text-slate-500 dark:text-slate-400">
+                    <Camera className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                    <p className="font-medium">Tidak ada peserta yang sedang mengerjakan</p>
+                    <p className="text-sm mt-1">Kamera akan muncul saat siswa mulai mengerjakan ujian</p>
+                  </div>
+                );
+              }
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  {snapshotParticipants.map((participant) => (
+                    <div
+                      key={participant.student.id}
+                      onClick={() => {
+                        if (participant.latest_snapshot) {
+                          setSnapshotModal({ student: participant.student, snapshot: participant.latest_snapshot });
+                        }
+                      }}
+                      className={`relative bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden group ${
+                        participant.latest_snapshot ? 'cursor-pointer hover:ring-2 hover:ring-teal-500' : ''
+                      } transition-all`}
+                    >
+                      {/* Snapshot Image or Placeholder */}
+                      <div className="aspect-video bg-slate-200 dark:bg-slate-700 relative">
+                        {participant.latest_snapshot ? (
+                          <>
+                            <img
+                              src={resolveSnapshotUrl(participant.latest_snapshot.image_path)}
+                              alt={participant.student.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                            {/* Live indicator */}
+                            <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                              LIVE
+                            </div>
+                            {/* Time overlay */}
+                            <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                              {new Date(participant.latest_snapshot.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </div>
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <Camera className="w-6 h-6 mx-auto text-slate-400 dark:text-slate-500 mb-1" />
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500">Menunggu...</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Student info bar */}
+                      <div className="px-2 py-1.5">
+                        <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{participant.student.name}</p>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {participant.answered_count}/{participant.total_questions} soal
+                          </span>
+                          {participant.violation_count > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-red-500 font-medium">
+                              <AlertTriangle className="w-3 h-3" />
+                              {participant.violation_count}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </Card>
+        )}
+
         {/* Participants Table */}
-        <Card className="overflow-hidden">
+        {viewMode === 'table' && <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b">
@@ -592,6 +712,8 @@ export default function MonitorUjianPage() {
             </table>
           </div>
         </Card>
+
+        }
 
         {/* Legend */}
         <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">

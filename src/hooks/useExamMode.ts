@@ -40,7 +40,7 @@ export function useExamMode({
   onViolation,
   onForceSubmit,
   enableCamera = true,
-  snapshotInterval = 60,
+  snapshotInterval = 30,
 }: UseExamModeOptions): UseExamModeReturn {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -169,28 +169,46 @@ export function useExamMode({
 
   // Capture snapshot
   const captureSnapshot = useCallback(async (): Promise<string | null> => {
-    if (!videoRef.current || !isCameraActive) return null;
+    if (!videoRef.current || !isCameraActive) {
+      console.warn('[Snapshot] Skipped: videoRef or camera not active');
+      return null;
+    }
 
     try {
+      const video = videoRef.current;
+      
+      // Wait for video to have valid dimensions
+      if (!video.videoWidth || !video.videoHeight) {
+        console.warn('[Snapshot] Skipped: video dimensions are 0, camera may still be initializing');
+        return null;
+      }
+      
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
       
-      ctx.drawImage(videoRef.current, 0, 0);
+      ctx.drawImage(video, 0, 0);
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      
+      // Validate that we got a real image (not empty)
+      if (base64.length < 1000) {
+        console.warn('[Snapshot] Skipped: captured image too small, likely blank');
+        return null;
+      }
       
       // Upload snapshot to server
       await monitoringAPI.uploadSnapshot({
         exam_id: examId,
         photo: base64,
       });
-      
+
+      console.log('[Snapshot] Uploaded successfully');
       return base64;
     } catch (error) {
-      console.error('Snapshot capture failed:', error);
+      console.error('[Snapshot] Upload failed:', error);
       return null;
     }
   }, [examId, isCameraActive]);
@@ -309,6 +327,11 @@ export function useExamMode({
   // Camera monitoring & snapshot interval
   useEffect(() => {
     if (enableCamera && isCameraActive) {
+      // Capture first snapshot after a short delay (let camera stabilize)
+      const firstSnapshotTimer = setTimeout(() => {
+        captureSnapshot();
+      }, 3000);
+
       // Periodic snapshot
       snapshotIntervalRef.current = setInterval(() => {
         captureSnapshot();
@@ -325,6 +348,7 @@ export function useExamMode({
       }, 5000);
 
       return () => {
+        clearTimeout(firstSnapshotTimer);
         if (snapshotIntervalRef.current) {
           clearInterval(snapshotIntervalRef.current);
         }
