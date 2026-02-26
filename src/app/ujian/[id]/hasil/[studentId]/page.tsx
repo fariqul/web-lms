@@ -51,7 +51,7 @@ interface QuestionData {
   type: string;
   correct_answer: string;
   points: number;
-  options: string[] | null;
+  options: (string | { text: string; image?: string | null })[] | null;
 }
 
 interface AnswerData {
@@ -367,13 +367,15 @@ export default function HasilSiswaPage() {
                     {/* Multiple choice: show options with student answer marked */}
                     {answer.question.type === 'multiple_choice' && answer.question.options && (
                       <div className="space-y-1.5 mb-3">
-                        {(Array.isArray(answer.question.options) ? answer.question.options : []).map((opt: string, optIdx: number) => {
-                          const isStudentAnswer = answer.answer === opt;
-                          const isCorrectAnswer = opt === answer.question.correct_answer;
+                        {(Array.isArray(answer.question.options) ? answer.question.options : []).map((rawOpt: string | { text: string; image?: string | null }, optIdx: number) => {
+                          const optText = typeof rawOpt === 'string' ? rawOpt : (rawOpt.text || '');
+                          const optImage = typeof rawOpt === 'string' ? null : (rawOpt.image || null);
+                          const isStudentAnswer = answer.answer === optText;
+                          const isCorrectAnswer = optText === answer.question.correct_answer;
                           return (
                             <div
                               key={optIdx}
-                              className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg ${
+                              className={`flex items-start gap-2 text-sm px-3 py-1.5 rounded-lg ${
                                 isCorrectAnswer
                                   ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700/50'
                                   : isStudentAnswer && !isCorrectAnswer
@@ -381,17 +383,26 @@ export default function HasilSiswaPage() {
                                   : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                               }`}
                             >
-                              <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs font-medium">
+                              <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs font-medium shrink-0 mt-0.5">
                                 {String.fromCharCode(65 + optIdx)}
                               </span>
-                              <span className="flex-1">{opt}</span>
+                              <div className="flex-1">
+                                <span>{optText}</span>
+                                {optImage && (
+                                  <img
+                                    src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}
+                                    alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
+                                    className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                  />
+                                )}
+                              </div>
                               {isStudentAnswer && (
-                                <span className="text-xs font-medium">
+                                <span className="text-xs font-medium shrink-0">
                                   {isCorrectAnswer ? '✓ Jawaban Siswa (Benar)' : '✗ Jawaban Siswa'}
                                 </span>
                               )}
                               {isCorrectAnswer && !isStudentAnswer && (
-                                <span className="text-xs font-medium text-green-600">✓ Kunci Jawaban</span>
+                                <span className="text-xs font-medium text-green-600 shrink-0">✓ Kunci Jawaban</span>
                               )}
                             </div>
                           );

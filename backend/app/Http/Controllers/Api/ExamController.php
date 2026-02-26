@@ -340,11 +340,21 @@ class ExamController extends Controller
                 $exam->questions->transform(function ($question) {
                     // Convert options array to structured format for frontend
                     if ($question->type === 'multiple_choice' && is_array($question->options)) {
-                        $question->options = collect($question->options)->map(function ($optText, $idx) use ($question) {
+                        $question->options = collect($question->options)->map(function ($opt, $idx) use ($question) {
+                            // Handle both old format (string) and new format (object with text+image)
+                            if (is_string($opt)) {
+                                return [
+                                    'id' => $idx + 1,
+                                    'option_text' => $opt,
+                                    'is_correct' => $opt === $question->correct_answer,
+                                    'image' => null,
+                                ];
+                            }
                             return [
                                 'id' => $idx + 1,
-                                'option_text' => $optText,
-                                'is_correct' => $optText === $question->correct_answer,
+                                'option_text' => $opt['text'] ?? '',
+                                'is_correct' => ($opt['text'] ?? '') === $question->correct_answer,
+                                'image' => $opt['image'] ?? null,
                             ];
                         })->values()->toArray();
                     }
@@ -543,6 +553,7 @@ class ExamController extends Controller
             'options' => 'required_if:question_type,multiple_choice|array',
             'options.*.option_text' => 'required_if:question_type,multiple_choice|string',
             'options.*.is_correct' => 'required_if:question_type,multiple_choice|boolean',
+            'options.*.image' => 'nullable|image|max:5120', // option image max 5MB
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120', // max 5MB
         ]);
@@ -553,13 +564,20 @@ class ExamController extends Controller
             $imagePath = $request->file('image')->store('question-images', 'public');
         }
 
-        // Convert options to old format for storage
+        // Convert options to structured format with optional images
         $optionsArray = [];
         $correctAnswer = '';
         
         if ($request->question_type === 'multiple_choice' && $request->options) {
-            foreach ($request->options as $opt) {
-                $optionsArray[] = $opt['option_text'];
+            foreach ($request->options as $idx => $opt) {
+                $optImage = null;
+                if ($request->hasFile("options.{$idx}.image")) {
+                    $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
+                }
+                $optionsArray[] = [
+                    'text' => $opt['option_text'],
+                    'image' => $optImage,
+                ];
                 if ($opt['is_correct']) {
                     $correctAnswer = $opt['option_text'];
                 }
@@ -645,12 +663,38 @@ class ExamController extends Controller
 
         // Handle structured options format (from frontend edit modal)
         if ($request->has('options') && is_array($request->options)) {
+            // Delete old option images before replacing
+            if (is_array($question->options)) {
+                foreach ($question->options as $oldOpt) {
+                    if (is_array($oldOpt) && !empty($oldOpt['image'])) {
+                        Storage::disk('public')->delete($oldOpt['image']);
+                    }
+                }
+            }
+
             $optionsArray = [];
             $correctAnswer = '';
             
-            foreach ($request->options as $opt) {
+            foreach ($request->options as $idx => $opt) {
                 $optText = $opt['option_text'] ?? $opt['text'] ?? '';
-                $optionsArray[] = $optText;
+                
+                // Handle option image
+                $optImage = null;
+                if ($request->hasFile("options.{$idx}.image")) {
+                    $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
+                } elseif (!empty($opt['existing_image']) && $opt['existing_image'] !== 'null') {
+                    // Keep existing image if not replaced
+                    $optImage = $opt['existing_image'];
+                }
+                // Handle remove_image flag per option
+                if (!empty($opt['remove_image']) && ($opt['remove_image'] === '1' || $opt['remove_image'] === true)) {
+                    $optImage = null;
+                }
+
+                $optionsArray[] = [
+                    'text' => $optText,
+                    'image' => $optImage,
+                ];
                 if (!empty($opt['is_correct']) && ($opt['is_correct'] === true || $opt['is_correct'] === '1' || $opt['is_correct'] === 1)) {
                     $correctAnswer = $optText;
                 }
@@ -693,6 +737,20 @@ class ExamController extends Controller
         }
         
         $deletedOrder = $question->order;
+
+        // Delete question image
+        if ($question->image) {
+            Storage::disk('public')->delete($question->image);
+        }
+        // Delete option images
+        if (is_array($question->options)) {
+            foreach ($question->options as $opt) {
+                if (is_array($opt) && !empty($opt['image'])) {
+                    Storage::disk('public')->delete($opt['image']);
+                }
+            }
+        }
+
         $question->delete();
 
         // Renumber remaining questions sequentially
@@ -810,6 +868,23 @@ class ExamController extends Controller
                 return $q;
             });
         }
+
+        // Normalize options to structured format for student view
+        // Handles both old format (flat strings) and new format (objects with text+image)
+        $questions->transform(function ($q) {
+            if ($q->type === 'multiple_choice' && is_array($q->options)) {
+                $q->options = collect($q->options)->map(function ($opt) {
+                    if (is_string($opt)) {
+                        return ['text' => $opt, 'image' => null];
+                    }
+                    return [
+                        'text' => $opt['text'] ?? '',
+                        'image' => $opt['image'] ?? null,
+                    ];
+                })->values()->toArray();
+            }
+            return $q;
+        });
 
         // Remove correct answer from response
         $questions->makeHidden('correct_answer');

@@ -24,12 +24,17 @@ import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 
+interface QuestionOption {
+  text: string;
+  image?: string | null;
+}
+
 interface Question {
   id: number;
   number: number;
   type: 'multiple_choice' | 'essay';
   text: string;
-  options?: string[];
+  options?: QuestionOption[];
   image?: string | null;
 }
 
@@ -319,12 +324,14 @@ export default function ExamTakingPage() {
 
       if (startData?.questions && startData.questions.length > 0) {
         // Map questions from start endpoint
-        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; options?: string[]; image?: string }, idx: number) => ({
+        const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
           id: q.id,
           number: q.order || idx + 1,
           type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
           text: q.question_text,
-          options: q.options || [],
+          options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
+            typeof opt === 'string' ? { text: opt, image: null } : { text: opt.text || '', image: opt.image || null }
+          ),
           image: q.image || null,
         }));
         setQuestions(mappedQuestions);
@@ -618,8 +625,8 @@ export default function ExamTakingPage() {
                   {question.options.map((option, index) => (
                     <label
                       key={index}
-                      className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        answers[question.id] === option
+                      className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        answers[question.id] === option.text
                           ? 'border-teal-500 bg-teal-100 dark:bg-teal-900/30 dark:border-teal-400'
                           : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                       }`}
@@ -627,20 +634,29 @@ export default function ExamTakingPage() {
                       <input
                         type="radio"
                         name={`question-${question.id}`}
-                        checked={answers[question.id] === option}
-                        onChange={() => handleAnswer(question.id, option)}
-                        className="w-4 h-4 text-teal-600 accent-teal-600"
+                        checked={answers[question.id] === option.text}
+                        onChange={() => handleAnswer(question.id, option.text)}
+                        className="w-4 h-4 text-teal-600 accent-teal-600 mt-0.5"
                       />
-                      <span className={`ml-3 font-semibold ${
-                        answers[question.id] === option
+                      <span className={`ml-3 font-semibold mt-0.5 ${
+                        answers[question.id] === option.text
                           ? 'text-teal-800 dark:text-teal-300'
                           : 'text-slate-900 dark:text-slate-200'
                       }`}>{String.fromCharCode(65 + index)}.</span>
-                      <span className={`ml-2 ${
-                        answers[question.id] === option
-                          ? 'text-teal-700 dark:text-teal-300 font-medium'
-                          : 'text-slate-800 dark:text-slate-300'
-                      }`}>{option}</span>
+                      <div className="ml-2 flex-1">
+                        <span className={`${
+                          answers[question.id] === option.text
+                            ? 'text-teal-700 dark:text-teal-300 font-medium'
+                            : 'text-slate-800 dark:text-slate-300'
+                        }`}>{option.text}</span>
+                        {option.image && (
+                          <img
+                            src={option.image.startsWith('http') ? option.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${option.image}`}
+                            alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
+                            className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                          />
+                        )}
+                      </div>
                     </label>
                   ))}
                 </div>

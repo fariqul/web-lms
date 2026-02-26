@@ -40,6 +40,7 @@ interface Option {
   id?: number;
   text: string;
   is_correct: boolean;
+  image?: string | null;
 }
 
 interface Question {
@@ -88,6 +89,9 @@ export default function EditSoalPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [optionImageFiles, setOptionImageFiles] = useState<(File | null)[]>([null, null, null, null]);
+  const [optionImagePreviews, setOptionImagePreviews] = useState<(string | null)[]>([null, null, null, null]);
+  const optionFileInputRefs = React.useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
   const [showImportMenu, setShowImportMenu] = useState(false);
   const [showImportText, setShowImportText] = useState(false);
   const [showImportBankSoal, setShowImportBankSoal] = useState(false);
@@ -167,7 +171,7 @@ export default function EditSoalPage() {
             points: number;
             order: number;
             image?: string | null;
-            options?: { id: number; option_text: string; is_correct: boolean }[];
+            options?: { id: number; option_text: string; is_correct: boolean; image?: string | null }[];
           }, index: number) => ({
             id: q.id,
             question_text: q.question_text,
@@ -179,6 +183,7 @@ export default function EditSoalPage() {
               id: opt.id,
               text: opt.option_text,
               is_correct: opt.is_correct,
+              image: opt.image || null,
             })) || [],
           }));
           setQuestions(mappedQuestions);
@@ -229,6 +234,9 @@ export default function EditSoalPage() {
           formData.append(`options[${idx}][option_text]`, opt.text);
           formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
           formData.append(`options[${idx}][order]`, String(idx + 1));
+          if (optionImageFiles[idx]) {
+            formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
+          }
         });
       }
 
@@ -261,7 +269,7 @@ export default function EditSoalPage() {
       points: question.points,
       order: question.order,
       options: question.question_type === 'multiple_choice' && question.options.length > 0
-        ? question.options.map(opt => ({ id: opt.id, text: opt.text, is_correct: opt.is_correct }))
+        ? question.options.map(opt => ({ id: opt.id, text: opt.text, is_correct: opt.is_correct, image: opt.image || null }))
         : [
             { text: '', is_correct: true },
             { text: '', is_correct: false },
@@ -279,6 +287,17 @@ export default function EditSoalPage() {
       setImagePreview(null);
     }
     setImageFile(null);
+    // Load existing option image previews
+    const optPreviews = question.options.map(opt => {
+      if (opt.image) {
+        return opt.image.startsWith('http')
+          ? opt.image
+          : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${opt.image}`;
+      }
+      return null;
+    });
+    setOptionImagePreviews(optPreviews.length === 4 ? optPreviews : [null, null, null, null]);
+    setOptionImageFiles([null, null, null, null]);
     setEditingQuestion(question.id!);
     setIsEditModalOpen(true);
   };
@@ -324,6 +343,16 @@ export default function EditSoalPage() {
           formData.append(`options[${idx}][option_text]`, opt.text);
           formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
           formData.append(`options[${idx}][order]`, String(idx + 1));
+          if (optionImageFiles[idx]) {
+            formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
+          } else if (opt.image) {
+            // Keep existing image
+            formData.append(`options[${idx}][existing_image]`, opt.image);
+          }
+          // If image was removed (had image before but now preview is null and no new file)
+          if (!optionImagePreviews[idx] && !optionImageFiles[idx] && opt.image) {
+            formData.append(`options[${idx}][remove_image]`, '1');
+          }
         });
       }
 
@@ -414,6 +443,8 @@ export default function EditSoalPage() {
     });
     setImageFile(null);
     setImagePreview(null);
+    setOptionImageFiles([null, null, null, null]);
+    setOptionImagePreviews([null, null, null, null]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -888,15 +919,24 @@ export default function EditSoalPage() {
                           {question.options.map((opt, optIdx) => (
                             <div
                               key={optIdx}
-                              className={`flex items-center gap-2 text-sm ${
+                              className={`flex items-start gap-2 text-sm ${
                                 opt.is_correct ? 'text-green-600 dark:text-green-400 font-medium' : 'text-slate-600 dark:text-slate-400'
                               }`}
                             >
-                              <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs">
+                              <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs shrink-0 mt-0.5">
                                 {String.fromCharCode(65 + optIdx)}
                               </span>
-                              {opt.text}
-                              {opt.is_correct && <CheckCircle className="w-4 h-4 text-green-500" />}
+                              <div className="flex-1">
+                                <span>{opt.text}</span>
+                                {opt.image && (
+                                  <img
+                                    src={opt.image.startsWith('http') ? opt.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${opt.image}`}
+                                    alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
+                                    className="mt-1 max-w-[200px] max-h-24 rounded border border-slate-200 dark:border-slate-700"
+                                  />
+                                )}
+                              </div>
+                              {opt.is_correct && <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />}
                             </div>
                           ))}
                         </div>
@@ -1078,27 +1118,94 @@ export default function EditSoalPage() {
               </label>
               <div className="space-y-3">
                 {newQuestion.options.map((option, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="correctAnswer"
-                      checked={option.is_correct}
-                      onChange={() => handleCorrectAnswerChange(index)}
-                      className="text-teal-600"
-                    />
-                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <input
-                      type="text"
-                      value={option.text}
-                      onChange={(e) => handleOptionChange(index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
-                    />
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="correctAnswer"
+                        checked={option.is_correct}
+                        onChange={() => handleCorrectAnswerChange(index)}
+                        className="text-teal-600"
+                      />
+                      <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                      <input
+                        type="text"
+                        value={option.text}
+                        onChange={(e) => handleOptionChange(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => optionFileInputRefs.current[index]?.click()}
+                        className={`p-2 rounded-lg border transition-colors ${
+                          optionImagePreviews[index]
+                            ? 'border-teal-300 bg-teal-50 dark:bg-teal-900/20 text-teal-600'
+                            : 'border-slate-300 hover:border-teal-400 hover:bg-teal-50 text-slate-400 hover:text-teal-600'
+                        }`}
+                        title="Upload gambar untuk opsi ini"
+                      >
+                        <ImagePlus className="w-4 h-4" />
+                      </button>
+                      <input
+                        ref={(el) => { optionFileInputRefs.current[index] = el; }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast.warning('Ukuran gambar maksimal 5MB');
+                              return;
+                            }
+                            const newFiles = [...optionImageFiles];
+                            newFiles[index] = file;
+                            setOptionImageFiles(newFiles);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const newPreviews = [...optionImagePreviews];
+                              newPreviews[index] = reader.result as string;
+                              setOptionImagePreviews(newPreviews);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </div>
+                    {optionImagePreviews[index] && (
+                      <div className="ml-14 relative inline-block">
+                        <img
+                          src={optionImagePreviews[index]!}
+                          alt={`Preview opsi ${String.fromCharCode(65 + index)}`}
+                          className="max-w-[200px] max-h-32 rounded-lg border border-slate-200 dark:border-slate-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newFiles = [...optionImageFiles];
+                            newFiles[index] = null;
+                            setOptionImageFiles(newFiles);
+                            const newPreviews = [...optionImagePreviews];
+                            newPreviews[index] = null;
+                            setOptionImagePreviews(newPreviews);
+                            if (optionFileInputRefs.current[index]) optionFileInputRefs.current[index]!.value = '';
+                          }}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          aria-label="Hapus gambar opsi"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                Klik ikon gambar untuk menambahkan gambar pada opsi (rumus, pola, dll.)
+              </p>
             </div>
           )}
 
@@ -1264,27 +1371,98 @@ export default function EditSoalPage() {
               </label>
               <div className="space-y-3">
                 {newQuestion.options.map((option, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="editCorrectAnswer"
-                      checked={option.is_correct}
-                      onChange={() => handleCorrectAnswerChange(index)}
-                      className="text-teal-600"
-                    />
-                    <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <input
-                      type="text"
-                      value={option.text}
-                      onChange={(e) => handleOptionChange(index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
-                    />
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="editCorrectAnswer"
+                        checked={option.is_correct}
+                        onChange={() => handleCorrectAnswerChange(index)}
+                        className="text-teal-600"
+                      />
+                      <span className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 rounded-full font-medium">
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                      <input
+                        type="text"
+                        value={option.text}
+                        onChange={(e) => handleOptionChange(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => optionFileInputRefs.current[index]?.click()}
+                        className={`p-2 rounded-lg border transition-colors ${
+                          optionImagePreviews[index]
+                            ? 'border-teal-300 bg-teal-50 dark:bg-teal-900/20 text-teal-600'
+                            : 'border-slate-300 hover:border-teal-400 hover:bg-teal-50 text-slate-400 hover:text-teal-600'
+                        }`}
+                        title="Upload gambar untuk opsi ini"
+                      >
+                        <ImagePlus className="w-4 h-4" />
+                      </button>
+                      <input
+                        ref={(el) => { optionFileInputRefs.current[index] = el; }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast.warning('Ukuran gambar maksimal 5MB');
+                              return;
+                            }
+                            const newFiles = [...optionImageFiles];
+                            newFiles[index] = file;
+                            setOptionImageFiles(newFiles);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const newPreviews = [...optionImagePreviews];
+                              newPreviews[index] = reader.result as string;
+                              setOptionImagePreviews(newPreviews);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </div>
+                    {optionImagePreviews[index] && (
+                      <div className="ml-14 relative inline-block">
+                        <img
+                          src={optionImagePreviews[index]!}
+                          alt={`Preview opsi ${String.fromCharCode(65 + index)}`}
+                          className="max-w-[200px] max-h-32 rounded-lg border border-slate-200 dark:border-slate-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newFiles = [...optionImageFiles];
+                            newFiles[index] = null;
+                            setOptionImageFiles(newFiles);
+                            const newPreviews = [...optionImagePreviews];
+                            newPreviews[index] = null;
+                            setOptionImagePreviews(newPreviews);
+                            // Also clear the image from options state
+                            const updatedOptions = [...newQuestion.options];
+                            updatedOptions[index] = { ...updatedOptions[index], image: null };
+                            setNewQuestion({ ...newQuestion, options: updatedOptions });
+                            if (optionFileInputRefs.current[index]) optionFileInputRefs.current[index]!.value = '';
+                          }}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          aria-label="Hapus gambar opsi"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                Klik ikon gambar untuk menambahkan gambar pada opsi (rumus, pola, dll.)
+              </p>
             </div>
           )}
 
