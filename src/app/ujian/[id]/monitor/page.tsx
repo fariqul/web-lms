@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/context/AuthContext';
 
 interface Student {
   id: number;
@@ -64,6 +65,7 @@ interface Summary {
 export default function MonitorUjianPage() {
   const params = useParams();
   const examId = Number(params.id);
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<ExamInfo | null>(null);
@@ -297,7 +299,7 @@ export default function MonitorUjianPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/ujian">
+            <Link href={user?.role === 'admin' ? '/admin/ujian' : '/ujian'}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Kembali

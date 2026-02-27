@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/context/AuthContext';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 import { ImportTextModal } from '@/components/ujian/ImportTextModal';
 import { ImportBankSoalModal } from '@/components/ujian/ImportBankSoalModal';
@@ -79,7 +80,10 @@ export default function EditSoalPage() {
   const params = useParams();
   const router = useRouter();
   const toast = useToast();
+  const { user } = useAuth();
   const examId = Number(params.id);
+  const isAdmin = user?.role === 'admin';
+  const backUrl = isAdmin ? '/admin/ujian' : '/ujian';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -625,7 +629,7 @@ export default function EditSoalPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => router.push('/ujian')}>
+            <Button variant="outline" onClick={() => router.push(backUrl)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Kembali
             </Button>
@@ -668,7 +672,7 @@ export default function EditSoalPage() {
         </div>
 
         {/* Schedule Info Banner */}
-        {exam?.status === 'draft' && (
+        {!isAdmin && exam?.status === 'draft' && (
           <div className={`rounded-xl p-4 flex items-center gap-3 ${
             exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
               ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'
@@ -701,6 +705,7 @@ export default function EditSoalPage() {
         )}
 
         {/* SEB Settings Panel */}
+        {!isAdmin && (
         <Card className="p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
@@ -832,15 +837,16 @@ export default function EditSoalPage() {
             </button>
           </div>
         </Card>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3 flex-wrap">
-          {exam?.status === 'draft' && (
+          {!isAdmin && exam?.status === 'draft' && (
             <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
               Tambah Soal
             </Button>
           )}
-          {exam?.status === 'draft' && (
+          {!isAdmin && exam?.status === 'draft' && (
             <div className="relative" ref={importMenuRef}>
               <button
                 onClick={() => setShowImportMenu(!showImportMenu)}
@@ -923,7 +929,7 @@ export default function EditSoalPage() {
               )}
             </div>
           )}
-          {exam?.status === 'draft' && (
+          {!isAdmin && exam?.status === 'draft' && (
             <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
               <AlertCircle className="w-4 h-4" />
               Admin akan mempublish ujian ini
@@ -1012,7 +1018,7 @@ export default function EditSoalPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {exam?.status === 'draft' && (
+                      {!isAdmin && exam?.status === 'draft' && (
                         <>
                           <Button
                             variant="outline"

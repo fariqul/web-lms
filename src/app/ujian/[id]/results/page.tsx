@@ -22,6 +22,7 @@ import {
   Printer,
 } from 'lucide-react';
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface StudentResult {
   id: number;
@@ -68,6 +69,7 @@ export default function ExamResultsPage() {
   const params = useParams();
   const router = useRouter();
   const examId = Number(params.id);
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -226,7 +228,7 @@ export default function ExamResultsPage() {
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push('/ujian')}
+              onClick={() => router.push(user?.role === 'admin' ? '/admin/ujian' : '/ujian')}
               className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
               aria-label="Kembali ke daftar ujian"
             >
