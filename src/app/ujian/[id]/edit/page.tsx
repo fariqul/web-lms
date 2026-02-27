@@ -27,6 +27,7 @@ import {
   Library,
   Copy,
   FileSpreadsheet,
+  FileType,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -35,6 +36,7 @@ import { ImportTextModal } from '@/components/ujian/ImportTextModal';
 import { ImportBankSoalModal } from '@/components/ujian/ImportBankSoalModal';
 import { DuplicateExamModal } from '@/components/ujian/DuplicateExamModal';
 import { ImportExcelModal } from '@/components/ujian/ImportExcelModal';
+import { ImportWordModal } from '@/components/ujian/ImportWordModal';
 
 interface Option {
   id?: number;
@@ -98,6 +100,7 @@ export default function EditSoalPage() {
   const [showImportBankSoal, setShowImportBankSoal] = useState(false);
   const [showDuplicateExam, setShowDuplicateExam] = useState(false);
   const [showImportExcel, setShowImportExcel] = useState(false);
+  const [showImportWord, setShowImportWord] = useState(false);
   const importMenuRef = React.useRef<HTMLDivElement>(null);
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
   const [savingSeb, setSavingSeb] = useState(false);
@@ -886,6 +889,19 @@ export default function EditSoalPage() {
                       <div className="text-left">
                         <p className="text-sm font-medium text-slate-800 dark:text-white">Duplikat Ujian</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Salin soal dari ujian lain</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => { setShowImportWord(true); setShowImportMenu(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center shrink-0 group-hover:bg-sky-200 dark:group-hover:bg-sky-800/40 transition-colors">
+                        <FileType className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-slate-800 dark:text-white">File Word</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Upload file .docx</p>
                       </div>
                     </button>
 
@@ -1692,6 +1708,13 @@ export default function EditSoalPage() {
         onClose={() => setShowDuplicateExam(false)}
         onImport={handleBulkImport}
         currentExamId={examId}
+        existingCount={questions.length}
+      />
+
+      <ImportWordModal
+        isOpen={showImportWord}
+        onClose={() => setShowImportWord(false)}
+        onImport={handleBulkImport}
         existingCount={questions.length}
       />
 
