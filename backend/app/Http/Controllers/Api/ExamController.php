@@ -1505,4 +1505,76 @@ class ExamController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Admin manually ends an exam — sets status to completed, 
+     * forces all in-progress students to finish, and sets end_time to now.
+     */
+    public function endExam(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat menyelesaikan ujian',
+            ], 403);
+        }
+
+        // Only active/scheduled exams can be ended
+        if ($exam->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian sudah selesai',
+            ], 422);
+        }
+
+        if ($exam->status === 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian masih draft, tidak bisa diselesaikan',
+            ], 422);
+        }
+
+        // Force-finish all in-progress results
+        $inProgressResults = ExamResult::where('exam_id', $exam->id)
+            ->where('status', 'in_progress')
+            ->get();
+
+        $forceFinishedCount = 0;
+        foreach ($inProgressResults as $result) {
+            $result->finished_at = now();
+            $result->submitted_at = now();
+            $result->status = 'completed';
+            $result->calculateScore();
+            $forceFinishedCount++;
+
+            // Broadcast: student submitted (so monitoring page updates)
+            app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
+                'student_id' => $result->student_id,
+                'student_name' => $result->student->name ?? 'Unknown',
+                'score' => $result->percentage,
+                'force_ended' => true,
+            ]);
+        }
+
+        // Update exam status and end_time
+        $exam->status = 'completed';
+        $exam->end_time = now();
+        $exam->save();
+
+        // Get final summary
+        $allResults = ExamResult::where('exam_id', $exam->id)->get();
+        $completed = $allResults->whereIn('status', ['completed', 'graded', 'submitted']);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Ujian berhasil diselesaikan. {$forceFinishedCount} siswa yang masih mengerjakan telah di-submit otomatis.",
+            'data' => [
+                'force_finished_count' => $forceFinishedCount,
+                'total_completed' => $completed->count(),
+                'average_score' => $completed->count() > 0 ? round($completed->avg('percentage'), 1) : null,
+            ],
+        ]);
+    }
 }

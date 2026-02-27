@@ -87,6 +87,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Exam Publishing & Monitoring (admin only)
         Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
+        Route::post('/exams/{exam}/end', [ExamController::class, 'endExam']);
     });
 
     // ============================================

@@ -7,7 +7,7 @@ import { Card, CardHeader, Button, ConfirmDialog } from '@/components/ui';
 import {
   GraduationCap, FileEdit, Clock, Calendar, CheckCircle, PlayCircle,
   AlertCircle, Loader2, Users, Shield, Download, Eye, Send,
-  Search, Monitor, BarChart3,
+  Search, Monitor, BarChart3, StopCircle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
@@ -52,6 +52,8 @@ export default function AdminUjianPage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [publishingId, setPublishingId] = useState<number | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [endingExamId, setEndingExamId] = useState<number | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,6 +121,21 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal mempublish ujian');
     } finally {
       setPublishingId(null);
+    }
+  };
+
+  const handleEndExam = async (examId: number) => {
+    setEndingExamId(examId);
+    try {
+      const response = await api.post(`/exams/${examId}/end`);
+      toast.success(response.data?.message || 'Ujian berhasil diselesaikan');
+      setShowEndConfirm(null);
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal menyelesaikan ujian');
+    } finally {
+      setEndingExamId(null);
     }
   };
 
@@ -376,12 +393,22 @@ export default function AdminUjianPage() {
           )}
 
           {status === 'active' && (
-            <Link href={`/ujian/${exam.id}/monitor`}>
-              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                <Monitor className="w-3.5 h-3.5 mr-1.5" />
-                Monitor Ujian
+            <>
+              <Link href={`/ujian/${exam.id}/monitor`}>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                  <Monitor className="w-3.5 h-3.5 mr-1.5" />
+                  Monitor Ujian
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                onClick={() => setShowEndConfirm({ id: exam.id, title: exam.title })}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <StopCircle className="w-3.5 h-3.5 mr-1.5" />
+                Selesaikan Ujian
               </Button>
-            </Link>
+            </>
           )}
 
           {status === 'completed' && (
@@ -565,6 +592,17 @@ export default function AdminUjianPage() {
         message={`Publish ujian "${showPublishConfirm?.title}"? Setelah dipublish, ujian akan dijadwalkan dan siswa dapat mengaksesnya pada waktu yang ditentukan.`}
         confirmText={publishingId ? 'Memproses...' : 'Publish'}
         variant="info"
+      />
+
+      {/* End Exam Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!showEndConfirm}
+        onClose={() => setShowEndConfirm(null)}
+        onConfirm={() => showEndConfirm && handleEndExam(showEndConfirm.id)}
+        title="Selesaikan Ujian"
+        message={`Apakah Anda yakin ingin menyelesaikan ujian "${showEndConfirm?.title}"? Semua siswa yang masih mengerjakan akan otomatis dikumpulkan jawabannya.`}
+        confirmText={endingExamId ? 'Memproses...' : 'Selesaikan'}
+        variant="danger"
       />
 
       {/* Schedule Edit Modal */}
