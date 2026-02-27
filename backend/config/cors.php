@@ -24,6 +24,8 @@ return [
     'allowed_origins_patterns' => [
         // Allow all Vercel preview/production deployments for this project
         '#^https://web-lms-rowr.*\.vercel\.app$#',
+        // Allow Cloudflare Quick Tunnel domains (URL changes every restart)
+        '#^https://.*\.trycloudflare\.com$#',
     ],
 
     'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
