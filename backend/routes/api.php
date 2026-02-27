@@ -83,6 +83,10 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         
         // Cache management
         Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearCache']);
+
+        // Exam Publishing & Monitoring (admin only)
+        Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
+        Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
     });
 
     // ============================================
@@ -105,16 +109,13 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Teacher attendance stats
         Route::get('/teacher-attendance-stats', [AttendanceController::class, 'teacherStats']);
         
-        // Exams Management
-        Route::apiResource('exams', ExamController::class);
-        Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
+        // Exams Management (create, edit, delete - guru only)
+        Route::post('/exams', [ExamController::class, 'store']);
+        Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
         Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
         Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
         Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
-        Route::get('/exams/{exam}/results', [ExamController::class, 'results']);
-        Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
         Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
-        Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
         Route::get('/teacher-grades', [ExamController::class, 'teacherGrades']);
         Route::put('/exam-results/{resultId}/score', [ExamController::class, 'updateResultScore']);
         
@@ -178,6 +179,17 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::get('/bank-questions/practice', [BankQuestionController::class, 'forStudents']);
         Route::post('/bank-questions/practice-result', [BankQuestionController::class, 'savePracticeResult']);
         Route::get('/bank-questions/practice-stats', [BankQuestionController::class, 'practiceStats']);
+    });
+
+    // ============================================
+    // ADMIN + GURU SHARED ROUTES
+    // ============================================
+    Route::middleware('role:admin,guru')->group(function () {
+        // Exam update (guru edits content, admin can edit schedule)
+        Route::put('/exams/{exam}', [ExamController::class, 'update']);
+        // Exam results (guru grades, admin views)
+        Route::get('/exams/{exam}/results', [ExamController::class, 'results']);
+        Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
     });
 
     // ============================================

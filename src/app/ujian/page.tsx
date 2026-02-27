@@ -378,13 +378,23 @@ export default function UjianPage() {
                         Edit Soal
                       </Button>
                     </Link>
-                    <Link href={`/ujian/${exam.id}/monitor`} className="flex-1">
-                      <Button fullWidth>
-                        <PlayCircle className="w-4 h-4 mr-2" />
-                        Monitor
-                      </Button>
-                    </Link>
-                    {(exam.status === 'draft' || exam.status === 'scheduled') && (
+                    {exam.status === 'draft' && (
+                      <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+                        <Button variant="outline" fullWidth>
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          Menunggu Publish Admin
+                        </Button>
+                      </Link>
+                    )}
+                    {(exam.status === 'scheduled' || exam.status === 'active') && (
+                      <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+                        <Button fullWidth>
+                          <Users className="w-4 h-4 mr-2" />
+                          Lihat Hasil
+                        </Button>
+                      </Link>
+                    )}
+                    {(exam.status === 'draft') && (
                       <Button
                         variant="outline"
                         onClick={() => handleDeleteExam(exam.id, exam.title)}
@@ -552,7 +562,7 @@ export default function UjianPage() {
             </div>
             {scheduleMode === 'immediate' && (
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ujian akan dimulai otomatis saat Anda menekan tombol Publish. Buat soal terlebih dahulu tanpa khawatir waktu.
+                Ujian akan dimulai otomatis saat Admin menekan tombol Publish. Buat soal terlebih dahulu.
               </p>
             )}
             {scheduleMode === 'scheduled' && (

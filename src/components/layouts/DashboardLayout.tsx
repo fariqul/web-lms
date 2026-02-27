@@ -63,6 +63,7 @@ const navigation: NavItem[] = [
   // Admin only
   { name: 'Kelola Pengguna', href: '/admin/users', icon: Users, roles: ['admin'] },
   { name: 'Kelola Kelas', href: '/admin/kelas', icon: GraduationCap, roles: ['admin'] },
+  { name: 'Kelola Ujian', href: '/admin/ujian', icon: ClipboardList, roles: ['admin'] },
   { name: 'Manajemen Jadwal', href: '/admin/jadwal', icon: Calendar, roles: ['admin'] },
   { name: 'Jaringan Sekolah', href: '/admin/jaringan', icon: Wifi, roles: ['admin'] },
   { name: 'Statistik', href: '/admin/statistik', icon: BarChart3, roles: ['admin'] },

@@ -22,6 +22,7 @@ import {
   Zap,
   Calendar,
   AlertTriangle,
+  AlertCircle,
   ChevronDown,
   ClipboardPaste,
   Library,
@@ -923,14 +924,10 @@ export default function EditSoalPage() {
             </div>
           )}
           {exam?.status === 'draft' && (
-            <Button 
-              variant="outline" 
-              onClick={handlePublish}
-              leftIcon={<Send className="w-4 h-4" />}
-              className="bg-green-50 dark:bg-green-900/20 border-green-300 text-green-700 dark:text-green-400 hover:bg-green-100"
-            >
-              Publish Ujian
-            </Button>
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
+              <AlertCircle className="w-4 h-4" />
+              Admin akan mempublish ujian ini
+            </span>
           )}
         </div>
 
@@ -1672,20 +1669,6 @@ export default function EditSoalPage() {
         message="Yakin ingin menghapus soal ini?"
         confirmText="Hapus"
         variant="danger"
-      />
-
-      <ConfirmDialog
-        isOpen={showPublishConfirm}
-        onClose={() => setShowPublishConfirm(false)}
-        onConfirm={confirmPublish}
-        title="Publikasi Ujian"
-        message={
-          exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-            ? 'Ujian akan langsung dimulai sekarang saat Anda menekan Publikasi. Pastikan semua soal sudah lengkap.'
-            : `Yakin ingin mempublikasi ujian ini? Ujian dijadwalkan mulai ${exam?.start_time ? new Date(exam.start_time).toLocaleString('id-ID') : '-'}.`
-        }
-        confirmText="Publikasi"
-        variant="warning"
       />
 
       {/* Import Modals */}
