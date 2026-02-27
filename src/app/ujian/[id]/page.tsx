@@ -397,8 +397,11 @@ export default function ExamTakingPage() {
   const handleStartExam = async () => {
     setStartingExam(true);
     
-    // Request camera permission FIRST from user gesture context
-    // This ensures the browser shows the permission prompt
+    // Enter fullscreen FIRST — must be called synchronously from user gesture
+    // before any async operation (getUserMedia / API call) that would lose the gesture context
+    await enterFullscreen();
+
+    // Now request camera permission — still benefits from recent user gesture in most browsers
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 640, height: 480 },
@@ -412,11 +415,7 @@ export default function ExamTakingPage() {
       setCameraPermissionDenied(true);
       toast.warning('Kamera tidak tersedia. Ujian tetap dilanjutkan, pastikan izinkan akses kamera.');
     }
-    
-    await actuallyStartExam();
-  };
 
-  const actuallyStartExam = async () => {
     try {
       // Call API to start exam — this returns questions for students
       const response = await api.post(`/exams/${examId}/start`);
@@ -456,7 +455,6 @@ export default function ExamTakingPage() {
         }
       }
 
-      await enterFullscreen();
       // Camera will auto-start via useEffect after isStarted becomes true
       // and the video element is rendered in the DOM
       setIsStarted(true);
