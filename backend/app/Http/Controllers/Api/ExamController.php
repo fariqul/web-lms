@@ -552,7 +552,7 @@ class ExamController extends Controller
             'question_type' => 'required|in:multiple_choice,essay',
             'passage' => 'nullable|string',
             'options' => 'required_if:question_type,multiple_choice|array',
-            'options.*.option_text' => 'required_if:question_type,multiple_choice|string',
+            'options.*.option_text' => 'nullable|string',
             'options.*.is_correct' => 'required_if:question_type,multiple_choice|boolean',
             'options.*.image' => 'nullable|image|max:5120', // option image max 5MB
             'points' => 'nullable|integer|min:1',
@@ -575,12 +575,17 @@ class ExamController extends Controller
                 if ($request->hasFile("options.{$idx}.image")) {
                     $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
                 }
+                // If text is empty but has image, use auto-label for answer matching
+                $optText = $opt['option_text'] ?? '';
+                if (empty(trim($optText)) && $optImage) {
+                    $optText = '[Gambar ' . chr(65 + $idx) . ']';
+                }
                 $optionsArray[] = [
-                    'text' => $opt['option_text'],
+                    'text' => $optText,
                     'image' => $optImage,
                 ];
                 if ($opt['is_correct']) {
-                    $correctAnswer = $opt['option_text'];
+                    $correctAnswer = $optText;
                 }
             }
         }
@@ -695,6 +700,11 @@ class ExamController extends Controller
                 // Handle remove_image flag per option
                 if (!empty($opt['remove_image']) && ($opt['remove_image'] === '1' || $opt['remove_image'] === true)) {
                     $optImage = null;
+                }
+
+                // If text is empty but has image, use auto-label for answer matching
+                if (empty(trim($optText)) && $optImage) {
+                    $optText = '[Gambar ' . chr(65 + $idx) . ']';
                 }
 
                 $optionsArray[] = [

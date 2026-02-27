@@ -29,8 +29,10 @@ import {
   Copy,
   FileSpreadsheet,
   FileType,
+  BookUp,
 } from 'lucide-react';
 import api from '@/services/api';
+import { bankQuestionAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
@@ -109,6 +111,10 @@ export default function EditSoalPage() {
   const importMenuRef = React.useRef<HTMLDivElement>(null);
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
   const [savingSeb, setSavingSeb] = useState(false);
+  const [showExportBankSoal, setShowExportBankSoal] = useState(false);
+  const [exportingBankSoal, setExportingBankSoal] = useState(false);
+  const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12'>('10');
+  const [exportDifficulty, setExportDifficulty] = useState<'mudah' | 'sedang' | 'sulit'>('sedang');
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
     passage: '',
@@ -217,14 +223,14 @@ export default function EditSoalPage() {
 
     if (newQuestion.question_type === 'multiple_choice') {
       const hasCorrectAnswer = newQuestion.options.some(opt => opt.is_correct);
-      const hasEmptyOption = newQuestion.options.some(opt => !opt.text.trim());
+      const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !opt.image && !optionImageFiles[idx]);
       
       if (!hasCorrectAnswer) {
         toast.warning('Pilih satu jawaban yang benar');
         return;
       }
       if (hasEmptyOption) {
-        toast.warning('Semua opsi harus diisi');
+        toast.warning('Semua opsi harus diisi teks atau gambar');
         return;
       }
     }
@@ -246,7 +252,9 @@ export default function EditSoalPage() {
 
       if (newQuestion.question_type === 'multiple_choice') {
         newQuestion.options.forEach((opt, idx) => {
-          formData.append(`options[${idx}][option_text]`, opt.text);
+          // If text is empty but has image, use auto-label for answer matching
+          const optText = opt.text.trim() || (opt.image || optionImageFiles[idx] ? `[Gambar ${String.fromCharCode(65 + idx)}]` : '');
+          formData.append(`options[${idx}][option_text]`, optText);
           formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
           formData.append(`options[${idx}][order]`, String(idx + 1));
           if (optionImageFiles[idx]) {
@@ -285,7 +293,12 @@ export default function EditSoalPage() {
       points: question.points,
       order: question.order,
       options: question.question_type === 'multiple_choice' && question.options.length > 0
-        ? question.options.map(opt => ({ id: opt.id, text: opt.text, is_correct: opt.is_correct, image: opt.image || null }))
+        ? question.options.map(opt => ({
+            id: opt.id,
+            text: /^\[Gambar [A-Z]\]$/.test(opt.text) ? '' : opt.text,
+            is_correct: opt.is_correct,
+            image: opt.image || null,
+          }))
         : [
             { text: '', is_correct: true },
             { text: '', is_correct: false },
@@ -326,13 +339,13 @@ export default function EditSoalPage() {
 
     if (newQuestion.question_type === 'multiple_choice') {
       const hasCorrectAnswer = newQuestion.options.some(opt => opt.is_correct);
-      const hasEmptyOption = newQuestion.options.some(opt => !opt.text.trim());
+      const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !opt.image && !optionImageFiles[idx] && !optionImagePreviews[idx]);
       if (!hasCorrectAnswer) {
         toast.warning('Pilih satu jawaban yang benar');
         return;
       }
       if (hasEmptyOption) {
-        toast.warning('Semua opsi harus diisi');
+        toast.warning('Semua opsi harus diisi teks atau gambar');
         return;
       }
     }
@@ -357,7 +370,10 @@ export default function EditSoalPage() {
 
       if (newQuestion.question_type === 'multiple_choice') {
         newQuestion.options.forEach((opt, idx) => {
-          formData.append(`options[${idx}][option_text]`, opt.text);
+          // If text is empty but has image, use auto-label for answer matching
+          const hasImage = optionImageFiles[idx] || optionImagePreviews[idx] || opt.image;
+          const optText = opt.text.trim() || (hasImage ? `[Gambar ${String.fromCharCode(65 + idx)}]` : '');
+          formData.append(`options[${idx}][option_text]`, optText);
           formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
           formData.append(`options[${idx}][order]`, String(idx + 1));
           if (optionImageFiles[idx]) {
@@ -567,6 +583,38 @@ export default function EditSoalPage() {
       toast.error('Gagal menyimpan pengaturan SEB');
     } finally {
       setSavingSeb(false);
+    }
+  };
+
+  const handleExportToBankSoal = async () => {
+    if (!exam || questions.length === 0) return;
+    setExportingBankSoal(true);
+    try {
+      const bankQuestions = questions.map(q => {
+        // Convert exam question options to bank soal format (flat string array)
+        const options = q.question_type === 'multiple_choice'
+          ? q.options.map(opt => opt.text || '')
+          : undefined;
+        const correctOpt = q.options.find(opt => opt.is_correct);
+        return {
+          subject: exam.subject,
+          type: q.question_type === 'multiple_choice' ? 'pilihan_ganda' as const : 'essay' as const,
+          question: q.question_text,
+          options,
+          correct_answer: correctOpt?.text || '',
+          explanation: '',
+          difficulty: exportDifficulty,
+          grade_level: exportGradeLevel,
+        };
+      });
+      await bankQuestionAPI.bulkCreate(bankQuestions);
+      toast.success(`${questions.length} soal berhasil diekspor ke Bank Soal`);
+      setShowExportBankSoal(false);
+    } catch (error) {
+      console.error('Failed to export to bank soal:', error);
+      toast.error('Gagal mengekspor soal ke Bank Soal');
+    } finally {
+      setExportingBankSoal(false);
     }
   };
 
@@ -935,6 +983,17 @@ export default function EditSoalPage() {
               Admin akan mempublish ujian ini
             </span>
           )}
+          {/* Export to Bank Soal — available for guru when there are questions */}
+          {!isAdmin && questions.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowExportBankSoal(true)}
+              leftIcon={<BookUp className="w-4 h-4" />}
+              className="text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            >
+              Ekspor ke Bank Soal
+            </Button>
+          )}
         </div>
 
         {/* Questions List */}
@@ -991,7 +1050,12 @@ export default function EditSoalPage() {
                                 {String.fromCharCode(65 + optIdx)}
                               </span>
                               <div className="flex-1">
-                                <span>{opt.text}</span>
+                                {opt.text && !/^\[Gambar [A-Z]\]$/.test(opt.text) && (
+                                  <span>{opt.text}</span>
+                                )}
+                                {opt.text && /^\[Gambar [A-Z]\]$/.test(opt.text) && !opt.image && (
+                                  <span className="italic text-slate-400">{opt.text}</span>
+                                )}
                                 {opt.image && (
                                   <img
                                     src={opt.image.startsWith('http') ? opt.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${opt.image}`}
@@ -1231,7 +1295,7 @@ export default function EditSoalPage() {
                         value={option.text}
                         onChange={(e) => handleOptionChange(index, e.target.value)}
                         className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
+                        placeholder={`Opsi ${String.fromCharCode(65 + index)} (kosongkan jika gambar saja)`}
                       />
                       <button
                         type="button"
@@ -1538,7 +1602,7 @@ export default function EditSoalPage() {
                         value={option.text}
                         onChange={(e) => handleOptionChange(index, e.target.value)}
                         className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        placeholder={`Opsi ${String.fromCharCode(65 + index)}`}
+                        placeholder={`Opsi ${String.fromCharCode(65 + index)} (kosongkan jika gambar saja)`}
                       />
                       <button
                         type="button"
@@ -1713,6 +1777,69 @@ export default function EditSoalPage() {
         onImport={handleBulkImport}
         existingCount={questions.length}
       />
+
+      {/* Export to Bank Soal Modal */}
+      {showExportBankSoal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowExportBankSoal(false)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+              Ekspor ke Bank Soal
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              {questions.length} soal dari ujian &ldquo;{exam?.title}&rdquo; akan ditambahkan ke Bank Soal Anda.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Tingkat Kelas
+                </label>
+                <select
+                  value={exportGradeLevel}
+                  onChange={(e) => setExportGradeLevel(e.target.value as '10' | '11' | '12')}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="10">Kelas 10</option>
+                  <option value="11">Kelas 11</option>
+                  <option value="12">Kelas 12</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Tingkat Kesulitan
+                </label>
+                <select
+                  value={exportDifficulty}
+                  onChange={(e) => setExportDifficulty(e.target.value as 'mudah' | 'sedang' | 'sulit')}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="mudah">Mudah</option>
+                  <option value="sedang">Sedang</option>
+                  <option value="sulit">Sulit</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" onClick={() => setShowExportBankSoal(false)} className="flex-1">
+                Batal
+              </Button>
+              <Button
+                onClick={handleExportToBankSoal}
+                disabled={exportingBankSoal}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {exportingBankSoal ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengekspor...</>
+                ) : (
+                  <><BookUp className="w-4 h-4 mr-2" /> Ekspor {questions.length} Soal</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -395,7 +395,9 @@ export default function HasilSiswaPage() {
                                 {String.fromCharCode(65 + optIdx)}
                               </span>
                               <div className="flex-1">
-                                <span>{optText}</span>
+                                {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && (
+                                  <span>{optText}</span>
+                                )}
                                 {optImage && (
                                   <img
                                     src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}

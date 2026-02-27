@@ -141,13 +141,15 @@ export default function ExamTakingPage() {
           const response = await api.post(`/exams/${examId}/start`);
           const startData = response.data?.data;
           if (startData?.questions && startData.questions.length > 0) {
-            const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: string[]; image?: string }, idx: number) => ({
+            const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
               id: q.id,
               number: q.order || idx + 1,
               type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
               text: q.question_text,
               passage: q.passage || null,
-              options: q.options || [],
+              options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
+                typeof opt === 'string' ? { text: opt, image: null } : { text: opt.text || '', image: opt.image || null }
+              ),
               image: q.image || null,
             }));
             setQuestions(mappedQuestions);
@@ -714,11 +716,13 @@ export default function ExamTakingPage() {
                           : 'text-slate-900 dark:text-slate-200'
                       }`}>{String.fromCharCode(65 + index)}.</span>
                       <div className="ml-2 flex-1">
-                        <span className={`${
-                          answers[question.id] === option.text
-                            ? 'text-teal-700 dark:text-teal-300 font-medium'
-                            : 'text-slate-800 dark:text-slate-300'
-                        }`}>{option.text}</span>
+                        {option.text && !/^\[Gambar [A-Z]\]$/.test(option.text) && (
+                          <span className={`${
+                            answers[question.id] === option.text
+                              ? 'text-teal-700 dark:text-teal-300 font-medium'
+                              : 'text-slate-800 dark:text-slate-300'
+                          }`}>{option.text}</span>
+                        )}
                         {option.image && (
                           <img
                             src={option.image.startsWith('http') ? option.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${option.image}`}
