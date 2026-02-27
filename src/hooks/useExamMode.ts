@@ -57,6 +57,8 @@ export function useExamMode({
   const monitoringActiveRef = useRef(false);
   // Track fullscreen state via ref to avoid stale closure in event handlers
   const isFullscreenRef = useRef(false);
+  // Track fullscreen transition — suppress blur/visibility violations during transition
+  const fullscreenTransitionRef = useRef(false);
   // Debounce rapid-fire violation reports on mobile
   const lastViolationTimeRef = useRef(0);
   const VIOLATION_DEBOUNCE_MS = 2000;
@@ -100,14 +102,19 @@ export function useExamMode({
   // Activate monitoring — can be called independently of fullscreen
   const activateMonitoring = useCallback(() => {
     if (monitoringActiveRef.current) return;
-    // Small delay to avoid immediate false positives
+    // Longer delay to avoid false positives during fullscreen transition & camera permission dialog
     setTimeout(() => {
       monitoringActiveRef.current = true;
-    }, 1500);
+      fullscreenTransitionRef.current = false;
+      console.log('[Monitoring] Anti-cheat monitoring activated');
+    }, 5000);
   }, []);
 
   // Fullscreen management
   const enterFullscreen = useCallback(async () => {
+    // Mark transition — suppress blur/visibility violations during fullscreen request
+    fullscreenTransitionRef.current = true;
+    
     try {
       // On mobile, fullscreen API may not work — that's OK
       if (document.documentElement.requestFullscreen) {
@@ -116,12 +123,12 @@ export function useExamMode({
       setIsFullscreen(true);
       isFullscreenRef.current = true;
     } catch (error) {
-      console.error('Fullscreen request failed (expected on mobile):', error);
-      // On mobile, treat as "fullscreen" even if API fails
-      if (isMobile) {
-        setIsFullscreen(true);
-        isFullscreenRef.current = true;
-      }
+      console.error('Fullscreen request failed:', error);
+      // Treat as "fullscreen" even if API fails — don't penalize the student
+      // This commonly happens when the fullscreen request isn't from a direct user gesture
+      // (e.g., after async API call) or on mobile devices
+      setIsFullscreen(true);
+      isFullscreenRef.current = true;
     }
     // Always activate monitoring regardless of fullscreen success
     activateMonitoring();
@@ -200,6 +207,12 @@ export function useExamMode({
         return null;
       }
       
+      // Ensure video is actually playing (not paused/suspended)
+      if (video.readyState < 2) {
+        console.warn('[Snapshot] Skipped: video readyState is', video.readyState, '(not enough data)');
+        return null;
+      }
+      
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -247,14 +260,14 @@ export function useExamMode({
 
     // Tab visibility change detection (works on both mobile & desktop)
     const handleVisibilityChange = () => {
-      if (document.hidden && monitoringActiveRef.current) {
+      if (document.hidden && monitoringActiveRef.current && !fullscreenTransitionRef.current) {
         reportViolation('tab_switch', 'Pindah tab/aplikasi');
       }
     };
 
     // Window blur/focus — more reliable on mobile for app switching
     const handleWindowBlur = () => {
-      if (monitoringActiveRef.current) {
+      if (monitoringActiveRef.current && !fullscreenTransitionRef.current) {
         reportViolation('tab_switch', 'Keluar dari halaman ujian');
       }
     };
@@ -265,7 +278,7 @@ export function useExamMode({
         // Page is actually being unloaded, not just hidden
         return;
       }
-      if (monitoringActiveRef.current) {
+      if (monitoringActiveRef.current && !fullscreenTransitionRef.current) {
         reportViolation('tab_switch', 'Meninggalkan halaman ujian');
       }
     };

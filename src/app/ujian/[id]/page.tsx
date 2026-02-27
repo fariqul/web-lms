@@ -225,10 +225,11 @@ export default function ExamTakingPage() {
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
     if (isStarted && !isCameraActive) {
-      // Small delay to ensure video element is in the DOM
+      // Longer delay to ensure video element is in the DOM and
+      // any fullscreen/permission dialogs have settled
       const timer = setTimeout(() => {
         startCamera();
-      }, 500);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [isStarted, isCameraActive, startCamera]);
@@ -252,7 +253,7 @@ export default function ExamTakingPage() {
       }
     }, 30000);
 
-    // First snapshot after 3s
+    // First snapshot after 8s (give camera time to fully initialize, especially non-SEB)
     const firstTimer = setTimeout(async () => {
       try {
         setSnapshotStatus('capturing');
@@ -262,11 +263,26 @@ export default function ExamTakingPage() {
           setLastSnapshotTime(new Date());
         } else {
           setSnapshotStatus('error');
+          // Retry first snapshot after another 5s if it failed
+          setTimeout(async () => {
+            try {
+              setSnapshotStatus('capturing');
+              const retryResult = await captureSnapshot();
+              if (retryResult) {
+                setSnapshotStatus('success');
+                setLastSnapshotTime(new Date());
+              } else {
+                setSnapshotStatus('error');
+              }
+            } catch {
+              setSnapshotStatus('error');
+            }
+          }, 5000);
         }
       } catch {
         setSnapshotStatus('error');
       }
-    }, 3000);
+    }, 8000);
 
     return () => {
       clearInterval(snapshotCheck);
