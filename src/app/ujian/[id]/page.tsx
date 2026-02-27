@@ -75,6 +75,8 @@ export default function ExamTakingPage() {
   const autoSubmittedRef = React.useRef(false);
   const [usingSEB, setUsingSEB] = useState(false);
   const resumeAttemptedRef = React.useRef(false);
+  const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
+  const [showCameraBanner, setShowCameraBanner] = useState(false);
 
   // Clear exam session flags (call before navigating away after submit)
   const clearExamSession = () => {
@@ -227,14 +229,31 @@ export default function ExamTakingPage() {
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
     if (isStarted && !isCameraActive) {
-      // Longer delay to ensure video element is in the DOM and
-      // any fullscreen/permission dialogs have settled
+      // Shorter delay now since permission was already granted from button click
       const timer = setTimeout(() => {
         startCamera();
-      }, 1500);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [isStarted, isCameraActive, startCamera]);
+
+  // Show camera banner if camera is not active after a reasonable delay
+  useEffect(() => {
+    if (!isStarted) return;
+    const timer = setTimeout(() => {
+      if (!isCameraActive) {
+        setShowCameraBanner(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isStarted]);
+
+  // Hide banner when camera becomes active
+  useEffect(() => {
+    if (isCameraActive) {
+      setShowCameraBanner(false);
+    }
+  }, [isCameraActive]);
 
   // Track snapshot status for visual feedback
   useEffect(() => {
@@ -377,6 +396,23 @@ export default function ExamTakingPage() {
 
   const handleStartExam = async () => {
     setStartingExam(true);
+    
+    // Request camera permission FIRST from user gesture context
+    // This ensures the browser shows the permission prompt
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 },
+        audio: false,
+      });
+      // Stop the test stream immediately — we'll start the real one after DOM is ready
+      stream.getTracks().forEach(track => track.stop());
+      setCameraPermissionDenied(false);
+    } catch (err) {
+      console.warn('[Camera] Permission denied or unavailable:', err);
+      setCameraPermissionDenied(true);
+      toast.warning('Kamera tidak tersedia. Ujian tetap dilanjutkan, pastikan izinkan akses kamera.');
+    }
+    
     await actuallyStartExam();
   };
 
@@ -623,8 +659,41 @@ export default function ExamTakingPage() {
     );
   }
 
+  const handleRetryCamera = async () => {
+    setCameraPermissionDenied(false);
+    setShowCameraBanner(false);
+    try {
+      await startCamera();
+    } catch {
+      setCameraPermissionDenied(true);
+      setShowCameraBanner(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}>
+      {/* Camera permission banner */}
+      {isStarted && showCameraBanner && !isCameraActive && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-3 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3">
+            <Camera className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">Kamera Pengawas Tidak Aktif</p>
+              <p className="text-xs opacity-90">
+                {cameraPermissionDenied
+                  ? 'Izin kamera ditolak. Buka pengaturan browser dan izinkan akses kamera, lalu klik Coba Lagi.'
+                  : 'Kamera belum aktif. Klik Izinkan saat browser meminta izin akses kamera.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRetryCamera}
+            className="px-4 py-1.5 bg-white text-amber-700 text-sm font-semibold rounded-lg hover:bg-amber-50 transition-colors flex-shrink-0"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
       <div className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div>
@@ -823,6 +892,18 @@ export default function ExamTakingPage() {
                 </div>
                 <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden relative">
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  {!isCameraActive && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80">
+                      <Camera className="w-8 h-8 mb-2 opacity-50" />
+                      <p className="text-[10px] text-center px-2 mb-2">Kamera tidak aktif</p>
+                      <button
+                        onClick={handleRetryCamera}
+                        className="px-3 py-1 text-[10px] bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors font-medium"
+                      >
+                        Aktifkan Kamera
+                      </button>
+                    </div>
+                  )}
                   {isCameraActive && snapshotStatus !== 'idle' && (
                     <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
                       <span className={`text-[9px] px-1.5 py-0.5 rounded ${
