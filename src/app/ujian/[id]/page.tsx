@@ -11,6 +11,9 @@ import {
   ChevronRight,
   Send,
   Camera,
+  CameraOff,
+  Video,
+  VideoOff,
   Maximize,
   Flag,
   Loader2,
@@ -19,6 +22,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   Download,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -77,6 +82,12 @@ export default function ExamTakingPage() {
   const resumeAttemptedRef = React.useRef(false);
   const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
   const [showCameraBanner, setShowCameraBanner] = useState(false);
+  const [cameraPreviewActive, setCameraPreviewActive] = useState(false);
+  const [cameraPreviewTested, setCameraPreviewTested] = useState(false);
+  const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
+  const previewVideoRef = React.useRef<HTMLVideoElement | null>(null);
+  const previewStreamRef = React.useRef<MediaStream | null>(null);
+  const [cameraManuallyOff, setCameraManuallyOff] = useState(false);
 
   // Clear exam session flags (call before navigating away after submit)
   const clearExamSession = () => {
@@ -109,6 +120,7 @@ export default function ExamTakingPage() {
     maxViolations,
     enterFullscreen,
     startCamera,
+    stopCamera,
     activateMonitoring,
     captureSnapshot,
     videoRef,
@@ -228,14 +240,14 @@ export default function ExamTakingPage() {
 
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
-    if (isStarted && !isCameraActive) {
-      // Shorter delay now since permission was already granted from button click
+    if (isStarted && !isCameraActive && !cameraManuallyOff) {
+      // Shorter delay now since permission was already granted from camera preview
       const timer = setTimeout(() => {
         startCamera();
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isStarted, isCameraActive, startCamera]);
+  }, [isStarted, isCameraActive, startCamera, cameraManuallyOff]);
 
   // Show camera banner if camera is not active after a reasonable delay
   useEffect(() => {
@@ -254,6 +266,65 @@ export default function ExamTakingPage() {
       setShowCameraBanner(false);
     }
   }, [isCameraActive]);
+
+  // Cleanup preview stream on unmount or when exam starts
+  useEffect(() => {
+    return () => {
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getTracks().forEach(track => track.stop());
+        previewStreamRef.current = null;
+      }
+    };
+  }, []);
+
+  const startCameraPreview = async () => {
+    setCameraPreviewError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 },
+        audio: false,
+      });
+      previewStreamRef.current = stream;
+      if (previewVideoRef.current) {
+        previewVideoRef.current.srcObject = stream;
+        await previewVideoRef.current.play();
+      }
+      setCameraPreviewActive(true);
+      setCameraPreviewTested(true);
+      setCameraPermissionDenied(false);
+    } catch (err) {
+      console.warn('[Camera Preview] Failed:', err);
+      setCameraPreviewError('Kamera tidak dapat diakses. Pastikan izin kamera diaktifkan di pengaturan browser.');
+      setCameraPreviewTested(true);
+      setCameraPermissionDenied(true);
+    }
+  };
+
+  const stopCameraPreview = () => {
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach(track => track.stop());
+      previewStreamRef.current = null;
+    }
+    if (previewVideoRef.current) {
+      previewVideoRef.current.srcObject = null;
+    }
+    setCameraPreviewActive(false);
+  };
+
+  const handleToggleCamera = async () => {
+    if (isCameraActive) {
+      stopCamera();
+      setCameraManuallyOff(true);
+    } else {
+      setCameraManuallyOff(false);
+      try {
+        await startCamera();
+      } catch {
+        setCameraPermissionDenied(true);
+        setShowCameraBanner(true);
+      }
+    }
+  };
 
   // Track snapshot status for visual feedback
   useEffect(() => {
@@ -396,25 +467,13 @@ export default function ExamTakingPage() {
 
   const handleStartExam = async () => {
     setStartingExam(true);
+
+    // Stop preview stream if running
+    stopCameraPreview();
     
     // Enter fullscreen FIRST — must be called synchronously from user gesture
     // before any async operation (getUserMedia / API call) that would lose the gesture context
     await enterFullscreen();
-
-    // Now request camera permission — still benefits from recent user gesture in most browsers
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
-        audio: false,
-      });
-      // Stop the test stream immediately — we'll start the real one after DOM is ready
-      stream.getTracks().forEach(track => track.stop());
-      setCameraPermissionDenied(false);
-    } catch (err) {
-      console.warn('[Camera] Permission denied or unavailable:', err);
-      setCameraPermissionDenied(true);
-      toast.warning('Kamera tidak tersedia. Ujian tetap dilanjutkan, pastikan izinkan akses kamera.');
-    }
 
     try {
       // Call API to start exam — this returns questions for students
@@ -629,6 +688,86 @@ export default function ExamTakingPage() {
             )}
 
             <div className="space-y-3">
+              {/* Camera Preview Test */}
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-teal-600" />
+                    <h3 className="font-medium text-slate-800 dark:text-white text-sm">Tes Kamera Pengawas</h3>
+                  </div>
+                  {cameraPreviewTested && !cameraPreviewError && (
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Kamera Siap
+                    </span>
+                  )}
+                  {cameraPreviewTested && cameraPreviewError && (
+                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                      <XCircle className="w-3.5 h-3.5" />
+                      Gagal
+                    </span>
+                  )}
+                </div>
+                
+                <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden relative mb-3">
+                  <video
+                    ref={previewVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                    style={{ transform: 'scaleX(-1)' }}
+                  />
+                  {!cameraPreviewActive && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white/70">
+                      <CameraOff className="w-10 h-10 mb-2 opacity-40" />
+                      <p className="text-xs text-center px-4">
+                        {cameraPreviewError
+                          ? cameraPreviewError
+                          : 'Klik tombol di bawah untuk menguji kamera Anda'}
+                      </p>
+                    </div>
+                  )}
+                  {cameraPreviewActive && (
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                      Preview Kamera
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  {!cameraPreviewActive ? (
+                    <button
+                      onClick={startCameraPreview}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <Video className="w-4 h-4" />
+                      {cameraPreviewTested ? 'Coba Lagi' : 'Tes Kamera'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={stopCameraPreview}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <VideoOff className="w-4 h-4" />
+                      Matikan Preview
+                    </button>
+                  )}
+                </div>
+
+                {cameraPreviewTested && !cameraPreviewError && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2 text-center">
+                    ✓ Kamera berhasil diuji. Anda siap memulai ujian.
+                  </p>
+                )}
+                {cameraPreviewError && (
+                  <p className="text-xs text-red-500 mt-2 text-center">
+                    Ujian tetap bisa dimulai tanpa kamera, tapi pastikan untuk mengizinkan akses kamera.
+                  </p>
+                )}
+              </div>
+
               <Button
                 onClick={handleStartExam}
                 fullWidth
@@ -660,6 +799,7 @@ export default function ExamTakingPage() {
   const handleRetryCamera = async () => {
     setCameraPermissionDenied(false);
     setShowCameraBanner(false);
+    setCameraManuallyOff(false);
     try {
       await startCamera();
     } catch {
@@ -670,8 +810,8 @@ export default function ExamTakingPage() {
 
   return (
     <div className="min-h-screen bg-background select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}>
-      {/* Camera permission banner */}
-      {isStarted && showCameraBanner && !isCameraActive && (
+      {/* Camera permission banner — only show if camera isn't manually turned off */}
+      {isStarted && showCameraBanner && !isCameraActive && !cameraManuallyOff && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-3 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
             <Camera className="w-5 h-5 flex-shrink-0" />
@@ -705,11 +845,24 @@ export default function ExamTakingPage() {
               <Clock className="w-5 h-5" />
               <span className="font-mono font-bold">{formatTime(timeRemaining)}</span>
             </div>
-            {isCameraActive && (
-              <div className="flex items-center gap-2 text-green-600">
-                <Camera className="w-5 h-5" />
-                <span className="text-sm">Kamera aktif</span>
-              </div>
+            {isCameraActive ? (
+              <button
+                onClick={handleToggleCamera}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                title="Klik untuk matikan kamera"
+              >
+                <Video className="w-4 h-4" />
+                <span className="text-sm font-medium">Kamera</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleToggleCamera}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                title="Klik untuk nyalakan kamera"
+              >
+                <VideoOff className="w-4 h-4" />
+                <span className="text-sm font-medium">Kamera</span>
+              </button>
             )}
             {violationCount > 0 && (
               <div className="flex items-center gap-2 text-red-600">
@@ -892,14 +1045,8 @@ export default function ExamTakingPage() {
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                   {!isCameraActive && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80">
-                      <Camera className="w-8 h-8 mb-2 opacity-50" />
-                      <p className="text-[10px] text-center px-2 mb-2">Kamera tidak aktif</p>
-                      <button
-                        onClick={handleRetryCamera}
-                        className="px-3 py-1 text-[10px] bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors font-medium"
-                      >
-                        Aktifkan Kamera
-                      </button>
+                      <CameraOff className="w-8 h-8 mb-2 opacity-50" />
+                      <p className="text-[10px] text-center px-2 mb-1">Kamera tidak aktif</p>
                     </div>
                   )}
                   {isCameraActive && snapshotStatus !== 'idle' && (
@@ -921,6 +1068,27 @@ export default function ExamTakingPage() {
                     </div>
                   )}
                 </div>
+                {/* Camera toggle button — Zoom-style */}
+                <button
+                  onClick={handleToggleCamera}
+                  className={`mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    isCameraActive
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+                      : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-900/50'
+                  }`}
+                >
+                  {isCameraActive ? (
+                    <>
+                      <VideoOff className="w-3.5 h-3.5" />
+                      Matikan Kamera
+                    </>
+                  ) : (
+                    <>
+                      <Video className="w-3.5 h-3.5" />
+                      Nyalakan Kamera
+                    </>
+                  )}
+                </button>
               </div>
             </Card>
           </div>
