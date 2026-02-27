@@ -31,7 +31,9 @@ interface ParsedQuestion {
   question_text: string;
   question_type: 'multiple_choice' | 'essay';
   points: number;
-  options: { text: string; is_correct: boolean }[];
+  passage?: string | null;
+  image?: string | null;
+  options: { text: string; is_correct: boolean; image?: string | null }[];
   valid: boolean;
 }
 
@@ -95,14 +97,19 @@ export function DuplicateExamModal({
           question_text: string;
           question_type: string;
           points: number;
-          options?: { option_text: string; is_correct: boolean }[];
+          passage?: string | null;
+          image?: string | null;
+          options?: { option_text: string; is_correct: boolean; image?: string | null }[];
         }) => ({
           question_text: q.question_text,
           question_type: q.question_type === 'essay' ? 'essay' : 'multiple_choice',
           points: q.points || 10,
-          options: q.options?.map((opt: { option_text: string; is_correct: boolean }) => ({
+          passage: q.passage || null,
+          image: q.image || null,
+          options: q.options?.map((opt: { option_text: string; is_correct: boolean; image?: string | null }) => ({
             text: opt.option_text,
             is_correct: opt.is_correct,
+            image: opt.image || null,
           })) || [],
           valid: true,
         }));
@@ -307,6 +314,12 @@ export function DuplicateExamModal({
                             <span className="text-xs text-slate-400">{q.points} poin</span>
                             {q.question_type === 'multiple_choice' && (
                               <span className="text-xs text-slate-400">{q.options.length} opsi</span>
+                            )}
+                            {q.passage && (
+                              <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-md">Bacaan</span>
+                            )}
+                            {q.image && (
+                              <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300 rounded-md">Gambar</span>
                             )}
                           </div>
                         </div>

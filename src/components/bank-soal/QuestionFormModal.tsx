@@ -10,7 +10,7 @@ export interface QuestionFormData {
   type: 'pilihan_ganda' | 'essay';
   subject: string;
   class_id: string;
-  grade_level: '10' | '11' | '12';
+  grade_level: '10' | '11' | '12' | 'semua';
   difficulty: 'mudah' | 'sedang' | 'sulit';
   options: string[];
   correct_answer: string;
@@ -107,13 +107,14 @@ export function QuestionFormModal({
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tingkat Kelas</label>
               <select
                 value={formData.grade_level}
-                onChange={(e) => onFormChange({ ...formData, grade_level: e.target.value as '10' | '11' | '12' })}
+                onChange={(e) => onFormChange({ ...formData, grade_level: e.target.value as '10' | '11' | '12' | 'semua' })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 required
               >
                 <option value="10">Kelas 10</option>
                 <option value="11">Kelas 11</option>
                 <option value="12">Kelas 12</option>
+                <option value="semua">Semua Tingkat</option>
               </select>
             </div>
           </div>

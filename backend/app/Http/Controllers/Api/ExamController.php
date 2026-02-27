@@ -555,14 +555,21 @@ class ExamController extends Controller
             'options.*.option_text' => 'nullable|string',
             'options.*.is_correct' => 'required_if:question_type,multiple_choice|boolean',
             'options.*.image' => 'nullable|image|max:5120', // option image max 5MB
+            'options.*.image_path' => 'nullable|string', // existing image path to copy
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120', // max 5MB
+            'image_path' => 'nullable|string', // existing question image path to copy
         ]);
 
-        // Handle image upload
+        // Handle image upload or copy from existing path
         $imagePath = null;
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('question-images', 'public');
+        } elseif ($request->image_path && Storage::disk('public')->exists($request->image_path)) {
+            $ext = pathinfo($request->image_path, PATHINFO_EXTENSION);
+            $newPath = 'question-images/' . uniqid() . '.' . $ext;
+            Storage::disk('public')->copy($request->image_path, $newPath);
+            $imagePath = $newPath;
         }
 
         // Convert options to structured format with optional images
@@ -574,6 +581,12 @@ class ExamController extends Controller
                 $optImage = null;
                 if ($request->hasFile("options.{$idx}.image")) {
                     $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
+                } elseif (!empty($opt['image_path']) && Storage::disk('public')->exists($opt['image_path'])) {
+                    // Copy existing option image
+                    $ext = pathinfo($opt['image_path'], PATHINFO_EXTENSION);
+                    $newOptPath = 'option-images/' . uniqid() . '.' . $ext;
+                    Storage::disk('public')->copy($opt['image_path'], $newOptPath);
+                    $optImage = $newOptPath;
                 }
                 // If text is empty but has image, use auto-label for answer matching
                 $optText = $opt['option_text'] ?? '';

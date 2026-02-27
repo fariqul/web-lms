@@ -139,7 +139,7 @@ class BankQuestionController extends Controller
             'correct_answer' => 'required|string',
             'explanation' => 'nullable|string',
             'difficulty' => 'required|in:mudah,sedang,sulit',
-            'grade_level' => 'required|in:10,11,12',
+            'grade_level' => 'required|in:10,11,12,semua',
             'class_id' => 'nullable|exists:classes,id',
         ]);
 
@@ -189,7 +189,7 @@ class BankQuestionController extends Controller
             'correct_answer' => 'sometimes|required|string',
             'explanation' => 'nullable|string',
             'difficulty' => 'sometimes|required|in:mudah,sedang,sulit',
-            'grade_level' => 'sometimes|required|in:10,11,12',
+            'grade_level' => 'sometimes|required|in:10,11,12,semua',
             'class_id' => 'nullable|exists:classes,id',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -245,7 +245,7 @@ class BankQuestionController extends Controller
             'questions.*.correct_answer' => 'required|string',
             'questions.*.explanation' => 'nullable|string',
             'questions.*.difficulty' => 'required|in:mudah,sedang,sulit',
-            'questions.*.grade_level' => 'required|in:10,11,12',
+            'questions.*.grade_level' => 'required|in:10,11,12,semua',
         ]);
 
         $created = [];

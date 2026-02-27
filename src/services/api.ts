@@ -509,7 +509,7 @@ export const bankQuestionAPI = {
     correct_answer: string;
     explanation?: string;
     difficulty: 'mudah' | 'sedang' | 'sulit';
-    grade_level: '10' | '11' | '12';
+    grade_level: '10' | '11' | '12' | 'semua';
     class_id?: number;
   }) =>
     api.post('/bank-questions', data),
@@ -522,7 +522,7 @@ export const bankQuestionAPI = {
     correct_answer?: string;
     explanation?: string;
     difficulty?: 'mudah' | 'sedang' | 'sulit';
-    grade_level?: '10' | '11' | '12';
+    grade_level?: '10' | '11' | '12' | 'semua';
     class_id?: number;
     is_active?: boolean;
   }) =>
@@ -539,7 +539,7 @@ export const bankQuestionAPI = {
     correct_answer: string;
     explanation?: string;
     difficulty: 'mudah' | 'sedang' | 'sulit';
-    grade_level: '10' | '11' | '12';
+    grade_level: '10' | '11' | '12' | 'semua';
     class_id?: number;
   }>) =>
     api.post('/bank-questions/bulk', { questions }),
@@ -602,7 +602,7 @@ export const pdfImportAPI = {
       difficulty?: string;
     }>;
     subject: string;
-    grade_level: '10' | '11' | '12';
+    grade_level: '10' | '11' | '12' | 'semua';
     difficulty?: string;
     source?: string;
   }) =>
@@ -620,7 +620,7 @@ export const urlImportAPI = {
     url: string;
     subject: string;
     difficulty?: 'mudah' | 'sedang' | 'sulit';
-    grade_level?: '10' | '11' | '12';
+    grade_level?: '10' | '11' | '12' | 'semua';
     class_id?: number;
     selected_questions?: number[];
   }) =>

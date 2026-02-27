@@ -23,7 +23,7 @@ interface Question {
   class_name?: string;
   classRoom?: { id: number; name: string };
   difficulty: 'mudah' | 'sedang' | 'sulit';
-  grade_level: '10' | '11' | '12';
+  grade_level: '10' | '11' | '12' | 'semua';
   options?: string[];
   correct_answer?: string;
   explanation?: string;
@@ -39,6 +39,7 @@ export default function BankSoalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('');
+  const [filterGradeLevel, setFilterGradeLevel] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPdfImportModal, setShowPdfImportModal] = useState(false);
@@ -87,7 +88,8 @@ export default function BankSoalPage() {
     const matchesSearch = q.question.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSubject = !filterSubject || q.subject === filterSubject;
     const matchesDifficulty = !filterDifficulty || q.difficulty === filterDifficulty;
-    return matchesSearch && matchesSubject && matchesDifficulty;
+    const matchesGrade = !filterGradeLevel || q.grade_level === filterGradeLevel || q.grade_level === 'semua';
+    return matchesSearch && matchesSubject && matchesDifficulty && matchesGrade;
   });
 
   const resetForm = () => {
@@ -260,6 +262,13 @@ export default function BankSoalPage() {
             <option value="sedang">Sedang</option>
             <option value="sulit">Sulit</option>
           </select>
+          <select value={filterGradeLevel} onChange={(e) => setFilterGradeLevel(e.target.value)} className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" aria-label="Filter tingkat kelas" name="filterGradeLevel">
+            <option value="">Semua Kelas</option>
+            <option value="10">Kelas 10</option>
+            <option value="11">Kelas 11</option>
+            <option value="12">Kelas 12</option>
+            <option value="semua">Semua Tingkat</option>
+          </select>
         </div>
 
         {/* Questions List */}
@@ -292,6 +301,7 @@ export default function BankSoalPage() {
                           <span className="px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-xs rounded-full">{question.subject}</span>
                           <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 text-xs rounded-full">{question.class_name}</span>
                           <span className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(question.difficulty)}`}>{getDifficultyLabel(question.difficulty)}</span>
+                          <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs rounded-full">{question.grade_level === 'semua' ? 'Semua Kelas' : `Kelas ${question.grade_level}`}</span>
                           <span className="px-2 py-1 bg-sky-50 text-sky-500 text-xs rounded-full">{question.type === 'pilihan_ganda' ? 'Pilihan Ganda' : 'Essay'}</span>
                         </div>
                       </div>

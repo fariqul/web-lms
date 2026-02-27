@@ -113,7 +113,7 @@ export default function EditSoalPage() {
   const [savingSeb, setSavingSeb] = useState(false);
   const [showExportBankSoal, setShowExportBankSoal] = useState(false);
   const [exportingBankSoal, setExportingBankSoal] = useState(false);
-  const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12'>('10');
+  const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
   const [exportDifficulty, setExportDifficulty] = useState<'mudah' | 'sedang' | 'sulit'>('sedang');
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
@@ -502,7 +502,9 @@ export default function EditSoalPage() {
     question_text: string;
     question_type: 'multiple_choice' | 'essay';
     points: number;
-    options: { text: string; is_correct: boolean }[];
+    passage?: string | null;
+    image?: string | null;
+    options: { text: string; is_correct: boolean; image?: string | null }[];
   }[]) => {
     let successCount = 0;
     let failCount = 0;
@@ -516,11 +518,25 @@ export default function EditSoalPage() {
         formData.append('points', String(q.points));
         formData.append('order', String(questions.length + successCount + 1));
 
+        // Include passage if present
+        if (q.passage) {
+          formData.append('passage', q.passage);
+        }
+
+        // Include image path for copying (from exam duplication)
+        if (q.image) {
+          formData.append('image_path', q.image);
+        }
+
         if (q.question_type === 'multiple_choice') {
           q.options.forEach((opt, idx) => {
             formData.append(`options[${idx}][option_text]`, opt.text);
             formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
             formData.append(`options[${idx}][order]`, String(idx + 1));
+            // Include option image path for copying
+            if (opt.image) {
+              formData.append(`options[${idx}][image_path]`, opt.image);
+            }
           });
         }
 
@@ -1797,12 +1813,13 @@ export default function EditSoalPage() {
                 </label>
                 <select
                   value={exportGradeLevel}
-                  onChange={(e) => setExportGradeLevel(e.target.value as '10' | '11' | '12')}
+                  onChange={(e) => setExportGradeLevel(e.target.value as '10' | '11' | '12' | 'semua')}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="10">Kelas 10</option>
                   <option value="11">Kelas 11</option>
                   <option value="12">Kelas 12</option>
+                  <option value="semua">Semua Tingkat</option>
                 </select>
               </div>
               <div>
