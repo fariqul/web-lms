@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
-import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download, Zap, AlertTriangle, Info } from 'lucide-react';
+import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download, AlertTriangle, Info } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -65,13 +65,10 @@ export default function UjianPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteExam, setDeleteExam] = useState<{id: number, title: string} | null>(null);
-  const [scheduleMode, setScheduleMode] = useState<'immediate' | 'scheduled'>('immediate');
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
     class_ids: [] as string[],
-    start_time: '',
-    duration: 60,
   });
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
 
@@ -116,11 +113,6 @@ export default function UjianPage() {
       return;
     }
 
-    if (scheduleMode === 'scheduled' && !formData.start_time) {
-      toast.warning('Pilih waktu mulai ujian');
-      return;
-    }
-
     if (sebSettings.sebRequired && sebSettings.sebAllowQuit && !sebSettings.sebQuitPassword.trim()) {
       toast.warning('Password quit SEB wajib diisi agar bisa keluar dari SEB');
       return;
@@ -128,12 +120,10 @@ export default function UjianPage() {
     
     setSubmitting(true);
     try {
-      // Calculate start/end times
-      // For immediate mode, use a far-future placeholder — real time gets set on publish
-      const startTime = scheduleMode === 'scheduled'
-        ? new Date(formData.start_time)
-        : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // placeholder
-      const endTime = new Date(startTime.getTime() + formData.duration * 60 * 1000);
+      // Use far-future placeholder — admin will set actual schedule on publish
+      const startTime = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      const defaultDuration = 90; // default, admin will adjust
+      const endTime = new Date(startTime.getTime() + defaultDuration * 60 * 1000);
       
       const response = await api.post('/exams', {
         title: formData.title,
@@ -142,8 +132,7 @@ export default function UjianPage() {
         class_ids: formData.class_ids.map(id => parseInt(id)),
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
-        duration_minutes: formData.duration,
-        schedule_mode: scheduleMode,
+        duration_minutes: defaultDuration,
         seb_required: sebSettings.sebRequired,
         seb_allow_quit: sebSettings.sebAllowQuit,
         seb_quit_password: sebSettings.sebQuitPassword || '',
@@ -169,10 +158,7 @@ export default function UjianPage() {
         title: '',
         subject: '',
         class_ids: [],
-        start_time: '',
-        duration: 60,
       });
-      setScheduleMode('immediate');
       setSebSettings({ ...DEFAULT_SEB_SETTINGS });
       fetchData();
     } catch (error: unknown) {
@@ -531,57 +517,13 @@ export default function UjianPage() {
               </>
             )}
           </div>
-          {/* Schedule Mode */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Waktu Mulai Ujian</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setScheduleMode('immediate')}
-                className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all ${
-                  scheduleMode === 'immediate'
-                    ? 'bg-teal-50 border-teal-300 text-teal-700 dark:bg-teal-900/30 dark:border-teal-700 dark:text-teal-300 ring-2 ring-teal-500/20'
-                    : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:border-slate-300'
-                }`}
-              >
-                <Zap className="w-4 h-4" />
-                Mulai Saat Publish
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduleMode('scheduled')}
-                className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all ${
-                  scheduleMode === 'scheduled'
-                    ? 'bg-teal-50 border-teal-300 text-teal-700 dark:bg-teal-900/30 dark:border-teal-700 dark:text-teal-300 ring-2 ring-teal-500/20'
-                    : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:border-slate-300'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                Jadwalkan Waktu
-              </button>
-            </div>
-            {scheduleMode === 'immediate' && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ujian akan dimulai otomatis saat Admin menekan tombol Publish. Buat soal terlebih dahulu.
-              </p>
-            )}
-            {scheduleMode === 'scheduled' && (
-              <Input
-                label="Tanggal & Jam Mulai"
-                type="datetime-local"
-                value={formData.start_time}
-                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-              />
-            )}
+          {/* Info: Admin akan mengatur jadwal */}
+          <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
+            <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+              <Calendar className="w-4 h-4 shrink-0" />
+              Jadwal dan durasi ujian akan diatur oleh Admin saat mempublish ujian.
+            </p>
           </div>
-          <Input
-            label="Durasi (menit)"
-            type="number"
-            value={formData.duration.toString()}
-            onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 60 })}
-            min={10}
-            max={240}
-          />
 
           {/* SEB Settings Section */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-4">
