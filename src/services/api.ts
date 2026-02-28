@@ -320,7 +320,13 @@ export const monitoringAPI = {
   // Upload snapshot directly from a Blob (no base64 conversion needed)
   uploadSnapshotBlob: (examId: number, blob: Blob) => {
     const formData = new FormData();
-    const file = new File([blob], `snapshot_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+    // Determine file extension from blob type
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
+      'video/webm': 'webm', 'video/mp4': 'mp4', 'video/webm;codecs=vp8': 'webm',
+    };
+    const ext = mimeToExt[blob.type] || (blob.type.startsWith('video/') ? 'webm' : 'jpg');
+    const file = new File([blob], `snapshot_${Date.now()}.${ext}`, { type: blob.type || 'image/jpeg' });
     formData.append('image', file);
     return api.post(`/exams/${examId}/snapshot`, formData, {
       timeout: 30000,

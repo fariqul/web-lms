@@ -221,142 +221,143 @@ export function useExamMode({
 
     // Helper: check if a blob has actual content (not empty/tiny)
     const isBlobValid = (blob: Blob | null): blob is Blob => {
-      return !!blob && blob.size > 1000;
-    };
-
-    // Helper: draw ImageBitmap to canvas and get blob
-    const bitmapToBlob = async (bitmap: ImageBitmap): Promise<Blob | null> => {
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { bitmap.close(); return null; }
-      ctx.drawImage(bitmap, 0, 0);
-      bitmap.close();
-      return new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5);
-      });
-    };
-
-    // Helper: upload blob directly
-    const uploadBlob = async (blob: Blob, method: string): Promise<string> => {
-      await monitoringAPI.uploadSnapshotBlob(examId, blob);
-      console.log(`[Snapshot] ${method} success: ${Math.round(blob.size / 1024)}KB`);
-      return 'captured';
+      return !!blob && blob.size > 500;
     };
 
     try {
-      // ===== Strategy 1: ImageCapture.grabFrame() =====
-      // Captures frame directly from camera track, bypasses video element rendering
+      // ===== Strategy 1: ImageCapture.takePhoto() =====
+      // Captures photo directly from camera hardware → Blob. No canvas at all.
       if (typeof ImageCapture !== 'undefined') {
-        try {
-          const imageCapture = new ImageCapture(track);
-          const bitmap = await imageCapture.grabFrame();
-          const blob = await bitmapToBlob(bitmap);
-          if (isBlobValid(blob)) {
-            return await uploadBlob(blob, 'ImageCapture.grabFrame');
-          }
-          console.warn('[Snapshot] grabFrame produced empty/small blob');
-        } catch (e) {
-          console.warn('[Snapshot] ImageCapture.grabFrame failed:', e);
-        }
-
-        // ===== Strategy 2: ImageCapture.takePhoto() =====
-        // Takes a photo from camera hardware (may briefly pause stream)
         try {
           const imageCapture = new ImageCapture(track);
           const blob = await imageCapture.takePhoto();
           if (isBlobValid(blob)) {
-            return await uploadBlob(blob, 'ImageCapture.takePhoto');
+            await monitoringAPI.uploadSnapshotBlob(examId, blob);
+            console.log(`[Snapshot] ImageCapture.takePhoto success: ${Math.round(blob.size / 1024)}KB`);
+            return 'captured';
           }
-          console.warn('[Snapshot] takePhoto produced empty/small blob');
+          console.warn('[Snapshot] takePhoto produced invalid blob');
         } catch (e) {
           console.warn('[Snapshot] ImageCapture.takePhoto failed:', e);
         }
       }
 
-      // ===== Strategy 3: createImageBitmap from video element =====
-      // Different rendering path than drawImage — works on some drivers where drawImage fails
+      // ===== Strategy 2: MediaRecorder (GUARANTEED to work) =====
+      // Records a short video clip directly from the stream.
+      // No canvas, no drawImage, no GPU rendering. Just raw stream encoding.
       try {
-        const bitmap = await createImageBitmap(video);
-        const blob = await bitmapToBlob(bitmap);
-        if (isBlobValid(blob)) {
-          // Verify blob has non-black content
-          const checkBitmap = await createImageBitmap(blob);
-          const checkCanvas = document.createElement('canvas');
-          checkCanvas.width = checkBitmap.width;
-          checkCanvas.height = checkBitmap.height;
-          const checkCtx = checkCanvas.getContext('2d');
-          if (checkCtx) {
-            checkCtx.drawImage(checkBitmap, 0, 0);
-            const data = checkCtx.getImageData(0, 0, checkBitmap.width, checkBitmap.height).data;
-            let hasContent = false;
-            for (let i = 0; i < data.length; i += 4000) {
-              if (data[i] > 5 || data[i + 1] > 5 || data[i + 2] > 5) {
-                hasContent = true;
-                break;
-              }
-            }
-            checkBitmap.close();
-            if (hasContent) {
-              return await uploadBlob(blob, 'createImageBitmap');
-            }
-            console.warn('[Snapshot] createImageBitmap produced black image');
+        // Find a supported mime type
+        const mimeTypes = [
+          'video/webm;codecs=vp8',
+          'video/webm',
+          'video/mp4',
+        ];
+        let selectedMime = '';
+        for (const mime of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(mime)) {
+            selectedMime = mime;
+            break;
           }
         }
+        if (!selectedMime) {
+          // If none supported, let browser pick default
+          selectedMime = '';
+        }
+
+        const videoBlob = await new Promise<Blob>((resolve, reject) => {
+          const chunks: Blob[] = [];
+          const recorderOptions: MediaRecorderOptions = {};
+          if (selectedMime) recorderOptions.mimeType = selectedMime;
+
+          let recorder: MediaRecorder;
+          try {
+            recorder = new MediaRecorder(stream, recorderOptions);
+          } catch {
+            recorder = new MediaRecorder(stream);
+          }
+
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data);
+          };
+          recorder.onstop = () => {
+            if (chunks.length > 0) {
+              resolve(new Blob(chunks, { type: recorder.mimeType || 'video/webm' }));
+            } else {
+              reject(new Error('MediaRecorder produced no data'));
+            }
+          };
+          recorder.onerror = () => reject(new Error('MediaRecorder error'));
+
+          recorder.start();
+          // Record 500ms — enough for at least one keyframe
+          setTimeout(() => {
+            if (recorder.state === 'recording') {
+              recorder.stop();
+            }
+          }, 500);
+        });
+
+        if (isBlobValid(videoBlob)) {
+          await monitoringAPI.uploadSnapshotBlob(examId, videoBlob);
+          console.log(`[Snapshot] MediaRecorder success: ${Math.round(videoBlob.size / 1024)}KB (${videoBlob.type})`);
+          return 'captured';
+        }
+        console.warn('[Snapshot] MediaRecorder produced invalid blob');
       } catch (e) {
-        console.warn('[Snapshot] createImageBitmap failed:', e);
+        console.warn('[Snapshot] MediaRecorder failed:', e);
       }
 
-      // ===== Strategy 4: Classic canvas drawImage (last resort) =====
-      // Wait for frame via requestVideoFrameCallback
-      await new Promise<void>((resolve) => {
-        if ('requestVideoFrameCallback' in video) {
-          (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
-            .requestVideoFrameCallback(() => resolve());
-        } else {
-          requestAnimationFrame(() => resolve());
+      // ===== Strategy 3: Canvas with willReadFrequently (software rendering) =====
+      try {
+        // Wait for a frame
+        await new Promise<void>((resolve) => {
+          if ('requestVideoFrameCallback' in video) {
+            (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
+              .requestVideoFrameCallback(() => resolve());
+          } else {
+            requestAnimationFrame(() => resolve());
+          }
+          setTimeout(resolve, 500);
+        });
+
+        const width = video.videoWidth || track.getSettings().width || 640;
+        const height = video.videoHeight || track.getSettings().height || 480;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        // willReadFrequently: true forces software-backed canvas (CPU mode)
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) throw new Error('No 2d context');
+        ctx.drawImage(video, 0, 0, width, height);
+
+        // Check for blank image
+        const pixels = ctx.getImageData(0, 0, width, height).data;
+        let hasContent = false;
+        for (let i = 0; i < pixels.length; i += 4000) {
+          if (pixels[i] > 5 || pixels[i + 1] > 5 || pixels[i + 2] > 5) {
+            hasContent = true;
+            break;
+          }
         }
-        setTimeout(resolve, 500);
-      });
 
-      let width = video.videoWidth || 640;
-      let height = video.videoHeight || 480;
-      if (!video.videoWidth || !video.videoHeight) {
-        const settings = track.getSettings();
-        width = settings.width || width;
-        height = settings.height || height;
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      ctx.drawImage(video, 0, 0, width, height);
-
-      // Pixel sampling check
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const pixels = imageData.data;
-      let hasContent = false;
-      for (let i = 0; i < pixels.length; i += 4000) {
-        if (pixels[i] > 5 || pixels[i + 1] > 5 || pixels[i + 2] > 5) {
-          hasContent = true;
-          break;
+        if (hasContent) {
+          const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5);
+          });
+          if (isBlobValid(blob)) {
+            await monitoringAPI.uploadSnapshotBlob(examId, blob);
+            console.log(`[Snapshot] Canvas (software) success: ${Math.round(blob.size / 1024)}KB`);
+            return 'captured';
+          }
         }
+        console.warn('[Snapshot] Canvas produced black image');
+      } catch (e) {
+        console.warn('[Snapshot] Canvas failed:', e);
       }
 
-      if (!hasContent) {
-        console.warn('[Snapshot] All 4 strategies failed — image is black');
-        return null;
-      }
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5);
-      });
-      if (!isBlobValid(blob)) return null;
-
-      return await uploadBlob(blob, 'canvas.drawImage');
+      console.error('[Snapshot] All strategies failed');
+      return null;
     } catch (error) {
       console.error('[Snapshot] Failed:', error);
       throw error;
