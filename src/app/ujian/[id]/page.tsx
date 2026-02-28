@@ -131,6 +131,9 @@ export default function ExamTakingPage() {
   });
   const [snapshotStatus, setSnapshotStatus] = useState<'idle' | 'capturing' | 'success' | 'error'>('idle');
   const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  const [snapshotSuccessCount, setSnapshotSuccessCount] = useState(0);
+  const [snapshotFailCount, setSnapshotFailCount] = useState(0);
 
   useEffect(() => {
     fetchExam();
@@ -330,49 +333,50 @@ export default function ExamTakingPage() {
   useEffect(() => {
     if (!isStarted || !isCameraActive) return;
 
-    const snapshotCheck = setInterval(async () => {
+    const doSnapshot = async (): Promise<boolean> => {
       try {
         setSnapshotStatus('capturing');
+        setSnapshotError(null);
         const result = await captureSnapshot();
         if (result) {
           setSnapshotStatus('success');
           setLastSnapshotTime(new Date());
+          setSnapshotSuccessCount(c => c + 1);
+          setSnapshotError(null);
+          return true;
         } else {
           setSnapshotStatus('error');
+          setSnapshotError('Kamera belum siap atau video kosong');
+          setSnapshotFailCount(c => c + 1);
+          return false;
         }
-      } catch {
+      } catch (err) {
         setSnapshotStatus('error');
+        const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; message?: string; code?: string };
+        if (axiosErr.code === 'ERR_NETWORK' || axiosErr.message?.includes('Network')) {
+          setSnapshotError('Gagal koneksi ke server');
+        } else if (axiosErr.response?.status === 422) {
+          setSnapshotError(`Validasi: ${axiosErr.response?.data?.message || 'File tidak valid'}`);
+        } else if (axiosErr.response?.status === 413) {
+          setSnapshotError('File terlalu besar');
+        } else if (axiosErr.response?.status) {
+          setSnapshotError(`Server error ${axiosErr.response.status}`);
+        } else {
+          setSnapshotError(axiosErr.message || 'Upload gagal');
+        }
+        setSnapshotFailCount(c => c + 1);
+        return false;
       }
-    }, 30000);
+    };
 
-    // First snapshot after 8s (give camera time to fully initialize, especially non-SEB)
+    const snapshotCheck = setInterval(doSnapshot, 30000);
+
+    // First snapshot after 8s
     const firstTimer = setTimeout(async () => {
-      try {
-        setSnapshotStatus('capturing');
-        const result = await captureSnapshot();
-        if (result) {
-          setSnapshotStatus('success');
-          setLastSnapshotTime(new Date());
-        } else {
-          setSnapshotStatus('error');
-          // Retry first snapshot after another 5s if it failed
-          setTimeout(async () => {
-            try {
-              setSnapshotStatus('capturing');
-              const retryResult = await captureSnapshot();
-              if (retryResult) {
-                setSnapshotStatus('success');
-                setLastSnapshotTime(new Date());
-              } else {
-                setSnapshotStatus('error');
-              }
-            } catch {
-              setSnapshotStatus('error');
-            }
-          }, 5000);
-        }
-      } catch {
-        setSnapshotStatus('error');
+      const ok = await doSnapshot();
+      if (!ok) {
+        // Retry after 5s if first snapshot failed
+        setTimeout(doSnapshot, 5000);
       }
     }, 8000);
 
@@ -1051,20 +1055,26 @@ export default function ExamTakingPage() {
                   )}
                   {isCameraActive && snapshotStatus !== 'idle' && (
                     <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded max-w-[60%] truncate ${
                         snapshotStatus === 'success' ? 'bg-green-600/80 text-white' :
                         snapshotStatus === 'capturing' ? 'bg-yellow-600/80 text-white' :
                         'bg-red-600/80 text-white'
-                      }`}>
+                      }`} title={snapshotError || undefined}>
                         {snapshotStatus === 'success' ? '✓ Snapshot OK' :
                          snapshotStatus === 'capturing' ? '⏳ Capturing...' :
-                         '✗ Snapshot gagal'}
+                         `✗ ${snapshotError || 'Gagal'}`}
                       </span>
                       {lastSnapshotTime && (
                         <span className="text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded">
                           {lastSnapshotTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </span>
                       )}
+                    </div>
+                  )}
+                  {/* Snapshot stats overlay */}
+                  {isCameraActive && (snapshotSuccessCount > 0 || snapshotFailCount > 0) && (
+                    <div className="absolute top-1 right-1 text-[8px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">
+                      ✓{snapshotSuccessCount} ✗{snapshotFailCount}
                     </div>
                   )}
                 </div>
