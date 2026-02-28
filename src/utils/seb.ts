@@ -252,6 +252,20 @@ export function generateSEBConfigXML(config: SEBConfig): string {
   entries.push(plistEntry('enableF11', false));
   entries.push(plistEntry('enableF12', false));
 
+  // Display configuration — fix "Prohibited Display Configuration" error
+  // allowedDisplaysMaxNumber: max monitors allowed (0 = unlimited)
+  entries.push(plistEntry('allowedDisplaysMaxNumber', 1));
+  // allowedDisplayBuiltin: allow built-in display (laptop screen)
+  entries.push(plistEntry('allowedDisplayBuiltin', true));
+  // ignoreDisplayConfigValidation: skip display config check entirely
+  // This fixes the "0 internal and 0 external displays detected" error
+  // that occurs on PCs with generic/missing GPU drivers
+  entries.push(plistEntry('ignoreDisplayConfigValidation', true));
+  // allowedDisplaysIgnoreFailure: don't shut down SEB if display detection fails
+  entries.push(plistEntry('allowedDisplaysIgnoreFailure', true));
+  // detectStoppedProcess: don't exit if display detection process fails
+  entries.push(plistEntry('detectStoppedProcess', false));
+
   // Browser settings
   entries.push(plistEntry('browserViewMode', 1)); // 1 = fullscreen
   entries.push(plistEntry('mainBrowserWindowWidth', '100%'));
