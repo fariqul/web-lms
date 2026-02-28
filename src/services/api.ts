@@ -317,6 +317,16 @@ export const monitoringAPI = {
     });
   },
   
+  // Upload snapshot directly from a Blob (no base64 conversion needed)
+  uploadSnapshotBlob: (examId: number, blob: Blob) => {
+    const formData = new FormData();
+    const file = new File([blob], `snapshot_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+    formData.append('image', file);
+    return api.post(`/exams/${examId}/snapshot`, formData, {
+      timeout: 30000,
+    });
+  },
+
   reportViolation: (data: {
     exam_id: number;
     type: string;

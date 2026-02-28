@@ -3,6 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { monitoringAPI } from '@/services/api';
 
+// Extend ImageCapture type to include grabFrame (not in all TS libs)
+declare global {
+  interface ImageCapture {
+    grabFrame(): Promise<ImageBitmap>;
+    takePhoto(photoSettings?: { imageWidth?: number; imageHeight?: number }): Promise<Blob>;
+  }
+}
+
 interface UseExamModeOptions {
   examId: number;
   onViolation?: (type: string) => void;
@@ -191,117 +199,169 @@ export function useExamMode({
     setIsCameraActive(false);
   }, []);
 
-  // Capture snapshot
-  // Wait for an actual video frame to be available for canvas capture
-  const waitForVideoFrame = useCallback((video: HTMLVideoElement): Promise<void> => {
-    return new Promise((resolve) => {
-      // Modern browsers: requestVideoFrameCallback ensures a decoded frame is ready
-      if ('requestVideoFrameCallback' in video) {
-        (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
-          .requestVideoFrameCallback(() => resolve());
-      } else {
-        // Fallback: use requestAnimationFrame (less precise but works everywhere)
-        requestAnimationFrame(() => resolve());
-      }
-      // Safety timeout — don't wait forever
-      setTimeout(resolve, 500);
-    });
-  }, []);
-
+  // Capture snapshot — uses multiple strategies for maximum hardware compatibility
   const captureSnapshot = useCallback(async (): Promise<string | null> => {
     if (!videoRef.current || !isCameraActive) {
       console.warn('[Snapshot] Skipped: videoRef or camera not active');
       return null;
     }
 
+    const video = videoRef.current;
+    const stream = video.srcObject as MediaStream | null;
+    if (!stream) {
+      console.warn('[Snapshot] Skipped: no srcObject on video');
+      return null;
+    }
+
+    const track = stream.getVideoTracks()[0];
+    if (!track || track.readyState !== 'live') {
+      console.warn('[Snapshot] Skipped: no live video track');
+      return null;
+    }
+
+    // Helper: check if a blob has actual content (not empty/tiny)
+    const isBlobValid = (blob: Blob | null): blob is Blob => {
+      return !!blob && blob.size > 1000;
+    };
+
+    // Helper: draw ImageBitmap to canvas and get blob
+    const bitmapToBlob = async (bitmap: ImageBitmap): Promise<Blob | null> => {
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { bitmap.close(); return null; }
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5);
+      });
+    };
+
+    // Helper: upload blob directly
+    const uploadBlob = async (blob: Blob, method: string): Promise<string> => {
+      await monitoringAPI.uploadSnapshotBlob(examId, blob);
+      console.log(`[Snapshot] ${method} success: ${Math.round(blob.size / 1024)}KB`);
+      return 'captured';
+    };
+
     try {
-      const video = videoRef.current;
-
-      // Ensure the video element has a stream
-      if (!video.srcObject) {
-        console.warn('[Snapshot] Skipped: no srcObject on video');
-        return null;
-      }
-
-      // Wait for an actual video frame to be decoded and ready for capture
-      await waitForVideoFrame(video);
-      
-      // Determine canvas dimensions — prefer intrinsic video dimensions,
-      // fall back to stream track settings, then to element/default dimensions
-      let width = video.videoWidth;
-      let height = video.videoHeight;
-      
-      if (!width || !height) {
-        const stream = video.srcObject as MediaStream | null;
-        if (stream) {
-          const track = stream.getVideoTracks()[0];
-          if (track) {
-            const settings = track.getSettings();
-            width = settings.width || 0;
-            height = settings.height || 0;
+      // ===== Strategy 1: ImageCapture.grabFrame() =====
+      // Captures frame directly from camera track, bypasses video element rendering
+      if (typeof ImageCapture !== 'undefined') {
+        try {
+          const imageCapture = new ImageCapture(track);
+          const bitmap = await imageCapture.grabFrame();
+          const blob = await bitmapToBlob(bitmap);
+          if (isBlobValid(blob)) {
+            return await uploadBlob(blob, 'ImageCapture.grabFrame');
           }
+          console.warn('[Snapshot] grabFrame produced empty/small blob');
+        } catch (e) {
+          console.warn('[Snapshot] ImageCapture.grabFrame failed:', e);
+        }
+
+        // ===== Strategy 2: ImageCapture.takePhoto() =====
+        // Takes a photo from camera hardware (may briefly pause stream)
+        try {
+          const imageCapture = new ImageCapture(track);
+          const blob = await imageCapture.takePhoto();
+          if (isBlobValid(blob)) {
+            return await uploadBlob(blob, 'ImageCapture.takePhoto');
+          }
+          console.warn('[Snapshot] takePhoto produced empty/small blob');
+        } catch (e) {
+          console.warn('[Snapshot] ImageCapture.takePhoto failed:', e);
         }
       }
-      
-      // Final fallback
-      if (!width || !height) {
-        width = video.clientWidth || 640;
-        height = video.clientHeight || 480;
+
+      // ===== Strategy 3: createImageBitmap from video element =====
+      // Different rendering path than drawImage — works on some drivers where drawImage fails
+      try {
+        const bitmap = await createImageBitmap(video);
+        const blob = await bitmapToBlob(bitmap);
+        if (isBlobValid(blob)) {
+          // Verify blob has non-black content
+          const checkBitmap = await createImageBitmap(blob);
+          const checkCanvas = document.createElement('canvas');
+          checkCanvas.width = checkBitmap.width;
+          checkCanvas.height = checkBitmap.height;
+          const checkCtx = checkCanvas.getContext('2d');
+          if (checkCtx) {
+            checkCtx.drawImage(checkBitmap, 0, 0);
+            const data = checkCtx.getImageData(0, 0, checkBitmap.width, checkBitmap.height).data;
+            let hasContent = false;
+            for (let i = 0; i < data.length; i += 4000) {
+              if (data[i] > 5 || data[i + 1] > 5 || data[i + 2] > 5) {
+                hasContent = true;
+                break;
+              }
+            }
+            checkBitmap.close();
+            if (hasContent) {
+              return await uploadBlob(blob, 'createImageBitmap');
+            }
+            console.warn('[Snapshot] createImageBitmap produced black image');
+          }
+        }
+      } catch (e) {
+        console.warn('[Snapshot] createImageBitmap failed:', e);
       }
-      
+
+      // ===== Strategy 4: Classic canvas drawImage (last resort) =====
+      // Wait for frame via requestVideoFrameCallback
+      await new Promise<void>((resolve) => {
+        if ('requestVideoFrameCallback' in video) {
+          (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
+            .requestVideoFrameCallback(() => resolve());
+        } else {
+          requestAnimationFrame(() => resolve());
+        }
+        setTimeout(resolve, 500);
+      });
+
+      let width = video.videoWidth || 640;
+      let height = video.videoHeight || 480;
+      if (!video.videoWidth || !video.videoHeight) {
+        const settings = track.getSettings();
+        width = settings.width || width;
+        height = settings.height || height;
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
-      
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
-      
       ctx.drawImage(video, 0, 0, width, height);
-      
-      // Check if image is NOT completely blank by sampling a few pixels
+
+      // Pixel sampling check
       const imageData = ctx.getImageData(0, 0, width, height);
       const pixels = imageData.data;
       let hasContent = false;
-      // Sample every 1000th pixel to check for non-black content
       for (let i = 0; i < pixels.length; i += 4000) {
         if (pixels[i] > 5 || pixels[i + 1] > 5 || pixels[i + 2] > 5) {
           hasContent = true;
           break;
         }
       }
-      
+
       if (!hasContent) {
-        console.warn('[Snapshot] Skipped: captured image appears completely black');
+        console.warn('[Snapshot] All 4 strategies failed — image is black');
         return null;
       }
-      
-      const base64 = canvas.toDataURL('image/jpeg', 0.5);
-      
-      console.log(`[Snapshot] Image size: ${Math.round(base64.length / 1024)}KB`);
-      
-      // Upload snapshot to server
-      try {
-        await monitoringAPI.uploadSnapshot({
-          exam_id: examId,
-          photo: base64,
-        });
-        console.log('[Snapshot] Uploaded successfully');
-      } catch (uploadError) {
-        const axiosErr = uploadError as { response?: { status?: number; data?: unknown }; message?: string };
-        console.error('[Snapshot] Upload API error:', {
-          status: axiosErr.response?.status,
-          data: axiosErr.response?.data,
-          message: axiosErr.message,
-        });
-        throw uploadError;
-      }
 
-      return base64;
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5);
+      });
+      if (!isBlobValid(blob)) return null;
+
+      return await uploadBlob(blob, 'canvas.drawImage');
     } catch (error) {
       console.error('[Snapshot] Failed:', error);
-      return null;
+      throw error;
     }
-  }, [examId, isCameraActive, waitForVideoFrame]);
+  }, [examId, isCameraActive]);
 
   // Event listeners for anti-cheat
   useEffect(() => {
