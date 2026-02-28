@@ -114,6 +114,30 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * AI Proctoring alert — suspicious activity detected.
+     */
+    public function examProctoringAlert(int $examId, array $alertData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.proctor-alert",
+            $alertData,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * AI Proctoring warning to specific student (browser shows warning).
+     */
+    public function examProctoringWarning(int $examId, int $studentId, array $warningData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.proctor-warning",
+            array_merge($warningData, ['student_id' => $studentId]),
+            "exam.{$examId}"
+        );
+    }
+
     // ─── Attendance Events ──────────────────────────────────────
 
     /**

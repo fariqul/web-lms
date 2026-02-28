@@ -46,5 +46,5 @@ src/
 
 ## Backend Requirements
 - Laravel 11 API server (separate project)
-- aws ec2 server for hosting backend and database
+- home server docker for hosting backend and database
 - mysql database for data storage

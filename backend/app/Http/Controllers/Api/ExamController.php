@@ -1170,7 +1170,7 @@ class ExamController extends Controller
     public function uploadSnapshot(Request $request, Exam $exam)
     {
         $request->validate([
-            'image' => 'required|file|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max
+            'image' => 'required|file|mimes:jpeg,jpg,png,webp|max:512', // 512KB max (320×240 JPEG)
         ]);
 
         $user = $request->user();
@@ -1184,6 +1184,20 @@ class ExamController extends Controller
                 'success' => false,
                 'message' => 'Sesi ujian tidak ditemukan',
             ], 422);
+        }
+
+        // Rate limiting: max 1 snapshot per 3 seconds per student
+        $lastSnapshot = MonitoringSnapshot::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->orderBy('captured_at', 'desc')
+            ->first();
+
+        if ($lastSnapshot && $lastSnapshot->captured_at && now()->diffInSeconds($lastSnapshot->captured_at) < 3) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Rate limited — too frequent',
+                'data' => $lastSnapshot,
+            ]);
         }
 
         $imagePath = $request->file('image')->store('monitoring-snapshots', 'public');
@@ -1202,6 +1216,19 @@ class ExamController extends Controller
             'image_path' => $imagePath,
             'captured_at' => now()->toISOString(),
         ]);
+
+        // Dispatch async AI analysis job (if queue is configured)
+        try {
+            \App\Jobs\AnalyzeSnapshotJob::dispatch(
+                $snapshot->id,
+                $exam->id,
+                $user->id,
+                $result->id,
+            );
+        } catch (\Exception $e) {
+            // Silently ignore if queue not available — AI analysis is optional
+            \Illuminate\Support\Facades\Log::debug('[Proctoring] Job dispatch skipped: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

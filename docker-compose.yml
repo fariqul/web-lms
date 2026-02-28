@@ -93,6 +93,28 @@ services:
     networks:
       - lms-network
 
+  # AI Proctoring Service (YOLO v8 object detection)
+  proctoring:
+    build:
+      context: ./backend/proctoring-service
+      dockerfile: Dockerfile
+    container_name: lms-proctoring
+    restart: unless-stopped
+    environment:
+      YOLO_MODEL: yolov8n.pt
+      CONFIDENCE_THRESHOLD: "0.4"
+      DEVICE: "0"
+      LOG_LEVEL: INFO
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - lms-network
+
 volumes:
   mysql_data:
   backend_storage:

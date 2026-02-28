@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useExamMode } from '@/hooks/useExamMode';
+import { useProctoring, ProctoringDetection } from '@/hooks/useProctoring';
 import { Button, Card, ConfirmDialog } from '@/components/ui';
 import {
   Clock,
@@ -88,7 +89,6 @@ export default function ExamTakingPage() {
   const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
   const previewVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const previewStreamRef = React.useRef<MediaStream | null>(null);
-  const [cameraManuallyOff, setCameraManuallyOff] = useState(false);
 
   // Clear exam session flags (call before navigating away after submit)
   const clearExamSession = () => {
@@ -119,9 +119,11 @@ export default function ExamTakingPage() {
     isMobile,
     violationCount,
     maxViolations,
+    consecutiveSnapshotFails,
     enterFullscreen,
     startCamera,
     stopCamera,
+    restartCamera,
     activateMonitoring,
     captureSnapshot,
     videoRef,
@@ -135,6 +137,37 @@ export default function ExamTakingPage() {
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [snapshotSuccessCount, setSnapshotSuccessCount] = useState(0);
   const [snapshotFailCount, setSnapshotFailCount] = useState(0);
+  const [proctoringWarning, setProctoringWarning] = useState<string | null>(null);
+
+  // AI Proctoring — face detection, head pose, eye gaze, identity verification
+  const proctoring = useProctoring({
+    examId,
+    videoRef,
+    enabled: isStarted && isCameraActive,
+    detectionInterval: 2000,
+    onDetection: (detection: ProctoringDetection) => {
+      // Show brief warning overlay for critical detections
+      if (detection.type === 'no_face' || detection.type === 'multi_face' || detection.type === 'identity_mismatch') {
+        setProctoringWarning(detection.description);
+        setTimeout(() => setProctoringWarning(null), 3000);
+      }
+    },
+  });
+
+  // Capture reference face shortly after camera starts
+  const referenceCapturedRef = React.useRef(false);
+  useEffect(() => {
+    if (isStarted && isCameraActive && proctoring.isModelLoaded && !referenceCapturedRef.current) {
+      const timer = setTimeout(async () => {
+        const success = await proctoring.captureReference();
+        if (success) {
+          referenceCapturedRef.current = true;
+          console.log('[Proctoring] Reference face captured');
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isStarted, isCameraActive, proctoring.isModelLoaded]);
 
   // Socket: listen for admin ending the exam
   const examSocket = useExamSocket(examId);
@@ -267,14 +300,14 @@ export default function ExamTakingPage() {
 
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
-    if (isStarted && !isCameraActive && !cameraManuallyOff) {
+    if (isStarted && !isCameraActive) {
       // Shorter delay now since permission was already granted from camera preview
       const timer = setTimeout(() => {
         startCamera();
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isStarted, isCameraActive, startCamera, cameraManuallyOff]);
+  }, [isStarted, isCameraActive, startCamera]);
 
   // Show camera banner if camera is not active after a reasonable delay
   useEffect(() => {
@@ -308,7 +341,7 @@ export default function ExamTakingPage() {
     setCameraPreviewError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
+        video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
         audio: false,
       });
       previewStreamRef.current = stream;
@@ -336,21 +369,6 @@ export default function ExamTakingPage() {
       previewVideoRef.current.srcObject = null;
     }
     setCameraPreviewActive(false);
-  };
-
-  const handleToggleCamera = async () => {
-    if (isCameraActive) {
-      stopCamera();
-      setCameraManuallyOff(true);
-    } else {
-      setCameraManuallyOff(false);
-      try {
-        await startCamera();
-      } catch {
-        setCameraPermissionDenied(true);
-        setShowCameraBanner(true);
-      }
-    }
   };
 
   // Track snapshot status for visual feedback
@@ -393,22 +411,11 @@ export default function ExamTakingPage() {
       }
     };
 
-    const snapshotCheck = setInterval(doSnapshot, 30000);
+    // Snapshot every 5 seconds
+    const snapshotCheck = setInterval(doSnapshot, 5000);
 
-    // First snapshot after 12s — give camera extra time to fully initialize
-    const firstTimer = setTimeout(async () => {
-      const ok = await doSnapshot();
-      if (!ok) {
-        // Retry after 8s if first snapshot failed
-        setTimeout(async () => {
-          const ok2 = await doSnapshot();
-          if (!ok2) {
-            // Third attempt after another 10s
-            setTimeout(doSnapshot, 10000);
-          }
-        }, 8000);
-      }
-    }, 12000);
+    // First snapshot after 3s — give camera time to initialize
+    const firstTimer = setTimeout(doSnapshot, 3000);
 
     return () => {
       clearInterval(snapshotCheck);
@@ -833,7 +840,6 @@ export default function ExamTakingPage() {
   const handleRetryCamera = async () => {
     setCameraPermissionDenied(false);
     setShowCameraBanner(false);
-    setCameraManuallyOff(false);
     try {
       await startCamera();
     } catch {
@@ -844,8 +850,8 @@ export default function ExamTakingPage() {
 
   return (
     <div className="min-h-screen bg-background select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}>
-      {/* Camera permission banner — only show if camera isn't manually turned off */}
-      {isStarted && showCameraBanner && !isCameraActive && !cameraManuallyOff && (
+      {/* Camera permission banner */}
+      {isStarted && showCameraBanner && !isCameraActive && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-3 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
             <Camera className="w-5 h-5 flex-shrink-0" />
@@ -879,25 +885,14 @@ export default function ExamTakingPage() {
               <Clock className="w-5 h-5" />
               <span className="font-mono font-bold">{formatTime(timeRemaining)}</span>
             </div>
-            {isCameraActive ? (
-              <button
-                onClick={handleToggleCamera}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                title="Klik untuk matikan kamera"
-              >
-                <Video className="w-4 h-4" />
-                <span className="text-sm font-medium">Kamera</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleToggleCamera}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                title="Klik untuk nyalakan kamera"
-              >
-                <VideoOff className="w-4 h-4" />
-                <span className="text-sm font-medium">Kamera</span>
-              </button>
-            )}
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+              isCameraActive 
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+            }`}>
+              {isCameraActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+              <span className="text-sm font-medium">{isCameraActive ? 'Kamera' : 'Kamera Mati'}</span>
+            </div>
             {violationCount > 0 && (
               <div className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="w-5 h-5" />
@@ -1107,28 +1102,82 @@ export default function ExamTakingPage() {
                       ✓{snapshotSuccessCount} ✗{snapshotFailCount}
                     </div>
                   )}
-                </div>
-                {/* Camera toggle button — Zoom-style */}
-                <button
-                  onClick={handleToggleCamera}
-                  className={`mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    isCameraActive
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
-                      : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-900/50'
-                  }`}
-                >
-                  {isCameraActive ? (
-                    <>
-                      <VideoOff className="w-3.5 h-3.5" />
-                      Matikan Kamera
-                    </>
-                  ) : (
-                    <>
-                      <Video className="w-3.5 h-3.5" />
-                      Nyalakan Kamera
-                    </>
+                  {/* Auto-restart indicator */}
+                  {consecutiveSnapshotFails >= 3 && (
+                    <div className="absolute top-1 left-1 text-[8px] bg-amber-500/80 text-white px-1.5 py-0.5 rounded backdrop-blur-sm animate-pulse">
+                      ⚠ Kamera bermasalah ({consecutiveSnapshotFails}x gagal)
+                    </div>
                   )}
-                </button>
+                  {/* AI Proctoring status overlay */}
+                  {isCameraActive && proctoring.isModelLoaded && (
+                    <div className="absolute top-1 left-1 text-[8px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
+                      {proctoring.isAnalyzing ? (
+                        <>
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
+                          AI
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                          AI
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* AI Proctoring risk bar */}
+                {isCameraActive && proctoring.isModelLoaded && proctoring.stats.totalAnalyzed > 0 && (
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex items-center justify-between text-[9px]">
+                      <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        {proctoring.stats.riskLevel === 'low' && <ShieldCheck className="w-3 h-3 text-green-500" />}
+                        {proctoring.stats.riskLevel === 'medium' && <Shield className="w-3 h-3 text-yellow-500" />}
+                        {proctoring.stats.riskLevel === 'high' && <ShieldAlert className="w-3 h-3 text-orange-500" />}
+                        {proctoring.stats.riskLevel === 'critical' && <ShieldAlert className="w-3 h-3 text-red-500" />}
+                        AI Proktor
+                      </span>
+                      <span className={`font-medium ${
+                        proctoring.stats.riskLevel === 'low' ? 'text-green-600 dark:text-green-400' :
+                        proctoring.stats.riskLevel === 'medium' ? 'text-yellow-600 dark:text-yellow-400' :
+                        proctoring.stats.riskLevel === 'high' ? 'text-orange-600 dark:text-orange-400' :
+                        'text-red-600 dark:text-red-400'
+                      }`}>
+                        {proctoring.stats.riskLevel === 'low' ? 'Aman' :
+                         proctoring.stats.riskLevel === 'medium' ? 'Perhatian' :
+                         proctoring.stats.riskLevel === 'high' ? 'Peringatan' : 'Kritis'}
+                      </span>
+                    </div>
+                    {proctoring.stats.totalDetections > 0 && (
+                      <div className="flex flex-wrap gap-1 text-[8px]">
+                        {proctoring.stats.noFaceCount > 0 && (
+                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1 py-0.5 rounded">
+                            Wajah hilang: {proctoring.stats.noFaceCount}
+                          </span>
+                        )}
+                        {proctoring.stats.multiFaceCount > 0 && (
+                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-1 py-0.5 rounded">
+                            Multi wajah: {proctoring.stats.multiFaceCount}
+                          </span>
+                        )}
+                        {proctoring.stats.headTurnCount > 0 && (
+                          <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-1 py-0.5 rounded">
+                            Menoleh: {proctoring.stats.headTurnCount}
+                          </span>
+                        )}
+                        {proctoring.stats.eyeGazeCount > 0 && (
+                          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded">
+                            Lirikan: {proctoring.stats.eyeGazeCount}
+                          </span>
+                        )}
+                        {proctoring.stats.identityMismatchCount > 0 && (
+                          <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1 py-0.5 rounded">
+                            ID berbeda: {proctoring.stats.identityMismatchCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </Card>
           </div>
@@ -1145,6 +1194,19 @@ export default function ExamTakingPage() {
         variant="warning"
         isLoading={submitting}
       />
+
+      {/* AI Proctoring Warning Overlay */}
+      {proctoringWarning && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-md">
+            <ShieldAlert className="w-5 h-5 flex-shrink-0 animate-pulse" />
+            <div>
+              <p className="font-semibold text-sm">Peringatan AI Proktor</p>
+              <p className="text-xs text-red-100">{proctoringWarning}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

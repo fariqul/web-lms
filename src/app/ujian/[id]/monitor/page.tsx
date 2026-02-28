@@ -268,6 +268,26 @@ export default function MonitorUjianPage() {
     return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${imagePath}`;
   };
 
+  // Relative time display (e.g. "5 detik lalu", "2 menit lalu")
+  const getRelativeTime = (dateString: string) => {
+    const now = new Date();
+    const then = new Date(dateString);
+    const diffMs = now.getTime() - then.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 5) return 'baru saja';
+    if (diffSec < 60) return `${diffSec} detik lalu`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} menit lalu`;
+    const diffHour = Math.floor(diffMin / 60);
+    return `${diffHour} jam lalu`;
+  };
+
+  // Check if a snapshot is "fresh" (within last 10 seconds)
+  const isSnapshotFresh = (dateString: string) => {
+    const diffMs = new Date().getTime() - new Date(dateString).getTime();
+    return diffMs < 10000;
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -546,7 +566,7 @@ export default function MonitorUjianPage() {
                       }}
                       className={`relative bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden group ${
                         participant.latest_snapshot ? 'cursor-pointer hover:ring-2 hover:ring-teal-500' : ''
-                      } transition-all`}
+                      } ${participant.latest_snapshot && isSnapshotFresh(participant.latest_snapshot.captured_at) ? 'ring-2 ring-green-400 animate-pulse' : ''} transition-all`}
                     >
                       {/* Snapshot Image or Placeholder */}
                       <div className="aspect-video bg-slate-200 dark:bg-slate-700 relative">
@@ -566,9 +586,9 @@ export default function MonitorUjianPage() {
                               <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
                               LIVE
                             </div>
-                            {/* Time overlay */}
-                            <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-                              {new Date(participant.latest_snapshot.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {/* Time overlay — relative time */}
+                            <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded" title={new Date(participant.latest_snapshot.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}>
+                              {getRelativeTime(participant.latest_snapshot.captured_at)}
                             </div>
                             {/* Hover overlay */}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -783,7 +803,7 @@ export default function MonitorUjianPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 text-center">
-                Foto diambil otomatis setiap 60 detik dari kamera siswa
+                Foto diambil otomatis setiap 5 detik dari kamera siswa
               </p>
             </div>
           </div>
