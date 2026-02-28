@@ -294,18 +294,26 @@ export const monitoringAPI = {
   }) => {
     // Convert base64 to blob and send as FormData
     const formData = new FormData();
-    const byteString = atob(data.photo.split(',')[1]);
-    const mimeString = data.photo.split(',')[0].split(':')[1].split(';')[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
+    try {
+      const byteString = atob(data.photo.split(',')[1]);
+      const mimeString = data.photo.split(',')[0].split(':')[1].split(';')[0] || 'image/jpeg';
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeString });
+      // Use File instead of Blob for better MIME detection on backend
+      const file = new File([blob], `snapshot_${Date.now()}.jpg`, { type: mimeString });
+      formData.append('image', file);
+    } catch (e) {
+      console.error('[Snapshot] Failed to convert base64 to file:', e);
+      return Promise.reject(e);
     }
-    const blob = new Blob([ab], { type: mimeString });
-    formData.append('image', blob, 'snapshot.jpg');
     
+    // DON'T set Content-Type manually — let axios/browser set it with correct boundary
     return api.post(`/exams/${data.exam_id}/snapshot`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000, // 30s timeout for upload
     });
   },
   

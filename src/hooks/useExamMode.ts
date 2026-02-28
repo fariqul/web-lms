@@ -221,7 +221,7 @@ export function useExamMode({
       if (!ctx) return null;
       
       ctx.drawImage(video, 0, 0);
-      const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      const base64 = canvas.toDataURL('image/jpeg', 0.5); // Lower quality = smaller file, faster upload
       
       // Validate that we got a real image (not empty)
       if (base64.length < 1000) {
@@ -229,16 +229,28 @@ export function useExamMode({
         return null;
       }
       
+      console.log(`[Snapshot] Image size: ${Math.round(base64.length / 1024)}KB`);
+      
       // Upload snapshot to server
-      await monitoringAPI.uploadSnapshot({
-        exam_id: examId,
-        photo: base64,
-      });
+      try {
+        await monitoringAPI.uploadSnapshot({
+          exam_id: examId,
+          photo: base64,
+        });
+        console.log('[Snapshot] Uploaded successfully');
+      } catch (uploadError) {
+        const axiosErr = uploadError as { response?: { status?: number; data?: unknown }; message?: string };
+        console.error('[Snapshot] Upload API error:', {
+          status: axiosErr.response?.status,
+          data: axiosErr.response?.data,
+          message: axiosErr.message,
+        });
+        throw uploadError;
+      }
 
-      console.log('[Snapshot] Uploaded successfully');
       return base64;
     } catch (error) {
-      console.error('[Snapshot] Upload failed:', error);
+      console.error('[Snapshot] Failed:', error);
       return null;
     }
   }, [examId, isCameraActive]);
