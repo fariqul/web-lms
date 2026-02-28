@@ -346,7 +346,7 @@ export default function ExamTakingPage() {
           return true;
         } else {
           setSnapshotStatus('error');
-          setSnapshotError('Kamera belum siap atau video kosong');
+          setSnapshotError('Gambar kosong, coba matikan & nyalakan kamera');
           setSnapshotFailCount(c => c + 1);
           return false;
         }

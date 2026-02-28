@@ -201,29 +201,41 @@ export function useExamMode({
     try {
       const video = videoRef.current;
       
-      // Wait for video to have valid dimensions
-      if (!video.videoWidth || !video.videoHeight) {
-        console.warn('[Snapshot] Skipped: video dimensions are 0, camera may still be initializing');
-        return null;
+      // Determine canvas dimensions — prefer intrinsic video dimensions,
+      // fall back to stream track settings, then to element dimensions
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (!width || !height) {
+        // Try getting dimensions from the stream track
+        const stream = video.srcObject as MediaStream | null;
+        if (stream) {
+          const track = stream.getVideoTracks()[0];
+          if (track) {
+            const settings = track.getSettings();
+            width = settings.width || 0;
+            height = settings.height || 0;
+          }
+        }
       }
       
-      // Ensure video is actually playing (not paused/suspended)
-      if (video.readyState < 2) {
-        console.warn('[Snapshot] Skipped: video readyState is', video.readyState, '(not enough data)');
-        return null;
+      if (!width || !height) {
+        // Last resort: use the rendered element dimensions
+        width = video.clientWidth || 640;
+        height = video.clientHeight || 480;
       }
       
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = width;
+      canvas.height = height;
       
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
       
-      ctx.drawImage(video, 0, 0);
-      const base64 = canvas.toDataURL('image/jpeg', 0.5); // Lower quality = smaller file, faster upload
+      ctx.drawImage(video, 0, 0, width, height);
+      const base64 = canvas.toDataURL('image/jpeg', 0.5);
       
-      // Validate that we got a real image (not empty)
+      // Validate that we got a real image (not blank/empty)
       if (base64.length < 1000) {
         console.warn('[Snapshot] Skipped: captured image too small, likely blank');
         return null;
