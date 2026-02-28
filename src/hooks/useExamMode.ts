@@ -192,6 +192,22 @@ export function useExamMode({
   }, []);
 
   // Capture snapshot
+  // Wait for an actual video frame to be available for canvas capture
+  const waitForVideoFrame = useCallback((video: HTMLVideoElement): Promise<void> => {
+    return new Promise((resolve) => {
+      // Modern browsers: requestVideoFrameCallback ensures a decoded frame is ready
+      if ('requestVideoFrameCallback' in video) {
+        (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
+          .requestVideoFrameCallback(() => resolve());
+      } else {
+        // Fallback: use requestAnimationFrame (less precise but works everywhere)
+        requestAnimationFrame(() => resolve());
+      }
+      // Safety timeout — don't wait forever
+      setTimeout(resolve, 500);
+    });
+  }, []);
+
   const captureSnapshot = useCallback(async (): Promise<string | null> => {
     if (!videoRef.current || !isCameraActive) {
       console.warn('[Snapshot] Skipped: videoRef or camera not active');
@@ -200,14 +216,22 @@ export function useExamMode({
 
     try {
       const video = videoRef.current;
+
+      // Ensure the video element has a stream
+      if (!video.srcObject) {
+        console.warn('[Snapshot] Skipped: no srcObject on video');
+        return null;
+      }
+
+      // Wait for an actual video frame to be decoded and ready for capture
+      await waitForVideoFrame(video);
       
       // Determine canvas dimensions — prefer intrinsic video dimensions,
-      // fall back to stream track settings, then to element dimensions
+      // fall back to stream track settings, then to element/default dimensions
       let width = video.videoWidth;
       let height = video.videoHeight;
       
       if (!width || !height) {
-        // Try getting dimensions from the stream track
         const stream = video.srcObject as MediaStream | null;
         if (stream) {
           const track = stream.getVideoTracks()[0];
@@ -219,8 +243,8 @@ export function useExamMode({
         }
       }
       
+      // Final fallback
       if (!width || !height) {
-        // Last resort: use the rendered element dimensions
         width = video.clientWidth || 640;
         height = video.clientHeight || 480;
       }
@@ -233,13 +257,25 @@ export function useExamMode({
       if (!ctx) return null;
       
       ctx.drawImage(video, 0, 0, width, height);
-      const base64 = canvas.toDataURL('image/jpeg', 0.5);
       
-      // Validate that we got a real image (not blank/empty)
-      if (base64.length < 1000) {
-        console.warn('[Snapshot] Skipped: captured image too small, likely blank');
+      // Check if image is NOT completely blank by sampling a few pixels
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const pixels = imageData.data;
+      let hasContent = false;
+      // Sample every 1000th pixel to check for non-black content
+      for (let i = 0; i < pixels.length; i += 4000) {
+        if (pixels[i] > 5 || pixels[i + 1] > 5 || pixels[i + 2] > 5) {
+          hasContent = true;
+          break;
+        }
+      }
+      
+      if (!hasContent) {
+        console.warn('[Snapshot] Skipped: captured image appears completely black');
         return null;
       }
+      
+      const base64 = canvas.toDataURL('image/jpeg', 0.5);
       
       console.log(`[Snapshot] Image size: ${Math.round(base64.length / 1024)}KB`);
       
@@ -265,7 +301,7 @@ export function useExamMode({
       console.error('[Snapshot] Failed:', error);
       return null;
     }
-  }, [examId, isCameraActive]);
+  }, [examId, isCameraActive, waitForVideoFrame]);
 
   // Event listeners for anti-cheat
   useEffect(() => {

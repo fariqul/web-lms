@@ -346,7 +346,7 @@ export default function ExamTakingPage() {
           return true;
         } else {
           setSnapshotStatus('error');
-          setSnapshotError('Gambar kosong, coba matikan & nyalakan kamera');
+          setSnapshotError('Gagal ambil gambar dari kamera');
           setSnapshotFailCount(c => c + 1);
           return false;
         }
@@ -371,14 +371,20 @@ export default function ExamTakingPage() {
 
     const snapshotCheck = setInterval(doSnapshot, 30000);
 
-    // First snapshot after 8s
+    // First snapshot after 12s — give camera extra time to fully initialize
     const firstTimer = setTimeout(async () => {
       const ok = await doSnapshot();
       if (!ok) {
-        // Retry after 5s if first snapshot failed
-        setTimeout(doSnapshot, 5000);
+        // Retry after 8s if first snapshot failed
+        setTimeout(async () => {
+          const ok2 = await doSnapshot();
+          if (!ok2) {
+            // Third attempt after another 10s
+            setTimeout(doSnapshot, 10000);
+          }
+        }, 8000);
       }
-    }, 8000);
+    }, 12000);
 
     return () => {
       clearInterval(snapshotCheck);
