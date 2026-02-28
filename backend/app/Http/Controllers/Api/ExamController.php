@@ -1170,7 +1170,7 @@ class ExamController extends Controller
     public function uploadSnapshot(Request $request, Exam $exam)
     {
         $request->validate([
-            'image' => 'required|file|mimes:jpeg,jpg,png,webp,webm,mp4,avi|max:10240', // 10MB max, accept images & video clips
+            'image' => 'required|file|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max
         ]);
 
         $user = $request->user();

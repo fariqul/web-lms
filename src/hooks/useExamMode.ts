@@ -242,9 +242,11 @@ export function useExamMode({
         }
       }
 
-      // ===== Strategy 2: MediaRecorder (GUARANTEED to work) =====
-      // Records a short video clip directly from the stream.
-      // No canvas, no drawImage, no GPU rendering. Just raw stream encoding.
+      // ===== Strategy 2: MediaRecorder → extract frame as JPEG =====
+      // Record short video clip from stream (bypasses GPU driver issues),
+      // then load the clip into an offscreen <video>, draw to canvas → JPEG.
+      // This works because decoding a recorded video file uses a different
+      // rendering pipeline than live camera → canvas.
       try {
         // Find a supported mime type
         const mimeTypes = [
@@ -258,10 +260,6 @@ export function useExamMode({
             selectedMime = mime;
             break;
           }
-        }
-        if (!selectedMime) {
-          // If none supported, let browser pick default
-          selectedMime = '';
         }
 
         const videoBlob = await new Promise<Blob>((resolve, reject) => {
@@ -297,14 +295,101 @@ export function useExamMode({
           }, 500);
         });
 
-        if (isBlobValid(videoBlob)) {
-          await monitoringAPI.uploadSnapshotBlob(examId, videoBlob);
-          console.log(`[Snapshot] MediaRecorder success: ${Math.round(videoBlob.size / 1024)}KB (${videoBlob.type})`);
-          return 'captured';
+        if (!isBlobValid(videoBlob)) {
+          throw new Error('MediaRecorder produced invalid blob');
         }
-        console.warn('[Snapshot] MediaRecorder produced invalid blob');
+
+        // Now extract a frame from the recorded clip
+        const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+          const offscreenVideo = document.createElement('video');
+          offscreenVideo.muted = true;
+          offscreenVideo.playsInline = true;
+          offscreenVideo.preload = 'auto';
+
+          const blobUrl = URL.createObjectURL(videoBlob);
+          let resolved = false;
+
+          const cleanup = () => {
+            URL.revokeObjectURL(blobUrl);
+            offscreenVideo.src = '';
+            offscreenVideo.load();
+          };
+
+          const extractFrame = () => {
+            if (resolved) return;
+            resolved = true;
+            try {
+              const w = offscreenVideo.videoWidth || 640;
+              const h = offscreenVideo.videoHeight || 480;
+              const canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d', { willReadFrequently: true });
+              if (!ctx) { cleanup(); reject(new Error('No canvas context')); return; }
+
+              ctx.drawImage(offscreenVideo, 0, 0, w, h);
+
+              // Verify not blank
+              const pixels = ctx.getImageData(0, 0, w, h).data;
+              let hasContent = false;
+              for (let i = 0; i < pixels.length; i += 4000) {
+                if (pixels[i] > 5 || pixels[i + 1] > 5 || pixels[i + 2] > 5) {
+                  hasContent = true;
+                  break;
+                }
+              }
+
+              if (!hasContent) {
+                cleanup();
+                reject(new Error('Extracted frame is black'));
+                return;
+              }
+
+              canvas.toBlob((b) => {
+                cleanup();
+                if (b && b.size > 500) {
+                  resolve(b);
+                } else {
+                  reject(new Error('Canvas toBlob produced invalid result'));
+                }
+              }, 'image/jpeg', 0.6);
+            } catch (err) {
+              cleanup();
+              reject(err);
+            }
+          };
+
+          // When video has loaded enough to seek
+          offscreenVideo.onloadeddata = () => {
+            // Seek to 200ms to skip potential blank first frame
+            offscreenVideo.currentTime = 0.2;
+          };
+          offscreenVideo.onseeked = () => extractFrame();
+          // Fallback: if seeking doesn't fire, try on canplay
+          offscreenVideo.oncanplay = () => {
+            setTimeout(() => { if (!resolved) extractFrame(); }, 300);
+          };
+          offscreenVideo.onerror = () => { cleanup(); reject(new Error('Failed to load recorded video')); };
+
+          // Safety timeout
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              reject(new Error('Frame extraction timeout'));
+            }
+          }, 5000);
+
+          offscreenVideo.src = blobUrl;
+          offscreenVideo.load();
+        });
+
+        await monitoringAPI.uploadSnapshotBlob(examId, jpegBlob);
+        console.log(`[Snapshot] MediaRecorder→JPEG success: ${Math.round(jpegBlob.size / 1024)}KB`);
+        return 'captured';
       } catch (e) {
-        console.warn('[Snapshot] MediaRecorder failed:', e);
+        console.warn('[Snapshot] MediaRecorder→JPEG failed:', e);
+        // If frame extraction failed but we have a valid video blob, upload that as fallback
       }
 
       // ===== Strategy 3: Canvas with willReadFrequently (software rendering) =====

@@ -268,10 +268,6 @@ export default function MonitorUjianPage() {
     return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${imagePath}`;
   };
 
-  const isVideoSnapshot = (imagePath: string) => {
-    return /\.(webm|mp4|avi)$/i.test(imagePath);
-  };
-
   if (loading) {
     return (
       <DashboardLayout>
@@ -552,34 +548,19 @@ export default function MonitorUjianPage() {
                         participant.latest_snapshot ? 'cursor-pointer hover:ring-2 hover:ring-teal-500' : ''
                       } transition-all`}
                     >
-                      {/* Snapshot Image/Video or Placeholder */}
+                      {/* Snapshot Image or Placeholder */}
                       <div className="aspect-video bg-slate-200 dark:bg-slate-700 relative">
                         {participant.latest_snapshot ? (
                           <>
-                            {isVideoSnapshot(participant.latest_snapshot.image_path) ? (
-                              <video
-                                src={resolveSnapshotUrl(participant.latest_snapshot.image_path)}
-                                className="w-full h-full object-cover"
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                onError={(e) => {
-                                  const target = e.target as HTMLVideoElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <img
-                                src={resolveSnapshotUrl(participant.latest_snapshot.image_path)}
-                                alt={participant.student.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
-                            )}
+                            <img
+                              src={resolveSnapshotUrl(participant.latest_snapshot.image_path)}
+                              alt={participant.student.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
                             {/* Live indicator */}
                             <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                               <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
@@ -782,36 +763,19 @@ export default function MonitorUjianPage() {
               </button>
             </div>
 
-            {/* Snapshot Image/Video */}
+            {/* Snapshot Image */}
             <div className="p-4">
               <div className="relative bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden">
-                {isVideoSnapshot(snapshotModal.snapshot.image_path) ? (
-                  <video
-                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
-                    className="w-full aspect-video object-cover"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    controls
-                    onError={(e) => {
-                      const target = e.target as HTMLVideoElement;
-                      target.style.display = 'none';
-                      target.parentElement!.innerHTML = '<div class="flex items-center justify-center aspect-video text-slate-400"><p class="text-sm">Gagal memuat video</p></div>';
-                    }}
-                  />
-                ) : (
-                  <img
-                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
-                    alt={`Snapshot ${snapshotModal.student.name}`}
-                    className="w-full aspect-video object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.parentElement!.innerHTML = '<div class="flex items-center justify-center aspect-video text-slate-400"><p class="text-sm">Gagal memuat gambar</p></div>';
-                    }}
-                  />
-                )}
+                <img
+                  src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
+                  alt={`Snapshot ${snapshotModal.student.name}`}
+                  className="w-full aspect-video object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.innerHTML = '<div class="flex items-center justify-center aspect-video text-slate-400"><p class="text-sm">Gagal memuat gambar</p></div>';
+                  }}
+                />
                 {/* Live indicator */}
                 <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
