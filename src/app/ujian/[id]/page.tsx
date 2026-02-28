@@ -28,6 +28,7 @@ import {
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
+import { useExamSocket } from '@/hooks/useSocket';
 
 interface QuestionOption {
   text: string;
@@ -134,6 +135,29 @@ export default function ExamTakingPage() {
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [snapshotSuccessCount, setSnapshotSuccessCount] = useState(0);
   const [snapshotFailCount, setSnapshotFailCount] = useState(0);
+
+  // Socket: listen for admin ending the exam
+  const examSocket = useExamSocket(examId);
+  
+  useEffect(() => {
+    if (!isStarted) return;
+    
+    const handleExamEnded = () => {
+      // Admin ended the exam — auto-cleanup and redirect
+      setSubmitting(true);
+      stopCamera();
+      clearExamSession();
+      toast.warning('Ujian telah diselesaikan oleh admin. Jawaban Anda telah dikumpulkan otomatis.');
+      setTimeout(() => {
+        router.push('/ujian-siswa?reason=admin_ended');
+      }, 1500);
+    };
+
+    examSocket.onExamEnded(handleExamEnded);
+    return () => {
+      examSocket.off(`exam.${examId}.ended`);
+    };
+  }, [isStarted, examId, examSocket, stopCamera, router, toast]);
 
   useEffect(() => {
     fetchExam();

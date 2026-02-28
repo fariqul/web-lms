@@ -102,6 +102,18 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * Exam ended by admin — notify all students to stop.
+     */
+    public function examEnded(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.ended",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
     // ─── Attendance Events ──────────────────────────────────────
 
     /**

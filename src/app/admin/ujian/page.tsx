@@ -52,8 +52,9 @@ export default function AdminUjianPage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [publishingId, setPublishingId] = useState<number | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState<{ id: number; title: string } | null>(null);
-  const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string; activeCount?: number } | null>(null);
   const [endingExamId, setEndingExamId] = useState<number | null>(null);
+  const [checkingActive, setCheckingActive] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,7 +129,13 @@ export default function AdminUjianPage() {
     setEndingExamId(examId);
     try {
       const response = await api.post(`/exams/${examId}/end`);
-      toast.success(response.data?.message || 'Ujian berhasil diselesaikan');
+      const data = response.data?.data;
+      const forceCount = data?.force_finished_count || 0;
+      if (forceCount > 0) {
+        toast.success(`Ujian berhasil diselesaikan. ${forceCount} siswa di-submit otomatis.`);
+      } else {
+        toast.success(response.data?.message || 'Ujian berhasil diselesaikan');
+      }
       setShowEndConfirm(null);
       fetchData();
     } catch (error: unknown) {
@@ -136,6 +143,22 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal menyelesaikan ujian');
     } finally {
       setEndingExamId(null);
+    }
+  };
+
+  // Check active students before showing end confirm dialog
+  const handleEndExamClick = async (exam: { id: number; title: string }) => {
+    setCheckingActive(true);
+    try {
+      const res = await api.get(`/exams/${exam.id}/monitoring`);
+      const participants = res.data?.data?.participants || [];
+      const activeCount = participants.filter((p: { status: string }) => p.status === 'in_progress').length;
+      setShowEndConfirm({ id: exam.id, title: exam.title, activeCount });
+    } catch {
+      // If monitoring fails, still allow ending without count
+      setShowEndConfirm({ id: exam.id, title: exam.title });
+    } finally {
+      setCheckingActive(false);
     }
   };
 
@@ -402,11 +425,12 @@ export default function AdminUjianPage() {
               </Link>
               <Button
                 size="sm"
-                onClick={() => setShowEndConfirm({ id: exam.id, title: exam.title })}
+                onClick={() => handleEndExamClick({ id: exam.id, title: exam.title })}
                 className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={checkingActive}
               >
                 <StopCircle className="w-3.5 h-3.5 mr-1.5" />
-                Selesaikan Ujian
+                {checkingActive ? 'Memeriksa...' : 'Selesaikan Ujian'}
               </Button>
             </>
           )}
@@ -600,7 +624,10 @@ export default function AdminUjianPage() {
         onClose={() => setShowEndConfirm(null)}
         onConfirm={() => showEndConfirm && handleEndExam(showEndConfirm.id)}
         title="Selesaikan Ujian"
-        message={`Apakah Anda yakin ingin menyelesaikan ujian "${showEndConfirm?.title}"? Semua siswa yang masih mengerjakan akan otomatis dikumpulkan jawabannya.`}
+        message={showEndConfirm?.activeCount && showEndConfirm.activeCount > 0
+          ? `⚠️ Masih ada ${showEndConfirm.activeCount} siswa yang sedang mengerjakan ujian "${showEndConfirm?.title}". Jika dilanjutkan, jawaban mereka akan otomatis dikumpulkan. Lanjutkan?`
+          : `Apakah Anda yakin ingin menyelesaikan ujian "${showEndConfirm?.title}"?`
+        }
         confirmText={endingExamId ? 'Memproses...' : 'Selesaikan'}
         variant="danger"
       />

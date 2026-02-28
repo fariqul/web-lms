@@ -135,6 +135,10 @@ export function useExamSocket(examId: number) {
     on(`exam.${examId}.snapshot`, callback);
   }, [on, examId]);
 
+  const onExamEnded = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.ended`, callback);
+  }, [on, examId]);
+
   useEffect(() => {
     if (examId > 0) {
       joinExamRoom();
@@ -160,7 +164,8 @@ export function useExamSocket(examId: number) {
     onViolationReported,
     onAnswerProgress,
     onSnapshot,
-  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot]);
+    onExamEnded,
+  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded]);
 }
 
 // Specialized hook for attendance monitoring

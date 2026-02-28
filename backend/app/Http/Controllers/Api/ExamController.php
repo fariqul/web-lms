@@ -1024,7 +1024,34 @@ class ExamController extends Controller
             ->where('status', 'in_progress')
             ->first();
 
+        // If not in_progress, check if already completed (admin ended exam first)
         if (!$result) {
+            $alreadyCompleted = ExamResult::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)
+                ->whereIn('status', ['completed', 'graded', 'submitted'])
+                ->first();
+
+            if ($alreadyCompleted) {
+                // Already submitted (likely by admin force-finish) — return success
+                $response = [
+                    'success' => true,
+                    'message' => 'Ujian sudah diselesaikan',
+                    'already_completed' => true,
+                ];
+
+                if ($exam->show_result) {
+                    $response['data'] = [
+                        'score' => $alreadyCompleted->score,
+                        'total_correct' => $alreadyCompleted->total_correct,
+                        'total_wrong' => $alreadyCompleted->total_wrong,
+                        'total_questions' => $exam->questions()->count(),
+                        'passed' => $alreadyCompleted->score >= $exam->passing_score,
+                    ];
+                }
+
+                return response()->json($response);
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Sesi ujian tidak ditemukan',
@@ -1530,17 +1557,25 @@ class ExamController extends Controller
     }
 
     /**
-     * Admin manually ends an exam — sets status to completed, 
+     * Admin/teacher manually ends an exam — sets status to completed, 
      * forces all in-progress students to finish, and sets end_time to now.
      */
     public function endExam(Request $request, Exam $exam)
     {
         $user = $request->user();
 
-        if ($user->role !== 'admin') {
+        if (!in_array($user->role, ['admin', 'guru'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya admin yang dapat menyelesaikan ujian',
+                'message' => 'Hanya admin/guru yang dapat menyelesaikan ujian',
+            ], 403);
+        }
+
+        // Teachers can only end their own exams
+        if ($user->role === 'guru' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke ujian ini',
             ], 403);
         }
 
@@ -1585,6 +1620,13 @@ class ExamController extends Controller
         $exam->status = 'completed';
         $exam->end_time = now();
         $exam->save();
+
+        // Broadcast exam ended event so student browsers know to stop
+        app(SocketBroadcastService::class)->examEnded($exam->id, [
+            'exam_id' => $exam->id,
+            'message' => 'Ujian telah diselesaikan oleh admin',
+            'force_finished_count' => $forceFinishedCount,
+        ]);
 
         // Get final summary
         $allResults = ExamResult::where('exam_id', $exam->id)->get();
