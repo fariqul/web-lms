@@ -20,6 +20,8 @@ import {
   FileText,
   Download,
   Printer,
+  MessageSquare,
+  AlertCircle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
@@ -38,6 +40,9 @@ interface StudentResult {
   started_at: string;
   finished_at: string | null;
   submitted_at: string | null;
+  total_essays: number;
+  graded_essays: number;
+  ungraded_essays: number;
   student: {
     id: number;
     name: string;
@@ -55,6 +60,9 @@ interface ResultSummary {
   highest_score: number | null;
   lowest_score: number | null;
   passed: number;
+  total_essay_questions: number;
+  total_ungraded_essays: number;
+  students_with_ungraded: number;
 }
 
 interface ExamInfo {
@@ -94,6 +102,9 @@ export default function ExamResultsPage() {
           total_correct: Number(r.total_correct) || 0,
           total_wrong: Number(r.total_wrong) || 0,
           total_answered: Number(r.total_answered) || 0,
+          total_essays: Number(r.total_essays) || 0,
+          graded_essays: Number(r.graded_essays) || 0,
+          ungraded_essays: Number(r.ungraded_essays) || 0,
         })));
         const s = data.summary;
         if (s) {
@@ -107,6 +118,9 @@ export default function ExamResultsPage() {
             highest_score: s.highest_score != null ? Number(s.highest_score) : null,
             lowest_score: s.lowest_score != null ? Number(s.lowest_score) : null,
             passed: Number(s.passed) || 0,
+            total_essay_questions: Number(s.total_essay_questions) || 0,
+            total_ungraded_essays: Number(s.total_ungraded_essays) || 0,
+            students_with_ungraded: Number(s.students_with_ungraded) || 0,
           });
         }
       }
@@ -128,6 +142,9 @@ export default function ExamResultsPage() {
         const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
           r.student?.nisn?.includes(searchQuery);
         if (!matchesSearch) return false;
+      }
+      if (filterStatus === 'needs_grading') {
+        return r.ungraded_essays > 0;
       }
       if (filterStatus && r.status !== filterStatus) return false;
       return true;
@@ -310,6 +327,22 @@ export default function ExamResultsPage() {
           </div>
         )}
 
+        {/* Ungraded essays alert */}
+        {summary && summary.total_ungraded_essays > 0 && (
+          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-800 dark:text-amber-300">
+                {summary.total_ungraded_essays} essay belum dinilai
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+                {summary.students_with_ungraded} siswa memiliki jawaban essay yang perlu dinilai. 
+                Klik ikon <Eye className="w-3.5 h-3.5 inline -mt-0.5" /> pada siswa bertanda <MessageSquare className="w-3.5 h-3.5 inline -mt-0.5 text-amber-600" /> untuk menilai.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
@@ -334,6 +367,7 @@ export default function ExamResultsPage() {
             <option value="">Semua Status</option>
             <option value="completed">Selesai</option>
             <option value="in_progress">Mengerjakan</option>
+            <option value="needs_grading">Perlu Dinilai (Essay)</option>
             <option value="not_started">Belum Mulai</option>
             <option value="missed">Tidak Mengerjakan</option>
           </select>
@@ -396,7 +430,27 @@ export default function ExamResultsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div>
-                          <div className="font-medium text-slate-900 dark:text-white">{result.student?.name}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-slate-900 dark:text-white">{result.student?.name}</span>
+                            {result.ungraded_essays > 0 && (
+                              <span 
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-medium rounded-full"
+                                title={`${result.ungraded_essays} dari ${result.total_essays} essay belum dinilai`}
+                              >
+                                <MessageSquare className="w-2.5 h-2.5" />
+                                {result.ungraded_essays}
+                              </span>
+                            )}
+                            {result.total_essays > 0 && result.ungraded_essays === 0 && (
+                              <span 
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-medium rounded-full"
+                                title={`Semua ${result.total_essays} essay sudah dinilai`}
+                              >
+                                <CheckCircle className="w-2.5 h-2.5" />
+                                {result.graded_essays}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">{result.student?.nisn}</div>
                         </div>
                       </td>

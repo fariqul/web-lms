@@ -1272,6 +1272,35 @@ class ExamController extends Controller
             ->where('exam_id', $exam->id)
             ->get();
 
+        // Count essay questions for this exam
+        $totalEssayQuestions = Question::where('exam_id', $exam->id)
+            ->where('type', 'essay')
+            ->count();
+
+        // Get essay grading counts per student (for students who have results)
+        $essayGradingByStudent = [];
+        if ($totalEssayQuestions > 0) {
+            $studentIds = $results->pluck('student_id')->toArray();
+            if (!empty($studentIds)) {
+                $essayCounts = Answer::where('exam_id', $exam->id)
+                    ->whereIn('student_id', $studentIds)
+                    ->whereHas('question', function ($q) {
+                        $q->where('type', 'essay');
+                    })
+                    ->selectRaw('student_id, COUNT(*) as total_essays, SUM(CASE WHEN graded_at IS NOT NULL THEN 1 ELSE 0 END) as graded_essays')
+                    ->groupBy('student_id')
+                    ->get();
+
+                foreach ($essayCounts as $ec) {
+                    $essayGradingByStudent[$ec->student_id] = [
+                        'total_essays' => (int) $ec->total_essays,
+                        'graded_essays' => (int) $ec->graded_essays,
+                        'ungraded_essays' => (int) $ec->total_essays - (int) $ec->graded_essays,
+                    ];
+                }
+            }
+        }
+
         // Get all students in the exam's classes who haven't taken the exam
         $studentIdsWithResults = $results->pluck('student_id')->toArray();
         $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
@@ -1288,7 +1317,13 @@ class ExamController extends Controller
         $allEntries = [];
 
         foreach ($results as $r) {
-            $allEntries[] = $r;
+            $entry = $r->toArray();
+            // Attach essay grading info
+            $studentEssay = $essayGradingByStudent[$r->student_id] ?? null;
+            $entry['total_essays'] = $studentEssay ? $studentEssay['total_essays'] : 0;
+            $entry['graded_essays'] = $studentEssay ? $studentEssay['graded_essays'] : 0;
+            $entry['ungraded_essays'] = $studentEssay ? $studentEssay['ungraded_essays'] : 0;
+            $allEntries[] = $entry;
         }
 
         // Determine status for students who never started
@@ -1311,6 +1346,9 @@ class ExamController extends Controller
                 'started_at' => null,
                 'finished_at' => null,
                 'submitted_at' => null,
+                'total_essays' => 0,
+                'graded_essays' => 0,
+                'ungraded_essays' => 0,
                 'student' => [
                     'id' => $student->id,
                     'name' => $student->name,
@@ -1325,6 +1363,16 @@ class ExamController extends Controller
         $missedCount = $notStartedStatus === 'missed' ? $allStudents->count() : 0;
         $notStartedCount = $notStartedStatus === 'not_started' ? $allStudents->count() : 0;
 
+        // Calculate total ungraded essays across all students
+        $totalUngradedEssays = 0;
+        $totalStudentsWithUngraded = 0;
+        foreach ($essayGradingByStudent as $eg) {
+            if ($eg['ungraded_essays'] > 0) {
+                $totalUngradedEssays += $eg['ungraded_essays'];
+                $totalStudentsWithUngraded++;
+            }
+        }
+
         $summary = [
             'total_students' => count($allEntries),
             'completed' => $finished->count(),
@@ -1335,6 +1383,9 @@ class ExamController extends Controller
             'highest_score' => $finished->count() > 0 ? $finished->max('percentage') : null,
             'lowest_score' => $finished->count() > 0 ? $finished->min('percentage') : null,
             'passed' => $results->where('percentage', '>=', $exam->passing_score)->count(),
+            'total_essay_questions' => $totalEssayQuestions,
+            'total_ungraded_essays' => $totalUngradedEssays,
+            'students_with_ungraded' => $totalStudentsWithUngraded,
         ];
 
         return response()->json([
