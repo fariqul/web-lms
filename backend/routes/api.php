@@ -89,6 +89,17 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
         Route::post('/exams/{exam}/end', [ExamController::class, 'endExam']);
+        
+        // Admin exam lock/unlock
+        Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);
+        Route::post('/exams/{exam}/unlock', [ExamController::class, 'unlockExam']);
+        
+        // Admin can manage questions on any exam (even active/locked)
+        Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
+        Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
+        Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
+        Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
+        Route::put('/exam-results/{resultId}/score', [ExamController::class, 'updateResultScore']);
     });
 
     // ============================================

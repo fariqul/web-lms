@@ -68,6 +68,10 @@ export interface Exam {
   duration_minutes?: number; // alias
   total_questions: number;
   status: 'draft' | 'scheduled' | 'active' | 'completed';
+  is_locked?: boolean;
+  locked_by?: number;
+  locked_at?: string;
+  locked_by_user?: { id: number; name: string };
   class?: Class;
   teacher?: User;
   my_result?: ExamResult;
@@ -85,6 +89,8 @@ export interface Question {
   exam_id: number;
   type: 'multiple_choice' | 'essay' | 'true_false';
   question_text: string;
+  passage?: string | null;
+  image?: string | null;
   options?: string[];
   correct_answer?: string;
   points: number;

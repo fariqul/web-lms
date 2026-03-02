@@ -30,6 +30,7 @@ import {
   FileSpreadsheet,
   FileType,
   BookUp,
+  Lock,
 } from 'lucide-react';
 import api from '@/services/api';
 import { bankQuestionAPI } from '@/services/api';
@@ -70,6 +71,10 @@ interface ExamData {
   status: string;
   start_time: string;
   end_time: string;
+  is_locked?: boolean;
+  locked_by?: number;
+  locked_at?: string;
+  locked_by_user?: { id: number; name: string };
   seb_required?: boolean;
   seb_allow_quit?: boolean;
   seb_quit_password?: string;
@@ -91,6 +96,11 @@ export default function EditSoalPage() {
   const [saving, setSaving] = useState(false);
   const [exam, setExam] = useState<ExamData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+
+  // Admin can always edit questions (even during active exams)
+  // Guru can only edit if exam is draft AND not locked by admin
+  const canEdit = isAdmin || (!exam?.is_locked && exam?.status === 'draft');
+
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -149,6 +159,10 @@ export default function EditSoalPage() {
           status: data.status,
           start_time: data.start_time,
           end_time: data.end_time,
+          is_locked: data.is_locked ?? false,
+          locked_by: data.locked_by,
+          locked_at: data.locked_at,
+          locked_by_user: data.locked_by_user,
           seb_required: data.seb_required ?? false,
           seb_allow_quit: data.seb_allow_quit ?? true,
           seb_quit_password: data.seb_quit_password ?? '',
@@ -903,14 +917,46 @@ export default function EditSoalPage() {
         </Card>
         )}
 
+        {/* Lock Banner for Guru */}
+        {!isAdmin && exam?.is_locked && (
+          <div className="rounded-xl p-4 flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 dark:bg-amber-800/40">
+              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-800 dark:text-white">
+                Soal dikunci oleh admin{exam.locked_by_user ? ` (${exam.locked_by_user.name})` : ''}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Anda tidak bisa mengedit, menambah, atau menghapus soal. Hubungi admin untuk membuka kunci.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Active Exam Edit Banner */}
+        {isAdmin && exam?.status !== 'draft' && exam?.status !== 'completed' && (
+          <div className="rounded-xl p-4 flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-800/40">
+              <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-800 dark:text-white">Mode Admin</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Anda bisa mengedit soal meskipun ujian sedang berlangsung. Perubahan langsung berlaku.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3 flex-wrap">
-          {!isAdmin && exam?.status === 'draft' && (
+          {canEdit && (
             <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
               Tambah Soal
             </Button>
           )}
-          {!isAdmin && exam?.status === 'draft' && (
+          {canEdit && (
             <div className="relative" ref={importMenuRef}>
               <button
                 onClick={() => setShowImportMenu(!showImportMenu)}
@@ -993,14 +1039,14 @@ export default function EditSoalPage() {
               )}
             </div>
           )}
-          {!isAdmin && exam?.status === 'draft' && (
+          {!isAdmin && exam?.status === 'draft' && !exam?.is_locked && (
             <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
               <AlertCircle className="w-4 h-4" />
               Admin akan mempublish ujian ini
             </span>
           )}
-          {/* Export to Bank Soal — available for guru when there are questions */}
-          {!isAdmin && questions.length > 0 && (
+          {/* Export to Bank Soal — available when there are questions */}
+          {questions.length > 0 && (
             <Button
               variant="outline"
               onClick={() => setShowExportBankSoal(true)}
@@ -1098,7 +1144,7 @@ export default function EditSoalPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {!isAdmin && exam?.status === 'draft' && (
+                      {canEdit && (
                         <>
                           <Button
                             variant="outline"

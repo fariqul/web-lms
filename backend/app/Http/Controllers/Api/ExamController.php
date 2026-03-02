@@ -188,7 +188,7 @@ class ExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Exam::with(['teacher:id,name', 'class:id,name', 'classes:id,name']);
+        $query = Exam::with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name']);
 
         if ($user->role === 'guru') {
             $query->where('teacher_id', $user->id);
@@ -309,7 +309,7 @@ class ExamController extends Controller
     public function show(Request $request, Exam $exam)
     {
         $user = $request->user();
-        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name']);
+        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name']);
 
         // Students can only view exams for their class (check both direct and pivot)
         if ($user->role === 'siswa') {
@@ -543,10 +543,64 @@ class ExamController extends Controller
     }
 
     /**
+     * Lock exam - prevent guru from editing questions (admin only)
+     */
+    public function lockExam(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        $exam->is_locked = true;
+        $exam->locked_by = $user->id;
+        $exam->locked_at = now();
+        $exam->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Soal ujian berhasil dikunci. Guru tidak bisa mengedit soal.',
+            'data' => $exam->load('lockedByUser:id,name'),
+        ]);
+    }
+
+    /**
+     * Unlock exam - allow guru to edit questions again (admin only)
+     */
+    public function unlockExam(Request $request, Exam $exam)
+    {
+        $exam->is_locked = false;
+        $exam->locked_by = null;
+        $exam->locked_at = null;
+        $exam->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Soal ujian berhasil dibuka. Guru bisa mengedit soal kembali.',
+            'data' => $exam,
+        ]);
+    }
+
+    /**
      * Add question to exam
      */
     public function addQuestion(Request $request, Exam $exam)
     {
+        $user = $request->user();
+
+        // Ownership check for guru
+        if ($user->role === 'guru' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke ujian ini',
+            ], 403);
+        }
+
+        // Lock check for guru (admin can always edit)
+        if ($user->role === 'guru' && $exam->is_locked) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal ujian ini telah dikunci oleh admin. Hubungi admin untuk membuka kunci.',
+            ], 403);
+        }
+
         $request->validate([
             'question_text' => 'required|string',
             'question_type' => 'required|in:multiple_choice,essay',
@@ -631,7 +685,7 @@ class ExamController extends Controller
      */
     public function updateQuestion(Request $request, Question $question)
     {
-        // Check ownership - only exam creator can update questions
+        // Check ownership - only exam creator or admin can update questions
         $exam = $question->exam;
         $user = $request->user();
         
@@ -639,6 +693,14 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk mengubah soal ini',
+            ], 403);
+        }
+
+        // Lock check for guru (admin can always edit)
+        if ($user->role === 'guru' && $exam->is_locked) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal ujian ini telah dikunci oleh admin. Hubungi admin untuk membuka kunci.',
             ], 403);
         }
         
@@ -754,7 +816,7 @@ class ExamController extends Controller
      */
     public function deleteQuestion(Request $request, Question $question)
     {
-        // Check ownership - only exam creator can delete questions
+        // Check ownership - only exam creator or admin can delete questions
         $exam = $question->exam;
         $user = $request->user();
         
@@ -762,6 +824,14 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk menghapus soal ini',
+            ], 403);
+        }
+
+        // Lock check for guru (admin can always edit)
+        if ($user->role === 'guru' && $exam->is_locked) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal ujian ini telah dikunci oleh admin. Hubungi admin untuk membuka kunci.',
             ], 403);
         }
         

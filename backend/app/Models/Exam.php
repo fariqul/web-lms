@@ -20,6 +20,9 @@ class Exam extends Model
         'duration',
         'total_questions',
         'status',
+        'is_locked',
+        'locked_by',
+        'locked_at',
         'max_violations',
         'shuffle_questions',
         'shuffle_options',
@@ -37,6 +40,8 @@ class Exam extends Model
         'show_result' => 'boolean',
         'seb_required' => 'boolean',
         'seb_config' => 'array',
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     public function class()
@@ -61,6 +66,11 @@ class Exam extends Model
     public function teacher()
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function lockedByUser()
+    {
+        return $this->belongsTo(User::class, 'locked_by');
     }
 
     public function questions()

@@ -7,7 +7,7 @@ import { Card, CardHeader, Button, ConfirmDialog } from '@/components/ui';
 import {
   GraduationCap, FileEdit, Clock, Calendar, CheckCircle, PlayCircle,
   AlertCircle, Loader2, Users, Shield, Download, Eye, Send,
-  Search, Monitor, BarChart3, StopCircle,
+  Search, Monitor, BarChart3, StopCircle, Lock, Unlock,
 } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
@@ -32,6 +32,10 @@ interface Exam {
   duration: number;
   status: 'draft' | 'scheduled' | 'active' | 'completed';
   total_questions: number;
+  is_locked?: boolean;
+  locked_by?: number;
+  locked_at?: string;
+  locked_by_user?: { id: number; name: string };
   seb_required?: boolean;
   seb_allow_quit?: boolean;
   seb_quit_password?: string;
@@ -55,6 +59,7 @@ export default function AdminUjianPage() {
   const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string; activeCount?: number } | null>(null);
   const [endingExamId, setEndingExamId] = useState<number | null>(null);
   const [checkingActive, setCheckingActive] = useState(false);
+  const [lockingExamId, setLockingExamId] = useState<number | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,6 +186,25 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal mengubah jadwal');
     } finally {
       setSavingSchedule(false);
+    }
+  };
+
+  const handleToggleLock = async (exam: Exam) => {
+    setLockingExamId(exam.id);
+    try {
+      if (exam.is_locked) {
+        await api.post(`/exams/${exam.id}/unlock`);
+        toast.success('Soal ujian berhasil dibuka kuncinya');
+      } else {
+        await api.post(`/exams/${exam.id}/lock`);
+        toast.success('Soal ujian berhasil dikunci');
+      }
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mengubah status kunci');
+    } finally {
+      setLockingExamId(null);
     }
   };
 
@@ -343,6 +367,19 @@ export default function AdminUjianPage() {
           </div>
         )}
 
+        {/* Lock Badge */}
+        {exam.is_locked && (
+          <div className="flex items-center justify-between mb-3 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                Soal Dikunci {exam.locked_by_user ? `oleh ${exam.locked_by_user.name}` : ''}
+              </span>
+            </div>
+            <span className="text-xs text-amber-500 dark:text-amber-400">Guru tidak bisa edit</span>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2 flex-wrap">
           {status === 'draft' && (
@@ -444,13 +481,34 @@ export default function AdminUjianPage() {
             </Link>
           )}
 
-          {/* View detail for all statuses */}
+          {/* View/Edit questions for all statuses */}
           <Link href={`/ujian/${exam.id}/edit`}>
             <Button size="sm" variant="outline">
-              <Eye className="w-3.5 h-3.5 mr-1.5" />
-              Lihat Soal
+              <FileEdit className="w-3.5 h-3.5 mr-1.5" />
+              Edit Soal
             </Button>
           </Link>
+
+          {/* Lock/Unlock toggle */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleToggleLock(exam)}
+            disabled={lockingExamId === exam.id}
+            className={exam.is_locked
+              ? 'text-amber-600 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+              : 'text-slate-600 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }
+          >
+            {lockingExamId === exam.id ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : exam.is_locked ? (
+              <Unlock className="w-3.5 h-3.5 mr-1.5" />
+            ) : (
+              <Lock className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {exam.is_locked ? 'Buka Kunci' : 'Kunci Soal'}
+          </Button>
         </div>
       </div>
     );

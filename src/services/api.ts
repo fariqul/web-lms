@@ -253,6 +253,13 @@ export const examAPI = {
   delete: (id: number) =>
     api.delete(`/exams/${id}`),
   
+  // Lock/Unlock (admin only)
+  lock: (examId: number) =>
+    api.post(`/exams/${examId}/lock`),
+  
+  unlock: (examId: number) =>
+    api.post(`/exams/${examId}/unlock`),
+  
   // Questions
   getQuestions: (examId: number) =>
     api.get(`/exams/${examId}/questions`),
