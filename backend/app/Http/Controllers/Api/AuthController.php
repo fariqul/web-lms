@@ -96,6 +96,7 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'nisn' => $user->nisn,
                 'nip' => $user->nip,
+                'has_nomor_tes' => !empty($user->nomor_tes),
                 'class_id' => $user->class_id,
                 'class' => $user->classRoom ? [
                     'id' => $user->classRoom->id,

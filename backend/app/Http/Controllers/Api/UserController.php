@@ -35,7 +35,8 @@ class UserController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('nisn', 'like', "%{$search}%")
-                    ->orWhere('nip', 'like', "%{$search}%");
+                    ->orWhere('nip', 'like', "%{$search}%")
+                    ->orWhere('nomor_tes', 'like', "%{$search}%");
             });
         }
 
@@ -64,13 +65,14 @@ class UserController extends Controller
             'role' => 'required|in:admin,guru,siswa',
             'nisn' => 'nullable|string|unique:users',
             'nip' => 'nullable|string|unique:users',
+            'nomor_tes' => 'nullable|string|max:50|unique:users',
             'class_id' => 'nullable|exists:classes,id',
         ], [
             'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
         $user = new User();
-        $user->fill($request->only(['name', 'email', 'nisn', 'nip', 'class_id']));
+        $user->fill($request->only(['name', 'email', 'nisn', 'nip', 'nomor_tes', 'class_id']));
         $user->email = strtolower($request->email);
         $user->password = Hash::make($request->password);
         $user->role = $request->role;
@@ -114,6 +116,7 @@ class UserController extends Controller
             'role' => 'sometimes|in:admin,guru,siswa',
             'nisn' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nip' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
+            'nomor_tes' => ['nullable', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
             'class_id' => 'nullable|exists:classes,id',
         ], [
             'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
@@ -136,6 +139,9 @@ class UserController extends Controller
         }
         if ($request->has('nip')) {
             $user->nip = $request->nip;
+        }
+        if ($request->has('nomor_tes')) {
+            $user->nomor_tes = $request->nomor_tes;
         }
         if ($request->has('class_id')) {
             $user->class_id = $request->class_id;
@@ -216,6 +222,29 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Password berhasil direset untuk ' . $user->name,
+        ]);
+    }
+
+    /**
+     * Bulk clear nomor_tes for all students (admin only)
+     * Used when exam period is over
+     */
+    public function clearNomorTes(Request $request)
+    {
+        $query = User::where('role', 'siswa')->whereNotNull('nomor_tes');
+
+        // Optionally filter by class
+        if ($request->has('class_id')) {
+            $query->where('class_id', $request->class_id);
+        }
+
+        $count = $query->count();
+        $query->update(['nomor_tes' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Nomor tes berhasil dihapus dari {$count} siswa",
+            'cleared_count' => $count,
         ]);
     }
 }

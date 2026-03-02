@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 
@@ -16,6 +16,7 @@ interface User {
   class_room?: { id: number; name: string };
   nisn?: string;
   nip?: string;
+  nomor_tes?: string;
 }
 
 interface ClassOption {
@@ -45,6 +46,7 @@ export default function AdminUsersPage() {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [resetPasswordData, setResetPasswordData] = useState({ password: '', showPassword: false });
   const [resetSuccess, setResetSuccess] = useState('');
+  const [isClearNomorTesOpen, setIsClearNomorTesOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,6 +57,7 @@ export default function AdminUsersPage() {
     class_id: '',
     nisn: '',
     nip: '',
+    nomor_tes: '',
   });
 
   useEffect(() => {
@@ -98,6 +101,7 @@ export default function AdminUsersPage() {
         class_id: user.class_id?.toString() || '',
         nisn: user.nisn || '',
         nip: user.nip || '',
+        nomor_tes: user.nomor_tes || '',
       });
     } else {
       setSelectedUser(null);
@@ -109,6 +113,7 @@ export default function AdminUsersPage() {
         class_id: '',
         nisn: '',
         nip: '',
+        nomor_tes: '',
       });
     }
     setIsModalOpen(true);
@@ -163,6 +168,9 @@ export default function AdminUsersPage() {
         payload.class_id = parseInt(formData.class_id);
         payload.nisn = formData.nisn;
       }
+      if (formData.role === 'siswa') {
+        payload.nomor_tes = formData.nomor_tes || null;
+      }
       if (formData.role === 'guru' && formData.nip) {
         payload.nip = formData.nip;
       }
@@ -193,6 +201,18 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleClearNomorTes = async () => {
+    try {
+      const res = await userAPI.clearNomorTes();
+      const msg = res.data?.message || 'Nomor tes berhasil dihapus';
+      toast.success(msg);
+      setIsClearNomorTesOpen(false);
+      fetchData();
+    } catch (error) {
+      toast.error('Gagal menghapus nomor tes');
+    }
+  };
+
   const columns = [
     { key: 'name', header: 'Nama' },
     { key: 'email', header: 'Email' },
@@ -215,6 +235,15 @@ export default function AdminUsersPage() {
       key: 'class',
       header: 'Kelas',
       render: (item: User) => item.class_room?.name || '-',
+    },
+    {
+      key: 'nomor_tes',
+      header: 'No. Tes',
+      render: (item: User) => item.role === 'siswa' && item.nomor_tes ? (
+        <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 text-xs font-mono rounded">
+          {item.nomor_tes}
+        </span>
+      ) : '-',
     },
     {
       key: 'actions',
@@ -269,6 +298,15 @@ export default function AdminUsersPage() {
             subtitle={`Total ${users.length} pengguna`}
             action={
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Eraser className="w-4 h-4" />}
+                  onClick={() => setIsClearNomorTesOpen(true)}
+                  className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  Hapus Semua No. Tes
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -386,6 +424,12 @@ export default function AdminUsersPage() {
                 onChange={(e) => setFormData({ ...formData, nisn: e.target.value })}
                 placeholder="Nomor Induk Siswa Nasional"
               />
+              <Input
+                label="Nomor Tes"
+                value={formData.nomor_tes}
+                onChange={(e) => setFormData({ ...formData, nomor_tes: e.target.value })}
+                placeholder="Nomor tes ujian (opsional)"
+              />
             </>
           )}
           {formData.role === 'guru' && (
@@ -491,6 +535,17 @@ export default function AdminUsersPage() {
           )}
         </form>
       </Modal>
+
+      {/* Clear Nomor Tes Confirmation */}
+      <ConfirmDialog
+        isOpen={isClearNomorTesOpen}
+        onClose={() => setIsClearNomorTesOpen(false)}
+        onConfirm={handleClearNomorTes}
+        title="Hapus Semua Nomor Tes"
+        message="Apakah Anda yakin ingin menghapus semua nomor tes dari seluruh siswa? Lakukan ini setelah periode ujian selesai."
+        confirmText="Hapus Semua"
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

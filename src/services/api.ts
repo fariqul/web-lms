@@ -145,6 +145,9 @@ export const userAPI = {
   
   resetPassword: (id: number, newPassword: string) =>
     api.post(`/users/${id}/reset-password`, { new_password: newPassword }),
+  
+  clearNomorTes: (classId?: number) =>
+    api.delete('/users/nomor-tes/clear', { params: classId ? { class_id: classId } : undefined }),
 };
 
 // Class API

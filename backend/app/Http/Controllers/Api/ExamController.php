@@ -803,6 +803,22 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
+        // Validate nomor_tes if student has one assigned
+        if ($user->nomor_tes) {
+            $request->validate([
+                'nomor_tes' => 'required|string',
+            ], [
+                'nomor_tes.required' => 'Nomor tes wajib diisi untuk memulai ujian.',
+            ]);
+
+            if ($request->nomor_tes !== $user->nomor_tes) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nomor tes tidak sesuai dengan akun Anda. Silakan periksa kembali nomor tes yang diberikan.',
+                ], 422);
+            }
+        }
+
         // Validate exam can be started
         if (!in_array($exam->status, ['scheduled', 'active'])) {
             return response()->json([
@@ -1276,7 +1292,7 @@ class ExamController extends Controller
         }
 
         // Get all exam results (refresh after auto-submit)
-        $results = ExamResult::with(['student:id,name,nisn'])
+        $results = ExamResult::with(['student:id,name,nisn,nomor_tes'])
             ->where('exam_id', $exam->id)
             ->get();
 
@@ -1318,7 +1334,7 @@ class ExamController extends Controller
         $allStudents = User::whereIn('class_id', $examClassIds)
             ->where('role', 'siswa')
             ->whereNotIn('id', $studentIdsWithResults)
-            ->select('id', 'name', 'nisn')
+            ->select('id', 'name', 'nisn', 'nomor_tes')
             ->get();
 
         // Build combined list: results + students who haven't started
@@ -1361,6 +1377,7 @@ class ExamController extends Controller
                     'id' => $student->id,
                     'name' => $student->name,
                     'nisn' => $student->nisn,
+                    'nomor_tes' => $student->nomor_tes,
                 ],
             ];
         }
@@ -1561,7 +1578,7 @@ class ExamController extends Controller
         }
         $allStudents = User::where('role', 'siswa')
             ->whereIn('class_id', $examClassIds)
-            ->select('id', 'name', 'nisn')
+            ->select('id', 'name', 'nisn', 'nomor_tes')
             ->get();
 
         // Get all exam results

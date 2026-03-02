@@ -11,6 +11,8 @@ export interface User {
   photo?: string;
   nisn?: string;
   nip?: string;
+  nomor_tes?: string;
+  has_nomor_tes?: boolean;
   class?: Class;
   created_at: string;
   updated_at: string;

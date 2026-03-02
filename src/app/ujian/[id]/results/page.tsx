@@ -48,6 +48,7 @@ interface StudentResult {
     id: number;
     name: string;
     nisn: string;
+    nomor_tes?: string;
   };
 }
 
@@ -85,7 +86,7 @@ export default function ExamResultsPage() {
   const [summary, setSummary] = useState<ResultSummary | null>(null);
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'rank' | 'name'>('rank');
+  const [sortBy, setSortBy] = useState<'rank' | 'name' | 'nomor_tes'>('nomor_tes');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
 
@@ -195,6 +196,15 @@ export default function ExamResultsPage() {
     })
     .sort((a, b) => {
       if (sortBy === 'name') return (a.student?.name || '').localeCompare(b.student?.name || '');
+      if (sortBy === 'nomor_tes') {
+        const aNt = a.student?.nomor_tes || '';
+        const bNt = b.student?.nomor_tes || '';
+        if (!aNt && !bNt) return 0;
+        if (!aNt) return 1;
+        if (!bNt) return -1;
+        return aNt.localeCompare(bNt, undefined, { numeric: true });
+      }
+      // rank (by score)
       // not_started and missed go to bottom
       if ((a.status === 'not_started' || a.status === 'missed') && b.status !== 'not_started' && b.status !== 'missed') return 1;
       if ((b.status === 'not_started' || b.status === 'missed') && a.status !== 'not_started' && a.status !== 'missed') return -1;
@@ -443,11 +453,12 @@ export default function ExamResultsPage() {
           </select>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'rank' | 'name')}
+            onChange={(e) => setSortBy(e.target.value as 'rank' | 'name' | 'nomor_tes')}
             className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             aria-label="Urutkan hasil"
             name="sortBy"
           >
+            <option value="nomor_tes">Urutkan: No. Tes</option>
             <option value="rank">Urutkan: Nilai Tertinggi</option>
             <option value="name">Urutkan: Nama A-Z</option>
           </select>
@@ -468,6 +479,9 @@ export default function ExamResultsPage() {
                   <tr>
                     <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-12">
                       #
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                      No. Tes
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Siswa
@@ -497,6 +511,15 @@ export default function ExamResultsPage() {
                     <tr key={result.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                       <td className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-400 font-medium">
                         {sortBy === 'rank' ? index + 1 : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center text-sm">
+                        {result.student?.nomor_tes ? (
+                          <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 text-xs font-mono rounded">
+                            {result.student.nomor_tes}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div>

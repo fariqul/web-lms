@@ -30,6 +30,7 @@ import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 import { useExamSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/context/AuthContext';
 
 interface QuestionOption {
   text: string;
@@ -89,6 +90,12 @@ export default function ExamTakingPage() {
   const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
   const previewVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const previewStreamRef = React.useRef<MediaStream | null>(null);
+
+  // Nomor Tes
+  const { user: authUser } = useAuth();
+  const [nomorTes, setNomorTes] = useState('');
+  const [nomorTesError, setNomorTesError] = useState<string | null>(null);
+  const hasNomorTes = authUser?.has_nomor_tes === true;
 
   // Clear exam session flags (call before navigating away after submit)
   const clearExamSession = () => {
@@ -515,6 +522,15 @@ export default function ExamTakingPage() {
   };
 
   const handleStartExam = async () => {
+    // Validate nomor_tes if required
+    if (hasNomorTes) {
+      if (!nomorTes.trim()) {
+        setNomorTesError('Nomor tes wajib diisi');
+        return;
+      }
+      setNomorTesError(null);
+    }
+
     setStartingExam(true);
 
     // Stop preview stream if running
@@ -526,7 +542,7 @@ export default function ExamTakingPage() {
 
     try {
       // Call API to start exam — this returns questions for students
-      const response = await api.post(`/exams/${examId}/start`);
+      const response = await api.post(`/exams/${examId}/start`, hasNomorTes ? { nomor_tes: nomorTes.trim() } : {});
       const startData = response.data?.data;
 
       if (startData?.questions && startData.questions.length > 0) {
@@ -569,7 +585,13 @@ export default function ExamTakingPage() {
     } catch (error) {
       console.error('Failed to start exam:', error);
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Gagal memulai ujian. Silakan coba lagi.');
+      const errMsg = err.response?.data?.message || 'Gagal memulai ujian. Silakan coba lagi.';
+      // Show nomor_tes error inline if relevant
+      if (errMsg.toLowerCase().includes('nomor tes')) {
+        setNomorTesError(errMsg);
+      } else {
+        toast.error(errMsg);
+      }
       setStartingExam(false);
     }
   };
@@ -816,6 +838,35 @@ export default function ExamTakingPage() {
                   </p>
                 )}
               </div>
+
+              {/* Nomor Tes Input */}
+              {hasNomorTes && (
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700/50 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-indigo-800 dark:text-indigo-300 mb-2">
+                    Masukkan Nomor Tes
+                  </label>
+                  <input
+                    type="text"
+                    value={nomorTes}
+                    onChange={(e) => {
+                      setNomorTes(e.target.value);
+                      setNomorTesError(null);
+                    }}
+                    placeholder="Masukkan nomor tes yang diberikan"
+                    className={`w-full rounded-lg border ${
+                      nomorTesError
+                        ? 'border-red-400 focus:ring-red-500 focus:border-red-500'
+                        : 'border-indigo-300 dark:border-indigo-600 focus:ring-indigo-500 focus:border-indigo-500'
+                    } py-2.5 px-4 text-sm bg-white dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2`}
+                  />
+                  {nomorTesError && (
+                    <p className="text-xs text-red-500 mt-1">{nomorTesError}</p>
+                  )}
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1.5">
+                    Nomor tes diperoleh dari panitia ujian secara fisik
+                  </p>
+                </div>
+              )}
 
               <Button
                 onClick={handleStartExam}
