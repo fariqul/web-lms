@@ -22,8 +22,9 @@ import {
   Printer,
   MessageSquare,
   AlertCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { exportAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 
 interface StudentResult {
@@ -86,6 +87,7 @@ export default function ExamResultsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rank' | 'name'>('rank');
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -134,6 +136,27 @@ export default function ExamResultsPage() {
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    setExporting(format);
+    try {
+      const res = await exportAPI.exportExamResults(examId, { format });
+      const blob = res.data;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Hasil_Ujian_${examInfo?.title?.replace(/\s+/g, '_') || examId}_${new Date().toISOString().slice(0, 10)}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Gagal mengekspor data. Coba lagi.');
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const filteredResults = results
     .filter(r => {
@@ -259,6 +282,32 @@ export default function ExamResultsPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleExport('xlsx')}
+              disabled={exporting !== null}
+              className="print:hidden"
+            >
+              {exporting === 'xlsx' ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+              )}
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleExport('pdf')}
+              disabled={exporting !== null}
+              className="print:hidden"
+            >
+              {exporting === 'pdf' ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4 mr-2" />
+              )}
+              PDF
+            </Button>
             <Button variant="outline" onClick={() => window.print()} className="print:hidden">
               <Printer className="w-5 h-5 mr-2" />
               Cetak

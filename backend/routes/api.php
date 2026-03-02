@@ -245,6 +245,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::get('/export/grades', [ExportController::class, 'grades']);
         Route::get('/export/attendance', [ExportController::class, 'attendance']);
         Route::get('/export/student/{studentId}', [ExportController::class, 'studentReport']);
+        Route::get('/export/exam-results/{examId}', [ExportController::class, 'examResults']);
     });
 
     // ============================================

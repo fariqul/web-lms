@@ -686,6 +686,9 @@ export const exportAPI = {
 
   exportStudentReport: (studentId: number, params: { semester?: string; format: 'xlsx' | 'pdf' }) =>
     api.get(`/export/student/${studentId}`, { params, responseType: 'blob', timeout: 120000 }),
+
+  exportExamResults: (examId: number, params: { format: 'xlsx' | 'pdf' }) =>
+    api.get(`/export/exam-results/${examId}`, { params, responseType: 'blob', timeout: 120000 }),
 };
 
 // Audit Log API
