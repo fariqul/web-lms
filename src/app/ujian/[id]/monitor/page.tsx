@@ -111,13 +111,13 @@ export default function MonitorUjianPage() {
     fetchData();
   }, [fetchData]);
 
-  // Auto refresh every 30 seconds (reduced since WebSocket handles real-time)
+  // Auto refresh every 10 seconds for live monitoring
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
       fetchData();
-    }, 30000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, fetchData]);
@@ -265,7 +265,9 @@ export default function MonitorUjianPage() {
 
   const resolveSnapshotUrl = (imagePath: string) => {
     if (imagePath.startsWith('http')) return imagePath;
-    return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${imagePath}`;
+    // Add cache-busting timestamp to prevent browser from caching old snapshots
+    const cacheBust = `?t=${Date.now()}`;
+    return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${imagePath}${cacheBust}`;
   };
 
   // Relative time display (e.g. "5 detik lalu", "2 menit lalu")
@@ -573,6 +575,7 @@ export default function MonitorUjianPage() {
                         {participant.latest_snapshot ? (
                           <>
                             <img
+                              key={participant.latest_snapshot.image_path}
                               src={resolveSnapshotUrl(participant.latest_snapshot.image_path)}
                               alt={participant.student.name}
                               className="w-full h-full object-cover"
