@@ -48,6 +48,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-https://web-lms-rowr.vercel.app}
       SOCKET_SERVER_URL: "http://socket:6001"
       SOCKET_INTERNAL_SECRET: ${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
+      QUEUE_CONNECTION: database
+      PROCTORING_SERVICE_URL: "http://proctoring:8001"
     volumes:
       - backend_storage:/var/www/html/storage
     networks:
@@ -100,6 +102,8 @@ services:
       dockerfile: Dockerfile
     container_name: lms-proctoring
     restart: unless-stopped
+    expose:
+      - "8001"
     environment:
       YOLO_MODEL: yolov8n.pt
       CONFIDENCE_THRESHOLD: "0.4"

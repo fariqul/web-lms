@@ -9,7 +9,7 @@ APP_DEBUG=${APP_DEBUG:-false}
 APP_URL=${APP_URL:-http://localhost}
 
 LOG_CHANNEL=${LOG_CHANNEL:-stack}
-LOG_LEVEL=${LOG_LEVEL:-error}
+LOG_LEVEL=${LOG_LEVEL:-info}
 
 DB_CONNECTION=${DB_CONNECTION:-mysql}
 DB_HOST=${DB_HOST:-mysql}
@@ -31,6 +31,9 @@ FRONTEND_URL=${FRONTEND_URL:-https://web-lms-rowr.vercel.app}
 
 SOCKET_SERVER_URL=${SOCKET_SERVER_URL:-http://socket:6001}
 SOCKET_INTERNAL_SECRET=${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
+
+QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+PROCTORING_SERVICE_URL=${PROCTORING_SERVICE_URL:-http://proctoring:8001}
 
 CLOUDINARY_URL=${CLOUDINARY_URL:-}
 CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
@@ -59,6 +62,10 @@ php artisan storage:link 2>/dev/null || true
 
 # Clear cache (after migration, so cache table exists)
 php artisan cache:clear 2>/dev/null || true
+
+# Start queue worker in background for async jobs (AI proctoring, etc.)
+php artisan queue:work database --sleep=3 --tries=3 --max-time=300 --quiet &
+echo "Queue worker started in background"
 
 # Start Apache
 apache2-foreground

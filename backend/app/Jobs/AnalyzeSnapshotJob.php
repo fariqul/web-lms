@@ -37,7 +37,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
             return;
         }
 
-        $proctoringUrl = env('PROCTORING_SERVICE_URL', 'http://proctoring:8001');
+        $proctoringUrl = config('services.proctoring.url', 'http://proctoring:8001');
 
         try {
             // Read the snapshot image from storage

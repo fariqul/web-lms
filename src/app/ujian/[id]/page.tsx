@@ -394,11 +394,19 @@ export default function ExamTakingPage() {
         }
       } catch (err) {
         setSnapshotStatus('error');
-        const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; message?: string; code?: string };
+        const axiosErr = err as { response?: { status?: number; data?: { message?: string; errors?: Record<string, string[]> } }; message?: string; code?: string };
         if (axiosErr.code === 'ERR_NETWORK' || axiosErr.message?.includes('Network')) {
           setSnapshotError('Gagal koneksi ke server');
         } else if (axiosErr.response?.status === 422) {
-          setSnapshotError(`Validasi: ${axiosErr.response?.data?.message || 'File tidak valid'}`);
+          // Log detailed validation errors
+          const valErrors = axiosErr.response?.data?.errors;
+          if (valErrors) {
+            const detail = Object.values(valErrors).flat().join('; ');
+            console.warn('[Snapshot] Validation errors:', valErrors);
+            setSnapshotError(`Validasi: ${detail}`);
+          } else {
+            setSnapshotError(`Validasi: ${axiosErr.response?.data?.message || 'File tidak valid'}`);
+          }
         } else if (axiosErr.response?.status === 413) {
           setSnapshotError('File terlalu besar');
         } else if (axiosErr.response?.status) {

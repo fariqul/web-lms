@@ -1169,21 +1169,26 @@ class ExamController extends Controller
      */
     public function uploadSnapshot(Request $request, Exam $exam)
     {
+        // Use mimetypes (checks actual content) instead of mimes (checks extension mapping)
+        // canvas.toBlob() produces valid JPEG content but File() constructor extension mapping
+        // can confuse Laravel's mimes rule
         $request->validate([
-            'image' => 'required|file|mimes:jpeg,jpg,png,webp|max:512', // 512KB max (320×240 JPEG)
+            'image' => 'required|file|mimetypes:image/jpeg,image/png,image/webp|max:2048',
         ]);
 
         $user = $request->user();
 
         $result = ExamResult::where('exam_id', $exam->id)
             ->where('student_id', $user->id)
+            ->whereIn('status', ['in_progress', 'started', 'submitted'])
             ->first();
 
         if (!$result) {
+            // Don't return 422 — student may have finished the exam while snapshot was in-flight
             return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian tidak ditemukan',
-            ], 422);
+                'success' => true,
+                'message' => 'No active exam session — snapshot skipped',
+            ]);
         }
 
         // Rate limiting: max 1 snapshot per 3 seconds per student

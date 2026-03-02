@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'proctoring' => [
+        'url' => env('PROCTORING_SERVICE_URL', 'http://proctoring:8001'),
+    ],
+
 ];
