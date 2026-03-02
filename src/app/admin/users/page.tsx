@@ -14,6 +14,7 @@ interface User {
   role: string;
   class_id?: number;
   class_room?: { id: number; name: string };
+  jenis_kelamin?: 'L' | 'P';
   nisn?: string;
   nip?: string;
   nomor_tes?: string;
@@ -54,6 +55,7 @@ export default function AdminUsersPage() {
     email: '',
     password: '',
     role: 'siswa',
+    jenis_kelamin: '',
     class_id: '',
     nisn: '',
     nip: '',
@@ -98,6 +100,7 @@ export default function AdminUsersPage() {
         email: user.email,
         password: '',
         role: user.role,
+        jenis_kelamin: user.jenis_kelamin || '',
         class_id: user.class_id?.toString() || '',
         nisn: user.nisn || '',
         nip: user.nip || '',
@@ -110,6 +113,7 @@ export default function AdminUsersPage() {
         email: '',
         password: '',
         role: 'siswa',
+        jenis_kelamin: '',
         class_id: '',
         nisn: '',
         nip: '',
@@ -159,6 +163,7 @@ export default function AdminUsersPage() {
         name: formData.name,
         email: formData.email,
         role: formData.role,
+        jenis_kelamin: formData.jenis_kelamin || null,
       };
 
       if (formData.password) {
@@ -407,6 +412,18 @@ export default function AdminUsersPage() {
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
           />
+          {(formData.role === 'siswa' || formData.role === 'guru') && (
+            <Select
+              label="Jenis Kelamin"
+              options={[
+                { value: '', label: 'Pilih Jenis Kelamin' },
+                { value: 'L', label: 'Laki-laki' },
+                { value: 'P', label: 'Perempuan' },
+              ]}
+              value={formData.jenis_kelamin}
+              onChange={(e) => setFormData({ ...formData, jenis_kelamin: e.target.value })}
+            />
+          )}
           {formData.role === 'siswa' && (
             <>
               <Select

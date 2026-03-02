@@ -94,6 +94,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'jenis_kelamin' => $user->jenis_kelamin,
                 'nisn' => $user->nisn,
                 'nip' => $user->nip,
                 'has_nomor_tes' => !empty($user->nomor_tes),

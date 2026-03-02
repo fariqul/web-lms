@@ -63,6 +63,7 @@ class UserController extends Controller
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/', // At least 1 lowercase, 1 uppercase, 1 number
             ],
             'role' => 'required|in:admin,guru,siswa',
+            'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => 'nullable|string|unique:users',
             'nip' => 'nullable|string|unique:users',
             'nomor_tes' => 'nullable|string|max:50|unique:users',
@@ -72,7 +73,7 @@ class UserController extends Controller
         ]);
 
         $user = new User();
-        $user->fill($request->only(['name', 'email', 'nisn', 'nip', 'nomor_tes', 'class_id']));
+        $user->fill($request->only(['name', 'email', 'jenis_kelamin', 'nisn', 'nip', 'nomor_tes', 'class_id']));
         $user->email = strtolower($request->email);
         $user->password = Hash::make($request->password);
         $user->role = $request->role;
@@ -114,6 +115,7 @@ class UserController extends Controller
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
             ],
             'role' => 'sometimes|in:admin,guru,siswa',
+            'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nip' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nomor_tes' => ['nullable', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
@@ -124,6 +126,9 @@ class UserController extends Controller
 
         if ($request->has('name')) {
             $user->name = $request->name;
+        }
+        if ($request->has('jenis_kelamin')) {
+            $user->jenis_kelamin = $request->jenis_kelamin;
         }
         if ($request->has('email')) {
             $user->email = strtolower($request->email);

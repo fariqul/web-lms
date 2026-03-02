@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  jenis_kelamin?: 'L' | 'P';
   class_id?: number;
   avatar?: string;
   photo?: string;
