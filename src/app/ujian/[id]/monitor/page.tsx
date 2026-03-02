@@ -97,6 +97,16 @@ export default function MonitorUjianPage() {
         setExam(monitorData.exam);
         setParticipants(monitorData.participants || []);
         setSummary(monitorData.summary);
+
+        // Debug: log snapshot paths from API response
+        const activeParticipants = (monitorData.participants || []).filter((p: Participant) => p.latest_snapshot);
+        if (activeParticipants.length > 0) {
+          console.log('[Monitor] Refresh snapshots:', activeParticipants.map((p: Participant) => ({
+            name: p.student.name,
+            image_path: p.latest_snapshot?.image_path,
+            captured_at: p.latest_snapshot?.captured_at,
+          })));
+        }
       }
 
       setLastRefresh(new Date());
