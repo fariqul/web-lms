@@ -1213,6 +1213,7 @@ class ExamController extends Controller
             'student_id' => $user->id,
             'exam_id' => $exam->id,
             'image_path' => $imagePath,
+            'photo_path' => $imagePath,
             'captured_at' => now(),
         ]);
 

@@ -15,6 +15,7 @@ class MonitoringSnapshot extends Model
         'student_id',
         'exam_id',
         'image_path',
+        'photo_path',
         'captured_at',
         'analysis_result',
     ];
