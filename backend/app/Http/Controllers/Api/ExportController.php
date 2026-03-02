@@ -36,9 +36,20 @@ class ExportController extends Controller
             $format = $request->input('format');
             $exam = Exam::with(['classRoom', 'classes:id,name'])->findOrFail($examId);
             $results = $exam->results()
-                ->with(['student:id,name,nisn', 'answers.question'])
+                ->with(['student:id,name,nisn'])
                 ->orderBy('total_score', 'desc')
                 ->get();
+
+            // Load answers per student (Answer doesn't have exam_result_id, uses exam_id + student_id)
+            $allAnswers = \App\Models\Answer::where('exam_id', $exam->id)
+                ->with('question:id,type')
+                ->get()
+                ->groupBy('student_id');
+
+            // Attach answers to each result
+            foreach ($results as $result) {
+                $result->setRelation('studentAnswers', $allAnswers->get($result->student_id, collect()));
+            }
 
             $className = $exam->classes->count() > 0
                 ? $exam->classes->pluck('name')->join(', ')
@@ -134,8 +145,8 @@ class ExportController extends Controller
             $hasEssay = false;
             $ungradedEssay = 0;
 
-            if ($result->answers) {
-                foreach ($result->answers as $answer) {
+            if ($result->studentAnswers) {
+                foreach ($result->studentAnswers as $answer) {
                     $qType = $answer->question->type ?? 'multiple_choice';
                     if ($qType === 'essay') {
                         $hasEssay = true;
@@ -259,8 +270,8 @@ class ExportController extends Controller
             $correct = 0;
             $wrong = 0;
 
-            if ($result->answers) {
-                foreach ($result->answers as $answer) {
+            if ($result->studentAnswers) {
+                foreach ($result->studentAnswers as $answer) {
                     $qType = $answer->question->type ?? 'multiple_choice';
                     if ($qType !== 'essay') {
                         if ($answer->is_correct) $correct++;
