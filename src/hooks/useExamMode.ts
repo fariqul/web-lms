@@ -362,8 +362,15 @@ export function useExamMode({
           flushRetryQueue();
         }
         return 'captured';
-      } catch (uploadError) {
+      } catch (uploadError: unknown) {
         console.warn('[Snapshot] Upload failed, queuing for retry:', uploadError);
+        // Log validation errors for debugging
+        if (uploadError && typeof uploadError === 'object' && 'response' in uploadError) {
+          const axiosErr = uploadError as { response?: { data?: { errors?: Record<string, string[]> } } };
+          if (axiosErr.response?.data?.errors) {
+            console.warn('[Snapshot] Validation errors:', axiosErr.response.data.errors);
+          }
+        }
         // Add to retry queue (max 3)
         if (retryQueueRef.current.length < MAX_RETRY_QUEUE) {
           retryQueueRef.current.push(blob);

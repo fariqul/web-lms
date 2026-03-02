@@ -31,7 +31,7 @@ const RETRY_DELAY = 1000; // 1 second
 // Helper function to delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token & fix FormData Content-Type
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
@@ -39,6 +39,11 @@ api.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+    }
+    // When sending FormData, delete Content-Type so browser sets
+    // multipart/form-data with correct boundary automatically
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
     }
     return config;
   },
