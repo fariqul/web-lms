@@ -32,22 +32,32 @@ class ExportController extends Controller
             'format' => 'required|in:xlsx,pdf',
         ]);
 
-        $format = $request->input('format');
-        $exam = Exam::with(['class', 'classes:id,name'])->findOrFail($examId);
-        $results = $exam->results()
-            ->with(['student:id,name,nisn', 'answers.question'])
-            ->orderBy('total_score', 'desc')
-            ->get();
+        try {
+            $format = $request->input('format');
+            $exam = Exam::with(['classRoom', 'classes:id,name'])->findOrFail($examId);
+            $results = $exam->results()
+                ->with(['student:id,name,nisn', 'answers.question'])
+                ->orderBy('total_score', 'desc')
+                ->get();
 
-        $className = $exam->classes->count() > 0
-            ? $exam->classes->pluck('name')->join(', ')
-            : ($exam->class->name ?? '-');
+            $className = $exam->classes->count() > 0
+                ? $exam->classes->pluck('name')->join(', ')
+                : ($exam->classRoom->name ?? '-');
 
-        if ($format === 'xlsx') {
-            return $this->generateExamResultsExcel($exam, $results, $className);
+            if ($format === 'xlsx') {
+                return $this->generateExamResultsExcel($exam, $results, $className);
+            }
+
+            return $this->generateExamResultsPdf($exam, $results, $className);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[Export] examResults failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Export gagal: ' . $e->getMessage(),
+            ], 500);
         }
-
-        return $this->generateExamResultsPdf($exam, $results, $className);
     }
 
     /**

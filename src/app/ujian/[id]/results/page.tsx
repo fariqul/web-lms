@@ -142,6 +142,15 @@ export default function ExamResultsPage() {
     try {
       const res = await exportAPI.exportExamResults(examId, { format });
       const blob = res.data;
+
+      // Check if the response is actually a JSON error (500 returns JSON but responseType is blob)
+      if (blob.type === 'application/json') {
+        const text = await blob.text();
+        const json = JSON.parse(text);
+        alert(`Export gagal: ${json.message || 'Server error'}`);
+        return;
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -152,7 +161,19 @@ export default function ExamResultsPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Gagal mengekspor data. Coba lagi.');
+      // Try to extract error message from blob response
+      const axiosErr = error as { response?: { data?: Blob } };
+      if (axiosErr.response?.data instanceof Blob) {
+        try {
+          const text = await axiosErr.response.data.text();
+          const json = JSON.parse(text);
+          alert(`Export gagal: ${json.message || 'Server error'}`);
+        } catch {
+          alert('Gagal mengekspor data. Pastikan server sudah di-rebuild dengan package terbaru.');
+        }
+      } else {
+        alert('Gagal mengekspor data. Coba lagi.');
+      }
     } finally {
       setExporting(null);
     }
