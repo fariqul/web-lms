@@ -148,6 +148,9 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // URL Import (utbk.or.id)
         Route::post('/url-import/preview', [UrlImportController::class, 'preview']);
         Route::post('/url-import/import', [UrlImportController::class, 'import']);
+
+        // Announcements Management (guru can also create/edit/delete)
+        Route::apiResource('announcements', AnnouncementController::class)->except(['index', 'show']);
     });
 
     // ============================================
