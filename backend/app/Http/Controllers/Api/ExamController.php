@@ -1209,6 +1209,7 @@ class ExamController extends Controller
 
         $snapshot = MonitoringSnapshot::create([
             'exam_result_id' => $result->id,
+            'user_id' => $user->id,
             'student_id' => $user->id,
             'exam_id' => $exam->id,
             'image_path' => $imagePath,

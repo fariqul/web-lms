@@ -11,6 +11,7 @@ class MonitoringSnapshot extends Model
 
     protected $fillable = [
         'exam_result_id',
+        'user_id',
         'student_id',
         'exam_id',
         'image_path',
