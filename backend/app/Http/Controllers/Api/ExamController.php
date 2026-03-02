@@ -1197,7 +1197,8 @@ class ExamController extends Controller
             ->orderBy('captured_at', 'desc')
             ->first();
 
-        if ($lastSnapshot && $lastSnapshot->captured_at && now()->diffInSeconds($lastSnapshot->captured_at) < 3) {
+        // Carbon 3 diffInSeconds() returns signed value; use abs() to get absolute diff
+        if ($lastSnapshot && $lastSnapshot->captured_at && abs(now()->diffInSeconds($lastSnapshot->captured_at)) < 3) {
             return response()->json([
                 'success' => true,
                 'message' => 'Rate limited — too frequent',
