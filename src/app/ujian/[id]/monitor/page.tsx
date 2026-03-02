@@ -211,12 +211,47 @@ export default function MonitorUjianPage() {
       ));
     });
 
+    // AI Proctoring alert
+    examSocket.on(`exam.${examId}.proctor-alert`, (data: unknown) => {
+      const d = data as {
+        student_id?: number;
+        risk_score?: number;
+        severity?: string;
+        message?: string;
+        detections?: string[];
+      };
+
+      // Build human-readable label
+      const labels: string[] = [];
+      (d.detections ?? []).forEach((det: string) => {
+        if (det === 'no_face') labels.push('Wajah tidak terdeteksi');
+        else if (det.startsWith('head_turn:')) labels.push(`Menoleh ${det.split(':')[1]}`);
+        else if (det === 'eye_gaze_deviated') labels.push('Mata menyimpang');
+        else if (det.startsWith('multi_person:')) labels.push(`${det.split(':')[1]} orang`);
+        else if (det.startsWith('prohibited_object:')) labels.push(`Objek: ${det.split(':')[1]}`);
+      });
+      const label = labels.length > 0 ? labels.join(', ') : (d.message || 'AI alert');
+      const emoji = d.severity === 'critical' ? '🚨' : d.severity === 'warning' ? '⚠️' : '🔍';
+
+      addEvent('ai-alert', `${emoji} AI: ${label} (risk: ${d.risk_score ?? 0})`);
+
+      // Find student name for the event
+      setParticipants(prev => {
+        const student = prev.find(p => p.student.id === d.student_id);
+        if (student) {
+          addEvent('ai-alert', `${emoji} ${student.student.name}: ${label}`);
+        }
+        return prev;
+      });
+    });
+
     return () => {
       examSocket.off(`exam.${examId}.student-joined`);
       examSocket.off(`exam.${examId}.student-submitted`);
       examSocket.off(`exam.${examId}.violation`);
       examSocket.off(`exam.${examId}.answer-progress`);
       examSocket.off(`exam.${examId}.snapshot`);
+      examSocket.off(`exam.${examId}.proctor-alert`);
     };
   }, [examSocket.isConnected, examId]);
 

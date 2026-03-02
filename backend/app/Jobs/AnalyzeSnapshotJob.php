@@ -72,6 +72,9 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 'analysis_result' => $result,
             ]);
 
+            // Parse the detections array for easy processing
+            $detections = $result['detections'] ?? [];
+
             // Create alerts for prohibited objects
             if (!empty($result['prohibited_objects'])) {
                 foreach ($result['prohibited_objects'] as $obj) {
@@ -102,13 +105,71 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 ]);
             }
 
+            // Alert for no face (camera blocked/covered)
+            $faceAnalysis = $result['face_analysis'] ?? null;
+            if ($faceAnalysis && !($faceAnalysis['face_detected'] ?? true)) {
+                ProctoringAlert::create([
+                    'exam_id' => $this->examId,
+                    'student_id' => $this->studentId,
+                    'snapshot_id' => $this->snapshotId,
+                    'type' => 'no_face',
+                    'severity' => 'warning',
+                    'description' => 'Wajah tidak terdeteksi — kamera tertutup atau tidak menghadap kamera',
+                    'confidence' => 0.85,
+                    'details' => ['face_analysis' => $faceAnalysis],
+                ]);
+            }
+
+            // Alert for head turning / looking away
+            if ($faceAnalysis && ($faceAnalysis['is_looking_away'] ?? false)) {
+                $direction = $faceAnalysis['looking_direction'] ?? 'unknown';
+                $dirLabels = ['left' => 'kiri', 'right' => 'kanan', 'up' => 'atas', 'down' => 'bawah'];
+                $dirLabel = $dirLabels[$direction] ?? $direction;
+                $yaw = $faceAnalysis['head_yaw'] ?? 0;
+                $pitch = $faceAnalysis['head_pitch'] ?? 0;
+
+                ProctoringAlert::create([
+                    'exam_id' => $this->examId,
+                    'student_id' => $this->studentId,
+                    'snapshot_id' => $this->snapshotId,
+                    'type' => 'head_turn',
+                    'severity' => 'warning',
+                    'description' => "Kepala menoleh ke {$dirLabel} (yaw: {$yaw}°, pitch: {$pitch}°)",
+                    'confidence' => 0.8,
+                    'details' => [
+                        'direction' => $direction,
+                        'head_yaw' => $yaw,
+                        'head_pitch' => $pitch,
+                    ],
+                ]);
+            }
+
+            // Alert for eye gaze deviation
+            if ($faceAnalysis && ($faceAnalysis['is_gaze_deviated'] ?? false)) {
+                $gazeRatio = $faceAnalysis['eye_gaze_ratio'] ?? 0;
+                ProctoringAlert::create([
+                    'exam_id' => $this->examId,
+                    'student_id' => $this->studentId,
+                    'snapshot_id' => $this->snapshotId,
+                    'type' => 'eye_gaze',
+                    'severity' => 'info',
+                    'description' => "Pandangan mata menyimpang (deviasi: " . round($gazeRatio * 100) . "%)",
+                    'confidence' => 0.7,
+                    'details' => ['gaze_ratio' => $gazeRatio],
+                ]);
+            }
+
             // Update proctoring score
             $this->updateProctoringScore($result);
 
-            // Broadcast alert to monitoring page if risk is high
+            // Broadcast alert to monitoring page if risk is notable
             $riskScore = $result['risk_score'] ?? 0;
-            if ($riskScore >= 30) {
-                $severity = $riskScore >= 60 ? 'critical' : 'warning';
+            $detections = $result['detections'] ?? [];
+            if ($riskScore >= 15 || !empty($detections)) {
+                $severity = 'info';
+                if ($riskScore >= 60) $severity = 'critical';
+                elseif ($riskScore >= 30) $severity = 'warning';
+
                 app(SocketBroadcastService::class)->broadcast(
                     "exam.{$this->examId}.proctor-alert",
                     [
@@ -116,6 +177,8 @@ class AnalyzeSnapshotJob implements ShouldQueue
                         'risk_score' => $riskScore,
                         'severity' => $severity,
                         'message' => $result['message'] ?? 'Aktivitas mencurigakan terdeteksi',
+                        'detections' => $detections,
+                        'face_analysis' => $result['face_analysis'] ?? null,
                         'snapshot_id' => $this->snapshotId,
                     ]
                 );
@@ -146,11 +209,39 @@ class AnalyzeSnapshotJob implements ShouldQueue
             $score->object_detection_score = min(100, $score->object_detection_score + ($prohibitedCount * 15));
         }
 
-        // Update multi-person score from YOLO (supplements browser face detection)
+        // Update multi-person score from YOLO
         $personCount = $result['person_count'] ?? 0;
         if ($personCount > 1) {
             $score->multi_face_count++;
             $score->multi_face_score = min(100, $score->multi_face_score + 10);
+        }
+
+        // Face analysis scores (from MediaPipe)
+        $faceAnalysis = $result['face_analysis'] ?? null;
+        if ($faceAnalysis) {
+            // No face / camera blocked
+            if (!($faceAnalysis['face_detected'] ?? true)) {
+                $score->no_face_count = ($score->no_face_count ?? 0) + 1;
+                $score->no_face_score = min(100, ($score->no_face_score ?? 0) + 15);
+            }
+
+            // Head turning away
+            if ($faceAnalysis['is_looking_away'] ?? false) {
+                $score->head_turn_count = ($score->head_turn_count ?? 0) + 1;
+                $score->head_turn_score = min(100, ($score->head_turn_score ?? 0) + 8);
+            }
+
+            // Eye gaze deviation
+            if ($faceAnalysis['is_gaze_deviated'] ?? false) {
+                $score->eye_gaze_count = ($score->eye_gaze_count ?? 0) + 1;
+                $score->eye_gaze_score = min(100, ($score->eye_gaze_score ?? 0) + 5);
+            }
+
+            // Multi-face from MediaPipe (supplements YOLO)
+            if (($faceAnalysis['face_count'] ?? 0) > 1 && $personCount <= 1) {
+                $score->multi_face_count++;
+                $score->multi_face_score = min(100, $score->multi_face_score + 10);
+            }
         }
 
         // Recalculate total score (weighted average)
