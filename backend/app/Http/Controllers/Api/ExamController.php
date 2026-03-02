@@ -1568,12 +1568,14 @@ class ExamController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        // Batch load latest snapshots
+        // Batch load latest snapshots — use SQL subquery for reliability
         $resultIds = $results->pluck('id');
-        $latestSnapshots = MonitoringSnapshot::whereIn('exam_result_id', $resultIds)
-            ->orderBy('captured_at', 'desc')
+        $latestSnapshotIds = MonitoringSnapshot::whereIn('exam_result_id', $resultIds)
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('exam_result_id')
+            ->pluck('id');
+        $latestSnapshots = MonitoringSnapshot::whereIn('id', $latestSnapshotIds)
             ->get()
-            ->unique('exam_result_id')
             ->keyBy('exam_result_id');
 
         // Batch load answer counts
