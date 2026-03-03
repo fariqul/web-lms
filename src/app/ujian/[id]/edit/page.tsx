@@ -59,6 +59,7 @@ interface Question {
   order: number;
   options: Option[];
   image?: string | null;
+  essay_keywords?: string[];
 }
 
 interface ExamData {
@@ -131,6 +132,7 @@ export default function EditSoalPage() {
     question_type: 'multiple_choice',
     points: 10,
     order: 0,
+    essay_keywords: [],
     options: [
       { text: '', is_correct: true },
       { text: '', is_correct: false },
@@ -202,6 +204,7 @@ export default function EditSoalPage() {
             points: number;
             order: number;
             image?: string | null;
+            essay_keywords?: string[] | null;
             options?: { id: number; option_text: string; is_correct: boolean; image?: string | null }[];
           }, index: number) => ({
             id: q.id,
@@ -211,6 +214,7 @@ export default function EditSoalPage() {
             points: q.points || 10,
             order: q.order || index + 1,
             image: q.image || null,
+            essay_keywords: q.essay_keywords || [],
             options: q.options?.map((opt) => ({
               id: opt.id,
               text: opt.option_text,
@@ -277,6 +281,13 @@ export default function EditSoalPage() {
         });
       }
 
+      // Add essay keywords
+      if (newQuestion.question_type === 'essay' && newQuestion.essay_keywords && newQuestion.essay_keywords.length > 0) {
+        newQuestion.essay_keywords.forEach((kw, idx) => {
+          formData.append(`essay_keywords[${idx}]`, kw);
+        });
+      }
+
       const response = await api.post(`/exams/${examId}/questions`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -306,6 +317,7 @@ export default function EditSoalPage() {
       question_type: question.question_type,
       points: question.points,
       order: question.order,
+      essay_keywords: question.essay_keywords || [],
       options: question.question_type === 'multiple_choice' && question.options.length > 0
         ? question.options.map(opt => ({
             id: opt.id,
@@ -403,6 +415,16 @@ export default function EditSoalPage() {
         });
       }
 
+      // Add essay keywords
+      if (newQuestion.question_type === 'essay' && newQuestion.essay_keywords && newQuestion.essay_keywords.length > 0) {
+        newQuestion.essay_keywords.forEach((kw, idx) => {
+          formData.append(`essay_keywords[${idx}]`, kw);
+        });
+      } else if (newQuestion.question_type === 'essay') {
+        // Send empty array to clear keywords
+        formData.append('essay_keywords', '');
+      }
+
       await api.post(`/questions/${editingQuestion}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -482,6 +504,7 @@ export default function EditSoalPage() {
       question_type: 'multiple_choice',
       points: 10,
       order: 0,
+      essay_keywords: [],
       options: [
         { text: '', is_correct: true },
         { text: '', is_correct: false },
@@ -1133,7 +1156,19 @@ export default function EditSoalPage() {
                       )}
                       
                       {question.question_type === 'essay' && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 italic ml-4">Jawaban Essay</p>
+                        <div className="ml-4">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 italic">Jawaban Essay</p>
+                          {question.essay_keywords && question.essay_keywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              <span className="text-xs text-purple-600 dark:text-purple-400 mr-1">Kata kunci:</span>
+                              {question.essay_keywords.map((kw, kwIdx) => (
+                                <span key={kwIdx} className="text-xs px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-700 rounded">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                       
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
@@ -1331,6 +1366,57 @@ export default function EditSoalPage() {
               className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
+
+          {/* Essay Keywords */}
+          {newQuestion.question_type === 'essay' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Kata Kunci Jawaban <span className="text-xs font-normal text-slate-400">(Opsional — untuk penilaian otomatis)</span>
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                Ketik kata kunci lalu tekan Enter. Jawaban siswa yang mengandung kata kunci akan dinilai otomatis secara proporsional.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(newQuestion.essay_keywords || []).map((kw, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700 rounded-full text-sm"
+                  >
+                    {kw}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [...(newQuestion.essay_keywords || [])];
+                        updated.splice(idx, 1);
+                        setNewQuestion({ ...newQuestion, essay_keywords: updated });
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <input
+                type="text"
+                placeholder="Ketik kata kunci lalu tekan Enter…"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-white"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const value = (e.target as HTMLInputElement).value.trim();
+                    if (value && !(newQuestion.essay_keywords || []).includes(value)) {
+                      setNewQuestion({
+                        ...newQuestion,
+                        essay_keywords: [...(newQuestion.essay_keywords || []), value],
+                      });
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {/* Options for Multiple Choice */}
           {newQuestion.question_type === 'multiple_choice' && (
@@ -1638,6 +1724,57 @@ export default function EditSoalPage() {
               className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
+
+          {/* Essay Keywords */}
+          {newQuestion.question_type === 'essay' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Kata Kunci Jawaban <span className="text-xs font-normal text-slate-400">(Opsional — untuk penilaian otomatis)</span>
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                Ketik kata kunci lalu tekan Enter. Jawaban siswa yang mengandung kata kunci akan dinilai otomatis secara proporsional.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(newQuestion.essay_keywords || []).map((kw, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700 rounded-full text-sm"
+                  >
+                    {kw}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [...(newQuestion.essay_keywords || [])];
+                        updated.splice(idx, 1);
+                        setNewQuestion({ ...newQuestion, essay_keywords: updated });
+                      }}
+                      className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <input
+                type="text"
+                placeholder="Ketik kata kunci lalu tekan Enter…"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-800 dark:text-white"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const value = (e.target as HTMLInputElement).value.trim();
+                    if (value && !(newQuestion.essay_keywords || []).includes(value)) {
+                      setNewQuestion({
+                        ...newQuestion,
+                        essay_keywords: [...(newQuestion.essay_keywords || []), value],
+                      });
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {/* Options for Multiple Choice */}
           {newQuestion.question_type === 'multiple_choice' && (

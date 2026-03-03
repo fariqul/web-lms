@@ -613,6 +613,8 @@ class ExamController extends Controller
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120', // max 5MB
             'image_path' => 'nullable|string', // existing question image path to copy
+            'essay_keywords' => 'nullable|array',
+            'essay_keywords.*' => 'string',
         ]);
 
         // Handle image upload or copy from existing path
@@ -665,6 +667,7 @@ class ExamController extends Controller
             'image' => $imagePath,
             'options' => $optionsArray,
             'correct_answer' => $correctAnswer,
+            'essay_keywords' => $request->question_type === 'essay' ? $request->essay_keywords : null,
             'points' => $request->points ?? 10,
             'order' => ($exam->questions()->max('order') ?? 0) + 1,
         ]);
@@ -711,6 +714,8 @@ class ExamController extends Controller
             'correct_answer' => 'sometimes|string',
             'points' => 'sometimes|integer|min:1',
             'image' => 'nullable|image|max:5120',
+            'essay_keywords' => 'nullable|array',
+            'essay_keywords.*' => 'string',
         ]);
 
         // Handle image upload
@@ -800,6 +805,11 @@ class ExamController extends Controller
         // Handle direct correct_answer
         if ($request->has('correct_answer') && !$request->has('options')) {
             $question->correct_answer = $request->correct_answer;
+        }
+
+        // Handle essay keywords
+        if ($request->has('essay_keywords')) {
+            $question->essay_keywords = $request->essay_keywords;
         }
 
         $question->save();
@@ -1059,15 +1069,35 @@ class ExamController extends Controller
             ], 422);
         }
 
-        // Check if answer is correct (only auto-grade multiple choice)
+        // Check if answer is correct (auto-grade)
         $isCorrect = null;
         $answerScore = 0;
+        $essayScore = null;
         
         if ($question->type === 'multiple_choice') {
             $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
             $answerScore = $isCorrect ? $question->points : 0;
+        } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
+            // Auto-grade essay based on keywords
+            $studentAnswer = mb_strtolower(trim($request->answer));
+            $keywords = $question->essay_keywords;
+            $matchedCount = 0;
+            
+            foreach ($keywords as $keyword) {
+                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
+                    $matchedCount++;
+                }
+            }
+            
+            if ($matchedCount > 0 && count($keywords) > 0) {
+                // Score proportional to matched keywords
+                $ratio = $matchedCount / count($keywords);
+                $essayScore = (int) round($ratio * $question->points);
+                $isCorrect = $essayScore > 0;
+            }
+            // If no keywords matched, leave null for manual grading
         }
-        // Essay questions: leave is_correct=null and score=null for manual grading
+        // Essay without keywords: leave is_correct=null and score=null for manual grading
 
         // Save or update answer
         $answer = Answer::updateOrCreate(
@@ -1079,7 +1109,7 @@ class ExamController extends Controller
             [
                 'answer' => $request->answer,
                 'is_correct' => $isCorrect,
-                'score' => $question->type === 'essay' ? null : $answerScore,
+                'score' => $question->type === 'essay' ? $essayScore : $answerScore,
                 'submitted_at' => now(),
             ]
         );

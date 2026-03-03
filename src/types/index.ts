@@ -93,6 +93,7 @@ export interface Question {
   image?: string | null;
   options?: string[];
   correct_answer?: string;
+  essay_keywords?: string[] | null;
   points: number;
   order: number;
 }

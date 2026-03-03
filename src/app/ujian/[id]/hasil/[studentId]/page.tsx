@@ -51,6 +51,7 @@ interface QuestionData {
   question_text: string;
   type: string;
   correct_answer: string;
+  essay_keywords?: string[] | null;
   points: number;
   options: (string | { text: string; image?: string | null })[] | null;
 }
@@ -427,6 +428,39 @@ export default function HasilSiswaPage() {
                         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap border">
                           {answer.answer || <span className="text-slate-600 dark:text-slate-400 italic">Tidak dijawab</span>}
                         </div>
+
+                        {/* Auto-graded indicator for essay with keywords */}
+                        {answer.question.essay_keywords && answer.question.essay_keywords.length > 0 && (
+                          <div className="mt-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-100 dark:border-purple-700/40">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
+                                {answer.score !== null && !answer.graded_at ? '🤖 Dinilai otomatis berdasarkan kata kunci' : 'Kata kunci jawaban:'}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {answer.question.essay_keywords.map((kw, kwIdx) => {
+                                const matched = answer.answer ? answer.answer.toLowerCase().includes(kw.toLowerCase()) : false;
+                                return (
+                                  <span
+                                    key={kwIdx}
+                                    className={`text-xs px-2 py-0.5 rounded-full border ${
+                                      matched
+                                        ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700'
+                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                    }`}
+                                  >
+                                    {matched ? '✓' : '✗'} {kw}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                            {answer.score !== null && !answer.graded_at && (
+                              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5">
+                                Skor otomatis: {answer.score}/{answer.question.points} — Guru tetap bisa mengubah nilai di bawah.
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                         {/* Grading form for essay */}
                         <div className="mt-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg p-4 border border-teal-100 dark:border-teal-700/40">

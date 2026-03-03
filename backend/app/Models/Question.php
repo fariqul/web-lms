@@ -17,12 +17,14 @@ class Question extends Model
         'image',
         'options',
         'correct_answer',
+        'essay_keywords',
         'points',
         'order',
     ];
 
     protected $casts = [
         'options' => 'array',
+        'essay_keywords' => 'array',
     ];
 
     // Append question_type to JSON so frontend can use either 'type' or 'question_type'
