@@ -973,6 +973,8 @@ class ExamController extends Controller
             ]);
         }
 
+        try {
+
         // Get questions (shuffled if enabled)
         $questions = $exam->questions()->orderBy('order')->get();
         
@@ -1060,8 +1062,10 @@ class ExamController extends Controller
             return $q;
         });
 
-        // Remove correct answer from response
-        $questions->makeHidden('correct_answer');
+        // Remove correct answer and essay_keywords from response
+        $questions->each(function ($q) {
+            $q->makeHidden(['correct_answer', 'essay_keywords']);
+        });
 
         // Get existing answers
         $existingAnswers = Answer::where('exam_id', $exam->id)
@@ -1074,7 +1078,7 @@ class ExamController extends Controller
             'data' => [
                 'exam' => $exam->only(['id', 'title', 'duration', 'max_violations']),
                 'result' => $result,
-                'questions' => $questions,
+                'questions' => $questions->values(),
                 'existing_answers' => $existingAnswers,
                 'remaining_time' => max(0, $result->started_at
                     ? now()->diffInSeconds(\Carbon\Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
@@ -1082,6 +1086,14 @@ class ExamController extends Controller
                 ),
             ],
         ]);
+
+        } catch (\Exception $e) {
+            \Log::error('startExam error for exam ' . $exam->id . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memulai ujian: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
