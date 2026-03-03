@@ -31,6 +31,7 @@ import {
   FileType,
   BookUp,
   Lock,
+  Shuffle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { bankQuestionAPI } from '@/services/api';
@@ -82,6 +83,8 @@ interface ExamData {
   seb_block_screen_capture?: boolean;
   seb_allow_virtual_machine?: boolean;
   seb_show_taskbar?: boolean;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
 }
 
 export default function EditSoalPage() {
@@ -122,6 +125,7 @@ export default function EditSoalPage() {
   const importMenuRef = React.useRef<HTMLDivElement>(null);
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
   const [savingSeb, setSavingSeb] = useState(false);
+  const [savingShuffle, setSavingShuffle] = useState(false);
   const [showExportBankSoal, setShowExportBankSoal] = useState(false);
   const [exportingBankSoal, setExportingBankSoal] = useState(false);
   const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
@@ -171,6 +175,8 @@ export default function EditSoalPage() {
           seb_block_screen_capture: data.seb_block_screen_capture ?? true,
           seb_allow_virtual_machine: data.seb_allow_virtual_machine ?? false,
           seb_show_taskbar: data.seb_show_taskbar ?? true,
+          shuffle_questions: data.shuffle_questions ?? false,
+          shuffle_options: data.shuffle_options ?? false,
         });
 
         // Initialize SEB settings from API, with localStorage fallback
@@ -639,6 +645,21 @@ export default function EditSoalPage() {
     }
   };
 
+  const handleSaveShuffleSettings = async () => {
+    setSavingShuffle(true);
+    try {
+      await api.put(`/exams/${examId}`, {
+        shuffle_questions: exam?.shuffle_questions ?? false,
+        shuffle_options: exam?.shuffle_options ?? false,
+      });
+      toast.success('Pengaturan urutan soal berhasil disimpan');
+    } catch {
+      toast.error('Gagal menyimpan pengaturan urutan soal');
+    } finally {
+      setSavingShuffle(false);
+    }
+  };
+
   const handleExportToBankSoal = async () => {
     if (!exam || questions.length === 0) return;
     setExportingBankSoal(true);
@@ -803,6 +824,70 @@ export default function EditSoalPage() {
               </p>
             </div>
           </div>
+        )}
+
+        {/* Shuffle Settings Panel */}
+        {!isAdmin && (
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+              <Shuffle className="w-5 h-5 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-slate-800 dark:text-white text-sm">Urutan Soal Acak</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Acak urutan soal dan/atau pilihan jawaban untuk setiap siswa</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm text-slate-700 dark:text-slate-300">Acak urutan soal</label>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Setiap siswa mendapat urutan soal yang berbeda</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={exam?.shuffle_questions ?? false}
+                  onChange={(e) => setExam(prev => prev ? { ...prev, shuffle_questions: e.target.checked } : null)}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-500 peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm text-slate-700 dark:text-slate-300">Acak urutan pilihan jawaban</label>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Pilihan A/B/C/D diacak untuk soal pilihan ganda</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={exam?.shuffle_options ?? false}
+                  onChange={(e) => setExam(prev => prev ? { ...prev, shuffle_options: e.target.checked } : null)}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-500 peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
+            <button
+              onClick={handleSaveShuffleSettings}
+              disabled={savingShuffle}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {savingShuffle ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Simpan Pengaturan
+            </button>
+          </div>
+        </Card>
         )}
 
         {/* SEB Settings Panel */}
