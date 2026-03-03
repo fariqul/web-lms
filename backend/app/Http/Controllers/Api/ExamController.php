@@ -1628,7 +1628,7 @@ class ExamController extends Controller
             ], 404);
         }
 
-        $answers = Answer::with('question:id,question_text,type,correct_answer,points,options')
+        $answers = Answer::with('question:id,question_text,type,correct_answer,points,options,essay_keywords,passage')
             ->where('exam_id', $exam->id)
             ->where('student_id', $studentId)
             ->get(['id', 'question_id', 'answer', 'is_correct', 'score', 'feedback', 'graded_by', 'graded_at', 'submitted_at']);
