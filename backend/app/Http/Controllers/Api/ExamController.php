@@ -974,13 +974,50 @@ class ExamController extends Controller
         }
 
         // Get questions (shuffled if enabled)
-        $questions = $exam->questions();
+        $questions = $exam->questions()->orderBy('order')->get();
+        
         if ($exam->shuffle_questions) {
-            $questions = $questions->inRandomOrder();
-        } else {
-            $questions = $questions->orderBy('order');
+            // Group questions by passage to keep passage-based questions together
+            $groups = [];
+            $currentGroup = [];
+            $currentPassage = null;
+            
+            foreach ($questions as $q) {
+                if ($q->passage) {
+                    // If same passage as current group, add to it
+                    if ($q->passage === $currentPassage) {
+                        $currentGroup[] = $q;
+                    } else {
+                        // Save previous group if exists
+                        if (!empty($currentGroup)) {
+                            $groups[] = $currentGroup;
+                        }
+                        // Start new passage group
+                        $currentPassage = $q->passage;
+                        $currentGroup = [$q];
+                    }
+                } else {
+                    // No passage — save previous group if exists
+                    if (!empty($currentGroup)) {
+                        $groups[] = $currentGroup;
+                        $currentGroup = [];
+                        $currentPassage = null;
+                    }
+                    // Standalone question as its own group
+                    $groups[] = [$q];
+                }
+            }
+            // Don't forget last group
+            if (!empty($currentGroup)) {
+                $groups[] = $currentGroup;
+            }
+            
+            // Shuffle the groups, but keep questions within each group in order
+            shuffle($groups);
+            
+            // Flatten back to a single collection
+            $questions = collect(array_merge(...$groups));
         }
-        $questions = $questions->get();
 
         // Shuffle options if enabled
         if ($exam->shuffle_options) {
