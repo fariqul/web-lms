@@ -980,42 +980,41 @@ class ExamController extends Controller
         
         if ($exam->shuffle_questions && $questions->isNotEmpty()) {
             try {
-                // Group questions by passage to keep passage-based questions together
+                // Separate multiple choice and essay questions
+                // Essay questions always go at the end
+                $mcQuestions = $questions->filter(fn($q) => $q->type === 'multiple_choice');
+                $essayQuestions = $questions->filter(fn($q) => $q->type === 'essay');
+                
+                // Group MC questions by passage to keep passage-based questions together
                 $groups = [];
                 $currentGroup = [];
                 $currentPassage = null;
                 
-                foreach ($questions as $q) {
+                foreach ($mcQuestions as $q) {
                     if (!empty($q->passage)) {
-                        // If same passage as current group, add to it
                         if ($q->passage === $currentPassage) {
                             $currentGroup[] = $q;
                         } else {
-                            // Save previous group if exists
                             if (!empty($currentGroup)) {
                                 $groups[] = $currentGroup;
                             }
-                            // Start new passage group
                             $currentPassage = $q->passage;
                             $currentGroup = [$q];
                         }
                     } else {
-                        // No passage — save previous group if exists
                         if (!empty($currentGroup)) {
                             $groups[] = $currentGroup;
                             $currentGroup = [];
                             $currentPassage = null;
                         }
-                        // Standalone question as its own group
                         $groups[] = [$q];
                     }
                 }
-                // Don't forget last group
                 if (!empty($currentGroup)) {
                     $groups[] = $currentGroup;
                 }
                 
-                // Shuffle the groups, but keep questions within each group in order
+                // Shuffle the MC groups
                 if (!empty($groups)) {
                     shuffle($groups);
                     $merged = [];
@@ -1024,13 +1023,22 @@ class ExamController extends Controller
                             $merged[] = $item;
                         }
                     }
+                    // Append essay questions at the end (not shuffled)
+                    foreach ($essayQuestions as $eq) {
+                        $merged[] = $eq;
+                    }
                     $questions = collect($merged);
                 }
             } catch (\Exception $e) {
-                // If shuffle fails, fall back to ordered questions
                 \Log::error('Shuffle questions failed: ' . $e->getMessage());
                 $questions = $exam->questions()->orderBy('order')->get();
             }
+        }
+        
+        // Renumber questions sequentially (1, 2, 3...) regardless of shuffle
+        $questions = $questions->values();
+        foreach ($questions as $idx => $q) {
+            $q->order = $idx + 1;
         }
 
         // Shuffle options if enabled

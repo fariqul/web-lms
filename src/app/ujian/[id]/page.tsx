@@ -225,7 +225,7 @@ export default function ExamTakingPage() {
           if (startData?.questions && startData.questions.length > 0) {
             const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
               id: q.id,
-              number: q.order || idx + 1,
+              number: idx + 1,
               type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
               text: q.question_text,
               passage: q.passage || null,
@@ -550,7 +550,7 @@ export default function ExamTakingPage() {
         // Map questions from start endpoint
         const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
           id: q.id,
-          number: q.order || idx + 1,
+          number: idx + 1,
           type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
           text: q.question_text,
           passage: q.passage || null,
