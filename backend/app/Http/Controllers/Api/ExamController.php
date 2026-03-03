@@ -976,47 +976,59 @@ class ExamController extends Controller
         // Get questions (shuffled if enabled)
         $questions = $exam->questions()->orderBy('order')->get();
         
-        if ($exam->shuffle_questions) {
-            // Group questions by passage to keep passage-based questions together
-            $groups = [];
-            $currentGroup = [];
-            $currentPassage = null;
-            
-            foreach ($questions as $q) {
-                if ($q->passage) {
-                    // If same passage as current group, add to it
-                    if ($q->passage === $currentPassage) {
-                        $currentGroup[] = $q;
+        if ($exam->shuffle_questions && $questions->isNotEmpty()) {
+            try {
+                // Group questions by passage to keep passage-based questions together
+                $groups = [];
+                $currentGroup = [];
+                $currentPassage = null;
+                
+                foreach ($questions as $q) {
+                    if (!empty($q->passage)) {
+                        // If same passage as current group, add to it
+                        if ($q->passage === $currentPassage) {
+                            $currentGroup[] = $q;
+                        } else {
+                            // Save previous group if exists
+                            if (!empty($currentGroup)) {
+                                $groups[] = $currentGroup;
+                            }
+                            // Start new passage group
+                            $currentPassage = $q->passage;
+                            $currentGroup = [$q];
+                        }
                     } else {
-                        // Save previous group if exists
+                        // No passage — save previous group if exists
                         if (!empty($currentGroup)) {
                             $groups[] = $currentGroup;
+                            $currentGroup = [];
+                            $currentPassage = null;
                         }
-                        // Start new passage group
-                        $currentPassage = $q->passage;
-                        $currentGroup = [$q];
+                        // Standalone question as its own group
+                        $groups[] = [$q];
                     }
-                } else {
-                    // No passage — save previous group if exists
-                    if (!empty($currentGroup)) {
-                        $groups[] = $currentGroup;
-                        $currentGroup = [];
-                        $currentPassage = null;
-                    }
-                    // Standalone question as its own group
-                    $groups[] = [$q];
                 }
+                // Don't forget last group
+                if (!empty($currentGroup)) {
+                    $groups[] = $currentGroup;
+                }
+                
+                // Shuffle the groups, but keep questions within each group in order
+                if (!empty($groups)) {
+                    shuffle($groups);
+                    $merged = [];
+                    foreach ($groups as $group) {
+                        foreach ($group as $item) {
+                            $merged[] = $item;
+                        }
+                    }
+                    $questions = collect($merged);
+                }
+            } catch (\Exception $e) {
+                // If shuffle fails, fall back to ordered questions
+                \Log::error('Shuffle questions failed: ' . $e->getMessage());
+                $questions = $exam->questions()->orderBy('order')->get();
             }
-            // Don't forget last group
-            if (!empty($currentGroup)) {
-                $groups[] = $currentGroup;
-            }
-            
-            // Shuffle the groups, but keep questions within each group in order
-            shuffle($groups);
-            
-            // Flatten back to a single collection
-            $questions = !empty($groups) ? collect(array_merge(...$groups)) : collect([]);
         }
 
         // Shuffle options if enabled
@@ -1064,7 +1076,10 @@ class ExamController extends Controller
                 'result' => $result,
                 'questions' => $questions,
                 'existing_answers' => $existingAnswers,
-                'remaining_time' => max(0, now()->diffInSeconds($exam->start_time->addMinutes($exam->duration), false)),
+                'remaining_time' => max(0, $result->started_at
+                    ? now()->diffInSeconds(\Carbon\Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
+                    : ($exam->duration ?? 90) * 60
+                ),
             ],
         ]);
     }
