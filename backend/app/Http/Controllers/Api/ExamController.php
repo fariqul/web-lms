@@ -1016,7 +1016,7 @@ class ExamController extends Controller
             shuffle($groups);
             
             // Flatten back to a single collection
-            $questions = collect(array_merge(...$groups));
+            $questions = !empty($groups) ? collect(array_merge(...$groups)) : collect([]);
         }
 
         // Shuffle options if enabled

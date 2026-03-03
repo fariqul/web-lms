@@ -128,6 +128,7 @@ export default function ExamTakingPage() {
     maxViolations,
     consecutiveSnapshotFails,
     enterFullscreen,
+    exitFullscreen,
     startCamera,
     stopCamera,
     restartCamera,
@@ -586,6 +587,8 @@ export default function ExamTakingPage() {
       console.error('Failed to start exam:', error);
       const err = error as { response?: { data?: { message?: string } } };
       const errMsg = err.response?.data?.message || 'Gagal memulai ujian. Silakan coba lagi.';
+      // Exit fullscreen on error so student can see the error and retry
+      exitFullscreen();
       // Show nomor_tes error inline if relevant
       if (errMsg.toLowerCase().includes('nomor tes')) {
         setNomorTesError(errMsg);
