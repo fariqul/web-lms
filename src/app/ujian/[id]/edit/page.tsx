@@ -19,8 +19,6 @@ import {
   X,
   Shield,
   Download,
-  Zap,
-  Calendar,
   AlertTriangle,
   AlertCircle,
   ChevronDown,
@@ -778,17 +776,21 @@ export default function EditSoalPage() {
     setExportingBankSoal(true);
     try {
       const bankQuestions = questions.map(q => {
+        const isEssay = q.question_type === 'essay';
         // Convert exam question options to bank soal format (flat string array)
-        const options = q.question_type === 'multiple_choice'
+        const options = !isEssay
           ? q.options.map(opt => opt.text || '')
           : undefined;
         const correctOpt = q.options.find(opt => opt.is_correct);
+        const correctAnswer = isEssay
+          ? (q.essay_keywords?.join(', ') || '-')
+          : (correctOpt?.text || '');
         return {
           subject: exam.subject,
-          type: q.question_type === 'multiple_choice' ? 'pilihan_ganda' as const : 'essay' as const,
+          type: isEssay ? 'essay' as const : 'pilihan_ganda' as const,
           question: q.question_text,
           options,
-          correct_answer: correctOpt?.text || '',
+          correct_answer: correctAnswer,
           explanation: '',
           difficulty: exportDifficulty,
           grade_level: exportGradeLevel,
@@ -907,38 +909,6 @@ export default function EditSoalPage() {
         </div>
 
         {/* Schedule Info Banner */}
-        {!isAdmin && exam?.status === 'draft' && (
-          <div className={`rounded-xl p-4 flex items-center gap-3 ${
-            exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-              ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'
-              : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
-          }`}>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-                ? 'bg-teal-100 dark:bg-teal-800/40' : 'bg-amber-100 dark:bg-amber-800/40'
-            }`}>
-              {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-                ? <Zap className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                : <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              }
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-800 dark:text-white">
-                {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-                  ? 'Mulai saat publish'
-                  : `Dijadwalkan: ${new Date(exam.start_time).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}`
-                }
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {exam?.start_time && new Date(exam.start_time).getTime() - Date.now() > 30 * 24 * 60 * 60 * 1000
-                  ? 'Ujian akan langsung aktif saat Anda menekan Publish. Selesaikan soal terlebih dahulu.'
-                  : 'Ujian akan aktif sesuai jadwal setelah dipublish.'
-                }
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Shuffle Settings Panel */}
         {!isAdmin && (
         <Card className="p-4 space-y-4">

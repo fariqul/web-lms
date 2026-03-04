@@ -242,7 +242,7 @@ class BankQuestionController extends Controller
             'questions.*.type' => 'required|in:pilihan_ganda,essay',
             'questions.*.question' => 'required|string',
             'questions.*.options' => 'required_if:questions.*.type,pilihan_ganda|array',
-            'questions.*.correct_answer' => 'required|string',
+            'questions.*.correct_answer' => 'required_if:questions.*.type,pilihan_ganda|nullable|string',
             'questions.*.explanation' => 'nullable|string',
             'questions.*.difficulty' => 'required|in:mudah,sedang,sulit',
             'questions.*.grade_level' => 'required|in:10,11,12,semua',
