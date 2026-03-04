@@ -14,7 +14,10 @@ import {
   Upload,
   FileUp,
   RefreshCw,
+  Download,
 } from 'lucide-react';
+import { Document, Paragraph, TextRun, Packer, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 
 interface ParsedQuestion {
   question_text: string;
@@ -203,6 +206,141 @@ export function ImportWordModal({
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+            children: [
+              new TextRun({ text: 'TEMPLATE SOAL UJIAN', bold: true, size: 28 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [
+              new TextRun({ text: 'Petunjuk:', bold: true, size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- Nomor soal diawali angka dan titik, contoh: 1. Teks soal', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- Opsi jawaban menggunakan huruf kecil, contoh: a. Teks opsi', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- Tandai jawaban benar dengan tanda * di depan huruf, contoh: *c. Jawaban benar', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- Untuk soal essay, tambahkan (essay) di akhir soal', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [
+              new TextRun({ text: '- Minimal 2 pilihan jawaban untuk soal pilihan ganda', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [
+              new TextRun({ text: '──────────────────────────────────', size: 20, color: '999999' }),
+            ],
+          }),
+          // Soal 1 - Pilihan Ganda
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: '1. Apa ibu kota Indonesia?', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'a. Surabaya', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'b. Bandung', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: '*c. Jakarta', size: 22, bold: true })],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [new TextRun({ text: 'd. Medan', size: 22 })],
+          }),
+          // Soal 2 - Pilihan Ganda
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: '2. Siapa penemu telepon?', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: '*a. Alexander Graham Bell', size: 22, bold: true })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'b. Thomas Edison', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'c. Nikola Tesla', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [new TextRun({ text: 'd. Albert Einstein', size: 22 })],
+          }),
+          // Soal 3 - Essay
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [new TextRun({ text: '3. Jelaskan proses terjadinya fotosintesis! (essay)', size: 22 })],
+          }),
+          // Soal 4 - Pilihan Ganda
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: '4. Planet terbesar di tata surya adalah?', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'a. Mars', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: '*b. Jupiter', size: 22, bold: true })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'c. Saturnus', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [new TextRun({ text: 'd. Venus', size: 22 })],
+          }),
+          // Soal 5 - Essay
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [new TextRun({ text: '5. Sebutkan dan jelaskan 3 jenis batuan yang ada di bumi! (essay)', size: 22 })],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, 'template_soal_ujian.docx');
+  };
+
   const handleClose = () => {
     setFile(null);
     setExtractedText('');
@@ -269,6 +407,14 @@ export function ImportWordModal({
                   <p className="text-blue-600 dark:text-blue-400 mt-2 text-xs">
                     Format sama persis dengan Import Teks. Tulis soal di Word lalu upload.
                   </p>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleDownloadTemplate(); }}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/40 hover:bg-blue-200 dark:hover:bg-blue-800/60 rounded-lg transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download Template Word
+                  </button>
                 </div>
               </div>
             </div>
