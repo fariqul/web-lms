@@ -390,8 +390,8 @@ export default function HasilSiswaPage() {
                                   : 'text-red-700 dark:text-red-300'
                               }`}>
                                 {answer.is_correct
-                                  ? `✅ Benar — Semua kata kunci ditemukan (${answer.score}/${answer.question.points} poin)`
-                                  : `❌ Salah — Tidak semua kata kunci ditemukan (${answer.score ?? 1}/${answer.question.points} poin)`
+                                  ? `✅ Benar — Kata kunci ditemukan (${answer.score}/${answer.question.points} poin)`
+                                  : `❌ Salah — Tidak ada kata kunci ditemukan (${answer.score ?? 1}/${answer.question.points} poin)`
                                 }
                               </span>
                             </div>
@@ -413,7 +413,7 @@ export default function HasilSiswaPage() {
                               })}
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                              🤖 Dinilai otomatis — Semua kata kunci harus ada untuk nilai penuh, jika tidak hanya mendapat 1 poin.
+                              🤖 Dinilai otomatis — Minimal 1 kata kunci harus ada untuk nilai penuh, jika tidak ada sama sekali hanya mendapat 1 poin.
                             </p>
                           </div>
                         )}

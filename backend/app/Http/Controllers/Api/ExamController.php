@@ -1170,25 +1170,25 @@ class ExamController extends Controller
             $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
             $answerScore = $isCorrect ? $question->points : 0;
         } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
-            // Absolute auto-grade essay based on keywords
-            // ALL keywords must be present for full points, otherwise 1 point
+            // Auto-grade essay based on keywords
+            // At least 1 keyword match = full points, no match = 1 point
             $studentAnswer = mb_strtolower(trim($request->answer));
             $keywords = $question->essay_keywords;
-            $allMatched = true;
+            $anyMatched = false;
             
             foreach ($keywords as $keyword) {
-                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) === false) {
-                    $allMatched = false;
+                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
+                    $anyMatched = true;
                     break;
                 }
             }
             
-            if ($allMatched && count($keywords) > 0) {
-                // All keywords found → full points
+            if ($anyMatched) {
+                // At least 1 keyword found → full points
                 $essayScore = $question->points;
                 $isCorrect = true;
             } else {
-                // Not all keywords found → 1 point
+                // No keywords found → 1 point
                 $essayScore = 1;
                 $isCorrect = false;
             }

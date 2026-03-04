@@ -1469,7 +1469,7 @@ export default function EditSoalPage() {
                 Kata Kunci Jawaban <span className="text-xs font-normal text-red-500">* Wajib</span>
               </label>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                Ketik kata kunci lalu tekan Enter. Semua kata kunci harus ada dalam jawaban siswa untuk mendapat nilai penuh, jika tidak hanya mendapat 1 poin.
+                Ketik kata kunci lalu tekan Enter. Minimal 1 kata kunci harus ada dalam jawaban siswa untuk mendapat nilai penuh, jika tidak ada sama sekali hanya mendapat 1 poin.
               </p>
               <div className="flex flex-wrap gap-2 mb-2">
                 {(newQuestion.essay_keywords || []).map((kw, idx) => (
@@ -1827,7 +1827,7 @@ export default function EditSoalPage() {
                 Kata Kunci Jawaban <span className="text-xs font-normal text-red-500">* Wajib</span>
               </label>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                Ketik kata kunci lalu tekan Enter. Semua kata kunci harus ada dalam jawaban siswa untuk mendapat nilai penuh, jika tidak hanya mendapat 1 poin.
+                Ketik kata kunci lalu tekan Enter. Minimal 1 kata kunci harus ada dalam jawaban siswa untuk mendapat nilai penuh, jika tidak ada sama sekali hanya mendapat 1 poin.
               </p>
               <div className="flex flex-wrap gap-2 mb-2">
                 {(newQuestion.essay_keywords || []).map((kw, idx) => (
