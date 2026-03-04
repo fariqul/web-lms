@@ -211,6 +211,15 @@ export default function MonitorUjianPage() {
       ));
     });
 
+    // Exam settings updated (duration, max_violations, etc.)
+    examSocket.onExamUpdated((data: unknown) => {
+      const d = data as { exam_id: number; duration?: number; max_violations?: number; title?: string; status?: string };
+      setExam(prev => prev ? { ...prev, ...d } : prev);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setExamDetail((prev: any) => prev ? { ...prev, ...d } : prev);
+      addEvent('settings', `Pengaturan ujian diperbarui`);
+    });
+
     // AI Proctoring alert
     examSocket.on(`exam.${examId}.proctor-alert`, (data: unknown) => {
       const d = data as {
@@ -251,6 +260,7 @@ export default function MonitorUjianPage() {
       examSocket.off(`exam.${examId}.violation`);
       examSocket.off(`exam.${examId}.answer-progress`);
       examSocket.off(`exam.${examId}.snapshot`);
+      examSocket.off(`exam.${examId}.updated`);
       examSocket.off(`exam.${examId}.proctor-alert`);
     };
   }, [examSocket.isConnected, examId]);

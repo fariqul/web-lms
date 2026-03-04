@@ -265,6 +265,34 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, examId, examSocket, questions.length]);
 
+  // Socket: listen for exam settings changes during active exam (duration, max_violations, etc.)
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const handleExamUpdated = (data: unknown) => {
+      const d = data as { exam_id: number; duration?: number; max_violations?: number; title?: string };
+      // If duration changed, recalculate remaining time
+      if (d.duration && exam) {
+        const newDurationSeconds = d.duration * 60;
+        const oldDurationSeconds = exam.duration * 60;
+        const diff = newDurationSeconds - oldDurationSeconds;
+        if (diff !== 0) {
+          setTimeRemaining(prev => Math.max(1, prev + diff));
+          setExam(prev => prev ? { ...prev, duration: d.duration! } : prev);
+          toast.info(`Durasi ujian diubah menjadi ${d.duration} menit`);
+        }
+      }
+      if (d.title) {
+        setExam(prev => prev ? { ...prev, title: d.title! } : prev);
+      }
+    };
+
+    examSocket.onExamUpdated(handleExamUpdated);
+    return () => {
+      examSocket.off(`exam.${examId}.updated`);
+    };
+  }, [isStarted, examId, examSocket, exam, toast]);
+
   useEffect(() => {
     fetchExam();
   }, [examId]);

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import api, { exportAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useExamSocket } from '@/hooks/useSocket';
 
 interface StudentResult {
   id: number;
@@ -137,6 +138,85 @@ export default function ExamResultsPage() {
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
+
+  // Real-time updates via WebSocket
+  const examSocket = useExamSocket(examId);
+
+  useEffect(() => {
+    if (!examSocket.isConnected) return;
+
+    // New student submitted exam
+    examSocket.onStudentSubmitted((data: unknown) => {
+      const d = data as { student_id: number; student_name?: string; score?: number; percentage?: number; status?: string };
+      setResults(prev => {
+        const exists = prev.find(r => r.student_id === d.student_id);
+        if (exists) {
+          return prev.map(r => r.student_id === d.student_id ? {
+            ...r,
+            status: d.status || 'completed',
+            total_score: d.score ?? r.total_score,
+            percentage: d.percentage ?? r.percentage,
+          } : r);
+        }
+        // If not in list yet, re-fetch to get full data
+        fetchResults();
+        return prev;
+      });
+      setSummary(prev => prev ? {
+        ...prev,
+        completed: prev.completed + 1,
+        in_progress: Math.max(0, prev.in_progress - 1),
+      } : prev);
+    });
+
+    // Student started exam
+    examSocket.onStudentJoined((data: unknown) => {
+      const d = data as { student_id: number };
+      setResults(prev => prev.map(r => r.student_id === d.student_id ? { ...r, status: 'in_progress' } : r));
+      setSummary(prev => prev ? {
+        ...prev,
+        in_progress: prev.in_progress + 1,
+        not_started: Math.max(0, prev.not_started - 1),
+      } : prev);
+    });
+
+    // Essay answer graded
+    examSocket.onAnswerGraded((data: unknown) => {
+      const d = data as { student_id: number; exam_result?: { id: number; total_score: number; percentage: number; status: string } };
+      if (d.exam_result) {
+        setResults(prev => prev.map(r => r.student_id === d.student_id ? {
+          ...r,
+          total_score: d.exam_result!.total_score,
+          percentage: d.exam_result!.percentage,
+          status: d.exam_result!.status,
+          graded_essays: r.graded_essays + 1,
+          ungraded_essays: Math.max(0, r.ungraded_essays - 1),
+        } : r));
+        setSummary(prev => prev ? {
+          ...prev,
+          total_ungraded_essays: Math.max(0, prev.total_ungraded_essays - 1),
+        } : prev);
+      }
+    });
+
+    // Manual score update
+    examSocket.onResultScoreUpdated((data: unknown) => {
+      const d = data as { student_id: number; result_id: number; total_score: number; percentage: number; status: string };
+      setResults(prev => prev.map(r => r.student_id === d.student_id ? {
+        ...r,
+        total_score: d.total_score,
+        percentage: d.percentage,
+        status: d.status,
+      } : r));
+    });
+
+    return () => {
+      examSocket.off(`exam.${examId}.student-submitted`);
+      examSocket.off(`exam.${examId}.student-joined`);
+      examSocket.off(`exam.${examId}.answer-graded`);
+      examSocket.off(`exam.${examId}.result-updated`);
+    };
+  }, [examSocket, examId, fetchResults]);
 
   const handleExport = async (format: 'xlsx' | 'pdf') => {
     setExporting(format);

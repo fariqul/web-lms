@@ -176,6 +176,20 @@ class ExamController extends Controller
             'percentage' => $percentage,
             'status' => 'graded',
         ]);
+
+        // Broadcast result score updated
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->resultScoreUpdated($result->exam_id, [
+                'result_id' => $result->id,
+                'student_id' => $result->student_id,
+                'total_score' => $newScore,
+                'percentage' => $percentage,
+                'status' => 'graded',
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast resultScoreUpdated failed: ' . $e->getMessage());
+        }
         
         return response()->json([
             'success' => true,
@@ -484,6 +498,27 @@ class ExamController extends Controller
 
         $exam->save();
 
+        // Broadcast exam settings update to all participants
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examUpdated($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'duration' => $exam->duration,
+                'passing_score' => $exam->passing_score,
+                'max_violations' => $exam->max_violations,
+                'shuffle_questions' => $exam->shuffle_questions,
+                'shuffle_options' => $exam->shuffle_options,
+                'show_result' => $exam->show_result,
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'seb_required' => $exam->seb_required,
+                'status' => $exam->status,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examUpdated failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'data' => $exam,
@@ -515,6 +550,8 @@ class ExamController extends Controller
         }
 
         // Delete all related data in correct order to avoid orphans
+        $examId = $exam->id;
+        $classId = $exam->class_id;
         DB::transaction(function () use ($exam) {
             // Delete answers for this exam
             Answer::where('exam_id', $exam->id)->delete();
@@ -541,6 +578,17 @@ class ExamController extends Controller
             // Delete exam
             $exam->delete();
         });
+
+        // Broadcast exam deleted
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examDeleted($examId, [
+                'exam_id' => $examId,
+                'class_id' => $classId,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examDeleted failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
@@ -581,6 +629,21 @@ class ExamController extends Controller
         $exam->status = 'scheduled';
         $exam->save();
 
+        // Broadcast exam published
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examPublished($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'status' => 'scheduled',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examPublished failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Ujian berhasil dipublish',
@@ -599,6 +662,19 @@ class ExamController extends Controller
         $exam->locked_at = now();
         $exam->save();
 
+        // Broadcast exam locked
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examLocked($exam->id, [
+                'exam_id' => $exam->id,
+                'locked_by' => $user->id,
+                'locked_by_name' => $user->name,
+                'locked_at' => $exam->locked_at,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examLocked failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Soal ujian berhasil dikunci. Guru tidak bisa mengedit soal.',
@@ -615,6 +691,16 @@ class ExamController extends Controller
         $exam->locked_by = null;
         $exam->locked_at = null;
         $exam->save();
+
+        // Broadcast exam unlocked
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examUnlocked($exam->id, [
+                'exam_id' => $exam->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examUnlocked failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
@@ -1899,6 +1985,28 @@ class ExamController extends Controller
                 $examResult->status = 'graded';
                 $examResult->save();
             }
+        }
+
+        // Broadcast answer graded
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->answerGraded($exam->id, [
+                'answer_id' => $answer->id,
+                'question_id' => $answer->question_id,
+                'student_id' => $answer->student_id,
+                'score' => $score,
+                'feedback' => $request->feedback,
+                'graded_by' => $user->id,
+                'graded_by_name' => $user->name,
+                'exam_result' => $examResult ? [
+                    'id' => $examResult->id,
+                    'total_score' => $examResult->total_score,
+                    'percentage' => $examResult->percentage,
+                    'status' => $examResult->status,
+                ] : null,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast answerGraded failed: ' . $e->getMessage());
         }
 
         return response()->json([

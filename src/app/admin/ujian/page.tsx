@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardHeader, Button, ConfirmDialog } from '@/components/ui';
@@ -13,6 +13,7 @@ import api from '@/services/api';
 import { classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { downloadSEBConfig, type SEBExamSettings } from '@/utils/seb';
+import { useExamsListSocket } from '@/hooks/useSocket';
 
 interface ExamClass {
   id: number;
@@ -70,6 +71,49 @@ export default function AdminUjianPage() {
   const [editingSchedule, setEditingSchedule] = useState<Exam | null>(null);
   const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60 });
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  // Real-time updates via WebSocket
+  const examIds = useMemo(() => exams.map(e => e.id), [exams]);
+  const listSocket = useExamsListSocket(examIds);
+
+  useEffect(() => {
+    if (!listSocket.isConnected || examIds.length === 0) return;
+
+    const handleUpdated = (data: unknown) => {
+      const d = data as { exam_id: number; title?: string; status?: string; duration?: number; start_time?: string; end_time?: string; passing_score?: number; max_violations?: number };
+      setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, title: d.title ?? e.title, duration: d.duration ?? e.duration, start_time: d.start_time ?? e.start_time, end_time: d.end_time ?? e.end_time, status: (d.status as Exam['status']) ?? e.status } : e));
+    };
+    const handlePublished = (data: unknown) => {
+      const d = data as { exam_id: number; status: string; start_time?: string; end_time?: string; duration?: number };
+      setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, status: d.status as Exam['status'], start_time: d.start_time || e.start_time, end_time: d.end_time || e.end_time, duration: d.duration || e.duration } : e));
+    };
+    const handleDeleted = (data: unknown) => {
+      const d = data as { exam_id: number };
+      setExams(prev => prev.filter(e => e.id !== d.exam_id));
+    };
+    const handleEnded = (data: unknown) => {
+      const d = data as { exam_id?: number };
+      if (d.exam_id) setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, status: 'completed' } : e));
+    };
+    const handleLocked = (data: unknown) => {
+      const d = data as { exam_id: number; locked_by: number; locked_by_name: string; locked_at: string };
+      setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, is_locked: true, locked_by: d.locked_by, locked_at: d.locked_at, locked_by_user: { id: d.locked_by, name: d.locked_by_name } } : e));
+    };
+    const handleUnlocked = (data: unknown) => {
+      const d = data as { exam_id: number };
+      setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, is_locked: false, locked_by: undefined, locked_at: undefined, locked_by_user: undefined } : e));
+    };
+
+    const cleanups = [
+      listSocket.onAnyExamUpdated(handleUpdated),
+      listSocket.onAnyExamPublished(handlePublished),
+      listSocket.onAnyExamDeleted(handleDeleted),
+      listSocket.onAnyExamEnded(handleEnded),
+      listSocket.onAnyExamLocked(handleLocked),
+      listSocket.onAnyExamUnlocked(handleUnlocked),
+    ];
+    return () => { cleanups.forEach(c => c && c()); };
+  }, [listSocket, examIds]);
 
   useEffect(() => {
     fetchData();

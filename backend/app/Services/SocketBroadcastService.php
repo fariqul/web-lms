@@ -139,6 +139,90 @@ class SocketBroadcastService
     }
 
     /**
+     * Exam settings updated (duration, title, passing_score, SEB, etc.)
+     */
+    public function examUpdated(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.updated",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Exam published (draft → scheduled).
+     */
+    public function examPublished(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.published",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Exam deleted.
+     */
+    public function examDeleted(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.deleted",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Exam questions locked by admin.
+     */
+    public function examLocked(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.locked",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Exam questions unlocked by admin.
+     */
+    public function examUnlocked(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.unlocked",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Essay answer graded by teacher.
+     */
+    public function answerGraded(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.answer-graded",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Exam result score manually updated by teacher.
+     */
+    public function resultScoreUpdated(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.result-updated",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
      * A question was added to an active exam.
      */
     public function examQuestionAdded(int $examId, array $questionData): bool

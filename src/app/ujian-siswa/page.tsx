@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
@@ -8,6 +8,7 @@ import { examAPI } from '@/services/api';
 import { Exam } from '@/types';
 import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield, Download } from 'lucide-react';
 import { downloadSEBConfig } from '@/utils/seb';
+import { useExamsListSocket } from '@/hooks/useSocket';
 
 // Live countdown hook
 function useCountdown(targetDate: string) {
@@ -74,6 +75,34 @@ export default function UjianSiswaPage() {
   const router = useRouter();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Real-time updates via WebSocket
+  const examIds = useMemo(() => exams.map(e => e.id), [exams]);
+  const listSocket = useExamsListSocket(examIds);
+
+  useEffect(() => {
+    if (!listSocket.isConnected || examIds.length === 0) return;
+
+    const handleUpdated = (data: unknown) => {
+      const d = data as { exam_id: number; title?: string; status?: string; duration?: number; start_time?: string; end_time?: string };
+      setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, title: d.title ?? e.title, duration: d.duration ?? e.duration, start_time: d.start_time ?? e.start_time, end_time: d.end_time ?? e.end_time, status: (d.status as Exam['status']) ?? e.status } : e));
+    };
+    const handleDeleted = (data: unknown) => {
+      const d = data as { exam_id: number };
+      setExams(prev => prev.filter(e => e.id !== d.exam_id));
+    };
+    const handleEnded = (data: unknown) => {
+      const d = data as { exam_id?: number };
+      if (d.exam_id) setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, status: 'completed' } : e));
+    };
+
+    const cleanups = [
+      listSocket.onAnyExamUpdated(handleUpdated),
+      listSocket.onAnyExamDeleted(handleDeleted),
+      listSocket.onAnyExamEnded(handleEnded),
+    ];
+    return () => { cleanups.forEach(c => c && c()); };
+  }, [listSocket, examIds]);
 
   useEffect(() => {
     fetchExams();

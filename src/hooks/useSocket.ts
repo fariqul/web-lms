@@ -151,6 +151,34 @@ export function useExamSocket(examId: number) {
     on(`exam.${examId}.question-deleted`, callback);
   }, [on, examId]);
 
+  const onExamUpdated = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.updated`, callback);
+  }, [on, examId]);
+
+  const onExamPublished = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.published`, callback);
+  }, [on, examId]);
+
+  const onExamDeleted = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.deleted`, callback);
+  }, [on, examId]);
+
+  const onExamLocked = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.locked`, callback);
+  }, [on, examId]);
+
+  const onExamUnlocked = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.unlocked`, callback);
+  }, [on, examId]);
+
+  const onAnswerGraded = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.answer-graded`, callback);
+  }, [on, examId]);
+
+  const onResultScoreUpdated = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.result-updated`, callback);
+  }, [on, examId]);
+
   useEffect(() => {
     if (examId > 0) {
       joinExamRoom();
@@ -180,7 +208,135 @@ export function useExamSocket(examId: number) {
     onQuestionAdded,
     onQuestionUpdated,
     onQuestionDeleted,
-  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded, onQuestionAdded, onQuestionUpdated, onQuestionDeleted]);
+    onExamUpdated,
+    onExamPublished,
+    onExamDeleted,
+    onExamLocked,
+    onExamUnlocked,
+    onAnswerGraded,
+    onResultScoreUpdated,
+  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded, onQuestionAdded, onQuestionUpdated, onQuestionDeleted, onExamUpdated, onExamPublished, onExamDeleted, onExamLocked, onExamUnlocked, onAnswerGraded, onResultScoreUpdated]);
+}
+
+// Hook for exam list pages — join/leave multiple exam rooms for real-time updates
+export function useExamsListSocket(examIds: number[]) {
+  const { on, off, emit, isConnected, connect, disconnect } = useSocket();
+
+  useEffect(() => {
+    for (const id of examIds) {
+      emit('join-exam', { examId: id });
+    }
+    return () => {
+      for (const id of examIds) {
+        emit('leave-exam', { examId: id });
+      }
+    };
+  }, [emit, examIds]);
+
+  const onAnyExamUpdated = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.updated`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.updated`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyExamPublished = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.published`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.published`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyExamDeleted = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.deleted`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.deleted`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyExamEnded = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.ended`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.ended`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyExamLocked = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.locked`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.locked`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyExamUnlocked = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.unlocked`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.unlocked`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyStudentJoined = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.student-joined`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.student-joined`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  const onAnyStudentSubmitted = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.student-submitted`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.student-submitted`);
+      }
+    };
+  }, [on, off, examIds]);
+
+  return useMemo(() => ({
+    isConnected,
+    emit,
+    on,
+    off,
+    connect,
+    disconnect,
+    onAnyExamUpdated,
+    onAnyExamPublished,
+    onAnyExamDeleted,
+    onAnyExamEnded,
+    onAnyExamLocked,
+    onAnyExamUnlocked,
+    onAnyStudentJoined,
+    onAnyStudentSubmitted,
+  }), [isConnected, emit, on, off, connect, disconnect, onAnyExamUpdated, onAnyExamPublished, onAnyExamDeleted, onAnyExamEnded, onAnyExamLocked, onAnyExamUnlocked, onAnyStudentJoined, onAnyStudentSubmitted]);
 }
 
 // Specialized hook for attendance monitoring

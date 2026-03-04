@@ -43,6 +43,7 @@ import { ImportBankSoalModal } from '@/components/ujian/ImportBankSoalModal';
 import { DuplicateExamModal } from '@/components/ujian/DuplicateExamModal';
 import { ImportExcelModal } from '@/components/ujian/ImportExcelModal';
 import { ImportWordModal } from '@/components/ujian/ImportWordModal';
+import { useExamSocket } from '@/hooks/useSocket';
 
 interface Option {
   id?: number;
@@ -148,6 +149,100 @@ export default function EditSoalPage() {
   useEffect(() => {
     fetchExamData();
   }, [examId]);
+
+  // Real-time WebSocket updates for lock/unlock and question changes
+  const examSocket = useExamSocket(examId);
+
+  useEffect(() => {
+    if (!examSocket.isConnected) return;
+
+    // Exam locked by admin
+    examSocket.onExamLocked((data: unknown) => {
+      const d = data as { locked_by: number; locked_by_name: string; locked_at: string };
+      setExam(prev => prev ? { ...prev, is_locked: true, locked_by: d.locked_by, locked_at: d.locked_at, locked_by_user: { id: d.locked_by, name: d.locked_by_name } } : prev);
+      toast.warning(`Soal dikunci oleh ${d.locked_by_name}`);
+    });
+
+    // Exam unlocked by admin
+    examSocket.onExamUnlocked(() => {
+      setExam(prev => prev ? { ...prev, is_locked: false, locked_by: undefined, locked_at: undefined, locked_by_user: undefined } : prev);
+      toast.success('Soal telah dibuka, Anda bisa mengedit kembali');
+    });
+
+    // Exam settings updated
+    examSocket.onExamUpdated((data: unknown) => {
+      const d = data as { exam_id: number; title?: string; duration?: number; status?: string; start_time?: string; end_time?: string };
+      setExam(prev => prev ? { ...prev, ...d } : prev);
+    });
+
+    // Exam published
+    examSocket.onExamPublished((data: unknown) => {
+      const d = data as { status: string; start_time?: string; end_time?: string };
+      setExam(prev => prev ? { ...prev, status: d.status, start_time: d.start_time || prev.start_time, end_time: d.end_time || prev.end_time } : prev);
+      toast.info('Ujian telah dipublish');
+    });
+
+    // Exam deleted
+    examSocket.onExamDeleted(() => {
+      toast.warning('Ujian ini telah dihapus');
+      router.push(backUrl);
+    });
+
+    // Question added by another user
+    examSocket.onQuestionAdded((data: unknown) => {
+      const d = data as { question: { id: number; question_text: string; question_type?: string; type?: string; order: number; points: number; options?: { text: string; is_correct: boolean; image?: string | null }[]; image?: string | null; passage?: string | null; essay_keywords?: string[] } };
+      if (!d.question) return;
+      setQuestions(prev => {
+        if (prev.some(q => q.id === d.question.id)) return prev;
+        return [...prev, {
+          id: d.question.id,
+          question_text: d.question.question_text,
+          question_type: (d.question.question_type || d.question.type || 'multiple_choice') as 'multiple_choice' | 'essay',
+          points: d.question.points,
+          order: d.question.order,
+          options: d.question.options || [],
+          image: d.question.image || null,
+          passage: d.question.passage || null,
+          essay_keywords: d.question.essay_keywords || [],
+        }];
+      });
+    });
+
+    // Question updated by another user
+    examSocket.onQuestionUpdated((data: unknown) => {
+      const d = data as { question: { id: number; question_text: string; question_type?: string; type?: string; order: number; points: number; options?: { text: string; is_correct: boolean; image?: string | null }[]; image?: string | null; passage?: string | null; essay_keywords?: string[] } };
+      if (!d.question) return;
+      setQuestions(prev => prev.map(q => q.id === d.question.id ? {
+        ...q,
+        question_text: d.question.question_text,
+        question_type: (d.question.question_type || d.question.type || q.question_type) as 'multiple_choice' | 'essay',
+        points: d.question.points,
+        order: d.question.order,
+        options: d.question.options || q.options,
+        image: d.question.image,
+        passage: d.question.passage,
+        essay_keywords: d.question.essay_keywords || q.essay_keywords,
+      } : q));
+    });
+
+    // Question deleted by another user
+    examSocket.onQuestionDeleted((data: unknown) => {
+      const d = data as { question_id: number };
+      if (!d.question_id) return;
+      setQuestions(prev => prev.filter(q => q.id !== d.question_id));
+    });
+
+    return () => {
+      examSocket.off(`exam.${examId}.locked`);
+      examSocket.off(`exam.${examId}.unlocked`);
+      examSocket.off(`exam.${examId}.updated`);
+      examSocket.off(`exam.${examId}.published`);
+      examSocket.off(`exam.${examId}.deleted`);
+      examSocket.off(`exam.${examId}.question-added`);
+      examSocket.off(`exam.${examId}.question-updated`);
+      examSocket.off(`exam.${examId}.question-deleted`);
+    };
+  }, [examSocket, examId, toast, router, backUrl]);
 
   const fetchExamData = async () => {
     try {
