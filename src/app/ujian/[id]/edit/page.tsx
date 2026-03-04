@@ -259,6 +259,11 @@ export default function EditSoalPage() {
       }
     }
 
+    if (newQuestion.question_type === 'essay' && (!newQuestion.essay_keywords || newQuestion.essay_keywords.length === 0)) {
+      toast.warning('Soal essay wajib memiliki kata kunci jawaban');
+      return;
+    }
+
     setSaving(true);
     try {
       const formData = new FormData();
@@ -380,6 +385,11 @@ export default function EditSoalPage() {
         toast.warning('Semua opsi harus diisi teks atau gambar');
         return;
       }
+    }
+
+    if (newQuestion.question_type === 'essay' && (!newQuestion.essay_keywords || newQuestion.essay_keywords.length === 0)) {
+      toast.warning('Soal essay wajib memiliki kata kunci jawaban');
+      return;
     }
 
     setSaving(true);
@@ -1456,10 +1466,10 @@ export default function EditSoalPage() {
           {newQuestion.question_type === 'essay' && (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Kata Kunci Jawaban <span className="text-xs font-normal text-slate-400">(Opsional — untuk penilaian otomatis)</span>
+                Kata Kunci Jawaban <span className="text-xs font-normal text-red-500">* Wajib</span>
               </label>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                Ketik kata kunci lalu tekan Enter. Jawaban siswa yang mengandung kata kunci akan dinilai otomatis secara proporsional.
+                Ketik kata kunci lalu tekan Enter. Semua kata kunci harus ada dalam jawaban siswa untuk mendapat nilai penuh, jika tidak hanya mendapat 1 poin.
               </p>
               <div className="flex flex-wrap gap-2 mb-2">
                 {(newQuestion.essay_keywords || []).map((kw, idx) => (
@@ -1814,10 +1824,10 @@ export default function EditSoalPage() {
           {newQuestion.question_type === 'essay' && (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Kata Kunci Jawaban <span className="text-xs font-normal text-slate-400">(Opsional — untuk penilaian otomatis)</span>
+                Kata Kunci Jawaban <span className="text-xs font-normal text-red-500">* Wajib</span>
               </label>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                Ketik kata kunci lalu tekan Enter. Jawaban siswa yang mengandung kata kunci akan dinilai otomatis secara proporsional.
+                Ketik kata kunci lalu tekan Enter. Semua kata kunci harus ada dalam jawaban siswa untuk mendapat nilai penuh, jika tidak hanya mendapat 1 poin.
               </p>
               <div className="flex flex-wrap gap-2 mb-2">
                 {(newQuestion.essay_keywords || []).map((kw, idx) => (

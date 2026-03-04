@@ -613,9 +613,17 @@ class ExamController extends Controller
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120', // max 5MB
             'image_path' => 'nullable|string', // existing question image path to copy
-            'essay_keywords' => 'nullable|array',
+            'essay_keywords' => 'required_if:question_type,essay|array|min:1',
             'essay_keywords.*' => 'string',
         ]);
+
+        // Validate essay must have keywords
+        if ($request->question_type === 'essay' && (empty($request->essay_keywords) || count($request->essay_keywords) === 0)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal essay wajib memiliki kata kunci jawaban',
+            ], 422);
+        }
 
         // Handle image upload or copy from existing path
         $imagePath = null;
@@ -717,6 +725,18 @@ class ExamController extends Controller
             'essay_keywords' => 'nullable|array',
             'essay_keywords.*' => 'string',
         ]);
+
+        // Validate essay must have keywords
+        $questionType = $request->question_type ?? $question->type;
+        if ($questionType === 'essay') {
+            $keywords = $request->has('essay_keywords') ? $request->essay_keywords : $question->essay_keywords;
+            if (empty($keywords) || (is_array($keywords) && count($keywords) === 0)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Soal essay wajib memiliki kata kunci jawaban',
+                ], 422);
+            }
+        }
 
         // Handle image upload
         if ($request->hasFile('image')) {
@@ -1150,26 +1170,29 @@ class ExamController extends Controller
             $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
             $answerScore = $isCorrect ? $question->points : 0;
         } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
-            // Auto-grade essay based on keywords
+            // Absolute auto-grade essay based on keywords
+            // ALL keywords must be present for full points, otherwise 1 point
             $studentAnswer = mb_strtolower(trim($request->answer));
             $keywords = $question->essay_keywords;
-            $matchedCount = 0;
+            $allMatched = true;
             
             foreach ($keywords as $keyword) {
-                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
-                    $matchedCount++;
+                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) === false) {
+                    $allMatched = false;
+                    break;
                 }
             }
             
-            if ($matchedCount > 0 && count($keywords) > 0) {
-                // Score proportional to matched keywords
-                $ratio = $matchedCount / count($keywords);
-                $essayScore = (int) round($ratio * $question->points);
-                $isCorrect = $essayScore > 0;
+            if ($allMatched && count($keywords) > 0) {
+                // All keywords found → full points
+                $essayScore = $question->points;
+                $isCorrect = true;
+            } else {
+                // Not all keywords found → 1 point
+                $essayScore = 1;
+                $isCorrect = false;
             }
-            // If no keywords matched, leave null for manual grading
         }
-        // Essay without keywords: leave is_correct=null and score=null for manual grading
 
         // Save or update answer
         $answer = Answer::updateOrCreate(
@@ -1249,7 +1272,7 @@ class ExamController extends Controller
         // Calculate score
         $result->finished_at = now();
         $result->submitted_at = now();
-        $result->status = 'completed';
+        $result->status = 'graded'; // All essays auto-graded by keywords
         $result->calculateScore();
 
         // Broadcast: student submitted
@@ -1680,6 +1703,14 @@ class ExamController extends Controller
         }
 
         $question = $answer->question;
+
+        // Block manual grading for essay with keywords (auto-graded)
+        if ($question->type === 'essay' && !empty($question->essay_keywords)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal essay dengan kata kunci dinilai otomatis dan tidak dapat diubah manual',
+            ], 422);
+        }
         
         // Cap score to question points
         $score = min($request->score, $question->points);

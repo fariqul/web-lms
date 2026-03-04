@@ -12,12 +12,9 @@ import {
   Clock,
   AlertTriangle,
   Loader2,
-  Save,
-  MessageSquare,
   Award,
   FileText,
   Camera,
-  HelpCircle,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -86,9 +83,6 @@ export default function HasilSiswaPage() {
   const [result, setResult] = useState<ExamResultData | null>(null);
   const [answers, setAnswers] = useState<AnswerData[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotData[]>([]);
-  const [gradingScores, setGradingScores] = useState<Record<number, number>>({});
-  const [gradingFeedback, setGradingFeedback] = useState<Record<number, string>>({});
-  const [savingAnswerId, setSavingAnswerId] = useState<number | null>(null);
   const [showSnapshots, setShowSnapshots] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -100,16 +94,6 @@ export default function HasilSiswaPage() {
         setResult(data.result);
         setAnswers(data.answers || []);
         setSnapshots(data.snapshots || []);
-
-        // Initialize grading scores from existing data
-        const scores: Record<number, number> = {};
-        const feedback: Record<number, string> = {};
-        (data.answers || []).forEach((a: AnswerData) => {
-          if (a.score !== null) scores[a.id] = a.score;
-          if (a.feedback) feedback[a.id] = a.feedback;
-        });
-        setGradingScores(scores);
-        setGradingFeedback(feedback);
       }
     } catch (error) {
       console.error('Failed to fetch result:', error);
@@ -122,29 +106,6 @@ export default function HasilSiswaPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleGradeAnswer = async (answerId: number) => {
-    const score = gradingScores[answerId];
-    if (score === undefined || score === null) {
-      toast.warning('Masukkan nilai terlebih dahulu');
-      return;
-    }
-
-    setSavingAnswerId(answerId);
-    try {
-      await api.post(`/exams/${examId}/grade-answer/${answerId}`, {
-        score,
-        feedback: gradingFeedback[answerId] || null,
-      });
-      toast.success('Nilai berhasil disimpan');
-      await fetchData();
-    } catch (error) {
-      console.error('Failed to grade answer:', error);
-      toast.error('Gagal menyimpan nilai');
-    } finally {
-      setSavingAnswerId(null);
-    }
-  };
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('id-ID', {
@@ -162,12 +123,6 @@ export default function HasilSiswaPage() {
     const end = new Date(result.finished_at).getTime();
     const diff = Math.floor((end - start) / 1000 / 60);
     return `${diff} menit`;
-  };
-
-  const getUngradedEssayCount = () => {
-    return answers.filter(
-      (a) => a.question.type === 'essay' && a.graded_at === null
-    ).length;
   };
 
   if (loading) {
@@ -210,14 +165,6 @@ export default function HasilSiswaPage() {
               <p className="text-slate-600 dark:text-slate-400">{result.student.name} - NISN: {result.student.nisn}</p>
             </div>
           </div>
-          {getUngradedEssayCount() > 0 && (
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700/50 rounded-lg px-4 py-2">
-              <p className="text-sm text-orange-700 dark:text-orange-400 font-medium">
-                <HelpCircle className="w-4 h-4 inline mr-1" />
-                {getUngradedEssayCount()} soal essay belum dinilai
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Summary Cards */}
@@ -337,10 +284,10 @@ export default function HasilSiswaPage() {
                       ) : (
                         <XCircle className="w-5 h-5 text-red-500" />
                       )
-                    ) : answer.graded_at ? (
-                      <CheckCircle className="w-5 h-5 text-teal-500" />
+                    ) : answer.is_correct ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
                     ) : (
-                      <HelpCircle className="w-5 h-5 text-orange-400" />
+                      <XCircle className="w-5 h-5 text-red-500" />
                     )}
                   </div>
 
@@ -429,12 +376,23 @@ export default function HasilSiswaPage() {
                           {answer.answer || <span className="text-slate-600 dark:text-slate-400 italic">Tidak dijawab</span>}
                         </div>
 
-                        {/* Auto-graded indicator for essay with keywords */}
+                        {/* Auto-graded result for essay with keywords */}
                         {answer.question.essay_keywords && answer.question.essay_keywords.length > 0 && (
-                          <div className="mt-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-100 dark:border-purple-700/40">
+                          <div className={`mt-2 rounded-lg p-3 border ${
+                            answer.is_correct
+                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/40'
+                              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/40'
+                          }`}>
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-                                {answer.score !== null && !answer.graded_at ? '🤖 Dinilai otomatis berdasarkan kata kunci' : 'Kata kunci jawaban:'}
+                              <span className={`text-xs font-semibold ${
+                                answer.is_correct
+                                  ? 'text-green-700 dark:text-green-300'
+                                  : 'text-red-700 dark:text-red-300'
+                              }`}>
+                                {answer.is_correct
+                                  ? `✅ Benar — Semua kata kunci ditemukan (${answer.score}/${answer.question.points} poin)`
+                                  : `❌ Salah — Tidak semua kata kunci ditemukan (${answer.score ?? 1}/${answer.question.points} poin)`
+                                }
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-1">
@@ -446,7 +404,7 @@ export default function HasilSiswaPage() {
                                     className={`text-xs px-2 py-0.5 rounded-full border ${
                                       matched
                                         ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700'
-                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                        : 'bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border-red-200 dark:border-red-700'
                                     }`}
                                   >
                                     {matched ? '✓' : '✗'} {kw}
@@ -454,83 +412,11 @@ export default function HasilSiswaPage() {
                                 );
                               })}
                             </div>
-                            {answer.score !== null && !answer.graded_at && (
-                              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5">
-                                Skor otomatis: {answer.score}/{answer.question.points} — Guru tetap bisa mengubah nilai di bawah.
-                              </p>
-                            )}
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                              🤖 Dinilai otomatis — Semua kata kunci harus ada untuk nilai penuh, jika tidak hanya mendapat 1 poin.
+                            </p>
                           </div>
                         )}
-
-                        {/* Grading form for essay */}
-                        <div className="mt-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg p-4 border border-teal-100 dark:border-teal-700/40">
-                          <h4 className="text-sm font-semibold text-teal-800 dark:text-teal-300 mb-3 flex items-center gap-2">
-                            <Award className="w-4 h-4" />
-                            Penilaian Essay
-                            {answer.graded_at && (
-                              <span className="text-xs font-normal text-teal-500 dark:text-teal-400 ml-2">
-                                (dinilai {formatDateTime(answer.graded_at)})
-                              </span>
-                            )}
-                          </h4>
-                          
-                          <div className="flex items-end gap-4 flex-wrap">
-                            <div>
-                              <label className="block text-xs text-teal-700 dark:text-teal-400 mb-1">
-                                Nilai (maks {answer.question.points})
-                              </label>
-                              <input
-                                type="number"
-                                min={0}
-                                max={answer.question.points}
-                                value={gradingScores[answer.id] ?? ''}
-                                onChange={(e) => setGradingScores({
-                                  ...gradingScores,
-                                  [answer.id]: Math.min(Number(e.target.value), answer.question.points),
-                                })}
-                                className="w-24 px-3 py-2 border border-teal-200 dark:border-teal-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 text-center font-bold bg-white dark:bg-slate-800 text-foreground"
-                                placeholder="0"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-[200px]">
-                              <label className="block text-xs text-teal-700 dark:text-teal-400 mb-1">
-                                Feedback (opsional)
-                              </label>
-                              <input
-                                type="text"
-                                value={gradingFeedback[answer.id] ?? ''}
-                                onChange={(e) => setGradingFeedback({
-                                  ...gradingFeedback,
-                                  [answer.id]: e.target.value,
-                                })}
-                                className="w-full px-3 py-2 border border-teal-200 dark:border-teal-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-slate-800 text-foreground"
-                                placeholder="Berikan komentar…"
-                              />
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => handleGradeAnswer(answer.id)}
-                              disabled={savingAnswerId === answer.id}
-                            >
-                              {savingAnswerId === answer.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Save className="w-4 h-4 mr-1" />
-                                  Simpan
-                                </>
-                              )}
-                            </Button>
-                          </div>
-
-                          {/* Show existing feedback */}
-                          {answer.feedback && (
-                            <div className="mt-3 flex items-start gap-2 text-sm text-teal-700 dark:text-teal-400">
-                              <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                              <span>{answer.feedback}</span>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>
