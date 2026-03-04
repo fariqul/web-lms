@@ -88,18 +88,10 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Exam Publishing & Monitoring (admin only)
         Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
-        Route::post('/exams/{exam}/end', [ExamController::class, 'endExam']);
         
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);
         Route::post('/exams/{exam}/unlock', [ExamController::class, 'unlockExam']);
-        
-        // Admin can manage questions on any exam (even active/locked)
-        Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
-        Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
-        Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
-        Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
-        Route::put('/exam-results/{resultId}/score', [ExamController::class, 'updateResultScore']);
     });
 
     // ============================================
@@ -122,15 +114,10 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Teacher attendance stats
         Route::get('/teacher-attendance-stats', [AttendanceController::class, 'teacherStats']);
         
-        // Exams Management (create, edit, delete - guru only)
+        // Exams Management (create, delete - guru only)
         Route::post('/exams', [ExamController::class, 'store']);
         Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
-        Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
-        Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
-        Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
-        Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
         Route::get('/teacher-grades', [ExamController::class, 'teacherGrades']);
-        Route::put('/exam-results/{resultId}/score', [ExamController::class, 'updateResultScore']);
         
         // Materials Management
         Route::apiResource('materials', MaterialController::class);
@@ -206,6 +193,18 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Exam results (guru grades, admin views)
         Route::get('/exams/{exam}/results', [ExamController::class, 'results']);
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
+        
+        // Question management (shared — admin can edit even locked exams)
+        Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
+        Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
+        Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
+        
+        // Grading (both admin and guru can grade essays)
+        Route::post('/exams/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
+        Route::put('/exam-results/{resultId}/score', [ExamController::class, 'updateResultScore']);
+        
+        // End exam (force finish all students)
+        Route::post('/exams/{exam}/end', [ExamController::class, 'endExam']);
     });
 
     // ============================================

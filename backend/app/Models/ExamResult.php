@@ -27,6 +27,14 @@ class ExamResult extends Model
     ];
 
     protected $casts = [
+        'total_score' => 'float',
+        'max_score' => 'float',
+        'percentage' => 'float',
+        'score' => 'float',
+        'violation_count' => 'integer',
+        'total_correct' => 'integer',
+        'total_wrong' => 'integer',
+        'total_answered' => 'integer',
         'started_at' => 'datetime',
         'submitted_at' => 'datetime',
         'finished_at' => 'datetime',
@@ -49,8 +57,10 @@ class ExamResult extends Model
 
     public function calculateScore()
     {
+        // Only count answers whose questions still exist (exclude deleted questions)
         $answers = Answer::where('exam_id', $this->exam_id)
             ->where('student_id', $this->student_id)
+            ->whereHas('question')
             ->get();
 
         $this->total_answered = $answers->count();

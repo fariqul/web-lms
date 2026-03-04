@@ -24,6 +24,7 @@ class Answer extends Model
 
     protected $casts = [
         'is_correct' => 'boolean',
+        'score' => 'float',
         'submitted_at' => 'datetime',
         'graded_at' => 'datetime',
     ];

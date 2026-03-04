@@ -22,6 +22,7 @@ class Violation extends Model
 
     protected $casts = [
         'recorded_at' => 'datetime',
+        'timestamp' => 'datetime',
     ];
 
     // Violation types

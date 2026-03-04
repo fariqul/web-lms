@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ExamController extends Controller
@@ -230,10 +232,9 @@ class ExamController extends Controller
 
             $exams->getCollection()->transform(function ($exam) use ($myResults) {
                 $exam->my_result = $myResults[$exam->id] ?? null;
-                // Flatten SEB config for frontend
+                // Flatten SEB config for frontend (without exposing quit password)
                 if ($exam->seb_required && is_array($exam->seb_config)) {
                     $exam->seb_allow_quit = $exam->seb_config['allow_quit'] ?? true;
-                    $exam->seb_quit_password = $exam->seb_config['quit_password'] ?? '';
                     $exam->seb_block_screen_capture = $exam->seb_config['block_screen_capture'] ?? true;
                     $exam->seb_allow_virtual_machine = $exam->seb_config['allow_virtual_machine'] ?? false;
                     $exam->seb_show_taskbar = $exam->seb_config['show_taskbar'] ?? true;
@@ -365,6 +366,14 @@ class ExamController extends Controller
 
         // For students: include questions count and result, but not questions content
         if ($user->role === 'siswa') {
+            // Block access to draft exams for students
+            if ($exam->status === 'draft') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ujian belum dipublikasikan',
+                ], 403);
+            }
+
             // Load question count so frontend knows how many questions
             $exam->loadCount('questions');
 
@@ -387,7 +396,10 @@ class ExamController extends Controller
         // Flatten seb_config into top-level fields for frontend compatibility
         if ($exam->seb_required && is_array($exam->seb_config)) {
             $exam->seb_allow_quit = $exam->seb_config['allow_quit'] ?? true;
-            $exam->seb_quit_password = $exam->seb_config['quit_password'] ?? '';
+            // Only expose quit password to admin/guru, not students
+            if ($user->role !== 'siswa') {
+                $exam->seb_quit_password = $exam->seb_config['quit_password'] ?? '';
+            }
             $exam->seb_block_screen_capture = $exam->seb_config['block_screen_capture'] ?? true;
             $exam->seb_allow_virtual_machine = $exam->seb_config['allow_virtual_machine'] ?? false;
             $exam->seb_show_taskbar = $exam->seb_config['show_taskbar'] ?? true;
@@ -424,7 +436,7 @@ class ExamController extends Controller
             'duration' => 'sometimes|integer|min:1',
             'duration_minutes' => 'sometimes|integer|min:1', // alias
             'start_time' => 'sometimes|date',
-            'end_time' => 'sometimes|date',
+            'end_time' => 'sometimes|date|after:start_time',
             'passing_score' => 'sometimes|integer|min:0|max:100',
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
@@ -502,8 +514,33 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $exam->questions()->delete();
-        $exam->delete();
+        // Delete all related data in correct order to avoid orphans
+        DB::transaction(function () use ($exam) {
+            // Delete answers for this exam
+            Answer::where('exam_id', $exam->id)->delete();
+            // Delete violations for this exam
+            Violation::where('exam_id', $exam->id)->delete();
+            // Delete monitoring snapshots for this exam
+            MonitoringSnapshot::where('exam_id', $exam->id)->each(function ($snap) {
+                if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
+                    Storage::disk('public')->delete($snap->image_path);
+                }
+                $snap->delete();
+            });
+            // Delete exam results
+            ExamResult::where('exam_id', $exam->id)->delete();
+            // Detach multi-class pivot
+            $exam->classes()->detach();
+            // Delete questions (with their images)
+            $exam->questions()->each(function ($q) {
+                if ($q->image && Storage::disk('public')->exists($q->image)) {
+                    Storage::disk('public')->delete($q->image);
+                }
+                $q->delete();
+            });
+            // Delete exam
+            $exam->delete();
+        });
 
         return response()->json([
             'success' => true,
@@ -530,6 +567,14 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian harus memiliki minimal 1 soal',
+            ], 422);
+        }
+
+        // Only allow publishing from draft status
+        if ($exam->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya ujian berstatus draft yang dapat dipublish',
             ], 422);
         }
 
@@ -952,33 +997,42 @@ class ExamController extends Controller
             ], 422);
         }
 
-        // Check existing result
-        $result = ExamResult::where('exam_id', $exam->id)
-            ->where('student_id', $user->id)
-            ->first();
+        // Check existing result (with lock to prevent race condition on double-click)
+        $result = DB::transaction(function () use ($exam, $user) {
+            $result = ExamResult::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($result && $result->status === 'completed') {
+            if ($result && $result->status === 'completed') {
+                return 'completed';
+            }
+
+            // Create or get existing result
+            if (!$result) {
+                $result = ExamResult::create([
+                    'exam_id' => $exam->id,
+                    'student_id' => $user->id,
+                    'started_at' => now(),
+                    'status' => 'in_progress',
+                ]);
+
+                // Broadcast: student joined exam
+                app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
+                    'student_id' => $user->id,
+                    'student_name' => $user->name,
+                    'started_at' => now()->toISOString(),
+                ]);
+            }
+
+            return $result;
+        });
+
+        if ($result === 'completed') {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda sudah menyelesaikan ujian ini',
             ], 422);
-        }
-
-        // Create or get existing result
-        if (!$result) {
-            $result = ExamResult::create([
-                'exam_id' => $exam->id,
-                'student_id' => $user->id,
-                'started_at' => now(),
-                'status' => 'in_progress',
-            ]);
-
-            // Broadcast: student joined exam
-            app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
-                'student_id' => $user->id,
-                'student_name' => $user->name,
-                'started_at' => now()->toISOString(),
-            ]);
         }
 
         try {
@@ -1038,7 +1092,7 @@ class ExamController extends Controller
                     $questions = collect($merged);
                 }
             } catch (\Exception $e) {
-                \Log::error('Shuffle questions failed: ' . $e->getMessage());
+                Log::error('Shuffle questions failed: ' . $e->getMessage());
                 $questions = $exam->questions()->orderBy('order')->get();
             }
         }
@@ -1104,10 +1158,10 @@ class ExamController extends Controller
         ]);
 
         } catch (\Exception $e) {
-            \Log::error('startExam error for exam ' . $exam->id . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            Log::error('startExam error for exam ' . $exam->id . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat memulai ujian: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat memulai ujian. Silakan coba lagi.',
             ], 500);
         }
     }
@@ -1137,6 +1191,28 @@ class ExamController extends Controller
             ], 422);
         }
 
+        // Server-side time expiry check
+        $now = now();
+        
+        // Check exam end_time
+        if ($exam->end_time && $now->greaterThan(Carbon::parse($exam->end_time)->addSeconds(30))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Waktu ujian telah berakhir',
+            ], 422);
+        }
+        
+        // Check student's personal duration (started_at + duration)
+        if ($result->started_at && $exam->duration) {
+            $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
+            if ($now->greaterThan($personalDeadline)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Waktu pengerjaan Anda telah habis',
+                ], 422);
+            }
+        }
+
         // Get question
         $question = Question::where('id', $request->question_id)
             ->where('exam_id', $exam->id)
@@ -1158,25 +1234,26 @@ class ExamController extends Controller
             $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
             $answerScore = $isCorrect ? $question->points : 0;
         } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
-            // Auto-grade essay based on keywords
-            // At least 1 keyword match = full points, no match = 1 point
+            // Auto-grade essay based on keywords — graduated scoring
+            // Score = (matched keywords / total keywords) * points
             $studentAnswer = mb_strtolower(trim($request->answer));
             $keywords = $question->essay_keywords;
-            $anyMatched = false;
+            $totalKeywords = count($keywords);
+            $matchedCount = 0;
             
             foreach ($keywords as $keyword) {
                 if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
-                    $anyMatched = true;
-                    break;
+                    $matchedCount++;
                 }
             }
             
-            if ($anyMatched) {
-                // At least 1 keyword found → full points
-                $essayScore = $question->points;
-                $isCorrect = true;
+            if ($totalKeywords > 0 && $matchedCount > 0) {
+                // Graduated scoring: percentage of keywords matched
+                $essayScore = round(($matchedCount / $totalKeywords) * $question->points);
+                $essayScore = max(1, $essayScore); // minimum 1 point if any match
+                $isCorrect = $matchedCount === $totalKeywords; // fully correct only if all match
             } else {
-                // No keywords found → 1 point
+                // No keywords found → 1 point (attempted)
                 $essayScore = 1;
                 $isCorrect = false;
             }
@@ -1218,76 +1295,95 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        $result = ExamResult::where('exam_id', $exam->id)
-            ->where('student_id', $user->id)
-            ->where('status', 'in_progress')
-            ->first();
-
-        // If not in_progress, check if already completed (admin ended exam first)
-        if (!$result) {
-            $alreadyCompleted = ExamResult::where('exam_id', $exam->id)
+        // Use transaction with lock to prevent double-submit race condition
+        $responseData = DB::transaction(function () use ($exam, $user) {
+            $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
-                ->whereIn('status', ['completed', 'graded', 'submitted'])
+                ->where('status', 'in_progress')
+                ->lockForUpdate()
                 ->first();
 
-            if ($alreadyCompleted) {
-                // Already submitted (likely by admin force-finish) — return success
-                $response = [
-                    'success' => true,
-                    'message' => 'Ujian sudah diselesaikan',
-                    'already_completed' => true,
-                ];
+            // If not in_progress, check if already completed (admin ended exam first)
+            if (!$result) {
+                $alreadyCompleted = ExamResult::where('exam_id', $exam->id)
+                    ->where('student_id', $user->id)
+                    ->whereIn('status', ['completed', 'graded', 'submitted'])
+                    ->first();
 
-                if ($exam->show_result) {
-                    $response['data'] = [
-                        'score' => $alreadyCompleted->score,
-                        'total_correct' => $alreadyCompleted->total_correct,
-                        'total_wrong' => $alreadyCompleted->total_wrong,
-                        'total_questions' => $exam->questions()->count(),
-                        'passed' => $alreadyCompleted->score >= $exam->passing_score,
+                if ($alreadyCompleted) {
+                    $response = [
+                        'success' => true,
+                        'message' => 'Ujian sudah diselesaikan',
+                        'already_completed' => true,
                     ];
+
+                    if ($exam->show_result) {
+                        $response['data'] = [
+                            'score' => $alreadyCompleted->score,
+                            'total_correct' => $alreadyCompleted->total_correct,
+                            'total_wrong' => $alreadyCompleted->total_wrong,
+                            'total_questions' => $exam->questions()->count(),
+                            'passed' => $alreadyCompleted->score >= $exam->passing_score,
+                        ];
+                    }
+
+                    return $response;
                 }
 
-                return response()->json($response);
+                return ['error' => true, 'message' => 'Sesi ujian tidak ditemukan'];
             }
 
+            // Calculate score
+            $result->finished_at = now();
+            $result->submitted_at = now();
+            
+            // Check if there are essays without keywords (need manual grading)
+            $hasUngradedEssays = Answer::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)
+                ->whereHas('question', function ($q) {
+                    $q->where('type', 'essay')->where(function ($q2) {
+                        $q2->whereNull('essay_keywords')->orWhere('essay_keywords', '[]');
+                    });
+                })
+                ->exists();
+            
+            $result->status = $hasUngradedEssays ? 'submitted' : 'graded';
+            $result->calculateScore();
+
+            // Broadcast: student submitted
+            app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
+                'student_id' => $user->id,
+                'student_name' => $user->name,
+                'score' => $result->score,
+                'finished_at' => $result->finished_at->toISOString(),
+            ]);
+
+            $response = [
+                'success' => true,
+                'message' => 'Ujian berhasil diselesaikan',
+            ];
+
+            if ($exam->show_result) {
+                $response['data'] = [
+                    'score' => $result->score,
+                    'total_correct' => $result->total_correct,
+                    'total_wrong' => $result->total_wrong,
+                    'total_questions' => $exam->questions()->count(),
+                    'passed' => $result->score >= $exam->passing_score,
+                ];
+            }
+
+            return $response;
+        });
+
+        if (isset($responseData['error'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Sesi ujian tidak ditemukan',
+                'message' => $responseData['message'],
             ], 422);
         }
 
-        // Calculate score
-        $result->finished_at = now();
-        $result->submitted_at = now();
-        $result->status = 'graded'; // All essays auto-graded by keywords
-        $result->calculateScore();
-
-        // Broadcast: student submitted
-        app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
-            'student_id' => $user->id,
-            'student_name' => $user->name,
-            'score' => $result->score,
-            'finished_at' => $result->finished_at->toISOString(),
-        ]);
-
-        $response = [
-            'success' => true,
-            'message' => 'Ujian berhasil diselesaikan',
-        ];
-
-        // Include result if show_result is enabled
-        if ($exam->show_result) {
-            $response['data'] = [
-                'score' => $result->score,
-                'total_correct' => $result->total_correct,
-                'total_wrong' => $result->total_wrong,
-                'total_questions' => $exam->questions()->count(),
-                'passed' => $result->score >= $exam->passing_score,
-            ];
-        }
-
-        return response()->json($response);
+        return response()->json($responseData);
     }
 
     /**
@@ -1296,7 +1392,7 @@ class ExamController extends Controller
     public function reportViolation(Request $request, Exam $exam)
     {
         $request->validate([
-            'type' => 'required|string',
+            'type' => 'required|in:tab_switch,window_blur,copy_paste,right_click,shortcut_key,screen_capture,multiple_face,no_face',
             'description' => 'nullable|string',
             'screenshot' => 'nullable|image|max:2048',
         ]);
@@ -1305,6 +1401,7 @@ class ExamController extends Controller
 
         $result = ExamResult::where('exam_id', $exam->id)
             ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
             ->first();
 
         if (!$result) {
@@ -1364,6 +1461,7 @@ class ExamController extends Controller
         if ($exam->max_violations && $result->violation_count >= $exam->max_violations) {
             $forceSubmit = true;
             $result->finished_at = now();
+            $result->submitted_at = now();
             $result->status = 'completed';
             $result->calculateScore();
         }
@@ -1420,32 +1518,33 @@ class ExamController extends Controller
             ]);
         }
 
-        // Delete previous non-violation snapshots for this student+exam to save storage
-        // Only keep the latest one for live monitoring
-        $oldSnapshots = MonitoringSnapshot::where('exam_id', $exam->id)
-            ->where('student_id', $user->id)
-            ->where('is_violation', false)
-            ->get();
-
-        foreach ($oldSnapshots as $old) {
-            if ($old->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($old->image_path)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($old->image_path);
-            }
-            $old->delete();
-        }
-
+        // Delete previous non-violation snapshots and create new one in a transaction
         $imagePath = $request->file('image')->store('monitoring-snapshots', 'public');
 
-        $snapshot = MonitoringSnapshot::create([
-            'exam_result_id' => $result->id,
-            'user_id' => $user->id,
-            'student_id' => $user->id,
-            'exam_id' => $exam->id,
-            'image_path' => $imagePath,
-            'photo_path' => $imagePath,
-            'captured_at' => now(),
-            'is_violation' => false,
-        ]);
+        $snapshot = DB::transaction(function () use ($exam, $user, $result, $imagePath) {
+            $oldSnapshots = MonitoringSnapshot::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)
+                ->where('is_violation', false)
+                ->get();
+
+            foreach ($oldSnapshots as $old) {
+                if ($old->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($old->image_path)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($old->image_path);
+                }
+                $old->delete();
+            }
+
+            return MonitoringSnapshot::create([
+                'exam_result_id' => $result->id,
+                'user_id' => $user->id,
+                'student_id' => $user->id,
+                'exam_id' => $exam->id,
+                'image_path' => $imagePath,
+                'photo_path' => $imagePath,
+                'captured_at' => now(),
+                'is_violation' => false,
+            ]);
+        });
 
         // Broadcast: new snapshot
         app(SocketBroadcastService::class)->examSnapshot($exam->id, [
@@ -1492,16 +1591,19 @@ class ExamController extends Controller
 
         // Auto-submit any in_progress results if exam time has ended
         if ($examEnded) {
-            $expiredResults = ExamResult::where('exam_id', $exam->id)
-                ->where('status', 'in_progress')
-                ->get();
+            DB::transaction(function () use ($exam) {
+                $expiredResults = ExamResult::where('exam_id', $exam->id)
+                    ->where('status', 'in_progress')
+                    ->lockForUpdate()
+                    ->get();
 
-            foreach ($expiredResults as $expiredResult) {
-                $expiredResult->status = 'completed';
-                $expiredResult->finished_at = $exam->end_time;
-                $expiredResult->submitted_at = $exam->end_time;
-                $expiredResult->calculateScore();
-            }
+                foreach ($expiredResults as $expiredResult) {
+                    $expiredResult->status = 'completed';
+                    $expiredResult->finished_at = $exam->end_time;
+                    $expiredResult->submitted_at = $exam->end_time;
+                    $expiredResult->calculateScore();
+                }
+            });
         }
 
         // Get all exam results (refresh after auto-submit)
@@ -1727,13 +1829,8 @@ class ExamController extends Controller
 
         $question = $answer->question;
 
-        // Block manual grading for essay with keywords (auto-graded)
-        if ($question->type === 'essay' && !empty($question->essay_keywords)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Soal essay dengan kata kunci dinilai otomatis dan tidak dapat diubah manual',
-            ], 422);
-        }
+        // Warn if overriding auto-graded essay (but allow it)
+        $wasAutoGraded = $question->type === 'essay' && !empty($question->essay_keywords) && $answer->graded_by === null;
         
         // Cap score to question points
         $score = min($request->score, $question->points);
@@ -1773,8 +1870,11 @@ class ExamController extends Controller
             'data' => [
                 'answer' => $answer,
                 'exam_result' => $examResult,
+                'auto_grade_overridden' => $wasAutoGraded,
             ],
-            'message' => 'Nilai berhasil disimpan',
+            'message' => $wasAutoGraded 
+                ? 'Nilai auto-grade berhasil diubah manual' 
+                : 'Nilai berhasil disimpan',
         ]);
     }
 
@@ -1925,32 +2025,37 @@ class ExamController extends Controller
             ], 422);
         }
 
-        // Force-finish all in-progress results
-        $inProgressResults = ExamResult::where('exam_id', $exam->id)
-            ->where('status', 'in_progress')
-            ->get();
+        // Force-finish all in-progress results in a transaction
+        $forceFinishedCount = DB::transaction(function () use ($exam) {
+            $inProgressResults = ExamResult::where('exam_id', $exam->id)
+                ->where('status', 'in_progress')
+                ->lockForUpdate()
+                ->get();
 
-        $forceFinishedCount = 0;
-        foreach ($inProgressResults as $result) {
-            $result->finished_at = now();
-            $result->submitted_at = now();
-            $result->status = 'completed';
-            $result->calculateScore();
-            $forceFinishedCount++;
+            $count = 0;
+            foreach ($inProgressResults as $result) {
+                $result->finished_at = now();
+                $result->submitted_at = now();
+                $result->status = 'completed';
+                $result->calculateScore();
+                $count++;
 
-            // Broadcast: student submitted (so monitoring page updates)
-            app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
-                'student_id' => $result->student_id,
-                'student_name' => $result->student->name ?? 'Unknown',
-                'score' => $result->percentage,
-                'force_ended' => true,
-            ]);
-        }
+                // Broadcast: student submitted (so monitoring page updates)
+                app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
+                    'student_id' => $result->student_id,
+                    'student_name' => $result->student->name ?? 'Unknown',
+                    'score' => $result->percentage,
+                    'force_ended' => true,
+                ]);
+            }
 
-        // Update exam status and end_time
-        $exam->status = 'completed';
-        $exam->end_time = now();
-        $exam->save();
+            // Update exam status and end_time
+            $exam->status = 'completed';
+            $exam->end_time = now();
+            $exam->save();
+
+            return $count;
+        });
 
         // Broadcast exam ended event so student browsers know to stop
         app(SocketBroadcastService::class)->examEnded($exam->id, [
