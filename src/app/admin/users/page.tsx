@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
 import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser } from 'lucide-react';
@@ -62,35 +62,47 @@ export default function AdminUsersPage() {
     nomor_tes: '',
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchData = async () => {
+  const fetchUsers = useCallback(async (search?: string, role?: string) => {
     try {
       setLoading(true);
-      // Fetch all users with high per_page to get all
-      const usersRes = await userAPI.getAll({ per_page: 1000 });
+      const params: { per_page: number; search?: string; role?: string } = { per_page: 500 };
+      if (search) params.search = search;
+      if (role) params.role = role;
+      const usersRes = await userAPI.getAll(params);
       const usersData = usersRes.data?.data;
       const usersList = Array.isArray(usersData) ? usersData : (usersData?.data || []);
       setUsers(usersList);
-
-      // Fetch classes for dropdown
-      const classesRes = await classAPI.getAll();
-      setClasses(classesRes.data?.data || []);
+      // Get total from pagination meta
+      const total = usersData?.total ?? usersList.length;
+      setTotalUsers(total);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('Failed to fetch users:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = !roleFilter || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  useEffect(() => {
+    fetchUsers();
+    // Fetch classes for dropdown
+    classAPI.getAll().then(res => setClasses(res.data?.data || [])).catch(() => {});
+  }, [fetchUsers]);
+
+  // Server-side search with debounce
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchUsers(searchQuery, roleFilter);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery, roleFilter, fetchUsers]);
+
+  const fetchData = () => fetchUsers(searchQuery, roleFilter);
+
+  const filteredUsers = users;
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -300,7 +312,7 @@ export default function AdminUsersPage() {
         <Card>
           <CardHeader
             title="Kelola Pengguna"
-            subtitle={`Total ${users.length} pengguna`}
+            subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
             action={
               <div className="flex gap-2">
                 <Button
@@ -334,7 +346,7 @@ export default function AdminUsersPage() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
-                placeholder="Cari nama atau email…"
+                placeholder="Cari nama, email, NISN, NIP, No. Tes…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="w-4 h-4" />}
