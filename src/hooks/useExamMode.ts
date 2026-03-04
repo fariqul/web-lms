@@ -71,6 +71,35 @@ export function useExamMode({
   const retryQueueRef = useRef<Blob[]>([]);
   const MAX_RETRY_QUEUE = 3;
 
+  // Capture a quick snapshot blob from camera (for violation reports)
+  const captureViolationBlob = useCallback((): Blob | null => {
+    if (!videoRef.current || !isCameraActive) return null;
+    const video = videoRef.current;
+    const stream = video.srcObject as MediaStream | null;
+    if (!stream) return null;
+    const track = stream.getVideoTracks()[0];
+    if (!track || track.readyState !== 'live') return null;
+    try {
+      const w = Math.min(video.videoWidth || 320, 320);
+      const h = Math.min(video.videoHeight || 240, 240);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      ctx.drawImage(video, 0, 0, w, h);
+      // Synchronous conversion to blob via toDataURL
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const byteString = atob(dataUrl.split(',')[1]);
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+      return new Blob([ab], { type: 'image/jpeg' });
+    } catch {
+      return null;
+    }
+  }, [isCameraActive]);
+
   // Report violation to server (with debounce for mobile)
   const reportViolation = useCallback(async (type: string, description?: string) => {
     // Only report violations once monitoring is active
@@ -81,11 +110,15 @@ export function useExamMode({
     if (now - lastViolationTimeRef.current < VIOLATION_DEBOUNCE_MS) return;
     lastViolationTimeRef.current = now;
     
+    // Capture a camera snapshot to attach with the violation
+    const screenshotBlob = captureViolationBlob();
+    
     try {
       const response = await monitoringAPI.reportViolation({
         exam_id: examId,
         type,
         description,
+        screenshot: screenshotBlob || undefined,
       });
       
       const data = response.data?.data;
@@ -105,7 +138,7 @@ export function useExamMode({
     } catch (error) {
       console.error('Failed to report violation:', error);
     }
-  }, [examId, onViolation, onForceSubmit]);
+  }, [examId, onViolation, onForceSubmit, captureViolationBlob]);
 
   // Activate monitoring — can be called independently of fullscreen
   const activateMonitoring = useCallback(() => {

@@ -18,11 +18,13 @@ class MonitoringSnapshot extends Model
         'photo_path',
         'captured_at',
         'analysis_result',
+        'is_violation',
     ];
 
     protected $casts = [
         'captured_at' => 'datetime',
         'analysis_result' => 'array',
+        'is_violation' => 'boolean',
     ];
 
     public function examResult()

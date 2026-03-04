@@ -347,7 +347,19 @@ export const monitoringAPI = {
     exam_id: number;
     type: string;
     description?: string;
-  }) => api.post(`/exams/${data.exam_id}/violation`, data),
+    screenshot?: Blob;
+  }) => {
+    // If screenshot is included, send as FormData
+    if (data.screenshot) {
+      const formData = new FormData();
+      formData.append('type', data.type);
+      if (data.description) formData.append('description', data.description);
+      const file = new File([data.screenshot], `violation_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      formData.append('screenshot', file);
+      return api.post(`/exams/${data.exam_id}/violation`, formData, { timeout: 15000 });
+    }
+    return api.post(`/exams/${data.exam_id}/violation`, data);
+  },
   
   getViolations: (examId: number, studentId?: number) =>
     api.get(`/exams/${examId}/results/${studentId}`),

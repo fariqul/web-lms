@@ -1342,6 +1342,21 @@ class ExamController extends Controller
             'timestamp' => now(),
         ]);
 
+        // Also save a violation snapshot for admin review (permanent, not cleaned up)
+        if ($request->hasFile('screenshot')) {
+            $violationImagePath = $request->file('screenshot')->store('monitoring-snapshots', 'public');
+            MonitoringSnapshot::create([
+                'exam_result_id' => $result->id,
+                'user_id' => $user->id,
+                'student_id' => $user->id,
+                'exam_id' => $exam->id,
+                'image_path' => $violationImagePath,
+                'photo_path' => $violationImagePath,
+                'captured_at' => now(),
+                'is_violation' => true,
+            ]);
+        }
+
         // Update violation count
         $result->violation_count = $result->violations()->count();
         $result->save();
@@ -1417,6 +1432,20 @@ class ExamController extends Controller
             ]);
         }
 
+        // Delete previous non-violation snapshots for this student+exam to save storage
+        // Only keep the latest one for live monitoring
+        $oldSnapshots = MonitoringSnapshot::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->where('is_violation', false)
+            ->get();
+
+        foreach ($oldSnapshots as $old) {
+            if ($old->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($old->image_path)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($old->image_path);
+            }
+            $old->delete();
+        }
+
         $imagePath = $request->file('image')->store('monitoring-snapshots', 'public');
 
         $snapshot = MonitoringSnapshot::create([
@@ -1427,6 +1456,7 @@ class ExamController extends Controller
             'image_path' => $imagePath,
             'photo_path' => $imagePath,
             'captured_at' => now(),
+            'is_violation' => false,
         ]);
 
         // Broadcast: new snapshot
@@ -1656,10 +1686,15 @@ class ExamController extends Controller
             ->where('student_id', $studentId)
             ->get(['id', 'question_id', 'answer', 'is_correct', 'score', 'feedback', 'graded_by', 'graded_at', 'submitted_at']);
 
-        $snapshots = MonitoringSnapshot::where('exam_id', $exam->id)
-            ->where('student_id', $studentId)
-            ->orderBy('captured_at')
-            ->get(['id', 'image_path', 'captured_at']);
+        // Snapshots only visible to admin (not guru) to save privacy/storage
+        $snapshots = [];
+        if ($user->role === 'admin') {
+            $snapshots = MonitoringSnapshot::where('exam_id', $exam->id)
+                ->where('student_id', $studentId)
+                ->where('is_violation', true)
+                ->orderBy('captured_at')
+                ->get(['id', 'image_path', 'captured_at']);
+        }
 
         return response()->json([
             'success' => true,
