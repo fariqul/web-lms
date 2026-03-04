@@ -94,31 +94,31 @@ class ExportController extends Controller
 
         // Clear template data rows (rows 2-51)
         for ($r = 2; $r <= 51; $r++) {
-            for ($c = 'A'; $c <= 'I'; $c++) {
+            for ($c = 'A'; $c <= 'J'; $c++) {
                 $sheet->setCellValue($c . $r, '');
             }
         }
 
         // --- Info header (rows 1-3) ---
-        $sheet->mergeCells('A1:I1');
+        $sheet->mergeCells('A1:J1');
         $sheet->setCellValue('A1', 'Hasil Ujian: ' . $exam->title);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $sheet->mergeCells('A2:I2');
+        $sheet->mergeCells('A2:J2');
         $sheet->setCellValue('A2', 'Mata Pelajaran: ' . ($exam->subject ?? '-') . '  |  Kelas: ' . $className . '  |  Tanggal: ' . ($exam->start_time ? $exam->start_time->format('d/m/Y') : '-'));
         $sheet->getStyle('A2')->getFont()->setSize(11)->setItalic(true);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $sheet->mergeCells('A3:I3');
+        $sheet->mergeCells('A3:J3');
         $sheet->setCellValue('A3', 'Diekspor: ' . now()->format('d/m/Y H:i'));
         $sheet->getStyle('A3')->getFont()->setSize(9)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF666666'));
         $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         // --- Column headers (row 4) ---
         $headerRow = 4;
-        $headers = ['No', 'No. Tes', 'Nama Siswa', 'NIS', 'Jawaban Benar', 'Skor', 'Status', 'Waktu Selesai', 'Keterangan'];
-        $cols = range('A', 'I');
+        $headers = ['No', 'No. Tes', 'Nama Siswa', 'NIS', 'Pilihan Ganda', 'Nilai Essay', 'Nilai Total', 'Status', 'Waktu Selesai', 'Keterangan'];
+        $cols = range('A', 'J');
 
         foreach ($headers as $idx => $header) {
             $cell = $cols[$idx] . $headerRow;
@@ -132,7 +132,7 @@ class ExportController extends Controller
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ];
-        $sheet->getStyle("A{$headerRow}:I{$headerRow}")->applyFromArray($headerStyle);
+        $sheet->getStyle("A{$headerRow}:J{$headerRow}")->applyFromArray($headerStyle);
 
         // --- Data rows ---
         $dataRow = $headerRow + 1;
@@ -142,19 +142,24 @@ class ExportController extends Controller
         foreach ($results as $i => $result) {
             $row = $dataRow + $i;
 
-            // Count correct/wrong from answers
+            // Count correct/wrong from answers and essay scores
             $correct = 0;
             $wrong = 0;
             $hasEssay = false;
             $ungradedEssay = 0;
+            $essayScore = 0;
+            $essayMaxScore = 0;
 
             if ($result->studentAnswers) {
                 foreach ($result->studentAnswers as $answer) {
                     $qType = $answer->question->type ?? 'multiple_choice';
                     if ($qType === 'essay') {
                         $hasEssay = true;
+                        $essayMaxScore += ($answer->question->points ?? 0);
                         if ($answer->score === null) {
                             $ungradedEssay++;
+                        } else {
+                            $essayScore += $answer->score;
                         }
                     } else {
                         if ($answer->is_correct) {
@@ -178,24 +183,31 @@ class ExportController extends Controller
                 $keterangan = 'Essay sudah dinilai';
             }
 
+            // Nilai essay display
+            $nilaiEssay = '-';
+            if ($hasEssay) {
+                $nilaiEssay = $essayScore . '/' . $essayMaxScore;
+            }
+
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $result->student->nomor_tes ?? '-');
             $sheet->setCellValue('C' . $row, $result->student->name ?? '-');
             $sheet->setCellValue('D' . $row, $result->student->nisn ?? '-');
             $sheet->setCellValue('E' . $row, $correct . '/' . $totalMcQuestions);
-            $sheet->setCellValue('F' . $row, $result->total_score . '/' . ($result->max_score ?? 100));
-            $sheet->setCellValue('G' . $row, $status);
-            $sheet->setCellValue('H' . $row, $finishedAt);
-            $sheet->setCellValue('I' . $row, $keterangan);
+            $sheet->setCellValue('F' . $row, $nilaiEssay);
+            $sheet->setCellValue('G' . $row, $result->total_score . '/' . ($result->max_score ?? 100));
+            $sheet->setCellValue('H' . $row, $status);
+            $sheet->setCellValue('I' . $row, $finishedAt);
+            $sheet->setCellValue('J' . $row, $keterangan);
 
             // Status color
             $statusColor = $status === 'Lulus' ? '27AE60' : 'E74C3C';
-            $sheet->getStyle('G' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF' . $statusColor));
-            $sheet->getStyle('G' . $row)->getFont()->setBold(true);
+            $sheet->getStyle('H' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF' . $statusColor));
+            $sheet->getStyle('H' . $row)->getFont()->setBold(true);
 
             // Alternating row color
             if ($i % 2 === 1) {
-                $sheet->getStyle("A{$row}:I{$row}")->getFill()
+                $sheet->getStyle("A{$row}:J{$row}")->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setRGB('F2F2F2');
             }
@@ -208,15 +220,15 @@ class ExportController extends Controller
 
         // Data borders
         if (count($results) > 0) {
-            $sheet->getStyle("A{$dataRow}:I{$lastDataRow}")->applyFromArray([
+            $sheet->getStyle("A{$dataRow}:J{$lastDataRow}")->applyFromArray([
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ]);
             // Center columns
             $sheet->getStyle("A{$dataRow}:A{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("B{$dataRow}:B{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("E{$dataRow}:F{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("H{$dataRow}:H{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("E{$dataRow}:G{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("I{$dataRow}:I{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
         // --- Summary section ---
@@ -245,7 +257,7 @@ class ExportController extends Controller
         }
 
         // Column widths
-        $widths = ['A' => 5, 'B' => 12, 'C' => 25, 'D' => 15, 'E' => 14, 'F' => 12, 'G' => 12, 'H' => 14, 'I' => 25];
+        $widths = ['A' => 5, 'B' => 12, 'C' => 25, 'D' => 15, 'E' => 14, 'F' => 14, 'G' => 14, 'H' => 12, 'I' => 14, 'J' => 25];
         foreach ($widths as $col => $w) {
             $sheet->getColumnDimension($col)->setWidth($w);
         }
@@ -270,11 +282,20 @@ class ExportController extends Controller
         foreach ($results as $i => $result) {
             $correct = 0;
             $wrong = 0;
+            $essayScore = 0;
+            $essayMaxScore = 0;
+            $hasEssay = false;
 
             if ($result->studentAnswers) {
                 foreach ($result->studentAnswers as $answer) {
                     $qType = $answer->question->type ?? 'multiple_choice';
-                    if ($qType !== 'essay') {
+                    if ($qType === 'essay') {
+                        $hasEssay = true;
+                        $essayMaxScore += ($answer->question->points ?? 0);
+                        if ($answer->score !== null) {
+                            $essayScore += $answer->score;
+                        }
+                    } else {
                         if ($answer->is_correct) $correct++;
                         else $wrong++;
                     }
@@ -291,6 +312,7 @@ class ExportController extends Controller
                 'name' => $result->student->name ?? '-',
                 'nisn' => $result->student->nisn ?? '-',
                 'jawaban' => $correct . '/' . $totalMcQuestions,
+                'essay' => $hasEssay ? $essayScore . '/' . $essayMaxScore : '-',
                 'skor' => $result->total_score . '/' . ($result->max_score ?? 100),
                 'pct' => $pct,
                 'status' => $status,
@@ -342,7 +364,7 @@ class ExportController extends Controller
         $html .= '<div class="meta">Diekspor: ' . $exportDate . '</div>';
 
         $html .= '<table><thead><tr>';
-        foreach (['No', 'No. Tes', 'Nama Siswa', 'NIS', 'Jawaban Benar', 'Skor', 'Status', 'Waktu'] as $h) {
+        foreach (['No', 'No. Tes', 'Nama Siswa', 'NIS', 'Pilihan Ganda', 'Nilai Essay', 'Nilai Total', 'Status', 'Waktu'] as $h) {
             $html .= '<th>' . $h . '</th>';
         }
         $html .= '</tr></thead><tbody>';
@@ -355,6 +377,7 @@ class ExportController extends Controller
             $html .= '<td>' . htmlspecialchars($r['name']) . '</td>';
             $html .= '<td class="center">' . htmlspecialchars($r['nisn']) . '</td>';
             $html .= '<td class="center">' . $r['jawaban'] . '</td>';
+            $html .= '<td class="center">' . $r['essay'] . '</td>';
             $html .= '<td class="center">' . $r['skor'] . '</td>';
             $html .= '<td class="center ' . $cls . '">' . $r['status'] . '</td>';
             $html .= '<td class="center">' . $r['time'] . '</td>';
