@@ -41,7 +41,7 @@ class UserController extends Controller
         }
 
         $users = $query->orderBy('name')
-            ->paginate(min($request->per_page ?? 15, 100));
+            ->paginate(min($request->per_page ?? 15, 500));
 
         return response()->json([
             'success' => true,
