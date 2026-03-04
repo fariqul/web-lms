@@ -613,17 +613,11 @@ class ExamController extends Controller
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120', // max 5MB
             'image_path' => 'nullable|string', // existing question image path to copy
-            'essay_keywords' => 'required_if:question_type,essay|array|min:1',
+            'essay_keywords' => 'nullable|array',
             'essay_keywords.*' => 'string',
         ]);
 
-        // Validate essay must have keywords
-        if ($request->question_type === 'essay' && (empty($request->essay_keywords) || count($request->essay_keywords) === 0)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Soal essay wajib memiliki kata kunci jawaban',
-            ], 422);
-        }
+        // Note: essay_keywords is optional — essays without keywords won't auto-grade
 
         // Handle image upload or copy from existing path
         $imagePath = null;
@@ -726,16 +720,10 @@ class ExamController extends Controller
             'essay_keywords.*' => 'string',
         ]);
 
-        // Validate essay must have keywords
+        // Validate essay must have keywords (only warn, don't block — allows import without keywords)
         $questionType = $request->question_type ?? $question->type;
         if ($questionType === 'essay') {
-            $keywords = $request->has('essay_keywords') ? $request->essay_keywords : $question->essay_keywords;
-            if (empty($keywords) || (is_array($keywords) && count($keywords) === 0)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Soal essay wajib memiliki kata kunci jawaban',
-                ], 422);
-            }
+            // Keywords are optional — essays without keywords won't auto-grade
         }
 
         // Handle image upload

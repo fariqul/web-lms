@@ -33,6 +33,7 @@ interface ParsedQuestion {
   points: number;
   passage?: string | null;
   image?: string | null;
+  essay_keywords?: string[] | null;
   options: { text: string; is_correct: boolean; image?: string | null }[];
   valid: boolean;
 }
@@ -99,6 +100,7 @@ export function DuplicateExamModal({
           points: number;
           passage?: string | null;
           image?: string | null;
+          essay_keywords?: string[] | null;
           options?: { option_text: string; is_correct: boolean; image?: string | null }[];
         }) => ({
           question_text: q.question_text,
@@ -106,6 +108,7 @@ export function DuplicateExamModal({
           points: q.points || 10,
           passage: q.passage || null,
           image: q.image || null,
+          essay_keywords: q.essay_keywords || null,
           options: q.options?.map((opt: { option_text: string; is_correct: boolean; image?: string | null }) => ({
             text: opt.option_text,
             is_correct: opt.is_correct,

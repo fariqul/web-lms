@@ -557,6 +557,7 @@ export default function EditSoalPage() {
     points: number;
     passage?: string | null;
     image?: string | null;
+    essay_keywords?: string[] | null;
     options: { text: string; is_correct: boolean; image?: string | null }[];
   }[]) => {
     let successCount = 0;
@@ -579,6 +580,13 @@ export default function EditSoalPage() {
         // Include image path for copying (from exam duplication)
         if (q.image) {
           formData.append('image_path', q.image);
+        }
+
+        // Include essay keywords if present (from exam duplication)
+        if (q.question_type === 'essay' && q.essay_keywords && q.essay_keywords.length > 0) {
+          q.essay_keywords.forEach((kw, idx) => {
+            formData.append(`essay_keywords[${idx}]`, kw);
+          });
         }
 
         if (q.question_type === 'multiple_choice') {
