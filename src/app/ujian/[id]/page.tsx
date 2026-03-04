@@ -935,41 +935,43 @@ export default function ExamTakingPage() {
         </div>
       )}
       <div className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Soal {currentQuestion + 1} dari {questions.length}</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-              timeRemaining < 300 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-muted text-slate-700 dark:text-slate-300'
-            }`}>
-              <Clock className="w-5 h-5" />
-              <span className="font-mono font-bold">{formatTime(timeRemaining)}</span>
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-shrink">
+              <h1 className="font-semibold text-slate-800 dark:text-white text-sm sm:text-base truncate">{exam.title}</h1>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Soal {currentQuestion + 1}/{questions.length}</p>
             </div>
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              isCameraActive 
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
-                : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-            }`}>
-              {isCameraActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-              <span className="text-sm font-medium">{isCameraActive ? 'Kamera' : 'Kamera Mati'}</span>
-            </div>
-            {violationCount > 0 && (
-              <div className="flex items-center gap-2 text-red-600">
-                <AlertTriangle className="w-5 h-5" />
-                <span className="text-sm">
-                  {violationCount}{maxViolations ? `/${maxViolations}` : ''} pelanggaran
-                </span>
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+              <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm ${
+                timeRemaining < 300 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-muted text-slate-700 dark:text-slate-300'
+              }`}>
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="font-mono font-bold">{formatTime(timeRemaining)}</span>
               </div>
-            )}
+              <div className={`flex items-center gap-1 px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg ${
+                isCameraActive 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                  : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+              }`}>
+                {isCameraActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                <span className="text-xs sm:text-sm font-medium hidden sm:inline">{isCameraActive ? 'Kamera' : 'Mati'}</span>
+              </div>
+              {violationCount > 0 && (
+                <div className="flex items-center gap-1 text-red-600 dark:text-red-400 px-2 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                    {violationCount}{maxViolations ? `/${maxViolations}` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
           <div className="lg:col-span-3">
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               {/* Passage / Cerita Soal */}
               {question?.passage && (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -1058,25 +1060,28 @@ export default function ExamTakingPage() {
                 />
               )}
             </Card>
-            <div className="flex items-center justify-between mt-6">
+            <div className="flex items-center justify-between mt-6 gap-2">
               <Button
                 variant="outline"
                 onClick={() => setCurrentQuestion((prev) => Math.max(0, prev - 1))}
                 disabled={currentQuestion === 0}
+                className="text-xs sm:text-sm"
               >
-                <ChevronLeft className="w-5 h-5 mr-2" />
-                Sebelumnya
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+                <span className="sm:hidden">Prev</span>
               </Button>
-              <span className="text-sm text-slate-600 dark:text-slate-400">{answeredCount} / {questions.length} Dijawab</span>
+              <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">{answeredCount}/{questions.length}</span>
               {currentQuestion === questions.length - 1 ? (
-                <Button onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
+                <Button onClick={handleSubmit} disabled={submitting} className="text-xs sm:text-sm">
+                  {submitting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />}
                   Kumpulkan
                 </Button>
               ) : (
-                <Button onClick={() => setCurrentQuestion((prev) => Math.min(questions.length - 1, prev + 1))}>
-                  Selanjutnya
-                  <ChevronRight className="w-5 h-5 ml-2" />
+                <Button onClick={() => setCurrentQuestion((prev) => Math.min(questions.length - 1, prev + 1))} className="text-xs sm:text-sm">
+                  <span className="hidden sm:inline">Selanjutnya</span>
+                  <span className="sm:hidden">Next</span>
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2" />
                 </Button>
               )}
             </div>

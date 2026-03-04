@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('exams', function (Blueprint $table) {
             if (!Schema::hasColumn('exams', 'max_violations')) {
-                $table->integer('max_violations')->nullable()->default(5)->after('status');
+                $table->integer('max_violations')->nullable()->default(3)->after('status');
             }
             if (!Schema::hasColumn('exams', 'shuffle_questions')) {
                 $table->boolean('shuffle_questions')->default(false)->after('status');
