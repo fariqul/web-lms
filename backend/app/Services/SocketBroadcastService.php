@@ -138,6 +138,42 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * A question was added to an active exam.
+     */
+    public function examQuestionAdded(int $examId, array $questionData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.question-added",
+            $questionData,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * A question was updated in an active exam.
+     */
+    public function examQuestionUpdated(int $examId, array $questionData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.question-updated",
+            $questionData,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * A question was deleted from an active exam.
+     */
+    public function examQuestionDeleted(int $examId, array $questionData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.question-deleted",
+            $questionData,
+            "exam.{$examId}"
+        );
+    }
+
     // ─── Attendance Events ──────────────────────────────────────
 
     /**

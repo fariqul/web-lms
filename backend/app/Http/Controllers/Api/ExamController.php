@@ -723,6 +723,21 @@ class ExamController extends Controller
         $exam->total_questions = $exam->questions()->count();
         $exam->save();
 
+        // Broadcast question added to active exam students
+        app(SocketBroadcastService::class)->examQuestionAdded($exam->id, [
+            'question' => [
+                'id' => $question->id,
+                'question_text' => $question->question_text,
+                'type' => $question->type,
+                'passage' => $question->passage,
+                'options' => $question->options,
+                'image' => $question->image,
+                'points' => $question->points,
+                'order' => $question->order,
+            ],
+            'total_questions' => $exam->total_questions,
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => $question,
@@ -867,6 +882,20 @@ class ExamController extends Controller
 
         $question->save();
 
+        // Broadcast question updated to active exam students
+        app(SocketBroadcastService::class)->examQuestionUpdated($question->exam_id, [
+            'question' => [
+                'id' => $question->id,
+                'question_text' => $question->question_text,
+                'type' => $question->type,
+                'passage' => $question->passage,
+                'options' => $question->options,
+                'image' => $question->image,
+                'points' => $question->points,
+                'order' => $question->order,
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => $question,
@@ -922,6 +951,13 @@ class ExamController extends Controller
         // Update total_questions count
         $exam->total_questions = $exam->questions()->count();
         $exam->save();
+
+        // Broadcast question deleted to active exam students
+        app(SocketBroadcastService::class)->examQuestionDeleted($exam->id, [
+            'question_id' => $question->id,
+            'deleted_order' => $deletedOrder,
+            'total_questions' => $exam->total_questions,
+        ]);
 
         return response()->json([
             'success' => true,

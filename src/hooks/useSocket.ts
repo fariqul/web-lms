@@ -139,6 +139,18 @@ export function useExamSocket(examId: number) {
     on(`exam.${examId}.ended`, callback);
   }, [on, examId]);
 
+  const onQuestionAdded = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.question-added`, callback);
+  }, [on, examId]);
+
+  const onQuestionUpdated = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.question-updated`, callback);
+  }, [on, examId]);
+
+  const onQuestionDeleted = useCallback((callback: (data: unknown) => void) => {
+    on(`exam.${examId}.question-deleted`, callback);
+  }, [on, examId]);
+
   useEffect(() => {
     if (examId > 0) {
       joinExamRoom();
@@ -165,7 +177,10 @@ export function useExamSocket(examId: number) {
     onAnswerProgress,
     onSnapshot,
     onExamEnded,
-  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded]);
+    onQuestionAdded,
+    onQuestionUpdated,
+    onQuestionDeleted,
+  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded, onQuestionAdded, onQuestionUpdated, onQuestionDeleted]);
 }
 
 // Specialized hook for attendance monitoring

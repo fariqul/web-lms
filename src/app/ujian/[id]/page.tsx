@@ -200,6 +200,71 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, examId, examSocket, stopCamera, router, toast]);
 
+  // Socket: listen for real-time question changes (admin/guru editing during exam)
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const mapQuestion = (q: { id: number; order?: number; question_text: string; type?: string; question_type?: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number): Question => ({
+      id: q.id,
+      number: idx + 1,
+      type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
+      text: q.question_text,
+      passage: q.passage || null,
+      options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
+        typeof opt === 'string' ? { text: opt, image: null } : { text: opt.text || '', image: opt.image || null }
+      ),
+      image: q.image || null,
+    });
+
+    const handleQuestionAdded = (data: unknown) => {
+      const { question } = data as { question: { id: number; question_text: string; type?: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string; order?: number } };
+      if (!question) return;
+      setQuestions(prev => {
+        // Don't add if already exists
+        if (prev.some(q => q.id === question.id)) return prev;
+        const newQ = mapQuestion(question, prev.length);
+        return [...prev, newQ];
+      });
+    };
+
+    const handleQuestionUpdated = (data: unknown) => {
+      const { question } = data as { question: { id: number; question_text: string; type?: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string; order?: number } };
+      if (!question) return;
+      setQuestions(prev => prev.map((q, idx) => {
+        if (q.id === question.id) {
+          return mapQuestion(question, idx);
+        }
+        return q;
+      }));
+    };
+
+    const handleQuestionDeleted = (data: unknown) => {
+      const { question_id } = data as { question_id: number; deleted_order: number; total_questions: number };
+      if (!question_id) return;
+      setQuestions(prev => {
+        const filtered = prev.filter(q => q.id !== question_id);
+        // Renumber remaining questions
+        return filtered.map((q, idx) => ({ ...q, number: idx + 1 }));
+      });
+      // Adjust current question index if needed
+      setCurrentQuestion(prev => {
+        const newLength = questions.length - 1;
+        if (prev >= newLength && newLength > 0) return newLength - 1;
+        return prev;
+      });
+    };
+
+    examSocket.onQuestionAdded(handleQuestionAdded);
+    examSocket.onQuestionUpdated(handleQuestionUpdated);
+    examSocket.onQuestionDeleted(handleQuestionDeleted);
+
+    return () => {
+      examSocket.off(`exam.${examId}.question-added`);
+      examSocket.off(`exam.${examId}.question-updated`);
+      examSocket.off(`exam.${examId}.question-deleted`);
+    };
+  }, [isStarted, examId, examSocket, questions.length]);
+
   useEffect(() => {
     fetchExam();
   }, [examId]);
