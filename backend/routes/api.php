@@ -167,6 +167,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Student Exam
         Route::post('/exams/{exam}/start', [ExamController::class, 'startExam']);
         Route::post('/exams/{exam}/answer', [ExamController::class, 'submitAnswer']);
+        Route::post('/exams/{exam}/work-photo', [ExamController::class, 'uploadWorkPhoto']);
         Route::post('/exams/{exam}/finish', [ExamController::class, 'finishExam']);
         Route::post('/exams/{exam}/violation', [ExamController::class, 'reportViolation']);
         Route::post('/exams/{exam}/snapshot', [ExamController::class, 'uploadSnapshot']);

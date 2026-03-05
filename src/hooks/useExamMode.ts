@@ -26,6 +26,7 @@ interface UseExamModeReturn {
   restartCamera: () => Promise<void>;
   captureSnapshot: () => Promise<string | null>;
   activateMonitoring: () => void;
+  suppressViolations: (durationMs: number) => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
@@ -58,6 +59,8 @@ export function useExamMode({
   // Track whether anti-cheat monitoring is active
   const monitoringActiveRef = useRef(false);
   // Track fullscreen state via ref to avoid stale closure in event handlers
+  // Suppress violations temporarily (e.g., during work photo capture)
+  const suppressUntilRef = useRef(0);
   const isFullscreenRef = useRef(false);
   // Track fullscreen transition — suppress blur/visibility violations during transition
   const fullscreenTransitionRef = useRef(false);
@@ -105,6 +108,9 @@ export function useExamMode({
     // Only report violations once monitoring is active
     if (!monitoringActiveRef.current) return;
     
+    // Skip if violations are temporarily suppressed (e.g., work photo capture)
+    if (Date.now() < suppressUntilRef.current) return;
+    
     // Debounce rapid violations (mobile fires multiple events)
     const now = Date.now();
     if (now - lastViolationTimeRef.current < VIOLATION_DEBOUNCE_MS) return;
@@ -149,6 +155,11 @@ export function useExamMode({
       fullscreenTransitionRef.current = false;
       console.log('[Monitoring] Anti-cheat monitoring activated');
     }, 5000);
+  }, []);
+
+  // Suppress violation reporting temporarily (for work photo capture on mobile)
+  const suppressViolations = useCallback((durationMs: number) => {
+    suppressUntilRef.current = Date.now() + durationMs;
   }, []);
 
   // Fullscreen management
@@ -583,6 +594,7 @@ export function useExamMode({
     restartCamera,
     captureSnapshot,
     activateMonitoring,
+    suppressViolations,
     videoRef,
   };
 }

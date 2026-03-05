@@ -61,6 +61,7 @@ interface AnswerData {
   id: number;
   question_id: number;
   answer: string;
+  work_photo: string | null;
   is_correct: boolean | null;
   score: number | null;
   feedback: string | null;
@@ -604,6 +605,21 @@ export default function HasilSiswaPage() {
                         {!isTeacherOrAdmin && answer.feedback && (
                           <div className="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-xs text-amber-800 dark:text-amber-300">
                             <span className="font-semibold">Catatan Guru:</span> {answer.feedback}
+                          </div>
+                        )}
+
+                        {/* Work photo (foto cara kerja) */}
+                        {answer.work_photo && (
+                          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                              📸 Foto Cara Kerja
+                            </p>
+                            <img
+                              src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${answer.work_photo}`}
+                              alt="Foto cara kerja siswa"
+                              className="max-w-full max-h-96 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${answer.work_photo}`, '_blank')}
+                            />
                           </div>
                         )}
                       </div>

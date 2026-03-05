@@ -1446,6 +1446,70 @@ class ExamController extends Controller
     }
 
     /**
+     * Upload work photo (foto cara kerja) for a specific question answer
+     */
+    public function uploadWorkPhoto(Request $request, Exam $exam)
+    {
+        $request->validate([
+            'question_id' => 'required|exists:questions,id',
+            'photo' => 'required|file|mimetypes:image/jpeg,image/png,image/webp|max:5120',
+        ]);
+
+        $user = $request->user();
+
+        // Verify student has active exam session
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi ujian tidak ditemukan',
+            ], 422);
+        }
+
+        // Verify question belongs to this exam
+        $question = Question::where('id', $request->question_id)
+            ->where('exam_id', $exam->id)
+            ->first();
+
+        if (!$question) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan',
+            ], 422);
+        }
+
+        // Store the photo
+        $path = $request->file('photo')->store(
+            "work-photos/exam-{$exam->id}/student-{$user->id}",
+            'public'
+        );
+
+        // Update the answer record with the work photo path
+        $answer = Answer::updateOrCreate(
+            [
+                'student_id' => $user->id,
+                'question_id' => $question->id,
+                'exam_id' => $exam->id,
+            ],
+            [
+                'work_photo' => $path,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'work_photo' => $path,
+                'question_id' => $question->id,
+            ],
+        ]);
+    }
+
+    /**
      * Finish exam
      */
     public function finishExam(Request $request, Exam $exam)
@@ -1931,7 +1995,7 @@ class ExamController extends Controller
         $answers = Answer::with('question:id,question_text,type,correct_answer,points,options,essay_keywords,passage')
             ->where('exam_id', $exam->id)
             ->where('student_id', $studentId)
-            ->get(['id', 'question_id', 'answer', 'is_correct', 'score', 'feedback', 'graded_by', 'graded_at', 'submitted_at']);
+            ->get(['id', 'question_id', 'answer', 'work_photo', 'is_correct', 'score', 'feedback', 'graded_by', 'graded_at', 'submitted_at']);
 
         // Snapshots only visible to admin (not guru) to save privacy/storage
         $snapshots = [];

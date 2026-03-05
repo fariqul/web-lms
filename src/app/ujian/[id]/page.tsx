@@ -82,6 +82,11 @@ export default function ExamTakingPage() {
   const [examNotFound, setExamNotFound] = useState(false);
   const [startingExam, setStartingExam] = useState(false);
   const autoSubmittedRef = React.useRef(false);
+  // Work photo (foto cara kerja) state
+  const [workPhotos, setWorkPhotos] = useState<Record<number, string>>({});
+  const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
+  const workPhotoInputRef = React.useRef<HTMLInputElement | null>(null);
+  const workPhotoQuestionRef = React.useRef<number | null>(null);
   const [usingSEB, setUsingSEB] = useState(false);
   const resumeAttemptedRef = React.useRef(false);
   const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
@@ -135,6 +140,7 @@ export default function ExamTakingPage() {
     restartCamera,
     activateMonitoring,
     captureSnapshot,
+    suppressViolations,
     videoRef,
   } = useExamMode({
     examId,
@@ -331,13 +337,18 @@ export default function ExamTakingPage() {
             setQuestions(mappedQuestions);
             if (startData.existing_answers) {
               const restored: Record<number, string> = {};
+              const restoredPhotos: Record<number, string> = {};
               Object.entries(startData.existing_answers).forEach(([qId, ans]) => {
-                const answer = ans as { answer?: string };
+                const answer = ans as { answer?: string; work_photo?: string };
                 if (answer?.answer) {
                   restored[Number(qId)] = answer.answer;
                 }
+                if (answer?.work_photo) {
+                  restoredPhotos[Number(qId)] = answer.work_photo;
+                }
               });
               setAnswers(restored);
+              if (Object.keys(restoredPhotos).length > 0) setWorkPhotos(restoredPhotos);
             }
             if (startData.remaining_time !== undefined) {
               const remaining = Math.max(1, Math.floor(startData.remaining_time));
@@ -658,13 +669,18 @@ export default function ExamTakingPage() {
         // Restore existing answers if any
         if (startData.existing_answers) {
           const restored: Record<number, string> = {};
+          const restoredPhotos: Record<number, string> = {};
           Object.entries(startData.existing_answers).forEach(([qId, ans]) => {
-            const answer = ans as { answer?: string };
+            const answer = ans as { answer?: string; work_photo?: string };
             if (answer?.answer) {
               restored[Number(qId)] = answer.answer;
             }
+            if (answer?.work_photo) {
+              restoredPhotos[Number(qId)] = answer.work_photo;
+            }
           });
           setAnswers(restored);
+          if (Object.keys(restoredPhotos).length > 0) setWorkPhotos(restoredPhotos);
         }
 
         // Set remaining time from server (guard against negative)
@@ -704,6 +720,40 @@ export default function ExamTakingPage() {
       });
     } catch (error) {
       console.error('Failed to save answer:', error);
+    }
+  };
+
+  // Work photo capture — suppress violations while camera app is open
+  const handleWorkPhotoClick = (questionId: number) => {
+    workPhotoQuestionRef.current = questionId;
+    // Suppress violations for 60s (camera app opens as separate activity on mobile)
+    suppressViolations(60000);
+    workPhotoInputRef.current?.click();
+  };
+
+  const handleWorkPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const questionId = workPhotoQuestionRef.current;
+    if (!file || !questionId) return;
+
+    // Reset file input so the same file can be re-selected
+    e.target.value = '';
+
+    setUploadingPhoto(questionId);
+    try {
+      const formData = new FormData();
+      formData.append('question_id', String(questionId));
+      formData.append('photo', file);
+      const response = await api.post(`/exams/${examId}/work-photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (response.data?.data?.work_photo) {
+        setWorkPhotos(prev => ({ ...prev, [questionId]: response.data.data.work_photo }));
+      }
+    } catch (error) {
+      console.error('Failed to upload work photo:', error);
+    } finally {
+      setUploadingPhoto(null);
     }
   };
 
@@ -1228,6 +1278,51 @@ export default function ExamTakingPage() {
                   aria-label="Jawaban essay"
                 />
               )}
+
+              {/* Work photo (foto cara kerja) */}
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <input
+                  ref={workPhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleWorkPhotoChange}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleWorkPhotoClick(question.id)}
+                    disabled={uploadingPhoto === question.id}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingPhoto === question.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                    {uploadingPhoto === question.id ? 'Mengupload...' : workPhotos[question.id] ? 'Ganti Foto' : 'Foto Cara Kerja'}
+                  </button>
+                  {workPhotos[question.id] && (
+                    <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Foto terupload
+                    </span>
+                  )}
+                </div>
+                {workPhotos[question.id] && (
+                  <div className="mt-2">
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${workPhotos[question.id]}`}
+                      alt="Foto cara kerja"
+                      className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+                  📸 Foto cara kerja/coretan Anda untuk soal ini (opsional)
+                </p>
+              </div>
             </Card>
             <div className="flex items-center justify-between mt-6 gap-2">
               <Button

@@ -14,6 +14,7 @@ class Answer extends Model
         'question_id',
         'exam_id',
         'answer',
+        'work_photo',
         'is_correct',
         'score',
         'feedback',
