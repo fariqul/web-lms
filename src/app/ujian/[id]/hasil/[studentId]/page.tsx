@@ -15,10 +15,13 @@ import {
   Award,
   FileText,
   Camera,
+  Save,
+  MessageSquare,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { MathText } from '@/components/ui/MathText';
+import { useAuth } from '@/context/AuthContext';
 
 interface StudentInfo {
   id: number;
@@ -77,14 +80,23 @@ export default function HasilSiswaPage() {
   const params = useParams();
   const router = useRouter();
   const toast = useToast();
+  const { user } = useAuth();
   const examId = Number(params.id);
   const studentId = Number(params.studentId);
+
+  const isTeacherOrAdmin = user?.role === 'guru' || user?.role === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ExamResultData | null>(null);
   const [answers, setAnswers] = useState<AnswerData[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotData[]>([]);
   const [showSnapshots, setShowSnapshots] = useState(false);
+
+  // Essay grading state
+  const [gradingId, setGradingId] = useState<number | null>(null);
+  const [gradingScore, setGradingScore] = useState('');
+  const [gradingFeedback, setGradingFeedback] = useState('');
+  const [gradingSubmitting, setGradingSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -107,6 +119,43 @@ export default function HasilSiswaPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const startGrading = (answer: AnswerData) => {
+    setGradingId(answer.id);
+    setGradingScore(answer.score?.toString() || '');
+    setGradingFeedback(answer.feedback || '');
+  };
+
+  const cancelGrading = () => {
+    setGradingId(null);
+    setGradingScore('');
+    setGradingFeedback('');
+  };
+
+  const submitGrading = async (answerId: number, maxPoints: number) => {
+    const score = parseFloat(gradingScore);
+    if (isNaN(score) || score < 0 || score > maxPoints) {
+      toast.error(`Skor harus antara 0 dan ${maxPoints}`);
+      return;
+    }
+    setGradingSubmitting(true);
+    try {
+      await api.post(`/exams/${examId}/grade-answer/${answerId}`, {
+        score,
+        feedback: gradingFeedback || null,
+      });
+      toast.success('Nilai essay berhasil disimpan');
+      setGradingId(null);
+      setGradingScore('');
+      setGradingFeedback('');
+      // Refresh data to get updated scores
+      await fetchData();
+    } catch {
+      toast.error('Gagal menyimpan nilai');
+    } finally {
+      setGradingSubmitting(false);
+    }
+  };
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('id-ID', {
@@ -473,6 +522,88 @@ export default function HasilSiswaPage() {
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                               🤖 Dinilai otomatis — Minimal 1 kata kunci harus ada untuk nilai penuh, jika tidak ada sama sekali hanya mendapat 1 poin.
                             </p>
+                          </div>
+                        )}
+
+                        {/* Teacher manual grading section */}
+                        {isTeacherOrAdmin && (
+                          <div className="mt-3">
+                            {gradingId === answer.id ? (
+                              <div className="rounded-lg border border-indigo-200 dark:border-indigo-700/50 bg-indigo-50 dark:bg-indigo-900/20 p-3 space-y-3">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  Penilaian Manual Essay
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <label className="text-xs text-slate-600 dark:text-slate-400 shrink-0">Skor:</label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={answer.question.points}
+                                    step="any"
+                                    value={gradingScore}
+                                    onChange={(e) => setGradingScore(e.target.value)}
+                                    className="w-24 px-2 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="0"
+                                  />
+                                  <span className="text-xs text-slate-500">/ {answer.question.points}</span>
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Feedback (opsional):</label>
+                                  <textarea
+                                    value={gradingFeedback}
+                                    onChange={(e) => setGradingFeedback(e.target.value)}
+                                    rows={2}
+                                    maxLength={1000}
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                                    placeholder="Tulis catatan untuk siswa..."
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => submitGrading(answer.id, answer.question.points)}
+                                    disabled={gradingSubmitting || gradingScore === ''}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg transition-colors"
+                                  >
+                                    {gradingSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                    {gradingSubmitting ? 'Menyimpan...' : 'Simpan Nilai'}
+                                  </button>
+                                  <button
+                                    onClick={cancelGrading}
+                                    className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <button
+                                  onClick={() => startGrading(answer)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700/50 rounded-lg transition-colors"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  {answer.graded_by ? 'Edit Nilai Manual' : 'Nilai Manual'}
+                                </button>
+                                {answer.graded_by && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    ✏️ Dinilai manual{answer.graded_at ? ` — ${new Date(answer.graded_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
+                                  </span>
+                                )}
+                                {answer.feedback && (
+                                  <div className="w-full mt-1 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-xs text-amber-800 dark:text-amber-300">
+                                    <span className="font-semibold">Feedback:</span> {answer.feedback}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Show feedback to students (read-only) */}
+                        {!isTeacherOrAdmin && answer.feedback && (
+                          <div className="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-xs text-amber-800 dark:text-amber-300">
+                            <span className="font-semibold">Catatan Guru:</span> {answer.feedback}
                           </div>
                         )}
                       </div>
