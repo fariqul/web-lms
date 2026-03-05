@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 
@@ -16,6 +16,7 @@ interface User {
   class_room?: { id: number; name: string };
   jenis_kelamin?: 'L' | 'P';
   nisn?: string;
+  nis?: string;
   nip?: string;
   nomor_tes?: string;
 }
@@ -23,6 +24,8 @@ interface User {
 interface ClassOption {
   id: number;
   name: string;
+  grade_level?: string;
+  students_count?: number;
 }
 
 const roleOptions = [
@@ -39,6 +42,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -58,6 +62,7 @@ export default function AdminUsersPage() {
     jenis_kelamin: '',
     class_id: '',
     nisn: '',
+    nis: '',
     nip: '',
     nomor_tes: '',
   });
@@ -65,12 +70,13 @@ export default function AdminUsersPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchUsers = useCallback(async (search?: string, role?: string) => {
+  const fetchUsers = useCallback(async (search?: string, role?: string, classId?: string) => {
     try {
       setLoading(true);
-      const params: { per_page: number; search?: string; role?: string } = { per_page: 500 };
+      const params: { per_page: number; search?: string; role?: string; class_id?: string } = { per_page: 500 };
       if (search) params.search = search;
       if (role) params.role = role;
+      if (classId) params.class_id = classId;
       const usersRes = await userAPI.getAll(params);
       const usersData = usersRes.data?.data;
       const usersList = Array.isArray(usersData) ? usersData : (usersData?.data || []);
@@ -95,12 +101,12 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      fetchUsers(searchQuery, roleFilter);
+      fetchUsers(searchQuery, roleFilter, classFilter);
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery, roleFilter, fetchUsers]);
+  }, [searchQuery, roleFilter, classFilter, fetchUsers]);
 
-  const fetchData = () => fetchUsers(searchQuery, roleFilter);
+  const fetchData = () => fetchUsers(searchQuery, roleFilter, classFilter);
 
   const filteredUsers = users;
 
@@ -115,6 +121,7 @@ export default function AdminUsersPage() {
         jenis_kelamin: user.jenis_kelamin || '',
         class_id: user.class_id?.toString() || '',
         nisn: user.nisn || '',
+        nis: user.nis || '',
         nip: user.nip || '',
         nomor_tes: user.nomor_tes || '',
       });
@@ -128,6 +135,7 @@ export default function AdminUsersPage() {
         jenis_kelamin: '',
         class_id: '',
         nisn: '',
+        nis: '',
         nip: '',
         nomor_tes: '',
       });
@@ -184,6 +192,7 @@ export default function AdminUsersPage() {
       if (formData.role === 'siswa' && formData.class_id) {
         payload.class_id = parseInt(formData.class_id);
         payload.nisn = formData.nisn;
+        payload.nis = formData.nis;
       }
       if (formData.role === 'siswa') {
         payload.nomor_tes = formData.nomor_tes || null;
@@ -254,6 +263,15 @@ export default function AdminUsersPage() {
       render: (item: User) => item.class_room?.name || '-',
     },
     {
+      key: 'nisn',
+      header: 'NIS',
+      render: (item: User) => item.role === 'siswa' && item.nis ? (
+        <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
+          {item.nis}
+        </span>
+      ) : '-',
+    },
+    {
       key: 'nomor_tes',
       header: 'No. Tes',
       render: (item: User) => item.role === 'siswa' && item.nomor_tes ? (
@@ -312,7 +330,7 @@ export default function AdminUsersPage() {
         <Card>
           <CardHeader
             title="Kelola Pengguna"
-            subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
+            subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${classFilter ? ` — ${classes.find(c => c.id.toString() === classFilter)?.name || 'Kelas'}` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
             action={
               <div className="flex gap-2">
                 <Button
@@ -346,7 +364,7 @@ export default function AdminUsersPage() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
-                placeholder="Cari nama, email, NISN, NIP, No. Tes…"
+                placeholder="Cari nama, email, NIS, NISN, NIP, No. Tes…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="w-4 h-4" />}
@@ -359,7 +377,41 @@ export default function AdminUsersPage() {
                 onChange={(e) => setRoleFilter(e.target.value)}
               />
             </div>
+            <div className="w-full md:w-56">
+              <Select
+                options={[
+                  { value: '', label: 'Semua Kelas' },
+                  ...classes.map((c) => ({ value: c.id.toString(), label: `${c.name}${c.students_count !== undefined ? ` (${c.students_count} siswa)` : ''}` })),
+                ]}
+                value={classFilter}
+                onChange={(e) => {
+                  setClassFilter(e.target.value);
+                  if (e.target.value) setRoleFilter('siswa');
+                }}
+              />
+            </div>
           </div>
+
+          {/* Class info bar */}
+          {classFilter && (
+            <div className="mb-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Kelas {classes.find(c => c.id.toString() === classFilter)?.name}
+                </span>
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  — {filteredUsers.length} siswa
+                </span>
+              </div>
+              <button
+                onClick={() => { setClassFilter(''); setRoleFilter(''); }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline underline-offset-2"
+              >
+                Tampilkan semua
+              </button>
+            </div>
+          )}
 
           {/* Table */}
           <Table
@@ -448,10 +500,16 @@ export default function AdminUsersPage() {
                 onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
               />
               <Input
+                label="No. Induk Sekolah (NIS)"
+                value={formData.nis}
+                onChange={(e) => setFormData({ ...formData, nis: e.target.value })}
+                placeholder="Nomor Induk Sekolah"
+              />
+              <Input
                 label="NISN"
                 value={formData.nisn}
                 onChange={(e) => setFormData({ ...formData, nisn: e.target.value })}
-                placeholder="Nomor Induk Siswa Nasional"
+                placeholder="Nomor Induk Siswa Nasional (opsional)"
               />
               <Input
                 label="Nomor Tes"

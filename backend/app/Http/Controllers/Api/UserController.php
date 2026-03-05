@@ -35,6 +35,7 @@ class UserController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('nisn', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
                     ->orWhere('nip', 'like', "%{$search}%")
                     ->orWhere('nomor_tes', 'like', "%{$search}%");
             });
@@ -65,6 +66,7 @@ class UserController extends Controller
             'role' => 'required|in:admin,guru,siswa',
             'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => 'nullable|string|unique:users',
+            'nis' => 'nullable|string',
             'nip' => 'nullable|string|unique:users',
             'nomor_tes' => 'nullable|string|max:50|unique:users',
             'class_id' => 'nullable|exists:classes,id',
@@ -73,7 +75,7 @@ class UserController extends Controller
         ]);
 
         $user = new User();
-        $user->fill($request->only(['name', 'email', 'jenis_kelamin', 'nisn', 'nip', 'nomor_tes', 'class_id']));
+        $user->fill($request->only(['name', 'email', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_id']));
         $user->email = strtolower($request->email);
         $user->password = Hash::make($request->password);
         $user->role = $request->role;
@@ -117,6 +119,7 @@ class UserController extends Controller
             'role' => 'sometimes|in:admin,guru,siswa',
             'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
+            'nis' => 'nullable|string',
             'nip' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nomor_tes' => ['nullable', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
             'class_id' => 'nullable|exists:classes,id',
@@ -141,6 +144,9 @@ class UserController extends Controller
         }
         if ($request->has('nisn')) {
             $user->nisn = $request->nisn;
+        }
+        if ($request->has('nis')) {
+            $user->nis = $request->nis;
         }
         if ($request->has('nip')) {
             $user->nip = $request->nip;
