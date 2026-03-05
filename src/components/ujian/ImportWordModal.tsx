@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Download,
 } from 'lucide-react';
-import { Document, Paragraph, TextRun, Packer, AlignmentType } from 'docx';
+import { Document, Paragraph, TextRun, Packer, AlignmentType, LevelFormat, convertInchesToTwip } from 'docx';
 import { saveAs } from 'file-saver';
 
 // ─── OMML (Office Math Markup Language) extraction ───
@@ -188,16 +188,141 @@ function extractParaText(p: Element): string {
   return t;
 }
 
-/** Parse .docx file with full OMML math support using JSZip + DOMParser */
+/** Parse numbering definitions from word/numbering.xml */
+interface NumFormat { fmt: string; start: number; lvlText: string; }
+interface NumDef { abstractNumId: string; levels: Map<number, NumFormat>; }
+
+function parseNumberingXml(xmlStr: string): { numMap: Map<string, NumDef>; abstractMap: Map<string, Map<number, NumFormat>> } {
+  const doc = new DOMParser().parseFromString(xmlStr, 'application/xml');
+  const abstractMap = new Map<string, Map<number, NumFormat>>();
+  const numMap = new Map<string, NumDef>();
+
+  // Parse abstractNum definitions
+  for (const an of Array.from(doc.getElementsByTagNameNS(W_NS, 'abstractNum'))) {
+    const aid = an.getAttributeNS(W_NS, 'abstractNumId') || an.getAttribute('w:abstractNumId') || '';
+    const levels = new Map<number, NumFormat>();
+    for (const lvl of Array.from(an.getElementsByTagNameNS(W_NS, 'lvl'))) {
+      const ilvl = parseInt(lvl.getAttributeNS(W_NS, 'ilvl') || lvl.getAttribute('w:ilvl') || '0');
+      const numFmtEl = lvl.getElementsByTagNameNS(W_NS, 'numFmt')[0];
+      const startEl = lvl.getElementsByTagNameNS(W_NS, 'start')[0];
+      const lvlTextEl = lvl.getElementsByTagNameNS(W_NS, 'lvlText')[0];
+      const fmt = numFmtEl?.getAttributeNS(W_NS, 'val') || numFmtEl?.getAttribute('w:val') || 'decimal';
+      const start = parseInt(startEl?.getAttributeNS(W_NS, 'val') || startEl?.getAttribute('w:val') || '1');
+      const lvlText = lvlTextEl?.getAttributeNS(W_NS, 'val') || lvlTextEl?.getAttribute('w:val') || '%1.';
+      levels.set(ilvl, { fmt, start, lvlText });
+    }
+    abstractMap.set(aid, levels);
+  }
+
+  // Parse num -> abstractNum mappings
+  for (const num of Array.from(doc.getElementsByTagNameNS(W_NS, 'num'))) {
+    const numId = num.getAttributeNS(W_NS, 'numId') || num.getAttribute('w:numId') || '';
+    const anRef = num.getElementsByTagNameNS(W_NS, 'abstractNumId')[0];
+    const aid = anRef?.getAttributeNS(W_NS, 'val') || anRef?.getAttribute('w:val') || '';
+    const levels = abstractMap.get(aid) || new Map();
+    numMap.set(numId, { abstractNumId: aid, levels });
+  }
+
+  return { numMap, abstractMap };
+}
+
+/** Format a number according to Word numFmt */
+function formatNum(n: number, fmt: string): string {
+  switch (fmt) {
+    case 'decimal': return String(n);
+    case 'lowerLetter': return String.fromCharCode(96 + ((n - 1) % 26) + 1); // a, b, c...
+    case 'upperLetter': return String.fromCharCode(64 + ((n - 1) % 26) + 1); // A, B, C...
+    case 'lowerRoman': {
+      const vals = [1000,'m',900,'cm',500,'d',400,'cd',100,'c',90,'xc',50,'l',40,'xl',10,'x',9,'ix',5,'v',4,'iv',1,'i'];
+      let r = '', v = n;
+      for (let i = 0; i < vals.length; i += 2) { while (v >= (vals[i] as number)) { r += vals[i+1]; v -= vals[i] as number; } }
+      return r;
+    }
+    case 'upperRoman': {
+      const vals = [1000,'M',900,'CM',500,'D',400,'CD',100,'C',90,'XC',50,'L',40,'XL',10,'X',9,'IX',5,'V',4,'IV',1,'I'];
+      let r = '', v = n;
+      for (let i = 0; i < vals.length; i += 2) { while (v >= (vals[i] as number)) { r += vals[i+1]; v -= vals[i] as number; } }
+      return r;
+    }
+    case 'bullet': return '';
+    default: return String(n);
+  }
+}
+
+/** Parse .docx file with full OMML math support + Word numbering using JSZip + DOMParser */
 async function extractDocxWithMath(buf: ArrayBuffer): Promise<string> {
   const jszip = await import('jszip');
   const JSZip = ('default' in jszip ? jszip.default : jszip) as typeof import('jszip');
   const zip = await JSZip.loadAsync(buf);
   const xml = await zip.file('word/document.xml')?.async('string');
   if (!xml) throw new Error('Invalid docx');
+
+  // Parse numbering definitions if available
+  const numXml = await zip.file('word/numbering.xml')?.async('string');
+  let numMap = new Map<string, NumDef>();
+  if (numXml) {
+    const parsed = parseNumberingXml(numXml);
+    numMap = parsed.numMap;
+  }
+
+  // Track counters per numId per level
+  const counters = new Map<string, Map<number, number>>();
+
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   const pars = doc.getElementsByTagNameNS(W_NS, 'p');
-  return Array.from(pars).map(p => extractParaText(p)).join('\n');
+
+  const lines: string[] = [];
+  for (const p of Array.from(pars)) {
+    let prefix = '';
+
+    // Check for numbering in paragraph properties
+    const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
+    if (pPr) {
+      const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+      if (numPr) {
+        const ilvlEl = numPr.getElementsByTagNameNS(W_NS, 'ilvl')[0];
+        const numIdEl = numPr.getElementsByTagNameNS(W_NS, 'numId')[0];
+        const ilvl = parseInt(ilvlEl?.getAttributeNS(W_NS, 'val') || ilvlEl?.getAttribute('w:val') || '0');
+        const numId = numIdEl?.getAttributeNS(W_NS, 'val') || numIdEl?.getAttribute('w:val') || '';
+
+        if (numId && numId !== '0') {
+          const def = numMap.get(numId);
+          if (def) {
+            const lvl = def.levels.get(ilvl);
+            if (lvl) {
+              // Get or initialize counter for this numId
+              if (!counters.has(numId)) counters.set(numId, new Map());
+              const lvlCounters = counters.get(numId)!;
+
+              // Initialize if first time at this level
+              if (!lvlCounters.has(ilvl)) lvlCounters.set(ilvl, lvl.start);
+              const current = lvlCounters.get(ilvl)!;
+
+              // Reset deeper levels when a higher level item appears
+              for (const [k] of lvlCounters) {
+                if (k > ilvl) lvlCounters.delete(k);
+              }
+
+              if (lvl.fmt !== 'bullet') {
+                const formatted = formatNum(current, lvl.fmt);
+                // Use lvlText pattern: %1. → "1.", %1) → "1)"
+                prefix = lvl.lvlText.replace(/%(\d+)/, formatted) + ' ';
+              }
+
+              lvlCounters.set(ilvl, current + 1);
+            }
+          }
+        }
+      }
+    }
+
+    const text = extractParaText(p);
+    if (text.trim() || prefix) {
+      lines.push(prefix + text);
+    }
+  }
+
+  return lines.join('\n');
 }
 
 interface ParsedQuestion {
@@ -397,6 +522,30 @@ export function ImportWordModal({
 
   const handleDownloadTemplate = async () => {
     const doc = new Document({
+      numbering: {
+        config: [
+          {
+            reference: 'soal-numbering',
+            levels: [{
+              level: 0,
+              format: LevelFormat.DECIMAL,
+              text: '%1.',
+              alignment: AlignmentType.START,
+              style: { paragraph: { indent: { left: convertInchesToTwip(0.25), hanging: convertInchesToTwip(0.25) } } },
+            }],
+          },
+          {
+            reference: 'opsi-numbering',
+            levels: [{
+              level: 0,
+              format: LevelFormat.LOWER_LETTER,
+              text: '%1.',
+              alignment: AlignmentType.START,
+              style: { paragraph: { indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } } },
+            }],
+          },
+        ],
+      },
       sections: [{
         properties: {},
         children: [
@@ -416,19 +565,19 @@ export function ImportWordModal({
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- Nomor soal diawali angka dan titik, contoh: 1. Teks soal', size: 20 }),
+              new TextRun({ text: '- Nomor soal dan pilihan jawaban menggunakan fitur Numbering/List di Word', size: 20 }),
             ],
           }),
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- Opsi jawaban menggunakan huruf kecil, contoh: a. Teks opsi', size: 20 }),
+              new TextRun({ text: '- Bisa juga ketik manual: 1. Teks soal, a. Opsi jawaban', size: 20 }),
             ],
           }),
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- Tandai jawaban benar dengan tanda * di depan huruf, contoh: *c. Jawaban benar', size: 20 }),
+              new TextRun({ text: '- Tandai jawaban benar dengan tanda * di awal teks opsi, contoh: *Jakarta', size: 20 }),
             ],
           }),
           new Paragraph({
@@ -438,9 +587,15 @@ export function ImportWordModal({
             ],
           }),
           new Paragraph({
-            spacing: { after: 200 },
+            spacing: { after: 40 },
             children: [
               new TextRun({ text: '- Minimal 2 pilihan jawaban untuk soal pilihan ganda', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [
+              new TextRun({ text: '- Simbol matematika (sin, cos, fraksi, akar) akan otomatis terbaca', size: 20 }),
             ],
           }),
           new Paragraph({
@@ -449,78 +604,95 @@ export function ImportWordModal({
               new TextRun({ text: '──────────────────────────────────', size: 20, color: '999999' }),
             ],
           }),
-          // Soal 1 - Pilihan Ganda
+          // Soal 1 - Pilihan Ganda (pakai numbering Word)
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: '1. Apa ibu kota Indonesia?', size: 22 })],
+            numbering: { reference: 'soal-numbering', level: 0 },
+            children: [new TextRun({ text: 'Apa ibu kota Indonesia?', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: 'a. Surabaya', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Surabaya', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: 'b. Bandung', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Bandung', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: '*c. Jakarta', size: 22, bold: true })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: '*Jakarta', size: 22, bold: true })],
           }),
           new Paragraph({
             spacing: { after: 200 },
-            children: [new TextRun({ text: 'd. Medan', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Medan', size: 22 })],
           }),
-          // Soal 2 - Pilihan Ganda
+          // Soal 2 - Pilihan Ganda  
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: '2. Siapa penemu telepon?', size: 22 })],
-          }),
-          new Paragraph({
-            spacing: { after: 40 },
-            children: [new TextRun({ text: '*a. Alexander Graham Bell', size: 22, bold: true })],
+            numbering: { reference: 'soal-numbering', level: 0 },
+            children: [new TextRun({ text: 'Siapa penemu telepon?', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: 'b. Thomas Edison', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: '*Alexander Graham Bell', size: 22, bold: true })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: 'c. Nikola Tesla', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Thomas Edison', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Nikola Tesla', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 200 },
-            children: [new TextRun({ text: 'd. Albert Einstein', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Albert Einstein', size: 22 })],
           }),
           // Soal 3 - Essay
           new Paragraph({
             spacing: { after: 200 },
-            children: [new TextRun({ text: '3. Jelaskan proses terjadinya fotosintesis! (essay)', size: 22 })],
+            numbering: { reference: 'soal-numbering', level: 0 },
+            children: [new TextRun({ text: 'Jelaskan proses terjadinya fotosintesis! (essay)', size: 22 })],
           }),
           // Soal 4 - Pilihan Ganda
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: '4. Planet terbesar di tata surya adalah?', size: 22 })],
+            numbering: { reference: 'soal-numbering', level: 0 },
+            children: [new TextRun({ text: 'Planet terbesar di tata surya adalah?', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: 'a. Mars', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Mars', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: '*b. Jupiter', size: 22, bold: true })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: '*Jupiter', size: 22, bold: true })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            children: [new TextRun({ text: 'c. Saturnus', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Saturnus', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 200 },
-            children: [new TextRun({ text: 'd. Venus', size: 22 })],
+            numbering: { reference: 'opsi-numbering', level: 0 },
+            children: [new TextRun({ text: 'Venus', size: 22 })],
           }),
           // Soal 5 - Essay
           new Paragraph({
             spacing: { after: 200 },
-            children: [new TextRun({ text: '5. Sebutkan dan jelaskan 3 jenis batuan yang ada di bumi! (essay)', size: 22 })],
+            numbering: { reference: 'soal-numbering', level: 0 },
+            children: [new TextRun({ text: 'Sebutkan dan jelaskan 3 jenis batuan yang ada di bumi! (essay)', size: 22 })],
           }),
         ],
       }],
@@ -574,7 +746,7 @@ export function ImportWordModal({
               Import dari Word
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Upload file .docx dengan format yang sama seperti import teks
+              Upload file .docx — mendukung fitur Numbering Word &amp; simbol matematika
             </p>
           </div>
         </div>
@@ -588,13 +760,14 @@ export function ImportWordModal({
                 <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
                   <p className="font-semibold">Format penulisan di Word:</p>
                   <ul className="list-disc ml-4 space-y-0.5 text-blue-700 dark:text-blue-300">
-                    <li>Nomor soal diawali angka: <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">1. Teks soal</code></li>
-                    <li>Opsi huruf kecil: <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">a. Teks opsi</code></li>
-                    <li>Tandai jawaban benar: <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*c. Jawaban benar</code></li>
+                    <li>Nomor soal: pakai fitur <strong>Numbering</strong> (1. 2. 3.) atau ketik manual</li>
+                    <li>Opsi jawaban: pakai fitur <strong>Numbering huruf</strong> (a. b. c.) atau ketik manual</li>
+                    <li>Tandai jawaban benar: awali teks opsi dengan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*</code> contoh: <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*Jakarta</code></li>
                     <li>Soal essay: tambahkan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">(essay)</code> di akhir soal</li>
+                    <li>Simbol matematika (sin, cos, fraksi, akar) otomatis terbaca</li>
                   </ul>
                   <p className="text-blue-600 dark:text-blue-400 mt-2 text-xs">
-                    Format sama persis dengan Import Teks. Tulis soal di Word lalu upload.
+                    Download template untuk contoh format yang benar.
                   </p>
                   <button
                     type="button"
