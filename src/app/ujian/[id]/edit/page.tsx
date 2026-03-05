@@ -129,6 +129,7 @@ export default function EditSoalPage() {
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
   const [savingSeb, setSavingSeb] = useState(false);
   const [savingShuffle, setSavingShuffle] = useState(false);
+  const [savingDuration, setSavingDuration] = useState(false);
   const [showExportBankSoal, setShowExportBankSoal] = useState(false);
   const [exportingBankSoal, setExportingBankSoal] = useState(false);
   const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
@@ -844,6 +845,24 @@ export default function EditSoalPage() {
     }
   };
 
+  const handleSaveDuration = async () => {
+    if (!exam?.duration || exam.duration < 1) {
+      toast.error('Durasi minimal 1 menit');
+      return;
+    }
+    setSavingDuration(true);
+    try {
+      await api.put(`/exams/${examId}`, {
+        duration_minutes: exam.duration,
+      });
+      toast.success('Durasi ujian berhasil disimpan');
+    } catch {
+      toast.error('Gagal menyimpan durasi ujian');
+    } finally {
+      setSavingDuration(false);
+    }
+  };
+
   const handleSaveShuffleSettings = async () => {
     setSavingShuffle(true);
     try {
@@ -1001,8 +1020,24 @@ export default function EditSoalPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">Total Poin</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{exam?.duration}</p>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Durasi (menit)</p>
+            <div className="flex items-center justify-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={600}
+                value={exam?.duration ?? ''}
+                onChange={(e) => setExam(prev => prev ? { ...prev, duration: parseInt(e.target.value) || 0 } : null)}
+                className="w-20 text-center text-2xl font-bold text-purple-600 dark:text-purple-400 bg-transparent border-b-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Durasi (menit)</p>
+            <button
+              onClick={handleSaveDuration}
+              disabled={savingDuration}
+              className="mt-2 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium disabled:opacity-50"
+            >
+              {savingDuration ? 'Menyimpan...' : 'Simpan Durasi'}
+            </button>
           </Card>
         </div>
 

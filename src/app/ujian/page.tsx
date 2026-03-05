@@ -70,6 +70,7 @@ export default function UjianPage() {
     title: '',
     subject: '',
     class_ids: [] as string[],
+    duration_minutes: '90',
   });
   const [sebSettings, setSebSettings] = useState<SEBExamSettings>({ ...DEFAULT_SEB_SETTINGS });
 
@@ -156,8 +157,8 @@ export default function UjianPage() {
     try {
       // Use far-future placeholder — admin will set actual schedule on publish
       const startTime = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-      const defaultDuration = 90; // default, admin will adjust
-      const endTime = new Date(startTime.getTime() + defaultDuration * 60 * 1000);
+      const durationMinutes = parseInt(formData.duration_minutes) || 90;
+      const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
       
       const response = await api.post('/exams', {
         title: formData.title,
@@ -166,7 +167,7 @@ export default function UjianPage() {
         class_ids: formData.class_ids.map(id => parseInt(id)),
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
-        duration_minutes: defaultDuration,
+        duration_minutes: durationMinutes,
         seb_required: sebSettings.sebRequired,
         seb_allow_quit: sebSettings.sebAllowQuit,
         seb_quit_password: sebSettings.sebQuitPassword || '',
@@ -192,6 +193,7 @@ export default function UjianPage() {
         title: '',
         subject: '',
         class_ids: [],
+        duration_minutes: '90',
       });
       setSebSettings({ ...DEFAULT_SEB_SETTINGS });
       fetchData();
@@ -551,11 +553,27 @@ export default function UjianPage() {
               </>
             )}
           </div>
+          {/* Duration input */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Durasi Ujian (menit) <span className="text-red-500">*</span></label>
+            <input
+              type="number"
+              min={1}
+              max={600}
+              value={formData.duration_minutes}
+              onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              placeholder="90"
+              required
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Durasi pengerjaan ujian dalam menit (1-600)</p>
+          </div>
+
           {/* Info: Admin akan mengatur jadwal */}
           <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
             <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
               <Calendar className="w-4 h-4 shrink-0" />
-              Jadwal dan durasi ujian akan diatur oleh Admin saat mempublish ujian.
+              Jadwal ujian akan diatur oleh Admin saat mempublish ujian. Durasi bisa diubah di halaman edit ujian.
             </p>
           </div>
 
