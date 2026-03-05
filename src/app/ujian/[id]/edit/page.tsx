@@ -108,6 +108,9 @@ export default function EditSoalPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -411,6 +414,76 @@ export default function EditSoalPage() {
 
   const handleDeleteQuestion = (questionId: number) => {
     setDeleteQuestionId(questionId);
+  };
+
+  const handleUpdatePoints = async (questionId: number, newPoints: number) => {
+    if (newPoints < 1 || newPoints > 100) return;
+    try {
+      const formData = new FormData();
+      const q = questions.find(q => q.id === questionId);
+      if (!q) return;
+      formData.append('question_text', q.question_text);
+      formData.append('question_type', q.question_type);
+      formData.append('points', String(newPoints));
+      formData.append('order', String(q.order));
+      if (q.question_type === 'multiple_choice') {
+        q.options.forEach((opt, idx) => {
+          formData.append(`options[${idx}][option_text]`, opt.text);
+          formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+          formData.append(`options[${idx}][order]`, String(idx + 1));
+        });
+      }
+      await api.post(`/questions/${questionId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, points: newPoints } : q));
+    } catch {
+      toast.error('Gagal mengubah poin soal');
+    }
+  };
+
+  const toggleSelectQuestion = (questionId: number) => {
+    setSelectedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedQuestions.size === questions.length) {
+      setSelectedQuestions(new Set());
+    } else {
+      setSelectedQuestions(new Set(questions.map(q => q.id!)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestions.size === 0) return;
+    setBulkDeleting(true);
+    let successCount = 0;
+    let failCount = 0;
+    for (const qId of selectedQuestions) {
+      try {
+        await api.delete(`/questions/${qId}`);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    const remaining = questions
+      .filter(q => !selectedQuestions.has(q.id!))
+      .map((q, idx) => ({ ...q, order: idx + 1 }));
+    setQuestions(remaining);
+    setSelectedQuestions(new Set());
+    setShowBulkDeleteConfirm(false);
+    setBulkDeleting(false);
+    if (failCount === 0) {
+      toast.success(`${successCount} soal berhasil dihapus`);
+    } else {
+      toast.warning(`${successCount} berhasil, ${failCount} gagal dihapus`);
+    }
   };
 
   const handleEditQuestion = (question: Question) => {
@@ -1255,6 +1328,31 @@ export default function EditSoalPage() {
             title="Daftar Soal" 
             subtitle={`${questions.length} soal telah ditambahkan`}
           />
+
+          {questions.length > 0 && canEdit && (
+            <div className="px-4 pb-3 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selectedQuestions.size === questions.length && questions.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-teal-600 focus:ring-teal-500"
+                />
+                Pilih Semua ({selectedQuestions.size}/{questions.length})
+              </label>
+              {selectedQuestions.size > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                  className="text-red-600 border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Hapus {selectedQuestions.size} Soal
+                </Button>
+              )}
+            </div>
+          )}
           
           {questions.length === 0 ? (
             <div className="text-center py-12 text-slate-600 dark:text-slate-400">
@@ -1267,6 +1365,14 @@ export default function EditSoalPage() {
               {questions.map((question, index) => (
                 <div key={question.id || index} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800">
                   <div className="flex items-start gap-4">
+                    {canEdit && (
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestions.has(question.id!)}
+                        onChange={() => toggleSelectQuestion(question.id!)}
+                        className="w-4 h-4 mt-1.5 rounded border-slate-300 dark:border-slate-600 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
+                      />
+                    )}
                     <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                       <GripVertical className="w-5 h-5" />
                       <span className="font-bold text-lg text-slate-600 dark:text-slate-400">{index + 1}</span>
@@ -1343,7 +1449,29 @@ export default function EditSoalPage() {
                         <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/50 rounded">
                           {question.question_type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
                         </span>
-                        <span>{question.points} poin</span>
+                        {canEdit ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              defaultValue={question.points}
+                              min={1}
+                              max={100}
+                              onBlur={(e) => {
+                                const val = parseInt(e.target.value) || 10;
+                                if (val !== question.points) handleUpdatePoints(question.id!, val);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  (e.target as HTMLInputElement).blur();
+                                }
+                              }}
+                              className="w-14 px-1.5 py-0.5 text-center border border-slate-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                            />
+                            <span>poin</span>
+                          </div>
+                        ) : (
+                          <span>{question.points} poin</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -2105,6 +2233,16 @@ export default function EditSoalPage() {
         title="Hapus Soal"
         message="Yakin ingin menghapus soal ini?"
         confirmText="Hapus"
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => setShowBulkDeleteConfirm(false)}
+        onConfirm={handleBulkDelete}
+        title="Hapus Soal Terpilih"
+        message={`Yakin ingin menghapus ${selectedQuestions.size} soal yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText={bulkDeleting ? 'Menghapus...' : `Hapus ${selectedQuestions.size} Soal`}
         variant="danger"
       />
 
