@@ -38,7 +38,7 @@ Route::get('/health', function () {
 });
 
 // Public routes with rate limiting for login (prevent brute force)
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1'); // 5 attempts per minute
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:15,1'); // 15 attempts per minute
 
 // Password reset (public, rate limited)
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
