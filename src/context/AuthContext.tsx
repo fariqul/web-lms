@@ -9,7 +9,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (login: string, password: string) => Promise<void>;
+  login: (login: string, password: string, force?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -56,10 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (login: string, password: string) => {
+  const login = async (login: string, password: string, force?: boolean) => {
     setIsLoading(true);
     try {
-      const response = await authAPI.login(login, password);
+      const response = await authAPI.login(login, password, force);
       const { user: userData, token: authToken } = response.data.data;
       
       setUser(userData);

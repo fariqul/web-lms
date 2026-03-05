@@ -20,6 +20,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [deviceLimited, setDeviceLimited] = useState(false);
+  const [forceLoading, setForceLoading] = useState(false);
   const [cursorPhase, setCursorPhase] = useState<'blink' | 'solid' | 'hidden'>('blink');
 
   const ANIMATED_TEXT = 'Learning Management System SMA 15';
@@ -36,6 +38,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setDeviceLimited(false);
     
     // Client-side validation
     if (!loginId || !password) {
@@ -55,11 +58,15 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err: unknown) {
       // Extract user-friendly error message
-      const axiosError = err as { response?: { status?: number; data?: { message?: string } } };
+      const axiosError = err as { response?: { status?: number; data?: { message?: string; error_code?: string } } };
       const status = axiosError?.response?.status;
       const serverMessage = axiosError?.response?.data?.message;
+      const errorCode = axiosError?.response?.data?.error_code;
 
-      if (status === 401 || status === 403) {
+      if (status === 409 && errorCode === 'DEVICE_LIMIT') {
+        setDeviceLimited(true);
+        setError(serverMessage || 'Akun sedang login di perangkat lain.');
+      } else if (status === 401 || status === 403) {
         setError('Email/NIS atau password salah. Silakan coba lagi.');
       } else if (status === 422) {
         setError(serverMessage || 'Data login tidak valid. Periksa kembali email/NIS dan password.');
@@ -72,6 +79,20 @@ export default function LoginPage() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForceLogin = async () => {
+    setForceLoading(true);
+    setError('');
+    setDeviceLimited(false);
+    try {
+      await login(loginId.trim().toLowerCase(), password, true);
+      router.push('/dashboard');
+    } catch {
+      setError('Gagal melakukan paksa login. Silakan coba lagi.');
+    } finally {
+      setForceLoading(false);
     }
   };
 
@@ -155,8 +176,18 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="mb-5 p-3.5 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium" role="alert">
-                {error}
+              <div className={`mb-5 p-3.5 ${deviceLimited ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-400' : 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900 text-red-600 dark:text-red-400'} border rounded-xl text-sm font-medium`} role="alert">
+                <p>{error}</p>
+                {deviceLimited && (
+                  <button
+                    type="button"
+                    onClick={handleForceLogin}
+                    disabled={forceLoading}
+                    className="mt-3 w-full px-4 py-2 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    {forceLoading ? 'Memproses...' : 'Paksa Login (Keluarkan Perangkat Lain)'}
+                  </button>
+                )}
               </div>
             )}
 

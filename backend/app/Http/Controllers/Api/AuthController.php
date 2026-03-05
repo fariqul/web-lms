@@ -19,6 +19,7 @@ class AuthController extends Controller
         $request->validate([
             'login' => 'required|string',
             'password' => 'required',
+            'force' => 'sometimes|boolean',
         ]);
 
         $loginField = trim($request->login);
@@ -35,6 +36,23 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'login' => ['Email/NIS atau password salah.'],
             ]);
+        }
+
+        // Single device enforcement for students
+        if ($user->role === 'siswa') {
+            $activeTokens = $user->tokens()->count();
+            if ($activeTokens > 0) {
+                if ($request->boolean('force')) {
+                    // Force login: revoke all existing tokens first
+                    $user->tokens()->delete();
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Akun sedang login di perangkat lain. Gunakan tombol "Paksa Login" untuk mengeluarkan sesi lain.',
+                        'error_code' => 'DEVICE_LIMIT',
+                    ], 409);
+                }
+            }
         }
 
         // Load relationships
