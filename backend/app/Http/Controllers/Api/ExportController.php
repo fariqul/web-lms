@@ -44,7 +44,7 @@ class ExportController extends Controller
 
             // Load answers per student (Answer doesn't have exam_result_id, uses exam_id + student_id)
             $allAnswers = \App\Models\Answer::where('exam_id', $exam->id)
-                ->with('question:id,type')
+                ->with('question:id,type,points')
                 ->get()
                 ->groupBy('student_id');
 
@@ -177,11 +177,6 @@ class ExportController extends Controller
 
             // Keterangan
             $keterangan = '';
-            if ($hasEssay && $ungradedEssay > 0) {
-                $keterangan = "Essay belum dinilai ({$ungradedEssay})";
-            } elseif ($hasEssay) {
-                $keterangan = 'Essay sudah dinilai';
-            }
 
             // Nilai essay display
             $nilaiEssay = '-';

@@ -487,22 +487,6 @@ export default function ExamResultsPage() {
           </div>
         )}
 
-        {/* Ungraded essays alert */}
-        {summary && summary.total_ungraded_essays > 0 && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-amber-800 dark:text-amber-300">
-                {summary.total_ungraded_essays} essay belum dinilai
-              </p>
-              <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
-                {summary.students_with_ungraded} siswa memiliki jawaban essay yang perlu dinilai. 
-                Klik ikon <Eye className="w-3.5 h-3.5 inline -mt-0.5" /> pada siswa bertanda <MessageSquare className="w-3.5 h-3.5 inline -mt-0.5 text-amber-600" /> untuk menilai.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
@@ -605,24 +589,6 @@ export default function ExamResultsPage() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium text-slate-900 dark:text-white">{result.student?.name}</span>
-                            {result.ungraded_essays > 0 && (
-                              <span 
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-medium rounded-full"
-                                title={`${result.ungraded_essays} dari ${result.total_essays} essay belum dinilai`}
-                              >
-                                <MessageSquare className="w-2.5 h-2.5" />
-                                {result.ungraded_essays}
-                              </span>
-                            )}
-                            {result.total_essays > 0 && result.ungraded_essays === 0 && (
-                              <span 
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-medium rounded-full"
-                                title={`Semua ${result.total_essays} essay sudah dinilai`}
-                              >
-                                <CheckCircle className="w-2.5 h-2.5" />
-                                {result.graded_essays}
-                              </span>
-                            )}
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">{result.student?.nisn}</div>
                         </div>
