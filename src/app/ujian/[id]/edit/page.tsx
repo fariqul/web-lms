@@ -55,7 +55,7 @@ interface Question {
   id?: number;
   passage?: string | null;
   question_text: string;
-  question_type: 'multiple_choice' | 'essay';
+  question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
   points: number;
   order: number;
   options: Option[];
@@ -199,7 +199,7 @@ export default function EditSoalPage() {
         return [...prev, {
           id: d.question.id,
           question_text: d.question.question_text,
-          question_type: (d.question.question_type || d.question.type || 'multiple_choice') as 'multiple_choice' | 'essay',
+          question_type: (d.question.question_type || d.question.type || 'multiple_choice') as Question['question_type'],
           points: d.question.points,
           order: d.question.order,
           options: d.question.options || [],
@@ -217,7 +217,7 @@ export default function EditSoalPage() {
       setQuestions(prev => prev.map(q => q.id === d.question.id ? {
         ...q,
         question_text: d.question.question_text,
-        question_type: (d.question.question_type || d.question.type || q.question_type) as 'multiple_choice' | 'essay',
+        question_type: (d.question.question_type || d.question.type || q.question_type) as Question['question_type'],
         points: d.question.points,
         order: d.question.order,
         options: d.question.options || q.options,
@@ -342,13 +342,20 @@ export default function EditSoalPage() {
       return;
     }
 
-    if (newQuestion.question_type === 'multiple_choice') {
+    if (newQuestion.question_type === 'multiple_choice' || newQuestion.question_type === 'multiple_answer') {
       const hasCorrectAnswer = newQuestion.options.some(opt => opt.is_correct);
       const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !opt.image && !optionImageFiles[idx]);
       
       if (!hasCorrectAnswer) {
-        toast.warning('Pilih satu jawaban yang benar');
+        toast.warning(newQuestion.question_type === 'multiple_answer' ? 'Pilih minimal satu jawaban yang benar' : 'Pilih satu jawaban yang benar');
         return;
+      }
+      if (newQuestion.question_type === 'multiple_answer') {
+        const correctCount = newQuestion.options.filter(opt => opt.is_correct).length;
+        if (correctCount < 2) {
+          toast.warning('Pilihan ganda kompleks harus memiliki minimal 2 jawaban benar');
+          return;
+        }
       }
       if (hasEmptyOption) {
         toast.warning('Semua opsi harus diisi teks atau gambar');
@@ -376,7 +383,7 @@ export default function EditSoalPage() {
         formData.append('image', imageFile);
       }
 
-      if (newQuestion.question_type === 'multiple_choice') {
+      if (newQuestion.question_type === 'multiple_choice' || newQuestion.question_type === 'multiple_answer') {
         newQuestion.options.forEach((opt, idx) => {
           // If text is empty but has image, use auto-label for answer matching
           const optText = opt.text.trim() || (opt.image || optionImageFiles[idx] ? `[Gambar ${String.fromCharCode(65 + idx)}]` : '');
@@ -496,7 +503,7 @@ export default function EditSoalPage() {
       points: question.points,
       order: question.order,
       essay_keywords: question.essay_keywords || [],
-      options: question.question_type === 'multiple_choice' && question.options.length > 0
+      options: (question.question_type === 'multiple_choice' || question.question_type === 'multiple_answer') && question.options.length > 0
         ? question.options.map(opt => ({
             id: opt.id,
             text: /^\[Gambar [A-Z]\]$/.test(opt.text) ? '' : opt.text,
@@ -541,12 +548,19 @@ export default function EditSoalPage() {
       return;
     }
 
-    if (newQuestion.question_type === 'multiple_choice') {
+    if (newQuestion.question_type === 'multiple_choice' || newQuestion.question_type === 'multiple_answer') {
       const hasCorrectAnswer = newQuestion.options.some(opt => opt.is_correct);
       const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !opt.image && !optionImageFiles[idx] && !optionImagePreviews[idx]);
       if (!hasCorrectAnswer) {
-        toast.warning('Pilih satu jawaban yang benar');
+        toast.warning(newQuestion.question_type === 'multiple_answer' ? 'Pilih minimal satu jawaban yang benar' : 'Pilih satu jawaban yang benar');
         return;
+      }
+      if (newQuestion.question_type === 'multiple_answer') {
+        const correctCount = newQuestion.options.filter(opt => opt.is_correct).length;
+        if (correctCount < 2) {
+          toast.warning('Pilihan ganda kompleks harus memiliki minimal 2 jawaban benar');
+          return;
+        }
       }
       if (hasEmptyOption) {
         toast.warning('Semua opsi harus diisi teks atau gambar');
@@ -577,7 +591,7 @@ export default function EditSoalPage() {
         formData.append('remove_image', '1');
       }
 
-      if (newQuestion.question_type === 'multiple_choice') {
+      if (newQuestion.question_type === 'multiple_choice' || newQuestion.question_type === 'multiple_answer') {
         newQuestion.options.forEach((opt, idx) => {
           // If text is empty but has image, use auto-label for answer matching
           const hasImage = optionImageFiles[idx] || optionImagePreviews[idx] || opt.image;
@@ -720,7 +734,7 @@ export default function EditSoalPage() {
   // Bulk import handler — creates questions one by one via API
   const handleBulkImport = async (importedQuestions: {
     question_text: string;
-    question_type: 'multiple_choice' | 'essay';
+    question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
     points: number;
     passage?: string | null;
     image?: string | null;
@@ -756,7 +770,7 @@ export default function EditSoalPage() {
           });
         }
 
-        if (q.question_type === 'multiple_choice') {
+        if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') {
           q.options.forEach((opt, idx) => {
             formData.append(`options[${idx}][option_text]`, opt.text);
             formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
@@ -888,11 +902,21 @@ export default function EditSoalPage() {
   };
 
   const handleCorrectAnswerChange = (index: number) => {
-    const updatedOptions = newQuestion.options.map((opt, i) => ({
-      ...opt,
-      is_correct: i === index,
-    }));
-    setNewQuestion({ ...newQuestion, options: updatedOptions });
+    if (newQuestion.question_type === 'multiple_answer') {
+      // Toggle: allow multiple correct answers
+      const updatedOptions = newQuestion.options.map((opt, i) => ({
+        ...opt,
+        is_correct: i === index ? !opt.is_correct : opt.is_correct,
+      }));
+      setNewQuestion({ ...newQuestion, options: updatedOptions });
+    } else {
+      // Radio: only one correct answer
+      const updatedOptions = newQuestion.options.map((opt, i) => ({
+        ...opt,
+        is_correct: i === index,
+      }));
+      setNewQuestion({ ...newQuestion, options: updatedOptions });
+    }
   };
 
   const handleAddOption = () => {
@@ -1397,7 +1421,7 @@ export default function EditSoalPage() {
                         </div>
                       )}
                       
-                      {question.question_type === 'multiple_choice' && question.options.length > 0 && (
+                      {(question.question_type === 'multiple_choice' || question.question_type === 'multiple_answer') && question.options.length > 0 && (
                         <div className="space-y-1 ml-4">
                           {question.options.map((opt, optIdx) => (
                             <div
@@ -1448,7 +1472,7 @@ export default function EditSoalPage() {
                       
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
                         <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/50 rounded">
-                          {question.question_type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
+                          {question.question_type === 'multiple_choice' ? 'Pilihan Ganda' : question.question_type === 'multiple_answer' ? 'PG Kompleks' : 'Essay'}
                         </span>
                         {canEdit ? (
                           <div className="flex items-center gap-1">
@@ -1523,7 +1547,7 @@ export default function EditSoalPage() {
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Tipe Soal
             </label>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -1538,6 +1562,16 @@ export default function EditSoalPage() {
                 <input
                   type="radio"
                   name="questionType"
+                  checked={newQuestion.question_type === 'multiple_answer'}
+                  onChange={() => setNewQuestion({ ...newQuestion, question_type: 'multiple_answer' })}
+                  className="text-teal-600"
+                />
+                <span>PG Kompleks</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="questionType"
                   checked={newQuestion.question_type === 'essay'}
                   onChange={() => setNewQuestion({ ...newQuestion, question_type: 'essay' })}
                   className="text-teal-600"
@@ -1546,6 +1580,14 @@ export default function EditSoalPage() {
               </label>
             </div>
           </div>
+
+          {newQuestion.question_type === 'multiple_answer' && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <strong>PG Kompleks:</strong> Centang semua jawaban yang benar (minimal 2). Siswa harus memilih semua jawaban benar untuk mendapat nilai penuh.
+              </p>
+            </div>
+          )}
 
           {/* Passage / Cerita Soal */}
           <div>
@@ -1715,18 +1757,18 @@ export default function EditSoalPage() {
             </div>
           )}
 
-          {/* Options for Multiple Choice */}
-          {newQuestion.question_type === 'multiple_choice' && (
+          {/* Options for Multiple Choice / Multiple Answer */}
+          {(newQuestion.question_type === 'multiple_choice' || newQuestion.question_type === 'multiple_answer') && (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Pilihan Jawaban (Pilih yang benar)
+                {newQuestion.question_type === 'multiple_answer' ? 'Pilihan Jawaban (Centang semua yang benar)' : 'Pilihan Jawaban (Pilih yang benar)'}
               </label>
               <div className="space-y-3">
                 {newQuestion.options.map((option, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center gap-3">
                       <input
-                        type="radio"
+                        type={newQuestion.question_type === 'multiple_answer' ? 'checkbox' : 'radio'}
                         name="correctAnswer"
                         checked={option.is_correct}
                         onChange={() => handleCorrectAnswerChange(index)}
@@ -1881,7 +1923,7 @@ export default function EditSoalPage() {
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Tipe Soal
             </label>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -1896,6 +1938,16 @@ export default function EditSoalPage() {
                 <input
                   type="radio"
                   name="editQuestionType"
+                  checked={newQuestion.question_type === 'multiple_answer'}
+                  onChange={() => setNewQuestion({ ...newQuestion, question_type: 'multiple_answer' })}
+                  className="text-teal-600"
+                />
+                <span>PG Kompleks</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editQuestionType"
                   checked={newQuestion.question_type === 'essay'}
                   onChange={() => setNewQuestion({ ...newQuestion, question_type: 'essay' })}
                   className="text-teal-600"
@@ -1904,6 +1956,14 @@ export default function EditSoalPage() {
               </label>
             </div>
           </div>
+
+          {newQuestion.question_type === 'multiple_answer' && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <strong>PG Kompleks:</strong> Centang semua jawaban yang benar (minimal 2). Siswa harus memilih semua jawaban benar untuk mendapat nilai penuh.
+              </p>
+            </div>
+          )}
 
           {/* Passage / Cerita Soal */}
           <div>
@@ -2073,18 +2133,18 @@ export default function EditSoalPage() {
             </div>
           )}
 
-          {/* Options for Multiple Choice */}
-          {newQuestion.question_type === 'multiple_choice' && (
+          {/* Options for Multiple Choice / Multiple Answer */}
+          {(newQuestion.question_type === 'multiple_choice' || newQuestion.question_type === 'multiple_answer') && (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Pilihan Jawaban (Pilih yang benar)
+                {newQuestion.question_type === 'multiple_answer' ? 'Pilihan Jawaban (Centang semua yang benar)' : 'Pilihan Jawaban (Pilih yang benar)'}
               </label>
               <div className="space-y-3">
                 {newQuestion.options.map((option, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center gap-3">
                       <input
-                        type="radio"
+                        type={newQuestion.question_type === 'multiple_answer' ? 'checkbox' : 'radio'}
                         name="editCorrectAnswer"
                         checked={option.is_correct}
                         onChange={() => handleCorrectAnswerChange(index)}

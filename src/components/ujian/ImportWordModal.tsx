@@ -389,7 +389,7 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<string> {
 
 interface ParsedQuestion {
   question_text: string;
-  question_type: 'multiple_choice' | 'essay';
+  question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
   points: number;
   options: { text: string; is_correct: boolean }[];
   valid: boolean;
@@ -443,12 +443,14 @@ export function ImportWordModal({
         });
       } else {
         const hasCorrect = currentOptions.some(o => o.is_correct);
+        const correctCount = currentOptions.filter(o => o.is_correct).length;
+        const isMultipleAnswer = correctCount > 1;
         results.push({
           question_text: qText,
-          question_type: 'multiple_choice',
+          question_type: isMultipleAnswer ? 'multiple_answer' : 'multiple_choice',
           points: defaultPoints,
           options: currentOptions,
-          valid: hasCorrect && currentOptions.length >= 2,
+          valid: hasCorrect && currentOptions.length >= 2 && (!isMultipleAnswer || correctCount >= 2),
           error: !hasCorrect
             ? 'Tidak ada jawaban benar (tandai dengan * di depan opsi)'
             : currentOptions.length < 2
@@ -645,6 +647,12 @@ export function ImportWordModal({
           new Paragraph({
             spacing: { after: 40 },
             children: [
+              new TextRun({ text: '- PG Kompleks (banyak jawaban benar): tandai lebih dari 1 opsi dengan * (otomatis terdeteksi)', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
               new TextRun({ text: '- Untuk soal essay, tambahkan (essay) di akhir soal', size: 20 }),
             ],
           }),
@@ -825,6 +833,7 @@ export function ImportWordModal({
                     <li>Nomor soal: pakai fitur <strong>Numbering</strong> (1. 2. 3.) atau ketik manual</li>
                     <li>Opsi jawaban: pakai fitur <strong>Numbering huruf</strong> (a. b. c.) atau ketik manual</li>
                     <li>Tandai jawaban benar: awali teks opsi dengan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*</code> contoh: <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*Jakarta</code></li>
+                    <li>PG Kompleks: tandai <strong>lebih dari 1</strong> jawaban benar dengan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*</code> (otomatis terdeteksi)</li>
                     <li>Soal essay: tambahkan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">(essay)</code> di akhir soal</li>
                     <li>Simbol matematika (sin, cos, fraksi, akar) otomatis terbaca</li>
                   </ul>
@@ -1031,7 +1040,7 @@ export function ImportWordModal({
                     <div className="flex-1 min-w-0">
                       <MathText text={q.question_text} as="p" className="text-sm text-slate-800 dark:text-white font-medium mb-1" />
 
-                      {q.question_type === 'multiple_choice' && q.options.length > 0 && (
+                      {(q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') && q.options.length > 0 && (
                         <div className="space-y-1 ml-1 mt-2">
                           {q.options.map((opt, oi) => (
                             <div
@@ -1054,6 +1063,12 @@ export function ImportWordModal({
                             </div>
                           ))}
                         </div>
+                      )}
+
+                      {q.question_type === 'multiple_answer' && (
+                        <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-md">
+                          PG Kompleks ({q.options.filter(o => o.is_correct).length} jawaban benar)
+                        </span>
                       )}
 
                       {q.question_type === 'essay' && (

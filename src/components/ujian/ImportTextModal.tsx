@@ -16,7 +16,7 @@ import {
 
 interface ParsedQuestion {
   question_text: string;
-  question_type: 'multiple_choice' | 'essay';
+  question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
   points: number;
   options: { text: string; is_correct: boolean }[];
   valid: boolean;
@@ -36,13 +36,19 @@ b. Bandung
 *c. Jakarta
 d. Medan
 
-2. Siapa presiden pertama Indonesia?
+2. Manakah yang termasuk planet dalam? (bisa lebih dari 1 jawaban)
+*a. Merkurius
+*b. Venus
+c. Jupiter
+d. Saturnus
+
+3. Siapa presiden pertama Indonesia?
 a. Soeharto
 *b. Soekarno
 c. Habibie
 d. Megawati
 
-3. Jelaskan proses fotosintesis! (essay)`;
+4. Jelaskan proses fotosintesis! (essay)`;
 
 export function ImportTextModal({
   isOpen,
@@ -79,12 +85,14 @@ export function ImportTextModal({
         });
       } else {
         const hasCorrect = currentOptions.some(o => o.is_correct);
+        const correctCount = currentOptions.filter(o => o.is_correct).length;
+        const isMultipleAnswer = correctCount > 1;
         results.push({
           question_text: qText,
-          question_type: 'multiple_choice',
+          question_type: isMultipleAnswer ? 'multiple_answer' : 'multiple_choice',
           points: defaultPoints,
           options: currentOptions,
-          valid: hasCorrect && currentOptions.length >= 2,
+          valid: hasCorrect && currentOptions.length >= 2 && (!isMultipleAnswer || correctCount >= 2),
           error: !hasCorrect
             ? 'Tidak ada jawaban benar (tandai dengan * di depan opsi)'
             : currentOptions.length < 2
@@ -201,6 +209,7 @@ export function ImportTextModal({
                     <li>Nomor soal diawali angka: <code className="bg-violet-100 dark:bg-violet-800/50 px-1 rounded text-xs">1. Teks soal</code></li>
                     <li>Opsi huruf kecil: <code className="bg-violet-100 dark:bg-violet-800/50 px-1 rounded text-xs">a. Teks opsi</code></li>
                     <li>Tandai jawaban benar: <code className="bg-violet-100 dark:bg-violet-800/50 px-1 rounded text-xs">*c. Jawaban benar</code></li>
+                    <li>PG Kompleks: tandai <strong>lebih dari 1</strong> jawaban benar dengan <code className="bg-violet-100 dark:bg-violet-800/50 px-1 rounded text-xs">*</code> (otomatis terdeteksi)</li>
                     <li>Soal essay: tambahkan <code className="bg-violet-100 dark:bg-violet-800/50 px-1 rounded text-xs">(essay)</code> di akhir soal</li>
                   </ul>
                 </div>
@@ -298,7 +307,7 @@ export function ImportTextModal({
                         {q.question_text}
                       </p>
 
-                      {q.question_type === 'multiple_choice' && q.options.length > 0 && (
+                      {(q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') && q.options.length > 0 && (
                         <div className="space-y-1 ml-1 mt-2">
                           {q.options.map((opt, oi) => (
                             <div
@@ -321,6 +330,12 @@ export function ImportTextModal({
                             </div>
                           ))}
                         </div>
+                      )}
+
+                      {q.question_type === 'multiple_answer' && (
+                        <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-md">
+                          PG Kompleks ({q.options.filter(o => o.is_correct).length} jawaban benar)
+                        </span>
                       )}
 
                       {q.question_type === 'essay' && (

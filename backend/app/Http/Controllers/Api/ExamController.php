@@ -734,11 +734,11 @@ class ExamController extends Controller
 
         $request->validate([
             'question_text' => 'required|string',
-            'question_type' => 'required|in:multiple_choice,essay',
+            'question_type' => 'required|in:multiple_choice,multiple_answer,essay',
             'passage' => 'nullable|string',
-            'options' => 'required_if:question_type,multiple_choice|array',
+            'options' => 'required_if:question_type,multiple_choice|required_if:question_type,multiple_answer|array',
             'options.*.option_text' => 'nullable|string',
-            'options.*.is_correct' => 'required_if:question_type,multiple_choice|boolean',
+            'options.*.is_correct' => 'required_if:question_type,multiple_choice|required_if:question_type,multiple_answer|boolean',
             'options.*.image' => 'nullable|image|max:5120', // option image max 5MB
             'options.*.image_path' => 'nullable|string', // existing image path to copy
             'points' => 'nullable|integer|min:1',
@@ -764,8 +764,9 @@ class ExamController extends Controller
         // Convert options to structured format with optional images
         $optionsArray = [];
         $correctAnswer = '';
+        $correctAnswers = [];
         
-        if ($request->question_type === 'multiple_choice' && $request->options) {
+        if (in_array($request->question_type, ['multiple_choice', 'multiple_answer']) && $request->options) {
             foreach ($request->options as $idx => $opt) {
                 $optImage = null;
                 if ($request->hasFile("options.{$idx}.image")) {
@@ -787,9 +788,15 @@ class ExamController extends Controller
                     'image' => $optImage,
                 ];
                 if ($opt['is_correct']) {
+                    $correctAnswers[] = $optText;
                     $correctAnswer = $optText;
                 }
             }
+        }
+
+        // For multiple_answer, store correct answers as JSON array
+        if ($request->question_type === 'multiple_answer') {
+            $correctAnswer = json_encode($correctAnswers);
         }
 
         $question = Question::create([
@@ -857,7 +864,7 @@ class ExamController extends Controller
         
         $request->validate([
             'question_text' => 'sometimes|string',
-            'question_type' => 'sometimes|in:multiple_choice,essay',
+            'question_type' => 'sometimes|in:multiple_choice,multiple_answer,essay',
             'options' => 'sometimes|array',
             'correct_answer' => 'sometimes|string',
             'points' => 'sometimes|integer|min:1',
@@ -919,6 +926,8 @@ class ExamController extends Controller
 
             $optionsArray = [];
             $correctAnswer = '';
+            $correctAnswers = [];
+            $questionType = $request->question_type ?? $question->type;
             
             foreach ($request->options as $idx => $opt) {
                 $optText = $opt['option_text'] ?? $opt['text'] ?? '';
@@ -946,12 +955,15 @@ class ExamController extends Controller
                     'image' => $optImage,
                 ];
                 if (!empty($opt['is_correct']) && ($opt['is_correct'] === true || $opt['is_correct'] === '1' || $opt['is_correct'] === 1)) {
+                    $correctAnswers[] = $optText;
                     $correctAnswer = $optText;
                 }
             }
             
             $question->options = $optionsArray;
-            if ($correctAnswer) {
+            if ($questionType === 'multiple_answer') {
+                $question->correct_answer = json_encode($correctAnswers);
+            } elseif ($correctAnswer) {
                 $question->correct_answer = $correctAnswer;
             }
         }
@@ -1355,6 +1367,28 @@ class ExamController extends Controller
         if ($question->type === 'multiple_choice') {
             $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
             $answerScore = $isCorrect ? $question->points : 0;
+        } elseif ($question->type === 'multiple_answer') {
+            // Multiple answer: compare arrays of selected options
+            $studentAnswers = json_decode($request->answer, true);
+            $correctAnswers = json_decode($question->correct_answer, true);
+            if (is_array($studentAnswers) && is_array($correctAnswers)) {
+                $studentNorm = array_map(fn($a) => strtolower(trim($a)), $studentAnswers);
+                $correctNorm = array_map(fn($a) => strtolower(trim($a)), $correctAnswers);
+                sort($studentNorm);
+                sort($correctNorm);
+                $isCorrect = $studentNorm === $correctNorm;
+                // Partial scoring: correct selections / total correct, minus wrong selections
+                $correctCount = count(array_intersect($studentNorm, $correctNorm));
+                $wrongCount = count(array_diff($studentNorm, $correctNorm));
+                $totalCorrect = count($correctNorm);
+                if ($totalCorrect > 0) {
+                    $score = max(0, ($correctCount - $wrongCount) / $totalCorrect);
+                    $answerScore = (int) round($score * $question->points);
+                }
+            } else {
+                $isCorrect = false;
+                $answerScore = 0;
+            }
         } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
             // Auto-grade essay based on keywords — graduated scoring
             // Score = (matched keywords / total keywords) * points

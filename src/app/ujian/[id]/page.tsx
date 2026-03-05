@@ -41,7 +41,7 @@ interface QuestionOption {
 interface Question {
   id: number;
   number: number;
-  type: 'multiple_choice' | 'essay';
+  type: 'multiple_choice' | 'multiple_answer' | 'essay';
   text: string;
   passage?: string | null;
   options?: QuestionOption[];
@@ -707,6 +707,33 @@ export default function ExamTakingPage() {
     }
   };
 
+  const handleMultipleAnswerToggle = (questionId: number, optionText: string) => {
+    const current = answers[questionId];
+    let selected: string[] = [];
+    try { selected = current ? JSON.parse(current) : []; } catch { selected = []; }
+    if (selected.includes(optionText)) {
+      selected = selected.filter(s => s !== optionText);
+    } else {
+      selected = [...selected, optionText];
+    }
+    if (selected.length === 0) {
+      // Remove answer if nothing selected
+      setAnswers((prev) => { const next = { ...prev }; delete next[questionId]; return next; });
+      return;
+    }
+    const answer = JSON.stringify(selected);
+    handleAnswer(questionId, answer);
+  };
+
+  const isMultipleAnswerSelected = (questionId: number, optionText: string): boolean => {
+    const current = answers[questionId];
+    if (!current) return false;
+    try {
+      const selected: string[] = JSON.parse(current);
+      return selected.includes(optionText);
+    } catch { return false; }
+  };
+
   const handleToggleFlag = (questionNumber: number) => {
     setFlaggedQuestions((prev) => {
       const newSet = new Set(prev);
@@ -1140,6 +1167,54 @@ export default function ExamTakingPage() {
                       </div>
                     </label>
                   ))}
+                </div>
+              )}
+              {question?.type === 'multiple_answer' && question.options && (
+                <div>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-3 font-medium">Pilih semua jawaban yang benar (bisa lebih dari satu)</p>
+                  <div className="space-y-3">
+                    {question.options.map((option, index) => {
+                      const selected = isMultipleAnswerSelected(question.id, option.text);
+                      return (
+                        <label
+                          key={index}
+                          className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                            selected
+                              ? 'border-teal-500 bg-teal-100 dark:bg-teal-900/30 dark:border-teal-400'
+                              : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => handleMultipleAnswerToggle(question.id, option.text)}
+                            className="w-4 h-4 text-teal-600 accent-teal-600 mt-0.5 rounded"
+                          />
+                          <span className={`ml-3 font-semibold mt-0.5 ${
+                            selected
+                              ? 'text-teal-800 dark:text-teal-300'
+                              : 'text-slate-900 dark:text-slate-200'
+                          }`}>{String.fromCharCode(65 + index)}.</span>
+                          <div className="ml-2 flex-1">
+                            {option.text && !/^\[Gambar [A-Z]\]$/.test(option.text) && (
+                              <MathText text={option.text} className={`${
+                                selected
+                                  ? 'text-teal-700 dark:text-teal-300 font-medium'
+                                  : 'text-slate-800 dark:text-slate-300'
+                              }`} />
+                            )}
+                            {option.image && (
+                              <img
+                                src={option.image.startsWith('http') ? option.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${option.image}`}
+                                alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
+                                className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                              />
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               {question?.type === 'essay' && (

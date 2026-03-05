@@ -305,11 +305,11 @@ export default function HasilSiswaPage() {
                     
                     <div className="flex items-center gap-3 mb-3">
                       <span className={`px-2 py-0.5 text-xs rounded ${
-                        answer.question.type === 'multiple_choice'
+                        answer.question.type === 'multiple_choice' || answer.question.type === 'multiple_answer'
                           ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400'
                           : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
                       }`}>
-                        {answer.question.type === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
+                        {answer.question.type === 'multiple_choice' ? 'Pilihan Ganda' : answer.question.type === 'multiple_answer' ? 'PG Kompleks' : 'Essay'}
                       </span>
                       <span className="text-xs text-slate-600 dark:text-slate-400">{answer.question.points} poin</span>
                       {answer.score !== null && (
@@ -368,6 +368,63 @@ export default function HasilSiswaPage() {
                         })}
                       </div>
                     )}
+
+                    {/* Multiple answer: show options with student answers marked */}
+                    {answer.question.type === 'multiple_answer' && answer.question.options && (() => {
+                      let studentAnswers: string[] = [];
+                      try { studentAnswers = JSON.parse(answer.answer || '[]'); } catch { studentAnswers = []; }
+                      let correctAnswers: string[] = [];
+                      try { correctAnswers = JSON.parse(answer.question.correct_answer || '[]'); } catch { correctAnswers = []; }
+                      return (
+                        <div className="space-y-1.5 mb-3">
+                          {(Array.isArray(answer.question.options) ? answer.question.options : []).map((rawOpt: string | { text: string; image?: string | null }, optIdx: number) => {
+                            const optText = typeof rawOpt === 'string' ? rawOpt : (rawOpt.text || '');
+                            const optImage = typeof rawOpt === 'string' ? null : (rawOpt.image || null);
+                            const isStudentAnswer = studentAnswers.includes(optText);
+                            const isCorrectAnswer = correctAnswers.includes(optText);
+                            return (
+                              <div
+                                key={optIdx}
+                                className={`flex items-start gap-2 text-sm px-3 py-1.5 rounded-lg ${
+                                  isCorrectAnswer && isStudentAnswer
+                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700/50'
+                                    : isStudentAnswer && !isCorrectAnswer
+                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700/50'
+                                    : isCorrectAnswer && !isStudentAnswer
+                                    ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700/50'
+                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                }`}
+                              >
+                                <span className="w-6 h-6 flex items-center justify-center rounded-full border text-xs font-medium shrink-0 mt-0.5">
+                                  {String.fromCharCode(65 + optIdx)}
+                                </span>
+                                <div className="flex-1">
+                                  {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && (
+                                    <MathText text={optText} />
+                                  )}
+                                  {optImage && (
+                                    <img
+                                      src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}
+                                      alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
+                                      className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                    />
+                                  )}
+                                </div>
+                                {isStudentAnswer && isCorrectAnswer && (
+                                  <span className="text-xs font-medium text-green-600 shrink-0">✓ Benar</span>
+                                )}
+                                {isStudentAnswer && !isCorrectAnswer && (
+                                  <span className="text-xs font-medium text-red-600 shrink-0">✗ Salah</span>
+                                )}
+                                {isCorrectAnswer && !isStudentAnswer && (
+                                  <span className="text-xs font-medium text-yellow-600 shrink-0">⚠ Tidak dipilih</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     {/* Essay: show student answer */}
                     {answer.question.type === 'essay' && (
