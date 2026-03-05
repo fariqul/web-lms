@@ -93,16 +93,16 @@ async def lifespan(app: FastAPI):
         import mediapipe as mp
 
         face_detection = mp.solutions.face_detection.FaceDetection(
-            model_selection=0,  # 0 = short-range (< 2m, good for webcam)
-            min_detection_confidence=0.5,
+            model_selection=1,  # 1 = full-range (up to 5m, more robust for varied webcam positions)
+            min_detection_confidence=0.3,
         )
 
         face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
             refine_landmarks=True,  # Enables iris landmarks (468-477)
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
+            min_detection_confidence=0.3,
+            min_tracking_confidence=0.3,
         )
 
         logger.info("MediaPipe Face Detection + Face Mesh loaded")

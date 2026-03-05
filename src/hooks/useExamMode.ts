@@ -340,9 +340,9 @@ export function useExamMode({
         setTimeout(resolve, 300);
       });
 
-      // Use small canvas: 320×240 for lightweight snapshots
-      const w = Math.min(video.videoWidth || 320, 320);
-      const h = Math.min(video.videoHeight || 240, 240);
+      // Use canvas: 640×480 for reliable AI face detection
+      const w = Math.min(video.videoWidth || 640, 640);
+      const h = Math.min(video.videoHeight || 480, 480);
 
       const canvas = document.createElement('canvas');
       canvas.width = w;
@@ -371,9 +371,9 @@ export function useExamMode({
         return null;
       }
 
-      // Convert to JPEG blob at 60% quality
+      // Convert to JPEG blob at 70% quality for AI proctoring
       const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.6);
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
       });
 
       if (!blob || blob.size < 500) {
