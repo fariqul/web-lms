@@ -135,11 +135,18 @@ class AuthController extends Controller
 
         $request->validate([
             'name' => 'sometimes|string|max:255',
+            'nip' => 'sometimes|string|max:50',
             'photo' => 'sometimes|image|max:2048',
         ]);
 
-        if ($request->has('name')) {
+        // Siswa cannot edit name — only admin can manage student profiles
+        if ($request->has('name') && $user->role !== 'siswa') {
             $user->name = $request->name;
+        }
+
+        // Guru can update their own NIP
+        if ($request->has('nip') && $user->role === 'guru') {
+            $user->nip = $request->nip;
         }
 
         if ($request->hasFile('photo')) {

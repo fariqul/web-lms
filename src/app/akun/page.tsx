@@ -21,6 +21,7 @@ export default function AkunPage() {
     name: user?.name || '',
     email: user?.email || '',
     phone: '',
+    nip: user?.nip || '',
   });
   const [passwordData, setPasswordData] = useState({
     current_password: '',
@@ -31,10 +32,15 @@ export default function AkunPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  const canEditName = user?.role === 'admin' || user?.role === 'guru';
+
   const handleSave = async () => {
     setSavingProfile(true);
     try {
-      await api.post('/profile', { name: formData.name });
+      const payload: Record<string, string> = {};
+      if (canEditName) payload.name = formData.name;
+      if (user?.role === 'guru') payload.nip = formData.nip;
+      await api.post('/profile', payload);
       if (refreshUser) {
         await refreshUser();
       }
@@ -253,24 +259,26 @@ export default function AkunPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Informasi Akun</h3>
-            {!isEditing ? (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                Edit
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
-                  Batal
+            {canEditName && (
+              !isEditing ? (
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  Edit
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={savingProfile}>
-                  {savingProfile ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-1" />
-                  )}
-                  {savingProfile ? 'Menyimpan…' : 'Simpan'}
-                </Button>
-              </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                    Batal
+                  </Button>
+                  <Button size="sm" onClick={handleSave} disabled={savingProfile}>
+                    {savingProfile ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-1" />
+                    )}
+                    {savingProfile ? 'Menyimpan…' : 'Simpan'}
+                  </Button>
+                </div>
+              )
             )}
           </div>
 
@@ -326,7 +334,18 @@ export default function AkunPage() {
                 <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 <div className="flex-1">
                   <p className="text-sm text-slate-600 dark:text-slate-400">NIP</p>
-                  <p className="font-medium text-slate-900 dark:text-white">{user?.nip || '-'}</p>
+                  {isEditing ? (
+                    <Input
+                      label="NIP"
+                      name="nip"
+                      value={formData.nip}
+                      onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
+                      className="mt-1"
+                      placeholder="Masukkan NIP"
+                    />
+                  ) : (
+                    <p className="font-medium text-slate-900 dark:text-white">{user?.nip || '-'}</p>
+                  )}
                 </div>
               </div>
             )}
