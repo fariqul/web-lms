@@ -60,11 +60,24 @@ class ExportController extends Controller
             // Count total MC questions for this exam
             $totalMcQuestions = $exam->questions()->where('type', '!=', 'essay')->count();
 
+            // Get all students from exam's classes (including those who didn't take the exam)
+            $classIds = $exam->classes->pluck('id')->toArray();
+            if ($exam->class_id && !in_array($exam->class_id, $classIds)) {
+                $classIds[] = $exam->class_id;
+            }
+            $allClassStudents = \App\Models\User::where('role', 'siswa')
+                ->whereIn('class_id', $classIds)
+                ->orderByRaw('nomor_tes IS NULL, nomor_tes ASC')
+                ->get(['id', 'name', 'nisn', 'nomor_tes']);
+
+            $resultStudentIds = $results->pluck('student_id')->toArray();
+            $missingStudents = $allClassStudents->filter(fn($s) => !in_array($s->id, $resultStudentIds));
+
             if ($format === 'xlsx') {
-                return $this->generateExamResultsExcel($exam, $results, $className, $totalMcQuestions);
+                return $this->generateExamResultsExcel($exam, $results, $className, $totalMcQuestions, $missingStudents);
             }
 
-            return $this->generateExamResultsPdf($exam, $results, $className, $totalMcQuestions);
+            return $this->generateExamResultsPdf($exam, $results, $className, $totalMcQuestions, $missingStudents);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('[Export] examResults failed: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -79,7 +92,7 @@ class ExportController extends Controller
     /**
      * Generate exam results XLSX using template.
      */
-    private function generateExamResultsExcel(Exam $exam, $results, string $className, int $totalMcQuestions = 0)
+    private function generateExamResultsExcel(Exam $exam, $results, string $className, int $totalMcQuestions = 0, $missingStudents = null)
     {
         $templatePath = storage_path('app/templates/Template_Hasil_Ujian_LMS.xlsx');
 
@@ -172,7 +185,8 @@ class ExportController extends Controller
             }
 
             $pct = $result->max_score > 0 ? round(($result->total_score / $result->max_score) * 100, 2) : 0;
-            $status = $result->status ?? ($pct >= 75 ? 'Lulus' : 'Tidak Lulus');
+            $passingScore = $exam->passing_score ?? 75;
+            $status = $pct >= $passingScore ? 'Lulus' : 'Tidak Lulus';
             $finishedAt = $result->finished_at ? \Carbon\Carbon::parse($result->finished_at)->format('H:i:s') : '-';
 
             // Keterangan
@@ -211,7 +225,38 @@ class ExportController extends Controller
             if ($status === 'Lulus') $passCount++;
         }
 
-        $lastDataRow = $dataRow + count($results) - 1;
+        // Add rows for students who didn't take the exam
+        $missingCount = 0;
+        if ($missingStudents && $missingStudents->count() > 0) {
+            $missingCount = $missingStudents->count();
+            foreach ($missingStudents->values() as $j => $student) {
+                $row = $dataRow + count($results) + $j;
+                $idx = count($results) + $j;
+                $sheet->setCellValue('A' . $row, $idx + 1);
+                $sheet->setCellValue('B' . $row, $student->nomor_tes ?? '-');
+                $sheet->setCellValue('C' . $row, $student->name ?? '-');
+                $sheet->setCellValue('D' . $row, $student->nisn ?? '-');
+                $sheet->setCellValue('E' . $row, '-');
+                $sheet->setCellValue('F' . $row, '-');
+                $sheet->setCellValue('G' . $row, '-');
+                $sheet->setCellValue('H' . $row, 'Tidak Mengerjakan');
+                $sheet->setCellValue('I' . $row, '-');
+                $sheet->setCellValue('J' . $row, '');
+
+                // Status color - orange for not attempted
+                $sheet->getStyle('H' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFFF8C00'));
+                $sheet->getStyle('H' . $row)->getFont()->setBold(true);
+
+                if ($idx % 2 === 1) {
+                    $sheet->getStyle("A{$row}:J{$row}")->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('F2F2F2');
+                }
+            }
+        }
+
+        $totalRows = count($results) + $missingCount;
+        $lastDataRow = $dataRow + $totalRows - 1;
 
         // Data borders
         if (count($results) > 0) {
@@ -228,12 +273,15 @@ class ExportController extends Controller
 
         // --- Summary section ---
         $summaryRow = $lastDataRow + 2;
-        $count = count($results);
-        $avgScore = $count > 0 ? round($totalScore / $count, 2) : 0;
-        $failCount = $count - $passCount;
+        $tookExamCount = count($results);
+        $count = $totalRows;
+        $avgScore = $tookExamCount > 0 ? round($totalScore / $tookExamCount, 2) : 0;
+        $failCount = $tookExamCount - $passCount;
 
         $summaryData = [
             ['Total Siswa', $count],
+            ['Mengerjakan', $tookExamCount],
+            ['Tidak Mengerjakan', $missingCount],
             ['Rata-rata Nilai', $avgScore],
             ['Lulus', $passCount],
             ['Tidak Lulus', $failCount],
@@ -271,7 +319,7 @@ class ExportController extends Controller
     /**
      * Generate exam results PDF with DomPDF.
      */
-    private function generateExamResultsPdf(Exam $exam, $results, string $className, int $totalMcQuestions = 0)
+    private function generateExamResultsPdf(Exam $exam, $results, string $className, int $totalMcQuestions = 0, $missingStudents = null)
     {
         $rows = [];
         foreach ($results as $i => $result) {
@@ -298,7 +346,8 @@ class ExportController extends Controller
             }
 
             $pct = $result->max_score > 0 ? round(($result->total_score / $result->max_score) * 100, 2) : 0;
-            $status = $result->status ?? ($pct >= 75 ? 'Lulus' : 'Tidak Lulus');
+            $passingScore = $exam->passing_score ?? 75;
+            $status = $pct >= $passingScore ? 'Lulus' : 'Tidak Lulus';
             $finishedAt = $result->finished_at ? \Carbon\Carbon::parse($result->finished_at)->format('H:i:s') : '-';
 
             $rows[] = [
@@ -315,11 +364,33 @@ class ExportController extends Controller
             ];
         }
 
-        $totalCount = count($rows);
-        $avgScore = $totalCount > 0 ? round(collect($rows)->avg('pct'), 2) : 0;
-        $passCount = collect($rows)->where('status', 'Lulus')->count();
+        // Add missing students who didn't take the exam
+        $missingCount = 0;
+        if ($missingStudents && $missingStudents->count() > 0) {
+            $missingCount = $missingStudents->count();
+            $startNo = count($rows) + 1;
+            foreach ($missingStudents->values() as $j => $student) {
+                $rows[] = [
+                    'no' => $startNo + $j,
+                    'nomor_tes' => $student->nomor_tes ?? '-',
+                    'name' => $student->name ?? '-',
+                    'nisn' => $student->nisn ?? '-',
+                    'jawaban' => '-',
+                    'essay' => '-',
+                    'skor' => '-',
+                    'pct' => 0,
+                    'status' => 'Tidak Mengerjakan',
+                    'time' => '-',
+                ];
+            }
+        }
 
-        $html = $this->examResultsPdfHtml($exam, $className, $rows, $totalCount, $avgScore, $passCount);
+        $totalCount = count($rows);
+        $tookExamRows = collect($rows)->where('status', '!=', 'Tidak Mengerjakan');
+        $avgScore = $tookExamRows->count() > 0 ? round($tookExamRows->avg('pct'), 2) : 0;
+        $passCount = $tookExamRows->where('status', 'Lulus')->count();
+
+        $html = $this->examResultsPdfHtml($exam, $className, $rows, $totalCount, $avgScore, $passCount, $missingCount);
 
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape');
         $filename = 'Hasil_Ujian_' . str_replace(' ', '_', $exam->title) . '_' . date('Y-m-d') . '.pdf';
@@ -327,11 +398,11 @@ class ExportController extends Controller
         return $pdf->download($filename);
     }
 
-    private function examResultsPdfHtml(Exam $exam, string $className, array $rows, int $total, float $avg, int $pass): string
+    private function examResultsPdfHtml(Exam $exam, string $className, array $rows, int $total, float $avg, int $pass, int $missingCount = 0): string
     {
         $date = $exam->start_time ? $exam->start_time->format('d/m/Y') : '-';
         $exportDate = now()->format('d/m/Y H:i');
-        $failCount = $total - $pass;
+        $failCount = $total - $pass - $missingCount;
         $passPct = $total > 0 ? round(($pass / $total) * 100, 1) : 0;
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
@@ -348,6 +419,7 @@ class ExportController extends Controller
         $html .= '.center{text-align:center}';
         $html .= '.lulus{color:#27ae60;font-weight:bold}';
         $html .= '.tidak{color:#e74c3c;font-weight:bold}';
+        $html .= '.belum{color:#ff8c00;font-weight:bold}';
         $html .= '.summary{margin-top:8px}';
         $html .= '.summary td{border:none;padding:3px 8px;font-size:11px}';
         $html .= '.summary .label{font-weight:bold;width:180px}';
@@ -365,7 +437,7 @@ class ExportController extends Controller
         $html .= '</tr></thead><tbody>';
 
         foreach ($rows as $r) {
-            $cls = $r['status'] === 'Lulus' ? 'lulus' : 'tidak';
+            $cls = $r['status'] === 'Lulus' ? 'lulus' : ($r['status'] === 'Tidak Mengerjakan' ? 'belum' : 'tidak');
             $html .= '<tr>';
             $html .= '<td class="center">' . $r['no'] . '</td>';
             $html .= '<td class="center">' . htmlspecialchars($r['nomor_tes']) . '</td>';
@@ -383,6 +455,8 @@ class ExportController extends Controller
 
         $html .= '<table class="summary">';
         $html .= '<tr><td class="label">Total Siswa:</td><td>' . $total . '</td></tr>';
+        $html .= '<tr><td class="label">Mengerjakan:</td><td>' . ($total - $missingCount) . '</td></tr>';
+        $html .= '<tr><td class="label">Tidak Mengerjakan:</td><td>' . $missingCount . '</td></tr>';
         $html .= '<tr><td class="label">Rata-rata Nilai:</td><td>' . $avg . '</td></tr>';
         $html .= '<tr><td class="label">Lulus:</td><td>' . $pass . '</td></tr>';
         $html .= '<tr><td class="label">Tidak Lulus:</td><td>' . $failCount . '</td></tr>';
