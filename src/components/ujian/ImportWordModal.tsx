@@ -19,6 +19,187 @@ import {
 import { Document, Paragraph, TextRun, Packer, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 
+// ─── OMML (Office Math Markup Language) extraction ───
+const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const M_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
+
+function childrenNS(parent: Element, ns: string, tag: string): Element[] {
+  return Array.from(parent.children).filter(c => c.localName === tag && c.namespaceURI === ns);
+}
+
+function mVal(el: Element): string {
+  return el.getAttributeNS(M_NS, 'val') || el.getAttribute('m:val') || el.getAttribute('val') || '';
+}
+
+/** Convert OMML math XML to readable text (fractions, superscripts, functions, etc.) */
+function mathToText(el: Element): string {
+  let out = '';
+  for (const ch of Array.from(el.children)) {
+    if (ch.namespaceURI === W_NS && ch.localName === 'r') {
+      for (const t of childrenNS(ch, W_NS, 't')) out += t.textContent || '';
+      continue;
+    }
+    if (ch.namespaceURI !== M_NS) continue;
+    switch (ch.localName) {
+      case 'r':
+        for (const t of childrenNS(ch, M_NS, 't')) out += t.textContent || '';
+        break;
+      case 'f': { // Fraction: (num/den)
+        const n = childrenNS(ch, M_NS, 'num')[0];
+        const d = childrenNS(ch, M_NS, 'den')[0];
+        out += '(' + (n ? mathToText(n) : '') + '/' + (d ? mathToText(d) : '') + ')';
+        break;
+      }
+      case 'sSup': { // Superscript: base^(exp)
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        const s = childrenNS(ch, M_NS, 'sup')[0];
+        out += (e ? mathToText(e) : '') + '^(' + (s ? mathToText(s) : '') + ')';
+        break;
+      }
+      case 'sSub': { // Subscript: base_(sub)
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        const s = childrenNS(ch, M_NS, 'sub')[0];
+        out += (e ? mathToText(e) : '') + '_(' + (s ? mathToText(s) : '') + ')';
+        break;
+      }
+      case 'sSubSup': { // Sub-superscript combo
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        const sub = childrenNS(ch, M_NS, 'sub')[0];
+        const sup = childrenNS(ch, M_NS, 'sup')[0];
+        out += e ? mathToText(e) : '';
+        if (sub) out += '_(' + mathToText(sub) + ')';
+        if (sup) out += '^(' + mathToText(sup) + ')';
+        break;
+      }
+      case 'rad': { // Radical: √(x)
+        const deg = childrenNS(ch, M_NS, 'deg')[0];
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        const dt = deg ? mathToText(deg).trim() : '';
+        out += (dt && dt !== '2' ? dt : '') + '√(' + (e ? mathToText(e) : '') + ')';
+        break;
+      }
+      case 'func': { // Function: sin x, cos x, etc.
+        const fn = childrenNS(ch, M_NS, 'fName')[0];
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        out += (fn ? mathToText(fn).trim() : '') + ' ' + (e ? mathToText(e) : '');
+        break;
+      }
+      case 'd': { // Delimiter: (x), [x], {x}
+        const pr = childrenNS(ch, M_NS, 'dPr')[0];
+        let beg = '(', end = ')';
+        if (pr) {
+          const b = childrenNS(pr, M_NS, 'begChr')[0];
+          const e = childrenNS(pr, M_NS, 'endChr')[0];
+          if (b) beg = mVal(b) || '(';
+          if (e) end = mVal(e) || ')';
+        }
+        out += beg + childrenNS(ch, M_NS, 'e').map(e => mathToText(e)).join(', ') + end;
+        break;
+      }
+      case 'nary': { // N-ary: ∑, ∫, etc.
+        const pr = childrenNS(ch, M_NS, 'naryPr')[0];
+        let chr = '∫';
+        if (pr) { const c = childrenNS(pr, M_NS, 'chr')[0]; if (c) chr = mVal(c) || '∫'; }
+        const sub = childrenNS(ch, M_NS, 'sub')[0];
+        const sup = childrenNS(ch, M_NS, 'sup')[0];
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        out += chr;
+        if (sub) out += '_(' + mathToText(sub) + ')';
+        if (sup) out += '^(' + mathToText(sup) + ')';
+        if (e) out += ' ' + mathToText(e);
+        break;
+      }
+      case 'bar': case 'acc': case 'borderBox': case 'box': case 'phant': case 'groupChr': {
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        out += e ? mathToText(e) : '';
+        break;
+      }
+      case 'sPre': { // Pre-sub/superscript
+        const sub = childrenNS(ch, M_NS, 'sub')[0];
+        const sup = childrenNS(ch, M_NS, 'sup')[0];
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        if (sup) out += '^(' + mathToText(sup) + ')';
+        if (sub) out += '_(' + mathToText(sub) + ')';
+        out += e ? mathToText(e) : '';
+        break;
+      }
+      case 'limLow': {
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        const lim = childrenNS(ch, M_NS, 'lim')[0];
+        out += (e ? mathToText(e) : '') + '_(' + (lim ? mathToText(lim) : '') + ')';
+        break;
+      }
+      case 'limUpp': {
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        const lim = childrenNS(ch, M_NS, 'lim')[0];
+        out += (e ? mathToText(e) : '') + '^(' + (lim ? mathToText(lim) : '') + ')';
+        break;
+      }
+      case 'm': { // Matrix
+        const rows = childrenNS(ch, M_NS, 'mr');
+        out += '[' + rows.map(row => childrenNS(row, M_NS, 'e').map(e => mathToText(e)).join(', ')).join('; ') + ']';
+        break;
+      }
+      case 'eqArr':
+        out += childrenNS(ch, M_NS, 'e').map(e => mathToText(e)).join('; ');
+        break;
+      case 'oMathPara':
+        for (const om of childrenNS(ch, M_NS, 'oMath')) out += mathToText(om);
+        break;
+      case 't':
+        out += ch.textContent || '';
+        break;
+      default:
+        if (!ch.localName.endsWith('Pr')) out += mathToText(ch);
+    }
+  }
+  return out;
+}
+
+/** Extract text from a Word run <w:r> element */
+function wordRunText(r: Element): string {
+  let t = '';
+  for (const ch of Array.from(r.children)) {
+    if (ch.namespaceURI !== W_NS) continue;
+    if (ch.localName === 't') t += ch.textContent || '';
+    else if (ch.localName === 'tab') t += '\t';
+    else if (ch.localName === 'br') t += '\n';
+  }
+  return t;
+}
+
+/** Extract text from a paragraph, including inline math and wrapped elements */
+function extractParaText(p: Element): string {
+  let t = '';
+  for (const ch of Array.from(p.children)) {
+    const ns = ch.namespaceURI;
+    const tag = ch.localName;
+    if (ns === W_NS && tag === 'r') t += wordRunText(ch);
+    else if (ns === M_NS && tag === 'oMath') t += mathToText(ch);
+    else if (ns === M_NS && tag === 'oMathPara') {
+      for (const om of childrenNS(ch, M_NS, 'oMath')) t += mathToText(om);
+    } else if (ns === W_NS && (tag === 'pPr' || tag === 'del' || tag === 'moveFrom' || tag === 'bookmarkStart' || tag === 'bookmarkEnd' || tag === 'proofErr')) {
+      // skip non-content elements
+    } else if (ch.nodeType === Node.ELEMENT_NODE) {
+      // Recurse into wrappers: hyperlink, sdt, ins, smartTag, etc.
+      t += extractParaText(ch as Element);
+    }
+  }
+  return t;
+}
+
+/** Parse .docx file with full OMML math support using JSZip + DOMParser */
+async function extractDocxWithMath(buf: ArrayBuffer): Promise<string> {
+  const jszip = await import('jszip');
+  const JSZip = ('default' in jszip ? jszip.default : jszip) as typeof import('jszip');
+  const zip = await JSZip.loadAsync(buf);
+  const xml = await zip.file('word/document.xml')?.async('string');
+  if (!xml) throw new Error('Invalid docx');
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const pars = doc.getElementsByTagNameNS(W_NS, 'p');
+  return Array.from(pars).map(p => extractParaText(p)).join('\n');
+}
+
 interface ParsedQuestion {
   question_text: string;
   question_type: 'multiple_choice' | 'essay';
@@ -159,12 +340,20 @@ export function ImportWordModal({
     setParsing(true);
 
     try {
-      // Dynamic import mammoth to avoid SSR issues
-      const mammoth = await import('mammoth');
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      
-      const text = result.value.trim();
+      let text = '';
+
+      try {
+        // Custom parser with OMML math support (fractions, sin, cos, etc.)
+        text = await extractDocxWithMath(arrayBuffer);
+      } catch {
+        // Fallback to mammoth if custom parser fails (loses math symbols)
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
+      }
+
+      text = text.trim();
       if (!text) {
         setError('File Word kosong atau tidak mengandung teks yang dapat dibaca');
         setParsing(false);

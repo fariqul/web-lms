@@ -38,7 +38,8 @@ Route::get('/health', function () {
 });
 
 // Public routes with rate limiting for login (prevent brute force)
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:15,1'); // 15 attempts per minute
+// High limit because school network shares single public IP — many users login simultaneously
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:200,1'); // 200 attempts per minute (shared IP)
 
 // Password reset (public, rate limited)
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
