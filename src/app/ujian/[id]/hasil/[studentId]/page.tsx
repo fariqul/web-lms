@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { MathText } from '@/components/ui/MathText';
 
 interface StudentInfo {
   id: number;
@@ -296,11 +297,11 @@ export default function HasilSiswaPage() {
                     {answer.question.passage && (
                       <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Bacaan</span>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line">{answer.question.passage}</p>
+                        <MathText text={answer.question.passage} as="p" className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line" />
                       </div>
                     )}
                     {/* Question text */}
-                    <p className="text-slate-800 dark:text-white font-medium mb-2 whitespace-pre-line">{answer.question.question_text}</p>
+                    <MathText text={answer.question.question_text} as="p" className="text-slate-800 dark:text-white font-medium mb-2 whitespace-pre-line" />
                     
                     <div className="flex items-center gap-3 mb-3">
                       <span className={`px-2 py-0.5 text-xs rounded ${
@@ -344,7 +345,7 @@ export default function HasilSiswaPage() {
                               </span>
                               <div className="flex-1">
                                 {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && (
-                                  <span>{optText}</span>
+                                  <MathText text={optText} />
                                 )}
                                 {optImage && (
                                   <img

@@ -17,6 +17,7 @@ import {
   Download,
 } from 'lucide-react';
 import { Document, Paragraph, TextRun, Packer, AlignmentType, LevelFormat, convertInchesToTwip } from 'docx';
+import { MathText } from '@/components/ui/MathText';
 import { saveAs } from 'file-saver';
 
 // ─── OMML (Office Math Markup Language) extraction ───
@@ -31,8 +32,8 @@ function mVal(el: Element): string {
   return el.getAttributeNS(M_NS, 'val') || el.getAttribute('m:val') || el.getAttribute('val') || '';
 }
 
-/** Convert OMML math XML to readable text (fractions, superscripts, functions, etc.) */
-function mathToText(el: Element): string {
+/** Convert OMML math XML to LaTeX notation */
+function mathToLatex(el: Element): string {
   let out = '';
   for (const ch of Array.from(el.children)) {
     if (ch.namespaceURI === W_NS && ch.localName === 'r') {
@@ -41,50 +42,71 @@ function mathToText(el: Element): string {
     }
     if (ch.namespaceURI !== M_NS) continue;
     switch (ch.localName) {
-      case 'r':
-        for (const t of childrenNS(ch, M_NS, 't')) out += t.textContent || '';
+      case 'r': {
+        // Check for special characters that need LaTeX commands
+        let text = '';
+        for (const t of childrenNS(ch, M_NS, 't')) text += t.textContent || '';
+        // Map common math symbols/functions to LaTeX
+        const funcMap: Record<string, string> = {
+          'sin': '\\sin', 'cos': '\\cos', 'tan': '\\tan',
+          'sec': '\\sec', 'csc': '\\csc', 'cot': '\\cot',
+          'log': '\\log', 'ln': '\\ln', 'lim': '\\lim',
+          'max': '\\max', 'min': '\\min', 'sup': '\\sup', 'inf': '\\inf',
+          'α': '\\alpha', 'β': '\\beta', 'γ': '\\gamma', 'δ': '\\delta',
+          'θ': '\\theta', 'λ': '\\lambda', 'μ': '\\mu', 'π': '\\pi',
+          'σ': '\\sigma', 'φ': '\\varphi', 'ω': '\\omega',
+          '∞': '\\infty', '≤': '\\leq', '≥': '\\geq', '≠': '\\neq',
+          '±': '\\pm', '×': '\\times', '÷': '\\div', '·': '\\cdot',
+          '→': '\\rightarrow', '←': '\\leftarrow', '⇒': '\\Rightarrow',
+        };
+        out += funcMap[text] || text;
         break;
-      case 'f': { // Fraction: (num/den)
+      }
+      case 'f': { // Fraction
         const n = childrenNS(ch, M_NS, 'num')[0];
         const d = childrenNS(ch, M_NS, 'den')[0];
-        out += '(' + (n ? mathToText(n) : '') + '/' + (d ? mathToText(d) : '') + ')';
+        out += '\\frac{' + (n ? mathToLatex(n) : '') + '}{' + (d ? mathToLatex(d) : '') + '}';
         break;
       }
-      case 'sSup': { // Superscript: base^(exp)
+      case 'sSup': { // Superscript
         const e = childrenNS(ch, M_NS, 'e')[0];
         const s = childrenNS(ch, M_NS, 'sup')[0];
-        out += (e ? mathToText(e) : '') + '^(' + (s ? mathToText(s) : '') + ')';
+        out += '{' + (e ? mathToLatex(e) : '') + '}^{' + (s ? mathToLatex(s) : '') + '}';
         break;
       }
-      case 'sSub': { // Subscript: base_(sub)
+      case 'sSub': { // Subscript
         const e = childrenNS(ch, M_NS, 'e')[0];
         const s = childrenNS(ch, M_NS, 'sub')[0];
-        out += (e ? mathToText(e) : '') + '_(' + (s ? mathToText(s) : '') + ')';
+        out += '{' + (e ? mathToLatex(e) : '') + '}_{' + (s ? mathToLatex(s) : '') + '}';
         break;
       }
       case 'sSubSup': { // Sub-superscript combo
         const e = childrenNS(ch, M_NS, 'e')[0];
         const sub = childrenNS(ch, M_NS, 'sub')[0];
         const sup = childrenNS(ch, M_NS, 'sup')[0];
-        out += e ? mathToText(e) : '';
-        if (sub) out += '_(' + mathToText(sub) + ')';
-        if (sup) out += '^(' + mathToText(sup) + ')';
+        out += '{' + (e ? mathToLatex(e) : '') + '}';
+        if (sub) out += '_{' + mathToLatex(sub) + '}';
+        if (sup) out += '^{' + mathToLatex(sup) + '}';
         break;
       }
-      case 'rad': { // Radical: √(x)
+      case 'rad': { // Radical
         const deg = childrenNS(ch, M_NS, 'deg')[0];
         const e = childrenNS(ch, M_NS, 'e')[0];
-        const dt = deg ? mathToText(deg).trim() : '';
-        out += (dt && dt !== '2' ? dt : '') + '√(' + (e ? mathToText(e) : '') + ')';
+        const dt = deg ? mathToLatex(deg).trim() : '';
+        if (dt && dt !== '2') {
+          out += '\\sqrt[' + dt + ']{' + (e ? mathToLatex(e) : '') + '}';
+        } else {
+          out += '\\sqrt{' + (e ? mathToLatex(e) : '') + '}';
+        }
         break;
       }
-      case 'func': { // Function: sin x, cos x, etc.
+      case 'func': { // Function: sin, cos, etc.
         const fn = childrenNS(ch, M_NS, 'fName')[0];
         const e = childrenNS(ch, M_NS, 'e')[0];
-        out += (fn ? mathToText(fn).trim() : '') + ' ' + (e ? mathToText(e) : '');
+        out += (fn ? mathToLatex(fn).trim() : '') + '{' + (e ? mathToLatex(e) : '') + '}';
         break;
       }
-      case 'd': { // Delimiter: (x), [x], {x}
+      case 'd': { // Delimiter
         const pr = childrenNS(ch, M_NS, 'dPr')[0];
         let beg = '(', end = ')';
         if (pr) {
@@ -93,64 +115,96 @@ function mathToText(el: Element): string {
           if (b) beg = mVal(b) || '(';
           if (e) end = mVal(e) || ')';
         }
-        out += beg + childrenNS(ch, M_NS, 'e').map(e => mathToText(e)).join(', ') + end;
+        const delimMap: Record<string, [string, string]> = {
+          '(': ['\\left(', '\\right)'], ')': ['\\left(', '\\right)'],
+          '[': ['\\left[', '\\right]'], ']': ['\\left[', '\\right]'],
+          '{': ['\\left\\{', '\\right\\}'], '}': ['\\left\\{', '\\right\\}'],
+          '|': ['\\left|', '\\right|'],
+        };
+        const [lb, rb] = delimMap[beg] || ['\\left' + beg, '\\right' + end];
+        out += lb + childrenNS(ch, M_NS, 'e').map(e => mathToLatex(e)).join(', ') + rb;
         break;
       }
-      case 'nary': { // N-ary: ∑, ∫, etc.
+      case 'nary': { // N-ary: ∑, ∫, ∏
         const pr = childrenNS(ch, M_NS, 'naryPr')[0];
         let chr = '∫';
         if (pr) { const c = childrenNS(pr, M_NS, 'chr')[0]; if (c) chr = mVal(c) || '∫'; }
+        const naryMap: Record<string, string> = {
+          '∫': '\\int', '∬': '\\iint', '∭': '\\iiint',
+          '∑': '\\sum', '∏': '\\prod', '∐': '\\coprod',
+        };
+        out += naryMap[chr] || chr;
         const sub = childrenNS(ch, M_NS, 'sub')[0];
         const sup = childrenNS(ch, M_NS, 'sup')[0];
         const e = childrenNS(ch, M_NS, 'e')[0];
-        out += chr;
-        if (sub) out += '_(' + mathToText(sub) + ')';
-        if (sup) out += '^(' + mathToText(sup) + ')';
-        if (e) out += ' ' + mathToText(e);
+        if (sub) out += '_{' + mathToLatex(sub) + '}';
+        if (sup) out += '^{' + mathToLatex(sup) + '}';
+        if (e) out += ' ' + mathToLatex(e);
         break;
       }
-      case 'bar': case 'acc': case 'borderBox': case 'box': case 'phant': case 'groupChr': {
+      case 'acc': { // Accent (hat, bar, dot, etc.)
+        const pr = childrenNS(ch, M_NS, 'accPr')[0];
         const e = childrenNS(ch, M_NS, 'e')[0];
-        out += e ? mathToText(e) : '';
+        let accChr = '';
+        if (pr) { const c = childrenNS(pr, M_NS, 'chr')[0]; if (c) accChr = mVal(c); }
+        const accMap: Record<string, string> = {
+          '\u0302': '\\hat', '\u0305': '\\bar', '\u0307': '\\dot',
+          '\u0308': '\\ddot', '\u20D7': '\\vec', '~': '\\tilde',
+        };
+        const cmd = accMap[accChr] || '\\hat';
+        out += cmd + '{' + (e ? mathToLatex(e) : '') + '}';
+        break;
+      }
+      case 'bar': {
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        out += '\\overline{' + (e ? mathToLatex(e) : '') + '}';
+        break;
+      }
+      case 'borderBox': case 'box': case 'phant': case 'groupChr': {
+        const e = childrenNS(ch, M_NS, 'e')[0];
+        out += e ? mathToLatex(e) : '';
         break;
       }
       case 'sPre': { // Pre-sub/superscript
         const sub = childrenNS(ch, M_NS, 'sub')[0];
         const sup = childrenNS(ch, M_NS, 'sup')[0];
         const e = childrenNS(ch, M_NS, 'e')[0];
-        if (sup) out += '^(' + mathToText(sup) + ')';
-        if (sub) out += '_(' + mathToText(sub) + ')';
-        out += e ? mathToText(e) : '';
+        out += '{}';
+        if (sub) out += '_{' + mathToLatex(sub) + '}';
+        if (sup) out += '^{' + mathToLatex(sup) + '}';
+        out += (e ? mathToLatex(e) : '');
         break;
       }
       case 'limLow': {
         const e = childrenNS(ch, M_NS, 'e')[0];
         const lim = childrenNS(ch, M_NS, 'lim')[0];
-        out += (e ? mathToText(e) : '') + '_(' + (lim ? mathToText(lim) : '') + ')';
+        out += (e ? mathToLatex(e) : '') + '_{' + (lim ? mathToLatex(lim) : '') + '}';
         break;
       }
       case 'limUpp': {
         const e = childrenNS(ch, M_NS, 'e')[0];
         const lim = childrenNS(ch, M_NS, 'lim')[0];
-        out += (e ? mathToText(e) : '') + '^(' + (lim ? mathToText(lim) : '') + ')';
+        out += (e ? mathToLatex(e) : '') + '^{' + (lim ? mathToLatex(lim) : '') + '}';
         break;
       }
       case 'm': { // Matrix
         const rows = childrenNS(ch, M_NS, 'mr');
-        out += '[' + rows.map(row => childrenNS(row, M_NS, 'e').map(e => mathToText(e)).join(', ')).join('; ') + ']';
+        out += '\\begin{pmatrix}' + rows.map(row =>
+          childrenNS(row, M_NS, 'e').map(e => mathToLatex(e)).join(' & ')
+        ).join(' \\\\ ') + '\\end{pmatrix}';
         break;
       }
       case 'eqArr':
-        out += childrenNS(ch, M_NS, 'e').map(e => mathToText(e)).join('; ');
+        out += '\\begin{aligned}' + childrenNS(ch, M_NS, 'e').map(e => mathToLatex(e)).join(' \\\\ ') + '\\end{aligned}';
         break;
       case 'oMathPara':
-        for (const om of childrenNS(ch, M_NS, 'oMath')) out += mathToText(om);
+        for (const om of childrenNS(ch, M_NS, 'oMath')) out += mathToLatex(om);
         break;
       case 't':
         out += ch.textContent || '';
         break;
       default:
-        if (!ch.localName.endsWith('Pr')) out += mathToText(ch);
+        if (!ch.localName.endsWith('Pr')) out += mathToLatex(ch);
     }
   }
   return out;
@@ -168,16 +222,24 @@ function wordRunText(r: Element): string {
   return t;
 }
 
-/** Extract text from a paragraph, including inline math and wrapped elements */
+/** Extract text from a paragraph, including inline math as LaTeX $...$ and wrapped elements */
 function extractParaText(p: Element): string {
   let t = '';
   for (const ch of Array.from(p.children)) {
     const ns = ch.namespaceURI;
     const tag = ch.localName;
     if (ns === W_NS && tag === 'r') t += wordRunText(ch);
-    else if (ns === M_NS && tag === 'oMath') t += mathToText(ch);
+    else if (ns === M_NS && tag === 'oMath') {
+      const latex = mathToLatex(ch).trim();
+      if (latex) t += '$' + latex + '$';
+    }
     else if (ns === M_NS && tag === 'oMathPara') {
-      for (const om of childrenNS(ch, M_NS, 'oMath')) t += mathToText(om);
+      const parts: string[] = [];
+      for (const om of childrenNS(ch, M_NS, 'oMath')) {
+        const latex = mathToLatex(om).trim();
+        if (latex) parts.push(latex);
+      }
+      if (parts.length) t += '$$' + parts.join(' ') + '$$';
     } else if (ns === W_NS && (tag === 'pPr' || tag === 'del' || tag === 'moveFrom' || tag === 'bookmarkStart' || tag === 'bookmarkEnd' || tag === 'proofErr')) {
       // skip non-content elements
     } else if (ch.nodeType === Node.ELEMENT_NODE) {
@@ -967,9 +1029,7 @@ export function ImportWordModal({
                       {idx + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-800 dark:text-white font-medium mb-1">
-                        {q.question_text}
-                      </p>
+                      <MathText text={q.question_text} as="p" className="text-sm text-slate-800 dark:text-white font-medium mb-1" />
 
                       {q.question_type === 'multiple_choice' && q.options.length > 0 && (
                         <div className="space-y-1 ml-1 mt-2">
@@ -989,7 +1049,7 @@ export function ImportWordModal({
                               }`}>
                                 {String.fromCharCode(65 + oi)}
                               </span>
-                              {opt.text}
+                              <MathText text={opt.text} />
                               {opt.is_correct && <CheckCircle className="w-3.5 h-3.5" />}
                             </div>
                           ))}

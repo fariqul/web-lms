@@ -31,6 +31,7 @@ import { useToast } from '@/components/ui/Toast';
 import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 import { useExamSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/context/AuthContext';
+import { MathText } from '@/components/ui/MathText';
 
 interface QuestionOption {
   text: string;
@@ -1069,13 +1070,13 @@ export default function ExamTakingPage() {
               {question?.passage && (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Bacaan</span>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 whitespace-pre-line leading-relaxed">{question.passage}</p>
+                  <MathText text={question.passage} as="p" className="text-sm text-slate-700 dark:text-slate-300 mt-2 whitespace-pre-line leading-relaxed" />
                 </div>
               )}
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Soal {question?.number || currentQuestion + 1}</span>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white mt-1 whitespace-pre-line">{question?.text || 'Soal tidak tersedia'}</h2>
+                  <MathText text={question?.text || 'Soal tidak tersedia'} as="h2" className="text-lg font-semibold text-slate-900 dark:text-white mt-1 whitespace-pre-line" />
                   {question?.image && (
                     <div className="mt-3">
                       <img
@@ -1123,11 +1124,11 @@ export default function ExamTakingPage() {
                       }`}>{String.fromCharCode(65 + index)}.</span>
                       <div className="ml-2 flex-1">
                         {option.text && !/^\[Gambar [A-Z]\]$/.test(option.text) && (
-                          <span className={`${
+                          <MathText text={option.text} className={`${
                             answers[question.id] === option.text
                               ? 'text-teal-700 dark:text-teal-300 font-medium'
                               : 'text-slate-800 dark:text-slate-300'
-                          }`}>{option.text}</span>
+                          }`} />
                         )}
                         {option.image && (
                           <img

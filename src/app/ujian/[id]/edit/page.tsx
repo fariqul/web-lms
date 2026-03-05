@@ -41,6 +41,7 @@ import { ImportBankSoalModal } from '@/components/ujian/ImportBankSoalModal';
 import { DuplicateExamModal } from '@/components/ujian/DuplicateExamModal';
 import { ImportExcelModal } from '@/components/ujian/ImportExcelModal';
 import { ImportWordModal } from '@/components/ujian/ImportWordModal';
+import { MathText } from '@/components/ui/MathText';
 import { useExamSocket } from '@/hooks/useSocket';
 
 interface Option {
@@ -1381,10 +1382,10 @@ export default function EditSoalPage() {
                       {question.passage && (
                         <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                           <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Cerita Soal</span>
-                          <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line">{question.passage}</p>
+                          <MathText text={question.passage} as="p" className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-line" />
                         </div>
                       )}
-                      <p className="text-slate-800 dark:text-white mb-2 whitespace-pre-line">{question.question_text}</p>
+                      <MathText text={question.question_text} as="p" className="text-slate-800 dark:text-white mb-2 whitespace-pre-line" />
                       
                       {question.image && (
                         <div className="mb-3">
@@ -1410,7 +1411,7 @@ export default function EditSoalPage() {
                               </span>
                               <div className="flex-1">
                                 {opt.text && !/^\[Gambar [A-Z]\]$/.test(opt.text) && (
-                                  <span>{opt.text}</span>
+                                  <MathText text={opt.text} />
                                 )}
                                 {opt.text && /^\[Gambar [A-Z]\]$/.test(opt.text) && !opt.image && (
                                   <span className="italic text-slate-400">{opt.text}</span>
