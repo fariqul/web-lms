@@ -57,6 +57,7 @@ export interface Attendance {
 // Exam Types
 export interface Exam {
   id: number;
+  type?: 'exam' | 'quiz';
   class_id: number;
   teacher_id: number;
   title: string;
@@ -73,8 +74,13 @@ export interface Exam {
   locked_at?: string;
   locked_by_user?: { id: number; name: string };
   class?: Class;
+  classes?: { id: number; name: string }[];
   teacher?: User;
   my_result?: ExamResult;
+  show_result?: boolean;
+  passing_score?: number;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
   // SEB (Safe Exam Browser) settings
   seb_required?: boolean;
   seb_allow_quit?: boolean;

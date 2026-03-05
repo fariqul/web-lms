@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\QuizController;
 
 /*
 |--------------------------------------------------------------------------
@@ -269,5 +270,39 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
         Route::get('/audit-logs/actions', [AuditLogController::class, 'actions']);
+    });
+
+    // ============================================
+    // QUIZ / UJIAN HARIAN ROUTES
+    // ============================================
+    
+    // Shared: list & show quiz (all authenticated)
+    Route::get('/quizzes', [QuizController::class, 'index']);
+    Route::get('/quizzes/{quiz}', [QuizController::class, 'show']);
+
+    // Teacher quiz management
+    Route::middleware('role:guru')->group(function () {
+        Route::post('/quizzes', [QuizController::class, 'store']);
+        Route::delete('/quizzes/{quiz}', [QuizController::class, 'destroy']);
+    });
+
+    // Teacher + Admin: update, publish, end, questions, results, grading
+    Route::middleware('role:admin,guru')->group(function () {
+        Route::put('/quizzes/{quiz}', [QuizController::class, 'update']);
+        Route::post('/quizzes/{quiz}/publish', [QuizController::class, 'publish']);
+        Route::post('/quizzes/{quiz}/end', [QuizController::class, 'endQuiz']);
+        Route::post('/quizzes/{quiz}/questions', [QuizController::class, 'addQuestion']);
+        Route::put('/quiz-questions/{question}', [QuizController::class, 'updateQuestion']);
+        Route::delete('/quiz-questions/{question}', [QuizController::class, 'deleteQuestion']);
+        Route::get('/quizzes/{quiz}/results', [QuizController::class, 'results']);
+        Route::get('/quizzes/{quiz}/results/{studentId}', [QuizController::class, 'studentResult']);
+        Route::post('/quizzes/{quiz}/grade-answer/{answerId}', [QuizController::class, 'gradeAnswer']);
+    });
+
+    // Student quiz taking
+    Route::middleware('role:siswa')->group(function () {
+        Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startQuiz']);
+        Route::post('/quizzes/{quiz}/answer', [QuizController::class, 'submitAnswer']);
+        Route::post('/quizzes/{quiz}/finish', [QuizController::class, 'finishQuiz']);
     });
 });

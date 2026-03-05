@@ -10,6 +10,7 @@ class Exam extends Model
     use HasFactory;
 
     protected $fillable = [
+        'type',
         'class_id',
         'teacher_id',
         'title',

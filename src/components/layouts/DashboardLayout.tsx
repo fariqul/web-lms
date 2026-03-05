@@ -12,6 +12,7 @@ import {
   Users,
   Calendar,
   ClipboardList,
+  ClipboardCheck,
   Settings,
   LogOut,
   Bell,
@@ -45,6 +46,7 @@ const navigation: NavItem[] = [
   // Guru only
   { name: 'Sesi Absensi', href: '/absensi', icon: ClipboardList, roles: ['guru'] },
   { name: 'Ujian / CBT', href: '/ujian', icon: GraduationCap, roles: ['guru'] },
+  { name: 'Quiz / Ujian Harian', href: '/quiz', icon: ClipboardCheck, roles: ['guru'] },
   { name: 'Bank Soal', href: '/bank-soal', icon: FileText, roles: ['guru'] },
   { name: 'Tugas', href: '/tugas', icon: FileText, roles: ['guru'] },
   { name: 'Materi Pelajaran', href: '/materi', icon: BookOpen, roles: ['guru'] },
@@ -53,6 +55,7 @@ const navigation: NavItem[] = [
   // Siswa only
   { name: 'Scan QR Absensi', href: '/scan-qr', icon: QrCode, roles: ['siswa'] },
   { name: 'Ujian Saya', href: '/ujian-siswa', icon: GraduationCap, roles: ['siswa'] },
+  { name: 'Quiz Saya', href: '/quiz-siswa', icon: ClipboardCheck, roles: ['siswa'] },
   { name: 'Bank Soal', href: '/dashboard/siswa/bank-soal', icon: FileText, roles: ['siswa'] },
   { name: 'Tugas Saya', href: '/tugas-siswa', icon: FileText, roles: ['siswa'] },
   { name: 'Riwayat Absensi', href: '/riwayat-absensi', icon: ClipboardList, roles: ['siswa'] },

@@ -210,6 +210,69 @@ export const attendanceAPI = {
     api.get(`/attendance/class/${classId}`, { params }),
 };
 
+// Quiz / Ujian Harian API
+export const quizAPI = {
+  getAll: (params?: { status?: string; page?: number }) =>
+    api.get('/quizzes', { params }),
+
+  getById: (id: number) =>
+    api.get(`/quizzes/${id}`),
+
+  create: (data: {
+    title: string;
+    subject: string;
+    description?: string;
+    duration_minutes: number;
+    class_ids: number[];
+    show_result?: boolean;
+    passing_score?: number;
+    shuffle_questions?: boolean;
+    shuffle_options?: boolean;
+  }) => api.post('/quizzes', data),
+
+  update: (id: number, data: Record<string, unknown>) =>
+    api.put(`/quizzes/${id}`, data),
+
+  delete: (id: number) =>
+    api.delete(`/quizzes/${id}`),
+
+  publish: (id: number) =>
+    api.post(`/quizzes/${id}/publish`),
+
+  end: (id: number) =>
+    api.post(`/quizzes/${id}/end`),
+
+  // Questions
+  addQuestion: (quizId: number, data: FormData) =>
+    api.post(`/quizzes/${quizId}/questions`, data),
+
+  updateQuestion: (questionId: number, data: FormData) =>
+    api.put(`/quiz-questions/${questionId}`, data),
+
+  deleteQuestion: (questionId: number) =>
+    api.delete(`/quiz-questions/${questionId}`),
+
+  // Student actions
+  start: (quizId: number) =>
+    api.post(`/quizzes/${quizId}/start`),
+
+  submitAnswer: (quizId: number, data: { question_id: number; answer: string }) =>
+    api.post(`/quizzes/${quizId}/answer`, data),
+
+  finish: (quizId: number, data?: { answers?: Record<number, string>; time_spent?: number }) =>
+    api.post(`/quizzes/${quizId}/finish`, data),
+
+  // Results
+  getResults: (quizId: number) =>
+    api.get(`/quizzes/${quizId}/results`),
+
+  getStudentResult: (quizId: number, studentId: number) =>
+    api.get(`/quizzes/${quizId}/results/${studentId}`),
+
+  gradeAnswer: (quizId: number, answerId: number, data: { score: number; feedback?: string }) =>
+    api.post(`/quizzes/${quizId}/grade-answer/${answerId}`, data),
+};
+
 // Exam API
 export const examAPI = {
   getAll: (params?: { class_id?: number; status?: string; page?: number }) =>
