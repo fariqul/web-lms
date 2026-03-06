@@ -75,6 +75,11 @@ const nextConfig: NextConfig = {
         source: '/backend-api/:path*',
         destination: `${backendUrl}/api/:path*`,
       },
+      // Proxy storage files (images) through same origin to fix loading on older phones
+      {
+        source: '/storage/:path*',
+        destination: `${backendUrl}/storage/:path*`,
+      },
     ];
   },
 };

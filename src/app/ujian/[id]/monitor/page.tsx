@@ -322,7 +322,7 @@ export default function MonitorUjianPage() {
     if (imagePath.startsWith('http')) return imagePath;
     // Add cache-busting timestamp to prevent browser from caching old snapshots
     const cacheBust = `?t=${Date.now()}`;
-    return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${imagePath}${cacheBust}`;
+    return `/storage/${imagePath}${cacheBust}`;
   };
 
   // Relative time display (e.g. "5 detik lalu", "2 menit lalu")

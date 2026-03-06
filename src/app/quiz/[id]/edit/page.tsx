@@ -256,10 +256,10 @@ export default function EditQuizPage() {
   const openEditQuestion = (q: Question) => {
     setEditingQuestion(q.id || null);
     setNewQuestion({ ...q });
-    const existingImage = q.image ? `${BACKEND}/storage/${q.image}` : null;
+    const existingImage = q.image ? `/storage/${q.image}` : null;
     setImagePreview(existingImage);
     setImageFile(null);
-    const optPreviews = (q.options || []).map(o => o.image ? `${BACKEND}/storage/${o.image}` : null);
+    const optPreviews = (q.options || []).map(o => o.image ? `/storage/${o.image}` : null);
     setOptionImagePreviews([...optPreviews, ...Array(4 - optPreviews.length).fill(null)]);
     setOptionImageFiles([null, null, null, null]);
     setIsEditModalOpen(true);
@@ -684,7 +684,7 @@ export default function EditQuizPage() {
                           <MathText text={q.question_text} />
                         </div>
                         {q.image && (
-                          <img src={`${BACKEND}/storage/${q.image}`} alt="" className="mt-1.5 h-16 rounded border" />
+                          <img src={`/storage/${q.image}`} alt="" className="mt-1.5 h-16 rounded border" />
                         )}
                         {q.question_type !== 'essay' && q.options.length > 0 && (
                           <div className="mt-2 space-y-0.5">

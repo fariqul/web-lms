@@ -300,7 +300,7 @@ export default function HasilSiswaPage() {
                   <img
                     src={snap.image_path.startsWith('http')
                       ? snap.image_path
-                      : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${snap.image_path}`
+                      : `/storage/${snap.image_path}`
                     }
                     alt="Monitoring"
                     className="w-full aspect-square object-cover rounded-lg border"
@@ -399,7 +399,7 @@ export default function HasilSiswaPage() {
                                 )}
                                 {optImage && (
                                   <img
-                                    src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}
+                                    src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                     className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                   />
@@ -454,7 +454,7 @@ export default function HasilSiswaPage() {
                                   )}
                                   {optImage && (
                                     <img
-                                      src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}
+                                      src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
                                       alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                       className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                     />
@@ -615,10 +615,10 @@ export default function HasilSiswaPage() {
                               📸 Foto Cara Kerja
                             </p>
                             <img
-                              src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${answer.work_photo}`}
+                              src={`/storage/${answer.work_photo}`}
                               alt="Foto cara kerja siswa"
                               className="max-w-full max-h-96 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${answer.work_photo}`, '_blank')}
+                              onClick={() => window.open(`/storage/${answer.work_photo}`, '_blank')}
                             />
                           </div>
                         )}

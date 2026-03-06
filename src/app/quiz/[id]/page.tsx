@@ -389,7 +389,7 @@ export default function QuizTakingPage() {
               {q.image && (
                 <div className="mb-4">
                   <img
-                    src={q.image.startsWith('http') ? q.image : `${BACKEND}/storage/${q.image}`}
+                    src={q.image.startsWith('http') ? q.image : `/storage/${q.image}`}
                     alt="Soal"
                     className="max-w-full max-h-80 rounded-lg border"
                   />
@@ -422,7 +422,7 @@ export default function QuizTakingPage() {
                         )}
                         {opt.image && (
                           <img
-                            src={opt.image.startsWith('http') ? opt.image : `${BACKEND}/storage/${opt.image}`}
+                            src={opt.image.startsWith('http') ? opt.image : `/storage/${opt.image}`}
                             alt={`Opsi ${String.fromCharCode(65 + idx)}`}
                             className="mt-2 max-w-[300px] max-h-48 rounded border"
                           />
@@ -465,7 +465,7 @@ export default function QuizTakingPage() {
                             )}
                             {opt.image && (
                               <img
-                                src={opt.image.startsWith('http') ? opt.image : `${BACKEND}/storage/${opt.image}`}
+                                src={opt.image.startsWith('http') ? opt.image : `/storage/${opt.image}`}
                                 alt={`Opsi ${String.fromCharCode(65 + idx)}`}
                                 className="mt-2 max-w-[300px] max-h-48 rounded border"
                               />

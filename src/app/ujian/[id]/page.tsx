@@ -1157,7 +1157,7 @@ export default function ExamTakingPage() {
                   {question?.image && (
                     <div className="mt-3">
                       <img
-                        src={question.image.startsWith('http') ? question.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`}
+                        src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
                         alt="Gambar Soal"
                         className="max-w-full max-h-80 rounded-lg border border-slate-200 dark:border-slate-700"
                       />
@@ -1209,7 +1209,7 @@ export default function ExamTakingPage() {
                         )}
                         {option.image && (
                           <img
-                            src={option.image.startsWith('http') ? option.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${option.image}`}
+                            src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
                             alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
                             className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                           />
@@ -1255,7 +1255,7 @@ export default function ExamTakingPage() {
                             )}
                             {option.image && (
                               <img
-                                src={option.image.startsWith('http') ? option.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${option.image}`}
+                                src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
                                 alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
                                 className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                               />
@@ -1313,7 +1313,7 @@ export default function ExamTakingPage() {
                 {workPhotos[question.id] && (
                   <div className="mt-2">
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${workPhotos[question.id]}`}
+                      src={`/storage/${workPhotos[question.id]}`}
                       alt="Foto cara kerja"
                       className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                     />

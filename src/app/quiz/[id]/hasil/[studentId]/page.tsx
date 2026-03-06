@@ -312,7 +312,7 @@ export default function QuizStudentResultPage() {
                                 {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && <MathText text={optText} />}
                                 {optImage && (
                                   <img
-                                    src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}
+                                    src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                     className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                   />
@@ -365,7 +365,7 @@ export default function QuizStudentResultPage() {
                                   {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && <MathText text={optText} />}
                                   {optImage && (
                                     <img
-                                      src={optImage.startsWith('http') ? optImage : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${optImage}`}
+                                      src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
                                       alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                       className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                     />

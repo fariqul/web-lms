@@ -522,7 +522,7 @@ export default function EditSoalPage() {
     if (question.image) {
       const imgUrl = question.image.startsWith('http')
         ? question.image
-        : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`;
+        : `/storage/${question.image}`;
       setImagePreview(imgUrl);
     } else {
       setImagePreview(null);
@@ -533,7 +533,7 @@ export default function EditSoalPage() {
       if (opt.image) {
         return opt.image.startsWith('http')
           ? opt.image
-          : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${opt.image}`;
+          : `/storage/${opt.image}`;
       }
       return null;
     });
@@ -1449,7 +1449,7 @@ export default function EditSoalPage() {
                       {question.image && (
                         <div className="mb-3">
                           <img
-                            src={question.image.startsWith('http') ? question.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${question.image}`}
+                            src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
                             alt="Gambar Soal"
                             className="max-w-xs max-h-40 rounded-lg border border-slate-200 dark:border-slate-700"
                           />
@@ -1477,7 +1477,7 @@ export default function EditSoalPage() {
                                 )}
                                 {opt.image && (
                                   <img
-                                    src={opt.image.startsWith('http') ? opt.image : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/storage/${opt.image}`}
+                                    src={opt.image.startsWith('http') ? opt.image : `/storage/${opt.image}`}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                     className="mt-1 max-w-[200px] max-h-24 rounded border border-slate-200 dark:border-slate-700"
                                   />
