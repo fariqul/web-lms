@@ -832,7 +832,7 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $results = ExamResult::with(['student:id,name,nisn,nis,nomor_tes'])
+        $results = ExamResult::with(['student:id,name,nisn,nis,nomor_tes,class_id', 'student.class:id,name'])
             ->where('exam_id', $quiz->id)
             ->get();
 
@@ -864,10 +864,11 @@ class QuizController extends Controller
         $quizClassIds = $quiz->classes()->pluck('classes.id')->toArray();
         if (empty($quizClassIds)) $quizClassIds = [$quiz->class_id];
 
-        $notTaken = User::whereIn('class_id', $quizClassIds)
+        $notTaken = User::with('class:id,name')
+            ->whereIn('class_id', $quizClassIds)
             ->where('role', 'siswa')
             ->whereNotIn('id', $takenIds)
-            ->select('id', 'name', 'nisn', 'nis', 'nomor_tes')
+            ->select('id', 'name', 'nisn', 'nis', 'nomor_tes', 'class_id')
             ->get();
 
         $allEntries = [];

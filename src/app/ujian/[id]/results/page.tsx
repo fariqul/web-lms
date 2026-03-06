@@ -50,6 +50,8 @@ interface StudentResult {
     name: string;
     nisn: string;
     nomor_tes?: string;
+    class_id?: number;
+    class?: { id: number; name: string } | null;
   };
 }
 
@@ -89,6 +91,7 @@ export default function ExamResultsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rank' | 'name' | 'nomor_tes'>('nomor_tes');
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterClass, setFilterClass] = useState<string>('');
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
 
   const fetchResults = useCallback(async () => {
@@ -268,6 +271,7 @@ export default function ExamResultsPage() {
           r.student?.nisn?.includes(searchQuery);
         if (!matchesSearch) return false;
       }
+      if (filterClass && String(r.student?.class_id) !== filterClass) return false;
       if (filterStatus === 'needs_grading') {
         return r.ungraded_essays > 0;
       }
@@ -290,6 +294,15 @@ export default function ExamResultsPage() {
       if ((b.status === 'not_started' || b.status === 'missed') && a.status !== 'not_started' && a.status !== 'missed') return -1;
       return b.percentage - a.percentage;
     });
+
+  // Extract unique classes from results for filter dropdown
+  const uniqueClasses = Array.from(
+    new Map(
+      results
+        .filter(r => r.student?.class)
+        .map(r => [r.student.class!.id, r.student.class!])
+    ).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-700 dark:text-green-400';
@@ -502,6 +515,18 @@ export default function ExamResultsPage() {
             />
           </div>
           <select
+            value={filterClass}
+            onChange={(e) => setFilterClass(e.target.value)}
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            aria-label="Filter kelas"
+            name="filterClass"
+          >
+            <option value="">Semua Kelas</option>
+            {uniqueClasses.map(c => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </select>
+          <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
@@ -551,6 +576,9 @@ export default function ExamResultsPage() {
                       Siswa
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                      Kelas
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       Benar/Salah
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
@@ -592,6 +620,15 @@ export default function ExamResultsPage() {
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">{result.student?.nisn}</div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
+                        {result.student?.class?.name ? (
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded">
+                            {result.student.class.name}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
                         {result.status === 'in_progress' ? (
