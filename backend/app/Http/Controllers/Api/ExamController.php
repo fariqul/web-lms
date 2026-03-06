@@ -1828,7 +1828,7 @@ class ExamController extends Controller
         }
 
         // Get all exam results (refresh after auto-submit)
-        $results = ExamResult::with(['student:id,name,nisn,nomor_tes,class_id', 'student.class:id,name'])
+        $results = ExamResult::with(['student:id,name,nisn,nomor_tes,class_id', 'student.classRoom:id,name'])
             ->where('exam_id', $exam->id)
             ->get();
 
@@ -1867,7 +1867,7 @@ class ExamController extends Controller
         if (empty($examClassIds)) {
             $examClassIds = [$exam->class_id];
         }
-        $allStudents = User::with('class:id,name')
+        $allStudents = User::with('classRoom:id,name')
             ->whereIn('class_id', $examClassIds)
             ->where('role', 'siswa')
             ->whereNotIn('id', $studentIdsWithResults)
@@ -1916,7 +1916,7 @@ class ExamController extends Controller
                     'nisn' => $student->nisn,
                     'nomor_tes' => $student->nomor_tes,
                     'class_id' => $student->class_id,
-                    'class' => $student->class ? ['id' => $student->class->id, 'name' => $student->class->name] : null,
+                    'class_room' => $student->classRoom ? ['id' => $student->classRoom->id, 'name' => $student->classRoom->name] : null,
                 ],
             ];
         }

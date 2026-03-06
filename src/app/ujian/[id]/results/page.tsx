@@ -51,7 +51,7 @@ interface StudentResult {
     nisn: string;
     nomor_tes?: string;
     class_id?: number;
-    class?: { id: number; name: string } | null;
+    class_room?: { id: number; name: string } | null;
   };
 }
 
@@ -299,8 +299,8 @@ export default function ExamResultsPage() {
   const uniqueClasses = Array.from(
     new Map(
       results
-        .filter(r => r.student?.class)
-        .map(r => [r.student.class!.id, r.student.class!])
+        .filter(r => r.student?.class_room)
+        .map(r => [r.student.class_room!.id, r.student.class_room!])
     ).values()
   ).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -622,9 +622,9 @@ export default function ExamResultsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
-                        {result.student?.class?.name ? (
+                        {result.student?.class_room?.name ? (
                           <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded">
-                            {result.student.class.name}
+                            {result.student.class_room.name}
                           </span>
                         ) : (
                           <span className="text-slate-400">-</span>
