@@ -1008,7 +1008,7 @@ export default function ExamTakingPage() {
                 )}
                 {cameraPreviewError && (
                   <p className="text-xs text-red-500 mt-2 text-center">
-                    Ujian tetap bisa dimulai tanpa kamera, tapi pastikan untuk mengizinkan akses kamera.
+                    Kamera wajib aktif untuk memulai ujian. Pastikan izin kamera diaktifkan di pengaturan browser.
                   </p>
                 )}
               </div>
@@ -1045,7 +1045,7 @@ export default function ExamTakingPage() {
               <Button
                 onClick={handleStartExam}
                 fullWidth
-                disabled={startingExam || (exam.sebRequired && !usingSEB && !isMobile)}
+                disabled={startingExam || (exam.sebRequired && !usingSEB && !isMobile) || !cameraPreviewTested || !!cameraPreviewError}
               >
                 {startingExam ? (
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -1054,6 +1054,13 @@ export default function ExamTakingPage() {
                 )}
                 {startingExam ? 'Mempersiapkan…' : 'Mulai Ujian'}
               </Button>
+              {(!cameraPreviewTested || !!cameraPreviewError) && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center -mt-1">
+                  {!cameraPreviewTested
+                    ? '⚠️ Tes kamera terlebih dahulu sebelum memulai ujian'
+                    : '⚠️ Kamera gagal diakses. Izinkan kamera untuk memulai ujian.'}
+                </p>
+              )}
               <Button
                 variant="outline"
                 fullWidth
