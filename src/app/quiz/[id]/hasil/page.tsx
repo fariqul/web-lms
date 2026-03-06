@@ -128,7 +128,7 @@ export default function QuizResultsPage() {
         const matchesSearch = r.student?.name?.toLowerCase().includes(q) || r.student?.nisn?.includes(searchQuery);
         if (!matchesSearch) return false;
       }
-      if (filterClass && String(r.student?.class_id) !== filterClass) return false;
+      if (filterClass && String(r.student?.class_room?.id ?? r.student?.class_id) !== filterClass) return false;
       if (filterStatus === 'needs_grading') return r.ungraded_essays > 0;
       if (filterStatus && r.status !== filterStatus) return false;
       return true;

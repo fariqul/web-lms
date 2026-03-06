@@ -271,7 +271,7 @@ export default function ExamResultsPage() {
           r.student?.nisn?.includes(searchQuery);
         if (!matchesSearch) return false;
       }
-      if (filterClass && String(r.student?.class_id) !== filterClass) return false;
+      if (filterClass && String(r.student?.class_room?.id ?? r.student?.class_id) !== filterClass) return false;
       if (filterStatus === 'needs_grading') {
         return r.ungraded_essays > 0;
       }
@@ -509,7 +509,7 @@ export default function ExamResultsPage() {
               placeholder="Cari nama atau NIS siswa…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
               aria-label="Cari nama atau NIS siswa"
               name="searchResults"
             />
@@ -517,7 +517,7 @@ export default function ExamResultsPage() {
           <select
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             aria-label="Filter kelas"
             name="filterClass"
           >
@@ -529,7 +529,7 @@ export default function ExamResultsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             aria-label="Filter status"
             name="filterStatus"
           >
@@ -543,7 +543,7 @@ export default function ExamResultsPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'rank' | 'name' | 'nomor_tes')}
-            className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             aria-label="Urutkan hasil"
             name="sortBy"
           >
