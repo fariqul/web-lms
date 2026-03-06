@@ -31,7 +31,7 @@ import {
   Lock,
   Shuffle,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { getSecureFileUrl } from '@/services/api';
 import { bankQuestionAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
@@ -520,10 +520,7 @@ export default function EditSoalPage() {
     });
     // Show existing image preview
     if (question.image) {
-      const imgUrl = question.image.startsWith('http')
-        ? question.image
-        : `/storage/${question.image}`;
-      setImagePreview(imgUrl);
+      setImagePreview(getSecureFileUrl(question.image));
     } else {
       setImagePreview(null);
     }
@@ -531,9 +528,7 @@ export default function EditSoalPage() {
     // Load existing option image previews
     const optPreviews = question.options.map(opt => {
       if (opt.image) {
-        return opt.image.startsWith('http')
-          ? opt.image
-          : `/storage/${opt.image}`;
+        return getSecureFileUrl(opt.image);
       }
       return null;
     });
@@ -1449,7 +1444,7 @@ export default function EditSoalPage() {
                       {question.image && (
                         <div className="mb-3">
                           <img
-                            src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
+                            src={getSecureFileUrl(question.image)}
                             alt="Gambar Soal"
                             className="max-w-xs max-h-40 rounded-lg border border-slate-200 dark:border-slate-700"
                           />
@@ -1477,7 +1472,7 @@ export default function EditSoalPage() {
                                 )}
                                 {opt.image && (
                                   <img
-                                    src={opt.image.startsWith('http') ? opt.image : `/storage/${opt.image}`}
+                                    src={getSecureFileUrl(opt.image)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                     className="mt-1 max-w-[200px] max-h-24 rounded border border-slate-200 dark:border-slate-700"
                                   />

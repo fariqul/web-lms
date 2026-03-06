@@ -25,7 +25,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import api, { assignmentAPI, announcementAPI } from '@/services/api';
+import api, { assignmentAPI, announcementAPI, getSecureFileUrl } from '@/services/api';
 import { getTimeGreeting, getConditionTextColor, getConditionHex } from '@/lib/dashboard-utils';
 
 interface ScheduleItem {
@@ -312,7 +312,7 @@ export default function SiswaDashboard() {
               <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-lg shadow-black/10 overflow-hidden ring-2 ring-white/30">
                 {user?.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.photo} alt={user.name || ''} className="w-full h-full object-cover" />
+                  <img src={getSecureFileUrl(user.photo)} alt={user.name || ''} className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-7 h-7 text-white" />
                 )}

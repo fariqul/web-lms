@@ -26,7 +26,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 import { useExamSocket } from '@/hooks/useSocket';
@@ -1164,7 +1164,7 @@ export default function ExamTakingPage() {
                   {question?.image && (
                     <div className="mt-3">
                       <img
-                        src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
+                        src={getSecureFileUrl(question.image)}
                         alt="Gambar Soal"
                         className="max-w-full max-h-80 rounded-lg border border-slate-200 dark:border-slate-700"
                       />
@@ -1216,7 +1216,7 @@ export default function ExamTakingPage() {
                         )}
                         {option.image && (
                           <img
-                            src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
+                            src={getSecureFileUrl(option.image)}
                             alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
                             className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                           />
@@ -1262,7 +1262,7 @@ export default function ExamTakingPage() {
                             )}
                             {option.image && (
                               <img
-                                src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
+                                src={getSecureFileUrl(option.image)}
                                 alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
                                 className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                               />

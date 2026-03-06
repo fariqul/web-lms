@@ -8,7 +8,7 @@ import {
   ArrowLeft, CheckCircle, XCircle, Clock, Loader2, Award, FileText,
   Save, MessageSquare,
 } from 'lucide-react';
-import { quizAPI } from '@/services/api';
+import { quizAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { MathText } from '@/components/ui/MathText';
 import { useAuth } from '@/context/AuthContext';
@@ -312,7 +312,7 @@ export default function QuizStudentResultPage() {
                                 {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && <MathText text={optText} />}
                                 {optImage && (
                                   <img
-                                    src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
+                                    src={getSecureFileUrl(optImage)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                     className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                   />
@@ -365,7 +365,7 @@ export default function QuizStudentResultPage() {
                                   {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && <MathText text={optText} />}
                                   {optImage && (
                                     <img
-                                      src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
+                                      src={getSecureFileUrl(optImage)}
                                       alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                       className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                     />

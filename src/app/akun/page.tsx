@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button, Input } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import api from '@/services/api';
+import api, { getSecureFileUrl } from '@/services/api';
 import { User, Mail, Lock, Camera, Save, Loader2, X } from 'lucide-react';
 
 export default function AkunPage() {
@@ -190,7 +190,7 @@ export default function AkunPage() {
                   <img src={previewPhoto} alt="Preview" className="w-full h-full object-cover" />
                 ) : user?.photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.photo} alt={user.name || ''} className="w-full h-full object-cover" loading="eager" />
+                  <img src={getSecureFileUrl(user.photo)} alt={user.name || ''} className="w-full h-full object-cover" loading="eager" />
                 ) : (
                   user?.name?.charAt(0).toUpperCase()
                 )}

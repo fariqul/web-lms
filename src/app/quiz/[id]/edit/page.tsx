@@ -9,7 +9,7 @@ import {
   ChevronDown, ClipboardPaste, FileSpreadsheet, FileType, BookUp, Library,
   CheckCircle, Eye,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { getSecureFileUrl } from '@/services/api';
 import { quizAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { ImportTextModal } from '@/components/ujian/ImportTextModal';
@@ -49,8 +49,6 @@ interface QuizData {
   shuffle_questions?: boolean;
   shuffle_options?: boolean;
 }
-
-const BACKEND = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
 
 export default function EditQuizPage() {
   const params = useParams();
@@ -684,7 +682,7 @@ export default function EditQuizPage() {
                           <MathText text={q.question_text} />
                         </div>
                         {q.image && (
-                          <img src={`/storage/${q.image}`} alt="" className="mt-1.5 h-16 rounded border" />
+                          <img src={getSecureFileUrl(q.image)} alt="" className="mt-1.5 h-16 rounded border" />
                         )}
                         {q.question_type !== 'essay' && q.options.length > 0 && (
                           <div className="mt-2 space-y-0.5">

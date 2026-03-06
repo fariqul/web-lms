@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { getSecureFileUrl } from '@/services/api';
 import {
   Home,
   BookOpen,
@@ -228,7 +229,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
                   {(user?.photo || user?.avatar) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={user.photo || user.avatar}
+                      src={getSecureFileUrl(user.photo || user.avatar)}
                       alt={user?.name || ''}
                       className="w-full h-full object-cover"
                     />

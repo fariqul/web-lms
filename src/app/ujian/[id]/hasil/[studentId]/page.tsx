@@ -18,7 +18,7 @@ import {
   Save,
   MessageSquare,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { MathText } from '@/components/ui/MathText';
 import { useAuth } from '@/context/AuthContext';
@@ -298,10 +298,7 @@ export default function HasilSiswaPage() {
               {snapshots.map((snap) => (
                 <div key={snap.id} className="text-center">
                   <img
-                    src={snap.image_path.startsWith('http')
-                      ? snap.image_path
-                      : `/storage/${snap.image_path}`
-                    }
+                    src={getSecureFileUrl(snap.image_path)}
                     alt="Monitoring"
                     className="w-full aspect-square object-cover rounded-lg border"
                   />
@@ -399,7 +396,7 @@ export default function HasilSiswaPage() {
                                 )}
                                 {optImage && (
                                   <img
-                                    src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
+                                    src={getSecureFileUrl(optImage)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                     className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                   />
@@ -454,7 +451,7 @@ export default function HasilSiswaPage() {
                                   )}
                                   {optImage && (
                                     <img
-                                      src={optImage.startsWith('http') ? optImage : `/storage/${optImage}`}
+                                      src={getSecureFileUrl(optImage)}
                                       alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
                                       className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
                                     />

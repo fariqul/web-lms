@@ -23,7 +23,7 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { getSecureFileUrl } from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/context/AuthContext';
 
@@ -319,10 +319,10 @@ export default function MonitorUjianPage() {
   };
 
   const resolveSnapshotUrl = (imagePath: string) => {
-    if (imagePath.startsWith('http')) return imagePath;
+    const baseUrl = getSecureFileUrl(imagePath);
     // Add cache-busting timestamp to prevent browser from caching old snapshots
     const cacheBust = `?t=${Date.now()}`;
-    return `/storage/${imagePath}${cacheBust}`;
+    return `${baseUrl}${cacheBust}`;
   };
 
   // Relative time display (e.g. "5 detik lalu", "2 menit lalu")

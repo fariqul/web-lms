@@ -7,7 +7,7 @@ import {
   Clock, ChevronLeft, ChevronRight, Send, Flag, Loader2, ArrowLeft,
   CheckCircle2, ClipboardList,
 } from 'lucide-react';
-import { quizAPI } from '@/services/api';
+import { quizAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { MathText } from '@/components/ui/MathText';
 
@@ -35,8 +35,6 @@ interface QuizData {
   questions: Question[];
   show_result?: boolean;
 }
-
-const BACKEND = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
 
 export default function QuizTakingPage() {
   const params = useParams();
@@ -389,7 +387,7 @@ export default function QuizTakingPage() {
               {q.image && (
                 <div className="mb-4">
                   <img
-                    src={q.image.startsWith('http') ? q.image : `/storage/${q.image}`}
+                    src={getSecureFileUrl(q.image)}
                     alt="Soal"
                     className="max-w-full max-h-80 rounded-lg border"
                   />
@@ -422,7 +420,7 @@ export default function QuizTakingPage() {
                         )}
                         {opt.image && (
                           <img
-                            src={opt.image.startsWith('http') ? opt.image : `/storage/${opt.image}`}
+                            src={getSecureFileUrl(opt.image)}
                             alt={`Opsi ${String.fromCharCode(65 + idx)}`}
                             className="mt-2 max-w-[300px] max-h-48 rounded border"
                           />
@@ -465,7 +463,7 @@ export default function QuizTakingPage() {
                             )}
                             {opt.image && (
                               <img
-                                src={opt.image.startsWith('http') ? opt.image : `/storage/${opt.image}`}
+                                src={getSecureFileUrl(opt.image)}
                                 alt={`Opsi ${String.fromCharCode(65 + idx)}`}
                                 className="mt-2 max-w-[300px] max-h-48 rounded border"
                               />
