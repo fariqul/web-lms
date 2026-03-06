@@ -5,7 +5,10 @@
 export const SUBJECT_LIST = [
   'Bahasa Indonesia',
   'Bahasa Inggris',
+  'Bahasa Inggris Tingkat Lanjut',
+  'Bahasa Jerman',
   'Matematika',
+  'Matematika Tingkat Lanjut',
   'Fisika',
   'Kimia',
   'Biologi',
@@ -13,12 +16,15 @@ export const SUBJECT_LIST = [
   'Sosiologi',
   'Ekonomi',
   'Geografi',
-  'PKN',
+  'Pendidikan Pancasila',
   'Informatika',
   'Seni Budaya',
-  'Pendidikan Agama',
+  'Pendidikan Agama Islam',
+  'Pendidikan Agama Kristen',
   'PJOK',
   'IPA',
+  'Prakarya',
+  'Kewirausahaan',
   'Pengetahuan Umum',
 ] as const;
 

@@ -30,7 +30,10 @@ interface ClassOption {
 const subjects = [
   { value: 'Bahasa Indonesia', label: 'Bahasa Indonesia' },
   { value: 'Bahasa Inggris', label: 'Bahasa Inggris' },
+  { value: 'Bahasa Inggris Tingkat Lanjut', label: 'Bahasa Inggris Tingkat Lanjut' },
+  { value: 'Bahasa Jerman', label: 'Bahasa Jerman' },
   { value: 'Matematika', label: 'Matematika' },
+  { value: 'Matematika Tingkat Lanjut', label: 'Matematika Tingkat Lanjut' },
   { value: 'Fisika', label: 'Fisika' },
   { value: 'Kimia', label: 'Kimia' },
   { value: 'Biologi', label: 'Biologi' },
@@ -38,12 +41,15 @@ const subjects = [
   { value: 'Sosiologi', label: 'Sosiologi' },
   { value: 'Ekonomi', label: 'Ekonomi' },
   { value: 'Geografi', label: 'Geografi' },
-  { value: 'PKN', label: 'PKN' },
+  { value: 'Pendidikan Pancasila', label: 'Pendidikan Pancasila' },
   { value: 'Informatika', label: 'Informatika' },
   { value: 'Seni Budaya', label: 'Seni Budaya' },
-  { value: 'Pendidikan Agama', label: 'Pendidikan Agama' },
+  { value: 'Pendidikan Agama Islam', label: 'Pendidikan Agama Islam' },
+  { value: 'Pendidikan Agama Kristen', label: 'Pendidikan Agama Kristen' },
   { value: 'PJOK', label: 'PJOK' },
   { value: 'IPA', label: 'IPA' },
+  { value: 'Prakarya', label: 'Prakarya' },
+  { value: 'Kewirausahaan', label: 'Kewirausahaan' },
   { value: 'Pengetahuan Umum', label: 'Pengetahuan Umum' },
 ];
 
