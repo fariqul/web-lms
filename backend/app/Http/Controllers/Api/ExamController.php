@@ -1621,7 +1621,7 @@ class ExamController extends Controller
     public function reportViolation(Request $request, Exam $exam)
     {
         $request->validate([
-            'type' => 'required|in:tab_switch,window_blur,copy_paste,right_click,shortcut_key,screen_capture,multiple_face,no_face',
+            'type' => 'required|in:tab_switch,window_blur,copy_paste,right_click,shortcut_key,screen_capture,multiple_face,no_face,split_screen,floating_app,pip_mode,suspicious_resize,screenshot_attempt,virtual_camera,camera_off,fullscreen_exit',
             'description' => 'nullable|string',
             'screenshot' => 'nullable|image|max:2048',
         ]);

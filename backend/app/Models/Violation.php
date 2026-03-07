@@ -34,6 +34,15 @@ class Violation extends Model
     const TYPE_SCREEN_CAPTURE = 'screen_capture';
     const TYPE_MULTIPLE_FACE = 'multiple_face';
     const TYPE_NO_FACE = 'no_face';
+    // Mobile-specific violation types
+    const TYPE_SPLIT_SCREEN = 'split_screen';
+    const TYPE_FLOATING_APP = 'floating_app';
+    const TYPE_PIP_MODE = 'pip_mode';
+    const TYPE_SUSPICIOUS_RESIZE = 'suspicious_resize';
+    const TYPE_SCREENSHOT_ATTEMPT = 'screenshot_attempt';
+    const TYPE_VIRTUAL_CAMERA = 'virtual_camera';
+    const TYPE_CAMERA_OFF = 'camera_off';
+    const TYPE_FULLSCREEN_EXIT = 'fullscreen_exit';
 
     public function examResult()
     {
@@ -61,6 +70,14 @@ class Violation extends Model
             self::TYPE_SCREEN_CAPTURE => 'Screen Capture',
             self::TYPE_MULTIPLE_FACE => 'Wajah Ganda',
             self::TYPE_NO_FACE => 'Tidak Ada Wajah',
+            self::TYPE_SPLIT_SCREEN => 'Split Screen',
+            self::TYPE_FLOATING_APP => 'Aplikasi Mengambang',
+            self::TYPE_PIP_MODE => 'Mode Picture-in-Picture',
+            self::TYPE_SUSPICIOUS_RESIZE => 'Resize Mencurigakan',
+            self::TYPE_SCREENSHOT_ATTEMPT => 'Percobaan Screenshot',
+            self::TYPE_VIRTUAL_CAMERA => 'Kamera Virtual',
+            self::TYPE_CAMERA_OFF => 'Kamera Dimatikan',
+            self::TYPE_FULLSCREEN_EXIT => 'Keluar Fullscreen',
         ];
     }
 }

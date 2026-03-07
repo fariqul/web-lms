@@ -38,6 +38,16 @@ function detectMobile(): boolean {
     || (window.innerWidth <= 768);
 }
 
+// Get initial window dimensions for split screen detection
+function getInitialDimensions() {
+  if (typeof window === 'undefined') return { width: 0, height: 0, ratio: 0 };
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    ratio: window.innerWidth / window.innerHeight,
+  };
+}
+
 export function useExamMode({
   examId,
   onViolation,
@@ -73,6 +83,18 @@ export function useExamMode({
   // Upload retry queue — max 3 blobs in memory
   const retryQueueRef = useRef<Blob[]>([]);
   const MAX_RETRY_QUEUE = 3;
+  
+  // Mobile security: track initial window dimensions for split screen detection
+  const initialDimensionsRef = useRef(getInitialDimensions());
+  // Track if split screen warning was already shown (avoid spam)
+  const splitScreenWarnedRef = useRef(false);
+  // Track last known good dimensions
+  const lastGoodDimensionsRef = useRef(getInitialDimensions());
+  // Track focus state for floating app detection
+  const windowFocusedRef = useRef(true);
+  // Track resize events for suspicious patterns
+  const resizeCountRef = useRef(0);
+  const lastResizeTimeRef = useRef(0);
 
   // Capture a quick snapshot blob from camera (for violation reports)
   const captureViolationBlob = useCallback((): Blob | null => {
@@ -457,8 +479,119 @@ export function useExamMode({
 
     // Window blur/focus — more reliable on mobile for app switching
     const handleWindowBlur = () => {
+      windowFocusedRef.current = false;
       if (monitoringActiveRef.current && !fullscreenTransitionRef.current) {
         reportViolation('tab_switch', 'Keluar dari halaman ujian');
+      }
+    };
+    
+    const handleWindowFocus = () => {
+      windowFocusedRef.current = true;
+    };
+
+    // === MOBILE SPLIT SCREEN / FLOATING APP DETECTION ===
+    const handleResize = () => {
+      if (!monitoringActiveRef.current || !isMobile) return;
+      
+      const now = Date.now();
+      const currentWidth = window.innerWidth;
+      const currentHeight = window.innerHeight;
+      const initialWidth = initialDimensionsRef.current.width;
+      const initialHeight = initialDimensionsRef.current.height;
+      
+      // Skip if we don't have valid initial dimensions
+      if (initialWidth === 0 || initialHeight === 0) {
+        initialDimensionsRef.current = { width: currentWidth, height: currentHeight, ratio: currentWidth / currentHeight };
+        return;
+      }
+      
+      // Detect significant width reduction (split screen typically halves the width)
+      const widthRatio = currentWidth / initialWidth;
+      const heightRatio = currentHeight / initialHeight;
+      
+      // Split screen detection: width reduced by more than 40% but height stays similar
+      // or height reduced by more than 40% (horizontal split)
+      const isSplitScreen = (widthRatio < 0.6 && heightRatio > 0.8) || 
+                           (heightRatio < 0.6 && widthRatio > 0.8);
+      
+      // Floating app detection: both dimensions significantly reduced (small window)
+      const isFloatingApp = widthRatio < 0.7 && heightRatio < 0.7;
+      
+      // Picture-in-Picture like mode: very small window
+      const isPiP = (currentWidth < 400 && currentHeight < 400) ||
+                   (currentWidth * currentHeight < initialWidth * initialHeight * 0.25);
+      
+      if ((isSplitScreen || isFloatingApp || isPiP) && !splitScreenWarnedRef.current) {
+        // Debounce to avoid false positives during orientation change
+        if (now - lastResizeTimeRef.current > 1000) {
+          splitScreenWarnedRef.current = true;
+          
+          let violationType = 'split_screen';
+          let description = 'Mode split screen terdeteksi';
+          
+          if (isPiP) {
+            violationType = 'pip_mode';
+            description = 'Mode Picture-in-Picture / floating window terdeteksi';
+          } else if (isFloatingApp) {
+            violationType = 'floating_app';
+            description = 'Aplikasi mengambang terdeteksi';
+          }
+          
+          reportViolation(violationType, description);
+          
+          // Reset warning after 10 seconds to allow new detection if they do it again
+          setTimeout(() => {
+            splitScreenWarnedRef.current = false;
+          }, 10000);
+        }
+      }
+      
+      // Track rapid resize events (suspicious pattern)
+      if (now - lastResizeTimeRef.current < 500) {
+        resizeCountRef.current++;
+        if (resizeCountRef.current > 5 && !splitScreenWarnedRef.current) {
+          reportViolation('suspicious_resize', 'Perubahan ukuran layar yang mencurigakan');
+          splitScreenWarnedRef.current = true;
+          setTimeout(() => {
+            splitScreenWarnedRef.current = false;
+            resizeCountRef.current = 0;
+          }, 10000);
+        }
+      } else {
+        resizeCountRef.current = 0;
+      }
+      
+      lastResizeTimeRef.current = now;
+    };
+    
+    // Orientation change — update initial dimensions after legitimate rotation
+    const handleOrientationChange = () => {
+      if (!monitoringActiveRef.current) return;
+      
+      // Wait for resize to settle after orientation change
+      setTimeout(() => {
+        // Only update if window is reasonably sized (not in split/floating mode)
+        const currentWidth = window.innerWidth;
+        const currentHeight = window.innerHeight;
+        const screenWidth = window.screen.availWidth || window.screen.width;
+        const screenHeight = window.screen.availHeight || window.screen.height;
+        
+        // If window takes up most of the screen, it's a legitimate orientation change
+        const widthCoverage = currentWidth / screenWidth;
+        const heightCoverage = currentHeight / screenHeight;
+        
+        if (widthCoverage > 0.8 || heightCoverage > 0.8) {
+          initialDimensionsRef.current = { width: currentWidth, height: currentHeight, ratio: currentWidth / currentHeight };
+          lastGoodDimensionsRef.current = { ...initialDimensionsRef.current };
+          console.log('[Security] Orientation change detected, updated baseline dimensions');
+        }
+      }, 500);
+    };
+    
+    // === PICTURE-IN-PICTURE API DETECTION ===
+    const handlePiPEnter = () => {
+      if (monitoringActiveRef.current) {
+        reportViolation('pip_mode', 'Mode Picture-in-Picture diaktifkan');
       }
     };
 
@@ -516,31 +649,59 @@ export function useExamMode({
         reportViolation('screenshot_attempt', 'Gerakan multi-touch terdeteksi (kemungkinan screenshot)');
       }
     };
+    
+    // === SCREEN CAPTURE / RECORDING DETECTION ===
+    // Detect if screen is being captured (works on some browsers)
+    const checkScreenCapture = () => {
+      if (!monitoringActiveRef.current || !isMobile) return;
+      
+      // Check if Display Capture API is active (desktop mainly, but check anyway)
+      if ('getDisplayMedia' in navigator.mediaDevices) {
+        // We can't directly detect if someone is recording, but we can check for
+        // active screen capture sessions in some cases
+      }
+    };
 
     // Add event listeners
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('selectstart', handleSelectStart);
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    
+    // PiP detection on video elements
+    document.addEventListener('enterpictureinpicture', handlePiPEnter);
+    
+    // Store initial dimensions on first activation
+    if (initialDimensionsRef.current.width === 0) {
+      initialDimensionsRef.current = getInitialDimensions();
+      lastGoodDimensionsRef.current = { ...initialDimensionsRef.current };
+    }
 
     // Cleanup
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('selectstart', handleSelectStart);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('enterpictureinpicture', handlePiPEnter);
     };
   }, [reportViolation, isMobile]);
 
