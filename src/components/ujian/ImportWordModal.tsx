@@ -23,6 +23,9 @@ import { saveAs } from 'file-saver';
 // ─── OMML (Office Math Markup Language) extraction ───
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const M_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
+const A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const V_NS = 'urn:schemas-microsoft-com:vml';
 
 function childrenNS(parent: Element, ns: string, tag: string): Element[] {
   return Array.from(parent.children).filter(c => c.localName === tag && c.namespaceURI === ns);
@@ -311,13 +314,56 @@ function formatNum(n: number, fmt: string): string {
   }
 }
 
-/** Parse .docx file with full OMML math support + Word numbering using JSZip + DOMParser */
-async function extractDocxWithMath(buf: ArrayBuffer): Promise<string> {
+/** Parse .docx file with full OMML math support + Word numbering + image extraction using JSZip + DOMParser */
+async function extractDocxWithMath(buf: ArrayBuffer): Promise<{ text: string; images: Map<string, Blob> }> {
   const jszip = await import('jszip');
   const JSZip = ('default' in jszip ? jszip.default : jszip) as typeof import('jszip');
   const zip = await JSZip.loadAsync(buf);
   const xml = await zip.file('word/document.xml')?.async('string');
   if (!xml) throw new Error('Invalid docx');
+
+  // Parse relationships to find image targets
+  const relsXml = await zip.file('word/_rels/document.xml.rels')?.async('string');
+  const relsMap = new Map<string, string>(); // rId -> file path in zip
+  if (relsXml) {
+    const relsDoc = new DOMParser().parseFromString(relsXml, 'application/xml');
+    for (const rel of Array.from(relsDoc.getElementsByTagName('Relationship'))) {
+      const id = rel.getAttribute('Id') || '';
+      const target = rel.getAttribute('Target') || '';
+      const type = rel.getAttribute('Type') || '';
+      if (type.includes('/image')) {
+        relsMap.set(id, target.startsWith('/') ? target.slice(1) : `word/${target}`);
+      }
+    }
+  }
+
+  // Image storage
+  const images = new Map<string, Blob>();
+  let imgCounter = 0;
+
+  /** Find image relationship IDs in a paragraph element */
+  function findImageRIds(el: Element): string[] {
+    const rIds: string[] = [];
+    // <w:drawing> → <a:blip r:embed="...">
+    const drawings = el.getElementsByTagNameNS(W_NS, 'drawing');
+    for (const drawing of Array.from(drawings)) {
+      const blips = drawing.getElementsByTagNameNS(A_NS, 'blip');
+      for (const blip of Array.from(blips)) {
+        const embed = blip.getAttributeNS(R_NS, 'embed') || blip.getAttribute('r:embed') || '';
+        if (embed) rIds.push(embed);
+      }
+    }
+    // <w:pict> → <v:imagedata r:id="...">
+    const picts = el.getElementsByTagNameNS(W_NS, 'pict');
+    for (const pict of Array.from(picts)) {
+      const imgDatas = pict.getElementsByTagNameNS(V_NS, 'imagedata');
+      for (const imgData of Array.from(imgDatas)) {
+        const rId = imgData.getAttributeNS(R_NS, 'id') || imgData.getAttribute('r:id') || '';
+        if (rId) rIds.push(rId);
+      }
+    }
+    return rIds;
+  }
 
   // Parse numbering definitions if available
   const numXml = await zip.file('word/numbering.xml')?.async('string');
@@ -379,19 +425,47 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<string> {
     }
 
     const text = extractParaText(p);
-    if (text.trim() || prefix) {
-      lines.push(prefix + text);
+
+    // Extract images from this paragraph
+    const imgRIds = findImageRIds(p);
+    let imgMarkers = '';
+    for (const rId of imgRIds) {
+      const target = relsMap.get(rId);
+      if (target) {
+        const imgFile = zip.file(target);
+        if (imgFile) {
+          const blob = await imgFile.async('blob');
+          const key = `img_${++imgCounter}`;
+          // Determine mime type from extension
+          const ext = target.split('.').pop()?.toLowerCase() || 'png';
+          const mimeMap: Record<string, string> = {
+            png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+            gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp',
+            tiff: 'image/tiff', tif: 'image/tiff', svg: 'image/svg+xml',
+            emf: 'image/emf', wmf: 'image/wmf',
+          };
+          const typedBlob = new Blob([blob], { type: mimeMap[ext] || 'image/png' });
+          images.set(key, typedBlob);
+          imgMarkers += ` {{IMG:${key}}}`;
+        }
+      }
+    }
+
+    if (text.trim() || prefix || imgMarkers) {
+      lines.push(prefix + text + imgMarkers);
     }
   }
 
-  return lines.join('\n');
+  return { text: lines.join('\n'), images };
 }
 
 interface ParsedQuestion {
   question_text: string;
   question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
   points: number;
-  options: { text: string; is_correct: boolean }[];
+  passage?: string | null;
+  image?: File | null;
+  options: { text: string; is_correct: boolean; image?: File | null }[];
   valid: boolean;
   error?: string;
 }
@@ -418,26 +492,50 @@ export function ImportWordModal({
   const [defaultPoints, setDefaultPoints] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [docImages, setDocImages] = useState<Map<string, Blob>>(new Map());
 
-  // Same parsing logic as ImportTextModal
-  const parseText = useCallback((text: string): ParsedQuestion[] => {
+  /** Resolve {{IMG:key}} markers from a line, return clean text + File objects */
+  const resolveImages = useCallback((line: string, images: Map<string, Blob>): { cleanText: string; files: File[] } => {
+    const files: File[] = [];
+    const cleanText = line.replace(/\s*\{\{IMG:(img_\d+)\}\}/g, (_, key) => {
+      const blob = images.get(key);
+      if (blob) {
+        const ext = blob.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+        files.push(new File([blob], `${key}.${ext}`, { type: blob.type }));
+      }
+      return '';
+    }).trim();
+    return { cleanText, files };
+  }, []);
+
+  // Parsing logic with passage + image support
+  const parseText = useCallback((text: string, images: Map<string, Blob>): ParsedQuestion[] => {
     const results: ParsedQuestion[] = [];
     const lines = text.split('\n').map(l => l.trimEnd());
 
     let currentQuestion: string | null = null;
-    let currentOptions: { text: string; is_correct: boolean }[] = [];
+    let currentOptions: { text: string; is_correct: boolean; image?: File | null }[] = [];
+    let currentQuestionImage: File | null = null;
     let isEssay = false;
+    let activePassage: string | null = null;
+    let collectingPassage = false;
+    let passageLines: string[] = [];
 
     const flushQuestion = () => {
       if (!currentQuestion) return;
-      const qText = currentQuestion.trim();
-      if (!qText) return;
+      // Resolve any remaining image markers from the question text
+      const { cleanText: qText, files: qImgFiles } = resolveImages(currentQuestion, images);
+      if (!qText && !currentQuestionImage && qImgFiles.length === 0) return;
+
+      const qImage = currentQuestionImage || qImgFiles[0] || null;
 
       if (isEssay || currentOptions.length === 0) {
         results.push({
           question_text: qText,
           question_type: 'essay',
           points: defaultPoints,
+          passage: activePassage,
+          image: qImage,
           options: [],
           valid: true,
         });
@@ -449,6 +547,8 @@ export function ImportWordModal({
           question_text: qText,
           question_type: isMultipleAnswer ? 'multiple_answer' : 'multiple_choice',
           points: defaultPoints,
+          passage: activePassage,
+          image: qImage,
           options: currentOptions,
           valid: hasCorrect && currentOptions.length >= 2 && (!isMultipleAnswer || correctCount >= 2),
           error: !hasCorrect
@@ -461,20 +561,75 @@ export function ImportWordModal({
 
       currentQuestion = null;
       currentOptions = [];
+      currentQuestionImage = null;
       isEssay = false;
     };
 
     for (const line of lines) {
-      if (!line.trim()) continue;
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Passage markers: [Bacaan] ... [/Bacaan]
+      if (/^\[bacaan\]$/i.test(trimmed)) {
+        flushQuestion();
+        collectingPassage = true;
+        passageLines = [];
+        continue;
+      }
+      if (/^\[\/bacaan\]$/i.test(trimmed)) {
+        if (collectingPassage) {
+          activePassage = passageLines.join('\n').trim() || null;
+          collectingPassage = false;
+        }
+        continue;
+      }
+      // [Hapus Bacaan] clears the active passage
+      if (/^\[hapus bacaan\]$/i.test(trimmed)) {
+        activePassage = null;
+        collectingPassage = false;
+        continue;
+      }
+      // If collecting passage text
+      if (collectingPassage) {
+        // Resolve images in passage lines (remove markers, ignore images in passage)
+        const { cleanText } = resolveImages(line, images);
+        passageLines.push(cleanText || line);
+        continue;
+      }
+
+      // Check if line is only an image marker (standalone image)
+      const standaloneImgMatch = trimmed.match(/^\{\{IMG:(img_\d+)\}\}$/);
 
       // Match question start: "1." or "1)" or just a number at start
       const questionMatch = line.match(/^\s*(\d+)\s*[.)]\s*(.+)/);
       // Match option: "a." "a)" "*a." "*a)" or just "a " with letter
       const optionMatch = line.match(/^\s*(\*?)\s*([a-eA-E])\s*[.)]\s*(.+)/);
 
+      if (standaloneImgMatch && !questionMatch && !optionMatch) {
+        // Standalone image line — attach to current question or pending
+        const blob = images.get(standaloneImgMatch[1]);
+        if (blob) {
+          const ext = blob.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+          const imgFile = new File([blob], `${standaloneImgMatch[1]}.${ext}`, { type: blob.type });
+          if (currentQuestion && currentOptions.length === 0) {
+            // Image after question text, before options → question image
+            currentQuestionImage = imgFile;
+          } else if (currentQuestion && currentOptions.length > 0) {
+            // Image after an option → attach to last option
+            const lastOpt = currentOptions[currentOptions.length - 1];
+            if (!lastOpt.image) lastOpt.image = imgFile;
+          }
+        }
+        continue;
+      }
+
       if (questionMatch && !optionMatch) {
         flushQuestion();
-        const qText = questionMatch[2].trim();
+        let qText = questionMatch[2].trim();
+        // Extract inline images from question line
+        const { cleanText, files } = resolveImages(qText, images);
+        if (files.length > 0) currentQuestionImage = files[0];
+        qText = cleanText;
         // Check if explicitly marked as essay
         if (/\(essay\)\s*$/i.test(qText)) {
           isEssay = true;
@@ -482,19 +637,27 @@ export function ImportWordModal({
         } else {
           currentQuestion = qText;
         }
+        // If [Bacaan] was opened but not closed, auto-close it when question starts
+        if (collectingPassage) {
+          activePassage = passageLines.join('\n').trim() || null;
+          collectingPassage = false;
+        }
       } else if (optionMatch && currentQuestion) {
         const isCorrect = optionMatch[1] === '*';
-        const optText = optionMatch[3].trim();
-        currentOptions.push({ text: optText, is_correct: isCorrect });
+        let optText = optionMatch[3].trim();
+        // Extract inline images from option line
+        const { cleanText, files } = resolveImages(optText, images);
+        optText = cleanText;
+        currentOptions.push({ text: optText, is_correct: isCorrect, image: files[0] || null });
       } else if (currentQuestion) {
-        // Continuation of question text
+        // Continuation of question text (may contain images)
         currentQuestion += ' ' + line.trim();
       }
     }
 
     flushQuestion();
     return results;
-  }, [defaultPoints]);
+  }, [defaultPoints, resolveImages]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -531,12 +694,15 @@ export function ImportWordModal({
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       let text = '';
+      let extractedImages = new Map<string, Blob>();
 
       try {
-        // Custom parser with OMML math support (fractions, sin, cos, etc.)
-        text = await extractDocxWithMath(arrayBuffer);
+        // Custom parser with OMML math support + image extraction
+        const result = await extractDocxWithMath(arrayBuffer);
+        text = result.text;
+        extractedImages = result.images;
       } catch {
-        // Fallback to mammoth if custom parser fails (loses math symbols)
+        // Fallback to mammoth if custom parser fails (loses math symbols + images)
         const mammoth = await import('mammoth');
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
@@ -550,6 +716,7 @@ export function ImportWordModal({
       }
 
       setExtractedText(text);
+      setDocImages(extractedImages);
       setStep('preview-text');
     } catch (err) {
       console.error('Failed to parse Word file:', err);
@@ -560,7 +727,7 @@ export function ImportWordModal({
   };
 
   const handleParseQuestions = () => {
-    const parsed = parseText(extractedText);
+    const parsed = parseText(extractedText, docImages);
     setParsedQuestions(parsed);
     setStep('preview-questions');
   };
@@ -663,6 +830,18 @@ export function ImportWordModal({
             ],
           }),
           new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- Gambar: sisipkan gambar langsung di Word (pada soal atau opsi jawaban)', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- Bacaan/Soal cerita: tulis [Bacaan] di baris sendiri, lalu teks bacaan, lalu [/Bacaan]', size: 20 }),
+            ],
+          }),
+          new Paragraph({
             spacing: { after: 200 },
             children: [
               new TextRun({ text: '- Simbol matematika (sin, cos, fraksi, akar) akan otomatis terbaca', size: 20 }),
@@ -672,6 +851,25 @@ export function ImportWordModal({
             spacing: { after: 100 },
             children: [
               new TextRun({ text: '──────────────────────────────────', size: 20, color: '999999' }),
+            ],
+          }),
+          // Contoh Bacaan
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '[Bacaan]', bold: true, size: 22, color: '2563EB' }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: 'Indonesia memproklamirkan kemerdekaan pada tanggal 17 Agustus 1945. Proklamasi dibacakan oleh Soekarno didampingi Mohammad Hatta di Jalan Pegangsaan Timur No. 56, Jakarta.', size: 22 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [
+              new TextRun({ text: '[/Bacaan]', bold: true, size: 22, color: '2563EB' }),
             ],
           }),
           // Soal 1 - Pilihan Ganda (pakai numbering Word)
@@ -776,6 +974,7 @@ export function ImportWordModal({
     setFile(null);
     setExtractedText('');
     setParsedQuestions([]);
+    setDocImages(new Map());
     setStep('upload');
     setImporting(false);
     setParsing(false);
@@ -835,6 +1034,8 @@ export function ImportWordModal({
                     <li>Tandai jawaban benar: awali teks opsi dengan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*</code> contoh: <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*Jakarta</code></li>
                     <li>PG Kompleks: tandai <strong>lebih dari 1</strong> jawaban benar dengan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">*</code> (otomatis terdeteksi)</li>
                     <li>Soal essay: tambahkan <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">(essay)</code> di akhir soal</li>
+                    <li><strong>Gambar</strong>: sisipkan gambar langsung di Word (di soal atau opsi jawaban)</li>
+                    <li><strong>Bacaan/Soal cerita</strong>: tulis <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">[Bacaan]</code> di baris sendiri, lalu teks bacaan, lalu <code className="bg-blue-100 dark:bg-blue-800/50 px-1 rounded text-xs">[/Bacaan]</code> — berlaku untuk soal-soal berikutnya</li>
                     <li>Simbol matematika (sin, cos, fraksi, akar) otomatis terbaca</li>
                   </ul>
                   <p className="text-blue-600 dark:text-blue-400 mt-2 text-xs">
@@ -952,7 +1153,14 @@ export function ImportWordModal({
                   Teks dari: <span className="text-blue-600 dark:text-blue-400">{file?.name}</span>
                 </span>
               </div>
-              <span className="text-xs text-slate-400">{extractedText.split('\n').filter(l => l.trim()).length} baris</span>
+              <div className="flex items-center gap-3">
+                {docImages.size > 0 && (
+                  <span className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                    {docImages.size} gambar
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">{extractedText.split('\n').filter(l => l.trim()).length} baris</span>
+              </div>
             </div>
 
             <textarea
@@ -974,6 +1182,7 @@ export function ImportWordModal({
                   setStep('upload');
                   setFile(null);
                   setExtractedText('');
+                  setDocImages(new Map());
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -1038,28 +1247,48 @@ export function ImportWordModal({
                       {idx + 1}
                     </span>
                     <div className="flex-1 min-w-0">
+                      {q.passage && (
+                        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5">Bacaan:</p>
+                          <p className="text-xs text-blue-800 dark:text-blue-200 line-clamp-3 whitespace-pre-line">{q.passage}</p>
+                        </div>
+                      )}
+
                       <MathText text={q.question_text} as="p" className="text-sm text-slate-800 dark:text-white font-medium mb-1" />
+
+                      {q.image && (
+                        <div className="mt-1 mb-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={URL.createObjectURL(q.image)} alt="Gambar soal" className="max-h-24 rounded-lg border border-slate-200 dark:border-slate-700" />
+                        </div>
+                      )}
 
                       {(q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') && q.options.length > 0 && (
                         <div className="space-y-1 ml-1 mt-2">
                           {q.options.map((opt, oi) => (
                             <div
                               key={oi}
-                              className={`flex items-center gap-2 text-xs ${
+                              className={`flex items-start gap-2 text-xs ${
                                 opt.is_correct
                                   ? 'text-green-600 dark:text-green-400 font-semibold'
                                   : 'text-slate-500 dark:text-slate-400'
                               }`}
                             >
-                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
                                 opt.is_correct
                                   ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
                                   : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                               }`}>
                                 {String.fromCharCode(65 + oi)}
                               </span>
-                              <MathText text={opt.text} />
-                              {opt.is_correct && <CheckCircle className="w-3.5 h-3.5" />}
+                              <div className="flex-1">
+                                {opt.text && <MathText text={opt.text} />}
+                                {opt.image && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={URL.createObjectURL(opt.image)} alt={`Opsi ${String.fromCharCode(65 + oi)}`} className="max-h-16 rounded mt-0.5 border border-slate-200 dark:border-slate-700" />
+                                )}
+                              </div>
+                              {opt.is_correct && <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
                             </div>
                           ))}
                         </div>

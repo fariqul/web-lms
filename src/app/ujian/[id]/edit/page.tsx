@@ -733,9 +733,9 @@ export default function EditSoalPage() {
     question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
     points: number;
     passage?: string | null;
-    image?: string | null;
+    image?: string | File | null;
     essay_keywords?: string[] | null;
-    options: { text: string; is_correct: boolean; image?: string | null }[];
+    options: { text: string; is_correct: boolean; image?: string | File | null }[];
   }[]) => {
     let successCount = 0;
     let failCount = 0;
@@ -754,8 +754,10 @@ export default function EditSoalPage() {
           formData.append('passage', q.passage);
         }
 
-        // Include image path for copying (from exam duplication)
-        if (q.image) {
+        // Handle image: File object (from Word import) or string path (from duplication)
+        if (q.image instanceof File) {
+          formData.append('image', q.image);
+        } else if (q.image) {
           formData.append('image_path', q.image);
         }
 
@@ -771,8 +773,10 @@ export default function EditSoalPage() {
             formData.append(`options[${idx}][option_text]`, opt.text);
             formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
             formData.append(`options[${idx}][order]`, String(idx + 1));
-            // Include option image path for copying
-            if (opt.image) {
+            // Handle option image: File or string path
+            if (opt.image instanceof File) {
+              formData.append(`options[${idx}][image]`, opt.image);
+            } else if (opt.image) {
               formData.append(`options[${idx}][image_path]`, opt.image);
             }
           });
