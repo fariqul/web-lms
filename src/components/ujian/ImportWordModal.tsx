@@ -528,6 +528,7 @@ export function ImportWordModal({
     const lines = text.split('\n').map(l => l.trimEnd());
 
     let currentQuestion: string | null = null;
+    let currentQuestionPassage: string | null = null; // Capture passage at question start, not flush
     let currentOptions: { text: string; is_correct: boolean; image?: File | null }[] = [];
     let currentQuestionImage: File | null = null;
     let isEssay = false;
@@ -548,7 +549,7 @@ export function ImportWordModal({
           question_text: qText,
           question_type: 'essay',
           points: defaultPoints,
-          passage: activePassage,
+          passage: currentQuestionPassage, // Use passage captured at question start
           image: qImage,
           options: [],
           valid: true,
@@ -561,7 +562,7 @@ export function ImportWordModal({
           question_text: qText,
           question_type: isMultipleAnswer ? 'multiple_answer' : 'multiple_choice',
           points: defaultPoints,
-          passage: activePassage,
+          passage: currentQuestionPassage, // Use passage captured at question start
           image: qImage,
           options: currentOptions,
           valid: hasCorrect && currentOptions.length >= 2 && (!isMultipleAnswer || correctCount >= 2),
@@ -574,6 +575,7 @@ export function ImportWordModal({
       }
 
       currentQuestion = null;
+      currentQuestionPassage = null;
       currentOptions = [];
       currentQuestionImage = null;
       isEssay = false;
@@ -587,20 +589,13 @@ export function ImportWordModal({
       // Normalize brackets first, then match
       const normalizedLine = trimmed.replace(/[\[\(\{【]/g, '[').replace(/[\]\)\}】]/g, ']');
       
-      // DEBUG: Log passage marker detection
-      if (normalizedLine.toLowerCase().includes('bacaan')) {
-        console.log('DEBUG Bacaan line:', JSON.stringify(normalizedLine), 'Test start:', /^\[bacaan\]$/i.test(normalizedLine), 'Test end:', /^\[\/bacaan\]$/i.test(normalizedLine));
-      }
-      
       if (/^\[bacaan\]$/i.test(normalizedLine)) {
-        console.log('DEBUG: Starting passage collection');
         flushQuestion();
         collectingPassage = true;
         passageLines = [];
         continue;
       }
       if (/^\[\/bacaan\]$/i.test(normalizedLine)) {
-        console.log('DEBUG: Ending passage, lines:', passageLines.length);
         if (collectingPassage) {
           activePassage = passageLines.join('\n').trim() || null;
           collectingPassage = false;
@@ -609,7 +604,6 @@ export function ImportWordModal({
       }
       // [Hapus Bacaan] clears the active passage
       if (/^\[hapus bacaan\]$/i.test(normalizedLine)) {
-        console.log('DEBUG: Clearing passage');
         activePassage = null;
         collectingPassage = false;
         continue;
@@ -667,6 +661,8 @@ export function ImportWordModal({
           activePassage = passageLines.join('\n').trim() || null;
           collectingPassage = false;
         }
+        // Capture current passage at question start (before [Hapus Bacaan] clears it)
+        currentQuestionPassage = activePassage;
       } else if (optionMatch && currentQuestion) {
         const isCorrect = optionMatch[1] === '*' || optionMatch[3] === '*';
         let optText = optionMatch[4].trim();
