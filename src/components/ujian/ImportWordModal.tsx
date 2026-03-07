@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Download,
 } from 'lucide-react';
-import { Document, Paragraph, TextRun, Packer, AlignmentType, LevelFormat, convertInchesToTwip } from 'docx';
+import { Document, Paragraph, TextRun, Packer, AlignmentType } from 'docx';
 import { MathText } from '@/components/ui/MathText';
 import { saveAs } from 'file-saver';
 
@@ -398,6 +398,20 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<{ text: string; im
           if (def) {
             const lvl = def.levels.get(ilvl);
             if (lvl) {
+              // When a new question number (decimal) appears, reset all letter-based option counters
+              if (lvl.fmt === 'decimal') {
+                for (const [otherNumId, otherDef] of numMap.entries()) {
+                  if (otherNumId !== numId) {
+                    for (const [, otherLvl] of otherDef.levels.entries()) {
+                      if (otherLvl.fmt === 'lowerLetter' || otherLvl.fmt === 'upperLetter') {
+                        counters.delete(otherNumId);
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
               // Get or initialize counter for this numId
               if (!counters.has(numId)) counters.set(numId, new Map());
               const lvlCounters = counters.get(numId)!;
@@ -552,7 +566,7 @@ export function ImportWordModal({
           options: currentOptions,
           valid: hasCorrect && currentOptions.length >= 2 && (!isMultipleAnswer || correctCount >= 2),
           error: !hasCorrect
-            ? 'Tidak ada jawaban benar (tandai dengan * di depan opsi)'
+            ? 'Tidak ada jawaban benar (tandai dengan * di depan huruf opsi, contoh: *c. Jawaban)'
             : currentOptions.length < 2
               ? 'Minimal 2 pilihan jawaban'
               : undefined,
@@ -602,8 +616,8 @@ export function ImportWordModal({
 
       // Match question start: "1." or "1)" or just a number at start
       const questionMatch = line.match(/^\s*(\d+)\s*[.)]\s*(.+)/);
-      // Match option: "a." "a)" "*a." "*a)" or just "a " with letter
-      const optionMatch = line.match(/^\s*(\*?)\s*([a-eA-E])\s*[.)]\s*(.+)/);
+      // Match option: "a." "a)" "*a." "*a)" — also supports * after letter (Word numbering: "a. *text")
+      const optionMatch = line.match(/^\s*(\*?)\s*([a-eA-E])\s*[.)]\s*(\*?)\s*(.+)/);
 
       if (standaloneImgMatch && !questionMatch && !optionMatch) {
         // Standalone image line — attach to current question or pending
@@ -643,8 +657,8 @@ export function ImportWordModal({
           collectingPassage = false;
         }
       } else if (optionMatch && currentQuestion) {
-        const isCorrect = optionMatch[1] === '*';
-        let optText = optionMatch[3].trim();
+        const isCorrect = optionMatch[1] === '*' || optionMatch[3] === '*';
+        let optText = optionMatch[4].trim();
         // Extract inline images from option line
         const { cleanText, files } = resolveImages(optText, images);
         optText = cleanText;
@@ -753,30 +767,6 @@ export function ImportWordModal({
 
   const handleDownloadTemplate = async () => {
     const doc = new Document({
-      numbering: {
-        config: [
-          {
-            reference: 'soal-numbering',
-            levels: [{
-              level: 0,
-              format: LevelFormat.DECIMAL,
-              text: '%1.',
-              alignment: AlignmentType.START,
-              style: { paragraph: { indent: { left: convertInchesToTwip(0.25), hanging: convertInchesToTwip(0.25) } } },
-            }],
-          },
-          {
-            reference: 'opsi-numbering',
-            levels: [{
-              level: 0,
-              format: LevelFormat.LOWER_LETTER,
-              text: '%1.',
-              alignment: AlignmentType.START,
-              style: { paragraph: { indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } } },
-            }],
-          },
-        ],
-      },
       sections: [{
         properties: {},
         children: [
@@ -788,7 +778,7 @@ export function ImportWordModal({
             ],
           }),
           new Paragraph({
-            spacing: { after: 200 },
+            spacing: { after: 100 },
             children: [
               new TextRun({ text: 'Petunjuk:', bold: true, size: 20 }),
             ],
@@ -796,25 +786,31 @@ export function ImportWordModal({
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- Nomor soal dan pilihan jawaban menggunakan fitur Numbering/List di Word', size: 20 }),
+              new TextRun({ text: '- Nomor soal diawali angka dan titik, contoh: 1. Teks soal', size: 20 }),
             ],
           }),
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- Bisa juga ketik manual: 1. Teks soal, a. Opsi jawaban', size: 20 }),
+              new TextRun({ text: '- Opsi jawaban menggunakan huruf kecil, contoh: a. Teks opsi', size: 20 }),
             ],
           }),
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- Tandai jawaban benar dengan tanda * di awal teks opsi, contoh: *Jakarta', size: 20 }),
+              new TextRun({ text: '- Tandai jawaban benar dengan tanda * di depan huruf, contoh: *c. Jawaban benar', size: 20 }),
             ],
           }),
           new Paragraph({
             spacing: { after: 40 },
             children: [
-              new TextRun({ text: '- PG Kompleks (banyak jawaban benar): tandai lebih dari 1 opsi dengan * (otomatis terdeteksi)', size: 20 }),
+              new TextRun({ text: '- Jika pakai numbering Word, taruh * di awal teks opsi, contoh: c. *Jawaban benar', size: 20 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '- PG Kompleks (banyak jawaban benar): tandai lebih dari 1 opsi dengan *', size: 20 }),
             ],
           }),
           new Paragraph({
@@ -842,15 +838,21 @@ export function ImportWordModal({
             ],
           }),
           new Paragraph({
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: '  Soal setelahnya otomatis terkait bacaan. Tulis [Hapus Bacaan] untuk menghentikan.', size: 20 }),
+            ],
+          }),
+          new Paragraph({
             spacing: { after: 200 },
             children: [
               new TextRun({ text: '- Simbol matematika (sin, cos, fraksi, akar) akan otomatis terbaca', size: 20 }),
             ],
           }),
           new Paragraph({
-            spacing: { after: 100 },
+            spacing: { after: 200 },
             children: [
-              new TextRun({ text: '──────────────────────────────────', size: 20, color: '999999' }),
+              new TextRun({ text: '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500', size: 20, color: '999999' }),
             ],
           }),
           // Contoh Bacaan
@@ -867,100 +869,90 @@ export function ImportWordModal({
             ],
           }),
           new Paragraph({
-            spacing: { after: 100 },
+            spacing: { after: 200 },
             children: [
               new TextRun({ text: '[/Bacaan]', bold: true, size: 22, color: '2563EB' }),
             ],
           }),
-          // Soal 1 - Pilihan Ganda (pakai numbering Word)
+          // Soal 1 - Pilihan Ganda (terkait bacaan)
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'soal-numbering', level: 0 },
-            children: [new TextRun({ text: 'Apa ibu kota Indonesia?', size: 22 })],
+            children: [new TextRun({ text: '1. Kapan Indonesia merdeka?', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Surabaya', size: 22 })],
+            children: [new TextRun({ text: 'a. 17 Agustus 1944', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Bandung', size: 22 })],
+            children: [new TextRun({ text: '*b. 17 Agustus 1945', size: 22, bold: true })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: '*Jakarta', size: 22, bold: true })],
+            children: [new TextRun({ text: 'c. 17 Agustus 1946', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 200 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Medan', size: 22 })],
+            children: [new TextRun({ text: 'd. 17 Agustus 1950', size: 22 })],
           }),
-          // Soal 2 - Pilihan Ganda  
+          // Hapus Bacaan - soal selanjutnya tidak terkait bacaan
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [
+              new TextRun({ text: '[Hapus Bacaan]', bold: true, size: 22, color: '2563EB' }),
+            ],
+          }),
+          // Soal 2 - Pilihan Ganda (tanpa bacaan)
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'soal-numbering', level: 0 },
-            children: [new TextRun({ text: 'Siapa penemu telepon?', size: 22 })],
-          }),
-          new Paragraph({
-            spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: '*Alexander Graham Bell', size: 22, bold: true })],
-          }),
-          new Paragraph({
-            spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Thomas Edison', size: 22 })],
+            children: [new TextRun({ text: '2. Siapa penemu telepon?', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Nikola Tesla', size: 22 })],
+            children: [new TextRun({ text: '*a. Alexander Graham Bell', size: 22, bold: true })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'b. Thomas Edison', size: 22 })],
+          }),
+          new Paragraph({
+            spacing: { after: 40 },
+            children: [new TextRun({ text: 'c. Nikola Tesla', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 200 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Albert Einstein', size: 22 })],
+            children: [new TextRun({ text: 'd. Albert Einstein', size: 22 })],
           }),
           // Soal 3 - Essay
           new Paragraph({
             spacing: { after: 200 },
-            numbering: { reference: 'soal-numbering', level: 0 },
-            children: [new TextRun({ text: 'Jelaskan proses terjadinya fotosintesis! (essay)', size: 22 })],
+            children: [new TextRun({ text: '3. Jelaskan proses terjadinya fotosintesis! (essay)', size: 22 })],
           }),
           // Soal 4 - Pilihan Ganda
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'soal-numbering', level: 0 },
-            children: [new TextRun({ text: 'Planet terbesar di tata surya adalah?', size: 22 })],
+            children: [new TextRun({ text: '4. Planet terbesar di tata surya adalah?', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Mars', size: 22 })],
+            children: [new TextRun({ text: 'a. Mars', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: '*Jupiter', size: 22, bold: true })],
+            children: [new TextRun({ text: '*b. Jupiter', size: 22, bold: true })],
           }),
           new Paragraph({
             spacing: { after: 40 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Saturnus', size: 22 })],
+            children: [new TextRun({ text: 'c. Saturnus', size: 22 })],
           }),
           new Paragraph({
             spacing: { after: 200 },
-            numbering: { reference: 'opsi-numbering', level: 0 },
-            children: [new TextRun({ text: 'Venus', size: 22 })],
+            children: [new TextRun({ text: 'd. Venus', size: 22 })],
           }),
           // Soal 5 - Essay
           new Paragraph({
             spacing: { after: 200 },
-            numbering: { reference: 'soal-numbering', level: 0 },
-            children: [new TextRun({ text: 'Sebutkan dan jelaskan 3 jenis batuan yang ada di bumi! (essay)', size: 22 })],
+            children: [new TextRun({ text: '5. Sebutkan dan jelaskan 3 jenis batuan yang ada di bumi! (essay)', size: 22 })],
           }),
         ],
       }],
