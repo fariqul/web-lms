@@ -590,7 +590,40 @@ class QuizController extends Controller
         $questions = $quiz->questions()->orderBy('order')->get();
 
         if ($quiz->shuffle_questions && $questions->isNotEmpty()) {
-            $questions = $questions->shuffle()->values();
+            // Group questions by passage - questions with same passage stay together
+            $mcQuestions = $questions->filter(fn($q) => in_array($q->type, ['multiple_choice', 'multiple_answer']));
+            $essayQuestions = $questions->filter(fn($q) => $q->type === 'essay');
+            
+            $passageGroups = [];
+            $noPassageQuestions = [];
+            
+            foreach ($mcQuestions as $q) {
+                $passageText = trim($q->passage ?? '');
+                if (!empty($passageText)) {
+                    $key = md5($passageText);
+                    if (!isset($passageGroups[$key])) {
+                        $passageGroups[$key] = [];
+                    }
+                    $passageGroups[$key][] = $q;
+                } else {
+                    $noPassageQuestions[] = [$q];
+                }
+            }
+            
+            $allGroups = array_merge(array_values($passageGroups), $noPassageQuestions);
+            shuffle($allGroups);
+            
+            $merged = [];
+            foreach ($allGroups as $group) {
+                foreach ($group as $item) {
+                    $merged[] = $item;
+                }
+            }
+            foreach ($essayQuestions as $eq) {
+                $merged[] = $eq;
+            }
+            
+            $questions = collect($merged)->values();
         }
 
         // Shuffle options per question if enabled

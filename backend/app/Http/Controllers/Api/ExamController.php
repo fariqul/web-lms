@@ -1191,55 +1191,49 @@ class ExamController extends Controller
         
         if ($exam->shuffle_questions && $questions->isNotEmpty()) {
             try {
-                // Separate multiple choice and essay questions
-                // Essay questions always go at the end
-                $mcQuestions = $questions->filter(fn($q) => $q->type === 'multiple_choice');
+                // Separate essay questions (always at the end, not shuffled)
+                $mcQuestions = $questions->filter(fn($q) => in_array($q->type, ['multiple_choice', 'multiple_answer']));
                 $essayQuestions = $questions->filter(fn($q) => $q->type === 'essay');
                 
-                // Group MC questions by passage to keep passage-based questions together
-                $groups = [];
-                $currentGroup = [];
-                $currentPassage = null;
+                // Group questions by passage - questions with same passage stay together
+                $passageGroups = []; // passage_text => [questions]
+                $noPassageQuestions = []; // questions without passage (each is own group)
                 
                 foreach ($mcQuestions as $q) {
-                    if (!empty($q->passage)) {
-                        if ($q->passage === $currentPassage) {
-                            $currentGroup[] = $q;
-                        } else {
-                            if (!empty($currentGroup)) {
-                                $groups[] = $currentGroup;
-                            }
-                            $currentPassage = $q->passage;
-                            $currentGroup = [$q];
+                    $passageText = trim($q->passage ?? '');
+                    if (!empty($passageText)) {
+                        // Use md5 hash as key to handle very long passages
+                        $key = md5($passageText);
+                        if (!isset($passageGroups[$key])) {
+                            $passageGroups[$key] = [];
                         }
+                        $passageGroups[$key][] = $q;
                     } else {
-                        if (!empty($currentGroup)) {
-                            $groups[] = $currentGroup;
-                            $currentGroup = [];
-                            $currentPassage = null;
-                        }
-                        $groups[] = [$q];
+                        // Each question without passage is its own "group"
+                        $noPassageQuestions[] = [$q];
                     }
-                }
-                if (!empty($currentGroup)) {
-                    $groups[] = $currentGroup;
                 }
                 
-                // Shuffle the MC groups
-                if (!empty($groups)) {
-                    shuffle($groups);
-                    $merged = [];
-                    foreach ($groups as $group) {
-                        foreach ($group as $item) {
-                            $merged[] = $item;
-                        }
+                // Convert passage groups to array and combine with non-passage questions
+                $allGroups = array_merge(array_values($passageGroups), $noPassageQuestions);
+                
+                // Shuffle the groups (not questions within groups)
+                shuffle($allGroups);
+                
+                // Flatten groups back into question list
+                $merged = [];
+                foreach ($allGroups as $group) {
+                    foreach ($group as $item) {
+                        $merged[] = $item;
                     }
-                    // Append essay questions at the end (not shuffled)
-                    foreach ($essayQuestions as $eq) {
-                        $merged[] = $eq;
-                    }
-                    $questions = collect($merged);
                 }
+                
+                // Append essay questions at the end (not shuffled)
+                foreach ($essayQuestions as $eq) {
+                    $merged[] = $eq;
+                }
+                
+                $questions = collect($merged);
             } catch (\Exception $e) {
                 Log::error('Shuffle questions failed: ' . $e->getMessage());
                 $questions = $exam->questions()->orderBy('order')->get();
