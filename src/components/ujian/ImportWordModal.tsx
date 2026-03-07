@@ -26,6 +26,7 @@ const M_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
 const A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
 const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const V_NS = 'urn:schemas-microsoft-com:vml';
+const OLE_NS = 'urn:schemas-microsoft-com:office:office';
 
 function childrenNS(parent: Element, ns: string, tag: string): Element[] {
   return Array.from(parent.children).filter(c => c.localName === tag && c.namespaceURI === ns);
@@ -322,7 +323,7 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<{ text: string; im
   const xml = await zip.file('word/document.xml')?.async('string');
   if (!xml) throw new Error('Invalid docx');
 
-  // Parse relationships to find image targets
+  // Parse relationships to find image/media targets
   const relsXml = await zip.file('word/_rels/document.xml.rels')?.async('string');
   const relsMap = new Map<string, string>(); // rId -> file path in zip
   if (relsXml) {
@@ -331,8 +332,16 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<{ text: string; im
       const id = rel.getAttribute('Id') || '';
       const target = rel.getAttribute('Target') || '';
       const type = rel.getAttribute('Type') || '';
-      if (type.includes('/image')) {
-        relsMap.set(id, target.startsWith('/') ? target.slice(1) : `word/${target}`);
+      // Support image, oleObject, and media types
+      if (type.includes('/image') || type.includes('/oleObject') || type.includes('/media')) {
+        // Handle various target path formats
+        let filePath = target;
+        if (target.startsWith('/')) {
+          filePath = target.slice(1);
+        } else if (!target.startsWith('word/')) {
+          filePath = `word/${target}`;
+        }
+        relsMap.set(id, filePath);
       }
     }
   }
@@ -344,24 +353,60 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<{ text: string; im
   /** Find image relationship IDs in a paragraph element */
   function findImageRIds(el: Element): string[] {
     const rIds: string[] = [];
-    // <w:drawing> → <a:blip r:embed="...">
+    
+    // Method 1: <w:drawing> → <a:blip r:embed="..."> (Modern Word format)
     const drawings = el.getElementsByTagNameNS(W_NS, 'drawing');
     for (const drawing of Array.from(drawings)) {
+      // Direct search for blip elements
       const blips = drawing.getElementsByTagNameNS(A_NS, 'blip');
       for (const blip of Array.from(blips)) {
         const embed = blip.getAttributeNS(R_NS, 'embed') || blip.getAttribute('r:embed') || '';
         if (embed) rIds.push(embed);
+        // Also check for linked images
+        const link = blip.getAttributeNS(R_NS, 'link') || blip.getAttribute('r:link') || '';
+        if (link) rIds.push(link);
       }
     }
-    // <w:pict> → <v:imagedata r:id="...">
+    
+    // Method 2: Also search all blip elements directly (in case of non-standard namespace)
+    // This handles cases where blip is deeply nested or namespace prefix varies
+    const allBlips = el.getElementsByTagName('*');
+    for (const node of Array.from(allBlips)) {
+      if (node.localName === 'blip') {
+        const embed = node.getAttributeNS(R_NS, 'embed') || node.getAttribute('r:embed') || '';
+        if (embed && !rIds.includes(embed)) rIds.push(embed);
+      }
+    }
+    
+    // Method 3: <w:pict> → <v:imagedata r:id="..."> (Legacy format)
     const picts = el.getElementsByTagNameNS(W_NS, 'pict');
     for (const pict of Array.from(picts)) {
       const imgDatas = pict.getElementsByTagNameNS(V_NS, 'imagedata');
       for (const imgData of Array.from(imgDatas)) {
         const rId = imgData.getAttributeNS(R_NS, 'id') || imgData.getAttribute('r:id') || '';
-        if (rId) rIds.push(rId);
+        if (rId && !rIds.includes(rId)) rIds.push(rId);
+      }
+      // Also search by tag name for compatibility
+      const allImgData = pict.getElementsByTagName('*');
+      for (const node of Array.from(allImgData)) {
+        if (node.localName === 'imagedata') {
+          const rId = node.getAttributeNS(R_NS, 'id') || node.getAttribute('r:id') || 
+                      node.getAttributeNS(R_NS, 'embed') || node.getAttribute('o:href') || '';
+          if (rId && !rIds.includes(rId)) rIds.push(rId);
+        }
       }
     }
+    
+    // Method 4: <w:object> → <o:OLEObject> embedded objects (older format)
+    const objects = el.getElementsByTagNameNS(W_NS, 'object');
+    for (const obj of Array.from(objects)) {
+      const oleObjs = obj.getElementsByTagNameNS(OLE_NS, 'OLEObject');
+      for (const ole of Array.from(oleObjs)) {
+        const rId = ole.getAttributeNS(R_NS, 'id') || ole.getAttribute('r:id') || '';
+        if (rId && !rIds.includes(rId)) rIds.push(rId);
+      }
+    }
+    
     return rIds;
   }
 
@@ -444,9 +489,34 @@ async function extractDocxWithMath(buf: ArrayBuffer): Promise<{ text: string; im
     const imgRIds = findImageRIds(p);
     let imgMarkers = '';
     for (const rId of imgRIds) {
-      const target = relsMap.get(rId);
+      let target = relsMap.get(rId);
+      
+      // If not found by relationship, try common paths
+      if (!target) {
+        // Try as direct file name (some legacy formats)
+        const possiblePaths = [
+          `word/media/${rId}`,
+          `media/${rId}`,
+          rId,
+        ];
+        for (const path of possiblePaths) {
+          if (zip.file(path)) {
+            target = path;
+            break;
+          }
+        }
+      }
+      
       if (target) {
-        const imgFile = zip.file(target);
+        // Try the target path first, then without 'word/' prefix, then with 'word/' prefix
+        let imgFile = zip.file(target);
+        if (!imgFile && target.startsWith('word/')) {
+          imgFile = zip.file(target.slice(5)); // try without word/
+        }
+        if (!imgFile && !target.startsWith('word/')) {
+          imgFile = zip.file(`word/${target}`); // try with word/
+        }
+        
         if (imgFile) {
           const blob = await imgFile.async('blob');
           const key = `img_${++imgCounter}`;
