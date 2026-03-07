@@ -4,12 +4,20 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 
 /**
  * Derive the backend base URL (without /api) from NEXT_PUBLIC_API_URL.
+ * Forces HTTPS when page is served over HTTPS to avoid mixed content blocking.
  * Returns empty string if API URL is relative or not set.
  */
 function getBackendBaseUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   if (apiUrl.startsWith('http')) {
-    return apiUrl.replace(/\/api\/?$/, '');
+    let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+    
+    // Force HTTPS if current page is served over HTTPS (avoid mixed content)
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      baseUrl = baseUrl.replace(/^http:/, 'https:');
+    }
+    
+    return baseUrl;
   }
   return '';
 }
