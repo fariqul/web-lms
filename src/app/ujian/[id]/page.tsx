@@ -96,6 +96,8 @@ export default function ExamTakingPage() {
   const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
   const previewVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const previewStreamRef = React.useRef<MediaStream | null>(null);
+  // Ref to track intentional navigation (submission) to bypass beforeunload
+  const isNavigatingAwayRef = React.useRef(false);
 
   // Nomor Tes
   const { user: authUser } = useAuth();
@@ -118,10 +120,12 @@ export default function ExamTakingPage() {
         time_spent: (exam?.duration || 90) * 60 - timeRemaining,
       });
       clearExamSession();
+      isNavigatingAwayRef.current = true;
       router.push('/ujian-siswa?reason=force_submit');
     } catch (error) {
       console.error('Failed to submit exam:', error);
       clearExamSession();
+      isNavigatingAwayRef.current = true;
       router.push('/ujian-siswa');
     }
   };
@@ -197,6 +201,7 @@ export default function ExamTakingPage() {
       clearExamSession();
       toast.warning('Ujian telah diselesaikan oleh admin. Jawaban Anda telah dikumpulkan otomatis.');
       setTimeout(() => {
+        isNavigatingAwayRef.current = true;
         router.push('/ujian-siswa?reason=admin_ended');
       }, 1500);
     };
@@ -397,6 +402,8 @@ export default function ExamTakingPage() {
     };
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Allow navigation if intentionally submitting
+      if (isNavigatingAwayRef.current) return;
       e.preventDefault();
       // Modern browsers show a generic message; setting returnValue is required
       e.returnValue = '';
@@ -612,10 +619,13 @@ export default function ExamTakingPage() {
       await api.post(`/exams/${examId}/finish`);
       clearExamSession();
       toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
+      // Mark as intentionally navigating away to bypass beforeunload
+      isNavigatingAwayRef.current = true;
       router.push('/ujian-siswa?submitted=true');
     } catch (error) {
       console.error('Failed to auto-submit exam:', error);
       clearExamSession();
+      isNavigatingAwayRef.current = true;
       router.push('/ujian-siswa?reason=time_up');
     }
   };
@@ -802,9 +812,12 @@ export default function ExamTakingPage() {
 
   const confirmSubmit = async () => {
     setSubmitting(true);
+    setShowSubmitConfirm(false); // Close dialog immediately
     try {
       await api.post(`/exams/${examId}/finish`);
       clearExamSession();
+      // Mark as intentionally navigating away to bypass beforeunload
+      isNavigatingAwayRef.current = true;
       router.push('/ujian-siswa?submitted=true');
     } catch (error) {
       console.error('Failed to submit exam:', error);
