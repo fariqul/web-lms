@@ -355,21 +355,35 @@ class ExamController extends Controller
             if ($exam->questions) {
                 $exam->questions->transform(function ($question) {
                     // Convert options array to structured format for frontend
-                    if ($question->type === 'multiple_choice' && is_array($question->options)) {
-                        $question->options = collect($question->options)->map(function ($opt, $idx) use ($question) {
+                    if (in_array($question->type, ['multiple_choice', 'multiple_answer']) && is_array($question->options)) {
+                        // For multiple_answer, correct_answer is JSON array of correct texts
+                        $correctAnswers = [];
+                        if ($question->type === 'multiple_answer') {
+                            $decoded = json_decode($question->correct_answer, true);
+                            $correctAnswers = is_array($decoded) ? $decoded : [];
+                        }
+
+                        $question->options = collect($question->options)->map(function ($opt, $idx) use ($question, $correctAnswers) {
                             // Handle both old format (string) and new format (object with text+image)
                             if (is_string($opt)) {
+                                $isCorrect = $question->type === 'multiple_answer'
+                                    ? in_array($opt, $correctAnswers)
+                                    : $opt === $question->correct_answer;
                                 return [
                                     'id' => $idx + 1,
                                     'option_text' => $opt,
-                                    'is_correct' => $opt === $question->correct_answer,
+                                    'is_correct' => $isCorrect,
                                     'image' => null,
                                 ];
                             }
+                            $optText = $opt['text'] ?? '';
+                            $isCorrect = $question->type === 'multiple_answer'
+                                ? in_array($optText, $correctAnswers)
+                                : $optText === $question->correct_answer;
                             return [
                                 'id' => $idx + 1,
-                                'option_text' => $opt['text'] ?? '',
-                                'is_correct' => ($opt['text'] ?? '') === $question->correct_answer,
+                                'option_text' => $optText,
+                                'is_correct' => $isCorrect,
                                 'image' => $opt['image'] ?? null,
                             ];
                         })->values()->toArray();
@@ -1241,7 +1255,7 @@ class ExamController extends Controller
         // Shuffle options if enabled
         if ($exam->shuffle_options) {
             $questions->transform(function ($q) {
-                if ($q->type === 'multiple_choice' && is_array($q->options)) {
+                if (in_array($q->type, ['multiple_choice', 'multiple_answer']) && is_array($q->options)) {
                     $shuffled = $q->options;
                     shuffle($shuffled);
                     $q->options = $shuffled;
@@ -1253,7 +1267,7 @@ class ExamController extends Controller
         // Normalize options to structured format for student view
         // Handles both old format (flat strings) and new format (objects with text+image)
         $questions->transform(function ($q) {
-            if ($q->type === 'multiple_choice' && is_array($q->options)) {
+            if (in_array($q->type, ['multiple_choice', 'multiple_answer']) && is_array($q->options)) {
                 $q->options = collect($q->options)->map(function ($opt) {
                     if (is_string($opt)) {
                         return ['text' => $opt, 'image' => null];

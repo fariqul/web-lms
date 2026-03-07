@@ -3,23 +3,51 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 /**
- * Convert storage URLs to use the same-origin /storage/ proxy to avoid mixed content.
- * Handles: full backend URLs, relative paths, and already-proxied paths.
+ * Derive the backend base URL (without /api) from NEXT_PUBLIC_API_URL.
+ * Returns empty string if API URL is relative or not set.
+ */
+function getBackendBaseUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  if (apiUrl.startsWith('http')) {
+    return apiUrl.replace(/\/api\/?$/, '');
+  }
+  return '';
+}
+
+/**
+ * Convert storage paths to accessible URLs.
+ * Prefers direct backend URL (from NEXT_PUBLIC_API_URL) for reliability,
+ * falls back to /storage/ proxy path (Vercel rewrite) if API URL is relative.
  */
 export function getSecureFileUrl(url: string | undefined | null): string {
   if (!url) return '';
-  // Already a proxied path
-  if (url.startsWith('/storage/')) return url;
-  // Full URL containing /storage/ — extract the path
-  const storageMatch = url.match(/\/storage\/(.+)/);
-  if (storageMatch) {
-    return `/storage/${storageMatch[1]}`;
+  // Already a full URL — return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+  // Extract the relative storage path
+  let relativePath: string;
+  if (url.startsWith('/storage/')) {
+    relativePath = url.slice('/storage/'.length);
+  } else {
+    const storageMatch = url.match(/\/storage\/(.+)/);
+    if (storageMatch) {
+      relativePath = storageMatch[1];
+    } else if (!url.startsWith('/')) {
+      // Relative path like "question-images/img.jpg"
+      relativePath = url;
+    } else {
+      return url;
+    }
   }
-  // Relative path (e.g. "exam_images/img.jpg") — prepend /storage/
-  if (!url.startsWith('http') && !url.startsWith('/')) {
-    return `/storage/${url}`;
+
+  // Prefer direct backend URL for reliability (bypasses Vercel rewrite)
+  const backendBase = getBackendBaseUrl();
+  if (backendBase) {
+    return `${backendBase}/storage/${relativePath}`;
   }
-  return url;
+
+  // Fallback: use /storage/ proxy path (requires BACKEND_URL rewrite on Vercel)
+  return `/storage/${relativePath}`;
 }
 
 // Create axios instance
