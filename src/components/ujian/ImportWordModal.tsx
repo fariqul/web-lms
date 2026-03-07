@@ -587,13 +587,20 @@ export function ImportWordModal({
       // Normalize brackets first, then match
       const normalizedLine = trimmed.replace(/[\[\(\{【]/g, '[').replace(/[\]\)\}】]/g, ']');
       
+      // DEBUG: Log passage marker detection
+      if (normalizedLine.toLowerCase().includes('bacaan')) {
+        console.log('DEBUG Bacaan line:', JSON.stringify(normalizedLine), 'Test start:', /^\[bacaan\]$/i.test(normalizedLine), 'Test end:', /^\[\/bacaan\]$/i.test(normalizedLine));
+      }
+      
       if (/^\[bacaan\]$/i.test(normalizedLine)) {
+        console.log('DEBUG: Starting passage collection');
         flushQuestion();
         collectingPassage = true;
         passageLines = [];
         continue;
       }
       if (/^\[\/bacaan\]$/i.test(normalizedLine)) {
+        console.log('DEBUG: Ending passage, lines:', passageLines.length);
         if (collectingPassage) {
           activePassage = passageLines.join('\n').trim() || null;
           collectingPassage = false;
@@ -602,6 +609,7 @@ export function ImportWordModal({
       }
       // [Hapus Bacaan] clears the active passage
       if (/^\[hapus bacaan\]$/i.test(normalizedLine)) {
+        console.log('DEBUG: Clearing passage');
         activePassage = null;
         collectingPassage = false;
         continue;
