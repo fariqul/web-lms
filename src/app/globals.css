@@ -318,6 +318,142 @@ body {
   }
 }
 
+/* ============================================================
+   MOBILE & LOW-END DEVICE OPTIMIZATIONS
+   ============================================================ */
+
+/* Touch-friendly tap targets (minimum 44px) */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Larger touch areas for buttons */
+  .btn-touch {
+    padding: 12px 20px;
+  }
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Improve scroll performance */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* GPU acceleration for smooth scrolling */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduce paint complexity for low-end devices */
+@media (max-width: 768px) {
+  /* Simplify shadows on mobile */
+  .card-hover:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .stat-card-hover:hover {
+    transform: none;
+  }
+  
+  /* Disable stagger animations on mobile */
+  .stagger-children > * {
+    animation: none;
+    opacity: 1;
+  }
+  
+  /* Simpler scrollbar for mobile */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* Optimize for slow connections / low-end devices */
+@media (prefers-reduced-data: reduce) {
+  img, video {
+    content-visibility: auto;
+  }
+}
+
+/* Battery saver mode - reduce animations */
+@media (prefers-reduced-motion: reduce), (update: slow) {
+  .animate-spin {
+    animation: none;
+  }
+  
+  .animate-pulse {
+    animation: none;
+  }
+  
+  .animate-bounce {
+    animation: none;
+  }
+}
+
+/* Content visibility for better performance */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* Virtualize long lists container */
+.virtual-list {
+  contain: strict;
+  content-visibility: auto;
+}
+
+/* Will-change optimization for animated elements - use sparingly */
+.will-animate {
+  will-change: transform, opacity;
+}
+
+/* Remove will-change after animation */
+.animated {
+  will-change: auto;
+}
+
+/* Safe area insets for notched devices */
+.safe-area-padding {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Optimize images */
+img {
+  content-visibility: auto;
+}
+
+/* Prevent layout shift */
+.aspect-card {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-square {
+  aspect-ratio: 1;
+}
+
+/* Fast tap response - remove 300ms delay */
+* {
+  touch-action: manipulation;
+}
+
 /* ─── Focus Styles ─── */
 *:focus-visible {
   outline: 2px solid var(--primary);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { User, UserRole } from '@/types';
 import { authAPI } from '@/services/api';
 
@@ -56,10 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (login: string, password: string, force?: boolean) => {
+  const login = useCallback(async (loginStr: string, password: string, force?: boolean) => {
     setIsLoading(true);
     try {
-      const response = await authAPI.login(login, password, force);
+      const response = await authAPI.login(loginStr, password, force);
       const { user: userData, token: authToken } = response.data.data;
       
       setUser(userData);
@@ -72,9 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authAPI.logout();
     } catch {
@@ -85,15 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
-  };
+  }, []);
 
-  const hasRole = (roles: UserRole | UserRole[]): boolean => {
+  const hasRole = useCallback((roles: UserRole | UserRole[]): boolean => {
     if (!user) return false;
     const roleArray = Array.isArray(roles) ? roles : [roles];
     return roleArray.includes(user.role);
-  };
+  }, [user]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const response = await authAPI.me();
       setUser(response.data.data);
@@ -101,9 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to refresh user:', error);
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo<AuthContextType>(() => ({
     user,
     token,
     isLoading,
@@ -113,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth,
     refreshUser,
     hasRole,
-  };
+  }), [user, token, isLoading, login, logout, checkAuth, refreshUser, hasRole]);
 
   return (
     <AuthContext.Provider value={value}>

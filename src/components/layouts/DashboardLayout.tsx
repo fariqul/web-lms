@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useMemo, useCallback, memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -83,40 +83,28 @@ export default function DashboardLayout({ children }: SidebarProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  const filteredNavigation = navigation.filter(
-    (item) => user && item.roles.includes(user.role)
+  // Memoize filtered navigation to prevent recalculation on every render
+  const filteredNavigation = useMemo(() => 
+    navigation.filter((item) => user && item.roles.includes(user.role)),
+    [user]
   );
 
-  const getRoleLabel = () => {
-    switch (user?.role) {
-      case 'admin':
-        return 'Administrator';
-      case 'guru':
-        return 'Dashboard Guru';
-      case 'siswa':
-        return 'E-Learning Portal';
-      default:
-        return '';
-    }
-  };
+  // Memoize role-based values
+  const roleInfo = useMemo(() => {
+    const role = user?.role;
+    return {
+      label: role === 'admin' ? 'Administrator' : role === 'guru' ? 'Dashboard Guru' : role === 'siswa' ? 'E-Learning Portal' : '',
+      accent: role === 'admin' ? 'bg-orange-400' : role === 'guru' ? 'bg-cyan-500' : role === 'siswa' ? 'bg-sky-500' : 'bg-blue-800'
+    };
+  }, [user?.role]);
 
-  const getRoleAccent = () => {
-    switch (user?.role) {
-      case 'admin':
-        return 'bg-orange-400';
-      case 'guru':
-        return 'bg-cyan-500';
-      case 'siswa':
-        return 'bg-sky-500';
-      default:
-        return 'bg-blue-800';
-    }
-  };
-
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
     window.location.href = '/login';
-  };
+  }, [logout]);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -124,7 +112,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden cursor-pointer"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
           aria-hidden="true"
         />
       )}
@@ -146,8 +134,8 @@ export default function DashboardLayout({ children }: SidebarProps) {
             <div className="min-w-0">
               <h1 className="font-bold text-[15px] text-white leading-tight tracking-tight">SMA 15 Makassar</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${getRoleAccent()}`} />
-                <p className="text-[11px] text-slate-400 font-medium">{getRoleLabel()}</p>
+                <span className={`w-1.5 h-1.5 rounded-full ${roleInfo.accent}`} />
+                <p className="text-[11px] text-slate-400 font-medium">{roleInfo.label}</p>
               </div>
             </div>
           </div>
@@ -155,7 +143,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
           {/* Mobile close button */}
           <button
             className="absolute top-5 right-4 lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-            onClick={() => setSidebarOpen(false)}
+            onClick={closeSidebar}
             aria-label="Tutup menu navigasi"
           >
             <X className="w-5 h-5" />
@@ -177,7 +165,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
                     ? 'bg-gradient-to-r from-blue-800/25 to-cyan-800/15 text-sky-400 border-l-2 border-sky-500 -ml-px pl-[11px] shadow-sm shadow-sky-500/10'
                     : 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
                 )}
-                onClick={() => setSidebarOpen(false)}
+                onClick={closeSidebar}
               >
                 <item.icon className={clsx('w-[18px] h-[18px] flex-shrink-0 transition-colors', isActive ? 'text-sky-400' : 'text-slate-500 group-hover:text-slate-300')} />
                 <span className="text-[13px] font-medium">{item.name}</span>
@@ -207,7 +195,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
             {/* Mobile menu button */}
             <button
               className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer"
-              onClick={() => setSidebarOpen(true)}
+              onClick={openSidebar}
               aria-label="Buka menu navigasi"
             >
               <Menu className="w-5 h-5" />
