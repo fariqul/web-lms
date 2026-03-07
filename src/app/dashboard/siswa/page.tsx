@@ -141,9 +141,12 @@ export default function SiswaDashboard() {
       const examsData = Array.isArray(examsRaw) ? examsRaw : (examsRaw?.data || []);
 
       const now = new Date();
-      const upcoming = examsData.filter((e: { start_time: string; my_result?: unknown }) =>
-        new Date(e.start_time) > now && !e.my_result
-      );
+      // Upcoming = exams that haven't ended yet AND student hasn't completed them
+      const upcoming = examsData.filter((e: { start_time: string; end_time: string; my_result?: { status?: string } }) => {
+        const endTime = new Date(e.end_time);
+        const hasCompletedOrSubmitted = e.my_result && ['completed', 'graded', 'submitted'].includes(e.my_result?.status || '');
+        return endTime > now && !hasCompletedOrSubmitted;
+      });
       const completed = examsData.filter((e: { my_result?: { status?: string; score?: number }; title: string; subject: string; max_score: number }) =>
         e.my_result && ['completed', 'graded', 'submitted'].includes(e.my_result?.status || '')
       );
