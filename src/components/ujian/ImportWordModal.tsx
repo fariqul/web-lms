@@ -583,22 +583,24 @@ export function ImportWordModal({
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      // Passage markers: [Bacaan] ... [/Bacaan]
-      if (/^\[bacaan\]$/i.test(trimmed)) {
+      // Passage markers: [Bacaan] ... [/Bacaan] - support various bracket styles and spacing
+      // Match: [Bacaan], (Bacaan), {Bacaan}, 【Bacaan】, or just "Bacaan" with any brackets
+      const isBacaanStart = /^[\[\(\{【]?\s*bacaan\s*[\]\)\}】]?$/i.test(trimmed) && !/\//.test(trimmed);
+      const isBacaanEnd = /^[\[\(\{【]?\s*\/\s*bacaan\s*[\]\)\}】]?$/i.test(trimmed);
+      
+      if (isBacaanStart) {
         flushQuestion();
         collectingPassage = true;
         passageLines = [];
         continue;
       }
-      if (/^\[\/bacaan\]$/i.test(trimmed)) {
-        if (collectingPassage) {
-          activePassage = passageLines.join('\n').trim() || null;
-          collectingPassage = false;
-        }
+      if (isBacaanEnd && collectingPassage) {
+        activePassage = passageLines.join('\n').trim() || null;
+        collectingPassage = false;
         continue;
       }
       // [Hapus Bacaan] clears the active passage
-      if (/^\[hapus bacaan\]$/i.test(trimmed)) {
+      if (/^[\[\(\{【]?\s*hapus\s+bacaan\s*[\]\)\}】]?$/i.test(trimmed)) {
         activePassage = null;
         collectingPassage = false;
         continue;
