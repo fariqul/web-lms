@@ -612,10 +612,10 @@ export default function HasilSiswaPage() {
                               📸 Foto Cara Kerja
                             </p>
                             <img
-                              src={`/storage/${answer.work_photo}`}
+                              src={getSecureFileUrl(answer.work_photo)}
                               alt="Foto cara kerja siswa"
                               className="max-w-full max-h-96 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => window.open(`/storage/${answer.work_photo}`, '_blank')}
+                              onClick={() => window.open(getSecureFileUrl(answer.work_photo), '_blank')}
                             />
                           </div>
                         )}

@@ -1320,7 +1320,7 @@ export default function ExamTakingPage() {
                 {workPhotos[question.id] && (
                   <div className="mt-2">
                     <img
-                      src={`/storage/${workPhotos[question.id]}`}
+                      src={getSecureFileUrl(workPhotos[question.id])}
                       alt="Foto cara kerja"
                       className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
                     />
