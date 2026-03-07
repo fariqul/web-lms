@@ -30,8 +30,9 @@ import {
   BookUp,
   Lock,
   Shuffle,
+  Users,
 } from 'lucide-react';
-import api, { getSecureFileUrl } from '@/services/api';
+import api, { getSecureFileUrl, classAPI } from '@/services/api';
 import { bankQuestionAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
@@ -134,6 +135,12 @@ export default function EditSoalPage() {
   const [exportingBankSoal, setExportingBankSoal] = useState(false);
   const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
   const [exportDifficulty, setExportDifficulty] = useState<'mudah' | 'sedang' | 'sulit'>('sedang');
+  // Class management states
+  const [showClassesModal, setShowClassesModal] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<{ id: number; name: string; grade_level?: string }[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
+  const [savingClasses, setSavingClasses] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(false);
   const [newQuestion, setNewQuestion] = useState<Question>({
     question_text: '',
     passage: '',
@@ -877,6 +884,72 @@ export default function EditSoalPage() {
     }
   };
 
+  // Fetch available classes for class management modal
+  const fetchAvailableClasses = async () => {
+    setLoadingClasses(true);
+    try {
+      const res = await classAPI.getAll();
+      const classes = res.data?.data || [];
+      setAvailableClasses(classes);
+      // Initialize selected classes from current exam
+      const currentIds = exam?.classes?.map(c => c.id) || [];
+      setSelectedClassIds(currentIds);
+    } catch {
+      toast.error('Gagal memuat daftar kelas');
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  // Open classes modal
+  const handleOpenClassesModal = () => {
+    setShowClassesModal(true);
+    fetchAvailableClasses();
+  };
+
+  // Toggle class selection
+  const handleToggleClass = (classId: number) => {
+    setSelectedClassIds(prev => {
+      if (prev.includes(classId)) {
+        // Don't allow removing all classes
+        if (prev.length === 1) {
+          toast.warning('Minimal harus ada 1 kelas yang dipilih');
+          return prev;
+        }
+        return prev.filter(id => id !== classId);
+      } else {
+        return [...prev, classId];
+      }
+    });
+  };
+
+  // Save updated classes
+  const handleSaveClasses = async () => {
+    if (selectedClassIds.length === 0) {
+      toast.warning('Pilih minimal 1 kelas');
+      return;
+    }
+    setSavingClasses(true);
+    try {
+      await api.put(`/exams/${examId}`, {
+        class_ids: selectedClassIds,
+      });
+      // Update local exam state
+      const newClasses = availableClasses.filter(c => selectedClassIds.includes(c.id));
+      setExam(prev => prev ? { 
+        ...prev, 
+        classes: newClasses,
+        class_name: newClasses[0]?.name 
+      } : null);
+      toast.success('Kelas ujian berhasil diperbarui');
+      setShowClassesModal(false);
+    } catch {
+      toast.error('Gagal menyimpan perubahan kelas');
+    } finally {
+      setSavingClasses(false);
+    }
+  };
+
   const handleExportToBankSoal = async () => {
     if (!exam || questions.length === 0) return;
     setExportingBankSoal(true);
@@ -1039,6 +1112,34 @@ export default function EditSoalPage() {
             </button>
           </Card>
         </div>
+
+        {/* Class Management Panel */}
+        {!isAdmin && (
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-slate-800 dark:text-white text-sm">Kelas Peserta Ujian</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {exam?.classes && exam.classes.length > 0 
+                  ? exam.classes.map(c => c.name).join(', ') 
+                  : exam?.class_name || 'Belum ada kelas'}
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleOpenClassesModal}
+              className="text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/20"
+            >
+              <FileEdit className="w-4 h-4 mr-1" />
+              Ubah Kelas
+            </Button>
+          </div>
+        </Card>
+        )}
 
         {/* Schedule Info Banner */}
         {/* Shuffle Settings Panel */}
@@ -2435,6 +2536,93 @@ export default function EditSoalPage() {
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengekspor...</>
                 ) : (
                   <><BookUp className="w-4 h-4 mr-2" /> Ekspor {questions.length} Soal</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Class Management Modal */}
+      {showClassesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-green-600" />
+                Ubah Kelas Ujian
+              </h3>
+              <button
+                onClick={() => setShowClassesModal(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Pilih kelas yang akan mengikuti ujian ini. Siswa dari kelas yang dipilih dapat mengakses ujian.
+            </p>
+
+            {loadingClasses ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {availableClasses.map((cls) => (
+                  <label
+                    key={cls.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedClassIds.includes(cls.id)
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-700'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedClassIds.includes(cls.id)}
+                      onChange={() => handleToggleClass(cls.id)}
+                      className="w-4 h-4 text-green-600 border-slate-300 rounded focus:ring-green-500"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium text-slate-800 dark:text-white">{cls.name}</span>
+                      {cls.grade_level && (
+                        <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+                          Kelas {cls.grade_level}
+                        </span>
+                      )}
+                    </div>
+                    {selectedClassIds.includes(cls.id) && (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    )}
+                  </label>
+                ))}
+                {availableClasses.length === 0 && (
+                  <p className="text-center py-4 text-slate-500 dark:text-slate-400">
+                    Tidak ada kelas tersedia
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6 pt-4 border-t dark:border-slate-700">
+              <Button
+                variant="outline"
+                onClick={() => setShowClassesModal(false)}
+                className="flex-1"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleSaveClasses}
+                disabled={savingClasses || selectedClassIds.length === 0}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {savingClasses ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
+                ) : (
+                  <><Save className="w-4 h-4 mr-2" /> Simpan ({selectedClassIds.length} kelas)</>
                 )}
               </Button>
             </div>
