@@ -6,6 +6,7 @@ import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
 import { Calendar, Plus, Edit2, Trash2, Clock, User, MapPin, X, Loader2 } from 'lucide-react';
 import { classAPI, userAPI, scheduleAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { SUBJECT_OPTIONS } from '@/constants/subjects';
 
 interface Schedule {
   id: number;
@@ -361,13 +362,20 @@ export default function AdminJadwalPage() {
                       ))}
                     </select>
                   </div>
-                  <Input
-                    label="Mata Pelajaran"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    placeholder="Contoh: Informatika"
-                    required
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mata Pelajaran</label>
+                    <select
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      required
+                    >
+                      <option value="">Pilih Mapel</option>
+                      {SUBJECT_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>

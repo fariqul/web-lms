@@ -13,7 +13,7 @@ const TRIVIA_CATEGORIES = [
   { id: 19, name: 'Matematika', subject: 'Matematika' },
   { id: 22, name: 'Geografi', subject: 'Geografi' },
   { id: 23, name: 'Sejarah', subject: 'Sejarah' },
-  { id: 24, name: 'Politik', subject: 'PKN' },
+  { id: 24, name: 'Politik', subject: 'Pendidikan Pancasila' },
   { id: 25, name: 'Seni', subject: 'Seni Budaya' },
   { id: 27, name: 'Hewan', subject: 'Biologi' },
 ];

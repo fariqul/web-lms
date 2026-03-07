@@ -8,6 +8,7 @@ import { Card, CardHeader, Button, Modal, Input, Select, ConfirmDialog } from '@
 import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download, AlertTriangle, Info } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
+import { SUBJECT_OPTIONS } from '@/constants/subjects';
 import { useToast } from '@/components/ui/Toast';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 import { useExamsListSocket } from '@/hooks/useSocket';
@@ -37,25 +38,7 @@ interface ClassOption {
   label: string;
 }
 
-const subjects = [
-  { value: 'Bahasa Indonesia', label: 'Bahasa Indonesia' },
-  { value: 'Bahasa Inggris', label: 'Bahasa Inggris' },
-  { value: 'Matematika', label: 'Matematika' },
-  { value: 'Fisika', label: 'Fisika' },
-  { value: 'Kimia', label: 'Kimia' },
-  { value: 'Biologi', label: 'Biologi' },
-  { value: 'Sejarah', label: 'Sejarah' },
-  { value: 'Sosiologi', label: 'Sosiologi' },
-  { value: 'Ekonomi', label: 'Ekonomi' },
-  { value: 'Geografi', label: 'Geografi' },
-  { value: 'PKN', label: 'PKN' },
-  { value: 'Informatika', label: 'Informatika' },
-  { value: 'Seni Budaya', label: 'Seni Budaya' },
-  { value: 'Pendidikan Agama', label: 'Pendidikan Agama' },
-  { value: 'PJOK', label: 'PJOK' },
-  { value: 'IPA', label: 'IPA' },
-  { value: 'Pengetahuan Umum', label: 'Pengetahuan Umum' },
-];
+const subjects = SUBJECT_OPTIONS;
 
 export default function UjianPage() {
   const router = useRouter();

@@ -33,7 +33,10 @@ import type { LucideIcon } from 'lucide-react';
 const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor: string }> = {
   'Bahasa Indonesia': { icon: BookOpen, color: 'bg-red-100', iconColor: 'text-red-500' },
   'Bahasa Inggris': { icon: Languages, color: 'bg-purple-100', iconColor: 'text-purple-500' },
+  'Bahasa Inggris Tingkat Lanjut': { icon: Languages, color: 'bg-purple-50', iconColor: 'text-purple-400' },
+  'Bahasa Jerman': { icon: Languages, color: 'bg-fuchsia-100', iconColor: 'text-fuchsia-500' },
   'Matematika': { icon: Calculator, color: 'bg-sky-50', iconColor: 'text-sky-500' },
+  'Matematika Tingkat Lanjut': { icon: Calculator, color: 'bg-sky-100', iconColor: 'text-sky-600' },
   'Fisika': { icon: Atom, color: 'bg-pink-100', iconColor: 'text-pink-500' },
   'Kimia': { icon: FlaskConical, color: 'bg-orange-100', iconColor: 'text-orange-500' },
   'Biologi': { icon: Microscope, color: 'bg-green-100', iconColor: 'text-green-500' },
@@ -41,12 +44,15 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor:
   'Sosiologi': { icon: Users, color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
   'Ekonomi': { icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
   'Geografi': { icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
-  'PKN': { icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
+  'Pendidikan Pancasila': { icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
   'Informatika': { icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600 dark:text-slate-400' },
   'Seni Budaya': { icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
-  'Pendidikan Agama': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
+  'Pendidikan Agama Islam': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
+  'Pendidikan Agama Kristen': { icon: BookOpen, color: 'bg-violet-50', iconColor: 'text-violet-400' },
   'PJOK': { icon: Target, color: 'bg-lime-100', iconColor: 'text-lime-600' },
   'IPA': { icon: Microscope, color: 'bg-sky-100', iconColor: 'text-sky-500' },
+  'Prakarya': { icon: GraduationCap, color: 'bg-teal-100', iconColor: 'text-teal-500' },
+  'Kewirausahaan': { icon: Coins, color: 'bg-amber-50', iconColor: 'text-amber-500' },
   'Pengetahuan Umum': { icon: BookOpen, color: 'bg-slate-100', iconColor: 'text-slate-600 dark:text-slate-400' },
 };
 

@@ -8,12 +8,9 @@ import { Plus, Loader2, Trash2, FileEdit, PlayCircle, CheckCircle, Clock, Users,
 import { quizAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { Exam } from '@/types';
+import { SUBJECT_OPTIONS } from '@/constants/subjects';
 
-const subjects = [
-  'Bahasa Indonesia', 'Bahasa Inggris', 'Matematika', 'Fisika', 'Kimia',
-  'Biologi', 'Sejarah', 'Sosiologi', 'Ekonomi', 'Geografi',
-  'PKN', 'Informatika', 'Seni Budaya', 'Pendidikan Agama', 'PJOK', 'IPA', 'Pengetahuan Umum',
-].map(s => ({ value: s, label: s }));
+const subjects = SUBJECT_OPTIONS;
 
 export default function QuizPage() {
   const router = useRouter();
