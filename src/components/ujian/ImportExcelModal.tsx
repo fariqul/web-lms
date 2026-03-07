@@ -36,6 +36,14 @@ Apa ibu kota Indonesia?,Surabaya,Bandung,Jakarta,Medan,C,10,PG
 Siapa penemu telepon?,Graham Bell,Thomas Edison,Nikola Tesla,Albert Einstein,A,10,PG
 Jelaskan proses fotosintesis!,,,,,,,Essay`;
 
+// Template data for XLSX export
+const XLSX_TEMPLATE_DATA = [
+  ['Soal', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Jawaban Benar', 'Poin', 'Tipe'],
+  ['Apa ibu kota Indonesia?', 'Surabaya', 'Bandung', 'Jakarta', 'Medan', 'C', 10, 'PG'],
+  ['Siapa penemu telepon?', 'Graham Bell', 'Thomas Edison', 'Nikola Tesla', 'Albert Einstein', 'A', 10, 'PG'],
+  ['Jelaskan proses fotosintesis!', '', '', '', '', '', 10, 'Essay'],
+];
+
 export function ImportExcelModal({
   isOpen,
   onClose,
@@ -218,14 +226,40 @@ export function ImportExcelModal({
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'template_soal_ujian.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadTemplate = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.aoa_to_sheet(XLSX_TEMPLATE_DATA);
+      
+      // Set column widths for better readability
+      worksheet['!cols'] = [
+        { wch: 40 }, // Soal
+        { wch: 20 }, // Opsi A
+        { wch: 20 }, // Opsi B
+        { wch: 20 }, // Opsi C
+        { wch: 20 }, // Opsi D
+        { wch: 15 }, // Jawaban Benar
+        { wch: 8 },  // Poin
+        { wch: 10 }, // Tipe
+      ];
+      
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Soal Ujian');
+      
+      // Generate and download file
+      XLSX.writeFile(workbook, 'template_soal_ujian.xlsx');
+    } catch {
+      // Fallback to CSV if xlsx fails
+      const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'template_soal_ujian.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   const handleClose = () => {
@@ -305,7 +339,7 @@ export function ImportExcelModal({
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
             >
               <Download className="w-4 h-4" />
-              Download Template CSV
+              Download Template Excel (.xlsx)
             </button>
 
             {/* Drop Zone */}
