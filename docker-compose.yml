@@ -11,6 +11,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-LmsSekolah123!}
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql/custom.cnf:/etc/mysql/conf.d/custom.cnf:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s

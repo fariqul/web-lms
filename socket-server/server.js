@@ -5,10 +5,10 @@ const PORT = process.env.SOCKET_PORT || 6001;
 const INTERNAL_SECRET = process.env.SOCKET_INTERNAL_SECRET || 'lms-socket-secret-key-2026';
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'https://web-lms-rowr.vercel.app,http://localhost:3000').split(',');
 
-// Performance tuning for 300-500 concurrent users
-const MAX_CONNECTIONS = 600; // Allow some headroom
+// Performance tuning for 600-800 concurrent users (32GB RAM server)
+const MAX_CONNECTIONS = 1000; // Higher headroom for Ryzen 5 5600 + 32GB RAM
 const RATE_LIMIT_WINDOW = 1000; // 1 second window
-const RATE_LIMIT_MAX = 20; // max events per window per socket
+const RATE_LIMIT_MAX = 25; // max events per window per socket (increased)
 const CONNECTION_TIMEOUT = 45000; // 45 seconds for slow connections
 
 const httpServer = createServer((req, res) => {

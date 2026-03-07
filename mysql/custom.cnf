@@ -1,0 +1,48 @@
+# MySQL 8.0 Configuration
+# Optimized for Ryzen 5 5600 + 32GB RAM (allocate ~8GB to MySQL)
+# Target: High concurrency for LMS with 600+ users
+
+[mysqld]
+# Connection limits
+max_connections = 600
+max_user_connections = 550
+wait_timeout = 300
+interactive_timeout = 300
+
+# Buffer pool (main memory allocation - 8GB for 32GB system)
+innodb_buffer_pool_size = 8G
+innodb_buffer_pool_instances = 8
+
+# Log and I/O
+innodb_log_file_size = 512M
+innodb_log_buffer_size = 64M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+
+# Thread handling
+thread_cache_size = 128
+table_open_cache = 4000
+table_definition_cache = 2000
+
+# Query cache (deprecated in MySQL 8 but good for reads)
+# Use query hints or application-level caching instead
+
+# Temp tables
+tmp_table_size = 256M
+max_heap_table_size = 256M
+
+# Sort and join buffers (per connection)
+sort_buffer_size = 4M
+join_buffer_size = 4M
+read_buffer_size = 2M
+read_rnd_buffer_size = 2M
+
+# Binary logging (for replication if needed)
+# binlog_expire_logs_seconds = 604800
+
+# Performance schema (disable if not debugging)
+performance_schema = OFF
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
