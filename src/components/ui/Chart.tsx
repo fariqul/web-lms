@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTheme } from '@/context/ThemeContext';
 import {
   BarChart,
   Bar,
@@ -16,6 +17,25 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+
+// Hook to get chart colors based on theme
+function useChartColors() {
+  const { resolvedTheme } = useTheme();
+  
+  return useMemo(() => {
+    const isDark = resolvedTheme === 'dark';
+    return {
+      gridColor: isDark ? 'rgba(148, 163, 184, 0.08)' : 'rgba(226, 232, 240, 0.6)',
+      tickColor: isDark ? '#94A3B8' : '#6B7280',
+      tooltipBg: isDark ? '#1E293B' : '#FFFFFF',
+      tooltipBorder: isDark ? '#334155' : '#E5E7EB',
+      tooltipShadow: isDark 
+        ? '0 8px 24px -4px rgba(0, 0, 0, 0.4)' 
+        : '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+      tooltipText: isDark ? '#E5E7EB' : '#1F2937',
+    };
+  }, [resolvedTheme]);
+}
 
 interface ChartData {
   [key: string]: string | number;
@@ -40,29 +60,27 @@ export function SimpleBarChart({
   showGrid = true,
   showLegend = false,
 }: BarChartProps) {
-  const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
-  const gridColor = isDark ? 'rgba(148,163,184,0.08)' : 'rgba(226,232,240,0.6)';
-  const tooltipBg = isDark ? '#1e293b' : '#FFF';
-  const tooltipBorder = isDark ? '#334155' : '#E5E7EB';
+  const colors = useChartColors();
 
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        {showGrid && <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />}
+        {showGrid && <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} vertical={false} />}
         <XAxis
           dataKey={xAxisKey}
-          tick={{ fill: '#6B7280', fontSize: 12 }}
-          axisLine={{ stroke: gridColor }}
+          tick={{ fill: colors.tickColor, fontSize: 12 }}
+          axisLine={{ stroke: colors.gridColor }}
           tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: colors.tickColor, fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
-            backgroundColor: tooltipBg,
-            border: `1px solid ${tooltipBorder}`,
+            backgroundColor: colors.tooltipBg,
+            border: `1px solid ${colors.tooltipBorder}`,
             borderRadius: '12px',
-            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+            boxShadow: colors.tooltipShadow,
             padding: '8px 12px',
+            color: colors.tooltipText,
           }}
         />
         {showLegend && <Legend />}
@@ -85,23 +103,26 @@ export function MultiBarChart({
   xAxisKey = 'name',
   height = 300,
 }: MultiBarChartProps) {
+  const colors = useChartColors();
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.5)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} vertical={false} />
         <XAxis
           dataKey={xAxisKey}
-          tick={{ fill: '#6B7280', fontSize: 12 }}
+          tick={{ fill: colors.tickColor, fontSize: 12 }}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: colors.tickColor, fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#FFF',
-            border: '1px solid #E5E7EB',
+            backgroundColor: colors.tooltipBg,
+            border: `1px solid ${colors.tooltipBorder}`,
             borderRadius: '12px',
-            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+            boxShadow: colors.tooltipShadow,
+            color: colors.tooltipText,
           }}
         />
         <Legend />
@@ -134,23 +155,26 @@ export function SimpleLineChart({
   xAxisKey = 'name',
   height = 300,
 }: LineChartProps) {
+  const colors = useChartColors();
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.5)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} vertical={false} />
         <XAxis
           dataKey={xAxisKey}
-          tick={{ fill: '#6B7280', fontSize: 12 }}
+          tick={{ fill: colors.tickColor, fontSize: 12 }}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: colors.tickColor, fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#FFF',
-            border: '1px solid #E5E7EB',
+            backgroundColor: colors.tooltipBg,
+            border: `1px solid ${colors.tooltipBorder}`,
             borderRadius: '12px',
-            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+            boxShadow: colors.tooltipShadow,
+            color: colors.tooltipText,
           }}
         />
         <Legend />
@@ -184,6 +208,8 @@ export function SimplePieChart({
   innerRadius = 0,
   showLabel = true,
 }: PieChartProps) {
+  const colors = useChartColors();
+  
   const renderLabel = showLabel 
     ? ({ name, percent }: { name?: string; percent?: number }) => 
         `${name || ''} ${((percent || 0) * 100).toFixed(0)}%` 
@@ -209,10 +235,11 @@ export function SimplePieChart({
         </Pie>
         <Tooltip
           contentStyle={{
-            backgroundColor: '#FFF',
-            border: '1px solid #E5E7EB',
+            backgroundColor: colors.tooltipBg,
+            border: `1px solid ${colors.tooltipBorder}`,
             borderRadius: '12px',
-            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+            boxShadow: colors.tooltipShadow,
+            color: colors.tooltipText,
           }}
         />
         <Legend />
@@ -236,23 +263,26 @@ interface AttendanceChartProps {
 }
 
 export function AttendanceChart({ data, height = 300 }: AttendanceChartProps) {
+  const colors = useChartColors();
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.5)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} vertical={false} />
         <XAxis
           dataKey="day"
-          tick={{ fill: '#6B7280', fontSize: 11 }}
+          tick={{ fill: colors.tickColor, fontSize: 11 }}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: colors.tickColor, fontSize: 12 }} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#FFF',
-            border: '1px solid #E5E7EB',
+            backgroundColor: colors.tooltipBg,
+            border: `1px solid ${colors.tooltipBorder}`,
             borderRadius: '12px',
-            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+            boxShadow: colors.tooltipShadow,
+            color: colors.tooltipText,
           }}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />

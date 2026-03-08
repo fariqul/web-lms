@@ -29,7 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
-      <body className={`${jakarta.variable} font-sans antialiased bg-background text-foreground transition-colors`}>
+      <head>
+        <meta name="color-scheme" content="light dark" />
+      </head>
+      <body className={`${jakarta.variable} font-sans antialiased bg-background text-foreground transition-colors duration-200`}>
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>

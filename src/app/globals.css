@@ -21,13 +21,13 @@
 
   /* ─── Semantic Tokens (Light Mode) ─── */
   --background: #F8FAFC;
-  --foreground: #0F172A;
+  --foreground: #1F2937;
 
   --card: #FFFFFF;
-  --card-foreground: #1E293B;
+  --card-foreground: #1F2937;
 
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #1F2937;
 
   --primary: #1E40AF;
   --primary-foreground: #FFFFFF;
@@ -35,10 +35,10 @@
   --primary-light: #DBEAFE;
 
   --secondary: #F1F5F9;
-  --secondary-foreground: #1E293B;
+  --secondary-foreground: #1F2937;
 
   --muted: #F1F5F9;
-  --muted-foreground: #64748B;
+  --muted-foreground: #6B7280;
 
   --accent: #EFF6FF;
   --accent-foreground: #1E40AF;
@@ -46,8 +46,8 @@
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
 
-  --border: #E2E8F0;
-  --input: #E2E8F0;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
   --ring: #1E40AF;
   --border-focus: var(--ring);
 
@@ -66,7 +66,7 @@
   --foreground-muted: var(--muted-foreground);
   --foreground-subtle: #9CA3AF;
 
-  /* ─── Sidebar ─── */
+  /* ─── Sidebar (Keep dark in both modes for brand consistency) ─── */
   --sidebar: #0F172A;
   --sidebar-hover: #1E293B;
   --sidebar-active: rgba(30, 64, 175, 0.15);
@@ -85,6 +85,71 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius: 0.5rem;
+  
+  /* ─── Chart Colors ─── */
+  --chart-grid: rgba(226, 232, 240, 0.6);
+  --chart-tick: #6B7280;
+  --chart-tooltip-bg: #FFFFFF;
+  --chart-tooltip-border: #E5E7EB;
+}
+
+/* ============================================================
+   DARK MODE TOKENS
+   ============================================================ */
+.dark {
+  /* ─── Semantic Tokens (Dark Mode) ─── */
+  --background: #0F172A;
+  --foreground: #E5E7EB;
+
+  --card: #1E293B;
+  --card-foreground: #E5E7EB;
+
+  --popover: #1E293B;
+  --popover-foreground: #E5E7EB;
+
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #60A5FA;
+  --primary-light: #1E3A8A;
+
+  --secondary: #334155;
+  --secondary-foreground: #E5E7EB;
+
+  --muted: #334155;
+  --muted-foreground: #94A3B8;
+
+  --accent: #1E3A8A;
+  --accent-foreground: #93C5FD;
+
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #334155;
+  --input: #334155;
+  --ring: #3B82F6;
+
+  /* ─── Brand Colors (adjusted for dark) ─── */
+  --link: #38BDF8;
+  --link-hover: #7DD3FC;
+
+  /* ─── Surface Aliases ─── */
+  --surface: var(--background);
+  --surface-card: var(--card);
+  --surface-elevated: var(--popover);
+  --foreground-muted: var(--muted-foreground);
+  --foreground-subtle: #64748B;
+
+  /* ─── Shadows (darker for dark mode) ─── */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.25), 0 4px 6px -1px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 4px 6px -2px rgba(0, 0, 0, 0.2), 0 10px 15px -3px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  
+  /* ─── Chart Colors (Dark Mode) ─── */
+  --chart-grid: rgba(148, 163, 184, 0.08);
+  --chart-tick: #94A3B8;
+  --chart-tooltip-bg: #1E293B;
+  --chart-tooltip-border: #334155;
 }
 
 /* ─── Tailwind v4 @theme — Expose semantic tokens as utilities ─── */
@@ -155,6 +220,15 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* ─── Transition & Easing Tokens ─── */

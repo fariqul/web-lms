@@ -110,7 +110,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f8f9fb] dark:bg-slate-950">
+    <div className="min-h-screen flex bg-background">
       {/* Left Panel - Brand */}
       <div className="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden items-center justify-center p-12">
         {/* Decorative elements */}
