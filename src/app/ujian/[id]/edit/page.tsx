@@ -643,11 +643,33 @@ export default function EditSoalPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
+      // Optimistic update - langsung update state lokal
+      setQuestions(prev => prev.map(q => 
+        q.id === editingQuestion 
+          ? { 
+              ...q, 
+              question_text: newQuestion.question_text,
+              question_type: newQuestion.question_type,
+              points: newQuestion.points,
+              passage: newQuestion.passage || null,
+              essay_keywords: newQuestion.essay_keywords || [],
+              options: newQuestion.options.map((opt, idx) => ({
+                ...opt,
+                text: opt.text,
+                is_correct: opt.is_correct,
+                image: optionImagePreviews[idx] ? (opt.image || optionImagePreviews[idx]) : opt.image,
+              })),
+            } 
+          : q
+      ));
+
       toast.success('Soal berhasil diupdate');
-      await fetchExamData();
       setIsEditModalOpen(false);
       setEditingQuestion(null);
       resetNewQuestion();
+      
+      // Background sync dengan server
+      fetchExamData();
     } catch (error) {
       console.error('Failed to update question:', error);
       toast.error('Gagal mengupdate soal');
