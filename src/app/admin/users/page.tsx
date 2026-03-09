@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 
@@ -52,6 +52,10 @@ export default function AdminUsersPage() {
   const [resetPasswordData, setResetPasswordData] = useState({ password: '', showPassword: false });
   const [resetSuccess, setResetSuccess] = useState('');
   const [isClearNomorTesOpen, setIsClearNomorTesOpen] = useState(false);
+
+  // Sorting state
+  const [sortKey, setSortKey] = useState<'name' | 'nomor_tes' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -108,7 +112,52 @@ export default function AdminUsersPage() {
 
   const fetchData = () => fetchUsers(searchQuery, roleFilter, classFilter);
 
-  const filteredUsers = users;
+  // Toggle sort function
+  const handleSort = (key: 'name' | 'nomor_tes') => {
+    if (sortKey === key) {
+      // Toggle order if same key
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new key with ascending order
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
+
+  // Extract number from nomor_tes format "NISN-X"
+  const extractNomorTesNumber = (nomorTes: string | undefined): number => {
+    if (!nomorTes) return 0;
+    const match = nomorTes.match(/-(\d+)$/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  // Sort users based on sortKey and sortOrder
+  const sortedUsers = React.useMemo(() => {
+    if (!sortKey) return users;
+    
+    return [...users].sort((a, b) => {
+      if (sortKey === 'name') {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        if (sortOrder === 'asc') {
+          return nameA.localeCompare(nameB, 'id');
+        } else {
+          return nameB.localeCompare(nameA, 'id');
+        }
+      } else if (sortKey === 'nomor_tes') {
+        const numA = extractNomorTesNumber(a.nomor_tes);
+        const numB = extractNomorTesNumber(b.nomor_tes);
+        if (sortOrder === 'asc') {
+          return numA - numB;
+        } else {
+          return numB - numA;
+        }
+      }
+      return 0;
+    });
+  }, [users, sortKey, sortOrder]);
+
+  const filteredUsers = sortedUsers;
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -239,8 +288,29 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Sort icon component
+  const SortIcon = ({ columnKey }: { columnKey: 'name' | 'nomor_tes' }) => {
+    if (sortKey !== columnKey) {
+      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />;
+    }
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="w-3.5 h-3.5 text-sky-500" />
+      : <ArrowDown className="w-3.5 h-3.5 text-sky-500" />;
+  };
+
   const columns = [
-    { key: 'name', header: 'Nama' },
+    { 
+      key: 'name', 
+      header: (
+        <button 
+          onClick={() => handleSort('name')}
+          className="flex items-center gap-1.5 hover:text-sky-600 dark:hover:text-sky-400 transition-colors group"
+        >
+          <span>Nama</span>
+          <SortIcon columnKey="name" />
+        </button>
+      ),
+    },
     { key: 'email', header: 'Email' },
     {
       key: 'role',
@@ -273,7 +343,15 @@ export default function AdminUsersPage() {
     },
     {
       key: 'nomor_tes',
-      header: 'No. Tes',
+      header: (
+        <button 
+          onClick={() => handleSort('nomor_tes')}
+          className="flex items-center gap-1.5 hover:text-sky-600 dark:hover:text-sky-400 transition-colors group"
+        >
+          <span>No. Tes</span>
+          <SortIcon columnKey="nomor_tes" />
+        </button>
+      ),
       render: (item: User) => item.role === 'siswa' && item.nomor_tes ? (
         <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 text-xs font-mono rounded">
           {item.nomor_tes}
