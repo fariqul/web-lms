@@ -288,10 +288,17 @@ export const quizAPI = {
 
   // Questions
   addQuestion: (quizId: number, data: FormData) =>
-    api.post(`/quizzes/${quizId}/questions`, data),
+    api.post(`/quizzes/${quizId}/questions`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 
-  updateQuestion: (questionId: number, data: FormData) =>
-    api.put(`/quiz-questions/${questionId}`, data),
+  updateQuestion: (questionId: number, data: FormData) => {
+    // Use POST with _method spoof for FormData compatibility with Laravel
+    data.append('_method', 'PUT');
+    return api.post(`/quiz-questions/${questionId}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   deleteQuestion: (questionId: number) =>
     api.delete(`/quiz-questions/${questionId}`),

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, Button, Input, Modal, ConfirmDialog } from '@/components/ui';
@@ -50,300 +50,36 @@ interface QuizData {
   shuffle_options?: boolean;
 }
 
-export default function EditQuizPage() {
-  const params = useParams();
-  const router = useRouter();
-  const toast = useToast();
-  const quizId = Number(params.id);
+// QuestionForm component defined OUTSIDE the main component to prevent recreation
+interface QuestionFormProps {
+  newQuestion: Question;
+  setNewQuestion: React.Dispatch<React.SetStateAction<Question>>;
+  imagePreview: string | null;
+  setImagePreview: React.Dispatch<React.SetStateAction<string | null>>;
+  imageFile: File | null;
+  setImageFile: React.Dispatch<React.SetStateAction<File | null>>;
+  optionImagePreviews: (string | null)[];
+  setOptionImagePreviews: React.Dispatch<React.SetStateAction<(string | null)[]>>;
+  optionImageFiles: (File | null)[];
+  setOptionImageFiles: React.Dispatch<React.SetStateAction<(File | null)[]>>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  optionFileInputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
+}
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [quiz, setQuiz] = useState<QuizData | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
-  const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [optionImageFiles, setOptionImageFiles] = useState<(File | null)[]>([null, null, null, null]);
-  const [optionImagePreviews, setOptionImagePreviews] = useState<(string | null)[]>([null, null, null, null]);
-  const optionFileInputRefs = React.useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
-
-  // Import modals
-  const [showImportMenu, setShowImportMenu] = useState(false);
-  const [showImportText, setShowImportText] = useState(false);
-  const [showImportBankSoal, setShowImportBankSoal] = useState(false);
-  const [showImportExcel, setShowImportExcel] = useState(false);
-  const [showImportWord, setShowImportWord] = useState(false);
-  const importMenuRef = React.useRef<HTMLDivElement>(null);
-
-  const [newQuestion, setNewQuestion] = useState<Question>({
-    question_text: '',
-    passage: '',
-    question_type: 'multiple_choice',
-    points: 10,
-    order: 0,
-    essay_keywords: [],
-    options: [
-      { text: '', is_correct: true },
-      { text: '', is_correct: false },
-      { text: '', is_correct: false },
-      { text: '', is_correct: false },
-    ],
-  });
-
-  useEffect(() => { fetchData(); }, [quizId]);
-
-  // Close import menu on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
-        setShowImportMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const res = await quizAPI.getById(quizId);
-      const data = res.data?.data;
-      if (data) {
-        setQuiz({
-          id: data.id,
-          title: data.title,
-          subject: data.subject,
-          classes: data.classes || [],
-          duration: data.duration,
-          status: data.status,
-          total_questions: data.total_questions,
-          show_result: data.show_result,
-          passing_score: data.passing_score,
-          shuffle_questions: data.shuffle_questions,
-          shuffle_options: data.shuffle_options,
-        });
-
-        const qs = (data.questions || []).map((q: Record<string, unknown>) => ({
-          id: q.id as number,
-          question_text: q.question_text as string,
-          question_type: (q.type || q.question_type || 'multiple_choice') as Question['question_type'],
-          points: (q.points as number) || 10,
-          order: (q.order as number) || 0,
-          passage: q.passage as string | null,
-          image: q.image as string | null,
-          options: ((q.options || []) as { text: string; is_correct?: boolean; image?: string | null }[]).map((o, i) => ({
-            text: o.text || '',
-            is_correct: q.type === 'multiple_choice'
-              ? o.text === q.correct_answer
-              : q.type === 'multiple_answer'
-              ? (() => { try { const ca = JSON.parse(q.correct_answer as string); return Array.isArray(ca) && ca.map((s: string) => s.toLowerCase()).includes(o.text.toLowerCase()); } catch { return false; } })()
-              : i === 0,
-            image: o.image || null,
-          })),
-          essay_keywords: (q.essay_keywords as string[]) || [],
-        }));
-        setQuestions(qs);
-      }
-    } catch {
-      toast.error('Gagal memuat quiz');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetQuestionForm = () => {
-    setNewQuestion({
-      question_text: '',
-      passage: '',
-      question_type: 'multiple_choice',
-      points: 10,
-      order: 0,
-      essay_keywords: [],
-      options: [
-        { text: '', is_correct: true },
-        { text: '', is_correct: false },
-        { text: '', is_correct: false },
-        { text: '', is_correct: false },
-      ],
-    });
-    setImageFile(null);
-    setImagePreview(null);
-    setOptionImageFiles([null, null, null, null]);
-    setOptionImagePreviews([null, null, null, null]);
-  };
-
-  const handleSaveQuestion = async (isEdit = false) => {
-    if (!newQuestion.question_text.trim()) {
-      toast.warning('Teks soal wajib diisi');
-      return;
-    }
-
-    const needsOptions = ['multiple_choice', 'multiple_answer'].includes(newQuestion.question_type);
-    if (needsOptions) {
-      const hasCorrect = newQuestion.options.some(o => o.is_correct);
-      if (!hasCorrect) { toast.warning('Pilih minimal 1 jawaban benar'); return; }
-      const filledOpts = newQuestion.options.filter(o => o.text.trim());
-      if (filledOpts.length < 2) { toast.warning('Minimal 2 opsi jawaban'); return; }
-    }
-
-    setSaving(true);
-    try {
-      const formData = new FormData();
-      formData.append('question_text', newQuestion.question_text);
-      formData.append('question_type', newQuestion.question_type);
-      formData.append('points', String(newQuestion.points));
-      if (newQuestion.passage) formData.append('passage', newQuestion.passage);
-
-      if (imageFile) {
-        formData.append('image', imageFile);
-      }
-
-      if (needsOptions) {
-        newQuestion.options.forEach((opt, idx) => {
-          formData.append(`options[${idx}][option_text]`, opt.text);
-          formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
-          if (optionImageFiles[idx]) {
-            formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
-          }
-        });
-      }
-
-      if (newQuestion.question_type === 'essay' && newQuestion.essay_keywords?.length) {
-        newQuestion.essay_keywords.forEach((kw, i) => {
-          formData.append(`essay_keywords[${i}]`, kw);
-        });
-      }
-
-      if (isEdit && editingQuestion !== null) {
-        await quizAPI.updateQuestion(editingQuestion, formData);
-        toast.success('Soal berhasil diperbarui');
-        setIsEditModalOpen(false);
-      } else {
-        await quizAPI.addQuestion(quizId, formData);
-        toast.success('Soal berhasil ditambahkan');
-        setIsAddModalOpen(false);
-      }
-
-      resetQuestionForm();
-      fetchData();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Gagal menyimpan soal');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteQuestion = async () => {
-    if (deleteQuestionId === null) return;
-    try {
-      await quizAPI.deleteQuestion(deleteQuestionId);
-      toast.success('Soal berhasil dihapus');
-      fetchData();
-    } catch {
-      toast.error('Gagal menghapus soal');
-    } finally {
-      setDeleteQuestionId(null);
-    }
-  };
-
-  const openEditQuestion = (q: Question) => {
-    setEditingQuestion(q.id || null);
-    setNewQuestion({ ...q });
-    const existingImage = q.image ? `/storage/${q.image}` : null;
-    setImagePreview(existingImage);
-    setImageFile(null);
-    const optPreviews = (q.options || []).map(o => o.image ? `/storage/${o.image}` : null);
-    setOptionImagePreviews([...optPreviews, ...Array(4 - optPreviews.length).fill(null)]);
-    setOptionImageFiles([null, null, null, null]);
-    setIsEditModalOpen(true);
-  };
-
-  const handleBulkImport = async (importedQuestions: {
-    question_text: string;
-    question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
-    points: number;
-    passage?: string | null;
-    image?: string | File | null;
-    essay_keywords?: string[] | null;
-    options: { text: string; is_correct: boolean; image?: string | File | null }[];
-  }[]) => {
-    let successCount = 0;
-    let failCount = 0;
-
-    for (let i = 0; i < importedQuestions.length; i++) {
-      const q = importedQuestions[i];
-      try {
-        const formData = new FormData();
-        formData.append('question_text', q.question_text);
-        formData.append('question_type', q.question_type);
-        formData.append('points', String(q.points));
-        formData.append('order', String(questions.length + successCount + 1));
-
-        if (q.passage) {
-          formData.append('passage', q.passage);
-        }
-        // Handle image: File object (from Word import) or string path (from duplication)
-        if (q.image instanceof File) {
-          formData.append('image', q.image);
-        } else if (q.image) {
-          formData.append('image_path', q.image);
-        }
-        if (q.question_type === 'essay' && q.essay_keywords && q.essay_keywords.length > 0) {
-          q.essay_keywords.forEach((kw, idx) => {
-            formData.append(`essay_keywords[${idx}]`, kw);
-          });
-        }
-
-        if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') {
-          q.options.forEach((opt, idx) => {
-            formData.append(`options[${idx}][option_text]`, opt.text);
-            formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
-            formData.append(`options[${idx}][order]`, String(idx + 1));
-            // Handle option image: File or string path
-            if (opt.image instanceof File) {
-              formData.append(`options[${idx}][image]`, opt.image);
-            } else if (opt.image) {
-              formData.append(`options[${idx}][image_path]`, opt.image);
-            }
-          });
-        }
-
-        await api.post(`/quizzes/${quizId}/questions`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        successCount++;
-      } catch {
-        failCount++;
-      }
-    }
-
-    await fetchData();
-    if (failCount === 0) {
-      toast.success(`${successCount} soal berhasil diimpor`);
-    } else {
-      toast.warning(`${successCount} soal berhasil, ${failCount} gagal diimpor`);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (!quiz) return;
-    try {
-      await quizAPI.publish(quiz.id);
-      toast.success(quiz.status === 'draft' ? 'Quiz berhasil dipublish' : 'Quiz dikembalikan ke draft');
-      fetchData();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Gagal mengubah status');
-    }
-  };
-
-  // Question form component
-  const QuestionForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+function QuestionForm({
+  newQuestion,
+  setNewQuestion,
+  imagePreview,
+  setImagePreview,
+  setImageFile,
+  optionImagePreviews,
+  setOptionImagePreviews,
+  optionImageFiles,
+  setOptionImageFiles,
+  fileInputRef,
+  optionFileInputRefs,
+}: QuestionFormProps) {
+  return (
     <div className="space-y-4">
       {/* Question type */}
       <div>
@@ -565,6 +301,373 @@ export default function EditQuizPage() {
       )}
     </div>
   );
+}
+
+export default function EditQuizPage() {
+  const params = useParams();
+  const router = useRouter();
+  const toast = useToast();
+  const quizId = Number(params.id);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [quiz, setQuiz] = useState<QuizData | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
+  const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [optionImageFiles, setOptionImageFiles] = useState<(File | null)[]>([null, null, null, null]);
+  const [optionImagePreviews, setOptionImagePreviews] = useState<(string | null)[]>([null, null, null, null]);
+  const optionFileInputRefs = React.useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
+
+  // Import modals
+  const [showImportMenu, setShowImportMenu] = useState(false);
+  const [showImportText, setShowImportText] = useState(false);
+  const [showImportBankSoal, setShowImportBankSoal] = useState(false);
+  const [showImportExcel, setShowImportExcel] = useState(false);
+  const [showImportWord, setShowImportWord] = useState(false);
+  const importMenuRef = React.useRef<HTMLDivElement>(null);
+
+  const [newQuestion, setNewQuestion] = useState<Question>({
+    question_text: '',
+    passage: '',
+    question_type: 'multiple_choice',
+    points: 10,
+    order: 0,
+    essay_keywords: [],
+    options: [
+      { text: '', is_correct: true },
+      { text: '', is_correct: false },
+      { text: '', is_correct: false },
+      { text: '', is_correct: false },
+    ],
+  });
+
+  useEffect(() => { fetchData(); }, [quizId]);
+
+  // Close import menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setShowImportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const res = await quizAPI.getById(quizId);
+      const data = res.data?.data;
+      if (data) {
+        setQuiz({
+          id: data.id,
+          title: data.title,
+          subject: data.subject,
+          classes: data.classes || [],
+          duration: data.duration,
+          status: data.status,
+          total_questions: data.total_questions,
+          show_result: data.show_result,
+          passing_score: data.passing_score,
+          shuffle_questions: data.shuffle_questions,
+          shuffle_options: data.shuffle_options,
+        });
+
+        const qs = (data.questions || []).map((q: Record<string, unknown>) => ({
+          id: q.id as number,
+          question_text: q.question_text as string,
+          question_type: (q.type || q.question_type || 'multiple_choice') as Question['question_type'],
+          points: (q.points as number) || 10,
+          order: (q.order as number) || 0,
+          passage: q.passage as string | null,
+          image: q.image as string | null,
+          options: ((q.options || []) as { text: string; is_correct?: boolean; image?: string | null }[]).map((o, i) => ({
+            text: o.text || '',
+            is_correct: q.type === 'multiple_choice'
+              ? o.text === q.correct_answer
+              : q.type === 'multiple_answer'
+              ? (() => { try { const ca = JSON.parse(q.correct_answer as string); return Array.isArray(ca) && ca.map((s: string) => s.toLowerCase()).includes(o.text.toLowerCase()); } catch { return false; } })()
+              : i === 0,
+            image: o.image || null,
+          })),
+          essay_keywords: (q.essay_keywords as string[]) || [],
+        }));
+        setQuestions(qs);
+      }
+    } catch {
+      toast.error('Gagal memuat quiz');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetQuestionForm = () => {
+    setNewQuestion({
+      question_text: '',
+      passage: '',
+      question_type: 'multiple_choice',
+      points: 10,
+      order: 0,
+      essay_keywords: [],
+      options: [
+        { text: '', is_correct: true },
+        { text: '', is_correct: false },
+        { text: '', is_correct: false },
+        { text: '', is_correct: false },
+      ],
+    });
+    setImageFile(null);
+    setImagePreview(null);
+    setOptionImageFiles([null, null, null, null]);
+    setOptionImagePreviews([null, null, null, null]);
+  };
+
+  const handleSaveQuestion = async (isEdit = false) => {
+    if (!newQuestion.question_text.trim()) {
+      toast.warning('Teks soal wajib diisi');
+      return;
+    }
+
+    const needsOptions = ['multiple_choice', 'multiple_answer'].includes(newQuestion.question_type);
+    if (needsOptions) {
+      const hasCorrect = newQuestion.options.some(o => o.is_correct);
+      if (!hasCorrect) { toast.warning('Pilih minimal 1 jawaban benar'); return; }
+      const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !opt.image && !optionImageFiles[idx] && !optionImagePreviews[idx]);
+      if (hasEmptyOption) {
+        toast.warning('Semua opsi harus diisi teks atau gambar');
+        return;
+      }
+      if (newQuestion.question_type === 'multiple_answer') {
+        const correctCount = newQuestion.options.filter(opt => opt.is_correct).length;
+        if (correctCount < 2) {
+          toast.warning('Pilihan ganda kompleks harus memiliki minimal 2 jawaban benar');
+          return;
+        }
+      }
+    }
+
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('question_text', newQuestion.question_text);
+      formData.append('question_type', newQuestion.question_type);
+      formData.append('points', String(newQuestion.points));
+      formData.append('order', String(newQuestion.order || questions.length + 1));
+      formData.append('passage', newQuestion.passage?.trim() || '');
+
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+
+      // Handle image removal for edit mode
+      if (isEdit && !imagePreview && !imageFile) {
+        formData.append('remove_image', '1');
+      }
+
+      if (needsOptions) {
+        newQuestion.options.forEach((opt, idx) => {
+          const hasImage = optionImageFiles[idx] || optionImagePreviews[idx] || opt.image;
+          const optText = opt.text.trim() || (hasImage ? `[Gambar ${String.fromCharCode(65 + idx)}]` : '');
+          formData.append(`options[${idx}][option_text]`, optText);
+          formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+          formData.append(`options[${idx}][order]`, String(idx + 1));
+          if (optionImageFiles[idx]) {
+            formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
+          } else if (opt.image) {
+            formData.append(`options[${idx}][existing_image]`, opt.image);
+          }
+          // Handle option image removal
+          if (isEdit && !optionImagePreviews[idx] && !optionImageFiles[idx] && opt.image) {
+            formData.append(`options[${idx}][remove_image]`, '1');
+          }
+        });
+      }
+
+      if (newQuestion.question_type === 'essay' && newQuestion.essay_keywords?.length) {
+        newQuestion.essay_keywords.forEach((kw, i) => {
+          formData.append(`essay_keywords[${i}]`, kw);
+        });
+      } else if (newQuestion.question_type === 'essay') {
+        formData.append('essay_keywords', '');
+      }
+
+      if (isEdit && editingQuestion !== null) {
+        await quizAPI.updateQuestion(editingQuestion, formData);
+        
+        // Optimistic update - immediately update local state
+        setQuestions(prev => prev.map(q => 
+          q.id === editingQuestion 
+            ? { 
+                ...q, 
+                question_text: newQuestion.question_text,
+                question_type: newQuestion.question_type,
+                points: newQuestion.points,
+                passage: newQuestion.passage || null,
+                essay_keywords: newQuestion.essay_keywords || [],
+                options: newQuestion.options.map((opt, idx) => ({
+                  ...opt,
+                  text: opt.text,
+                  is_correct: opt.is_correct,
+                  image: optionImagePreviews[idx] ? (opt.image || optionImagePreviews[idx]) : opt.image,
+                })),
+              } 
+            : q
+        ));
+        
+        toast.success('Soal berhasil diperbarui');
+        setIsEditModalOpen(false);
+        setEditingQuestion(null);
+        resetQuestionForm();
+        
+        // Background sync with server
+        fetchData();
+      } else {
+        await quizAPI.addQuestion(quizId, formData);
+        toast.success('Soal berhasil ditambahkan');
+        setIsAddModalOpen(false);
+        resetQuestionForm();
+        fetchData();
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal menyimpan soal');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteQuestion = async () => {
+    if (deleteQuestionId === null) return;
+    try {
+      await quizAPI.deleteQuestion(deleteQuestionId);
+      // Optimistic update - remove from local state immediately
+      const remaining = questions
+        .filter(q => q.id !== deleteQuestionId)
+        .map((q, idx) => ({ ...q, order: idx + 1 }));
+      setQuestions(remaining);
+      toast.success('Soal berhasil dihapus');
+    } catch {
+      toast.error('Gagal menghapus soal');
+      // Revert by fetching from server
+      fetchData();
+    } finally {
+      setDeleteQuestionId(null);
+    }
+  };
+
+  const openEditQuestion = (q: Question) => {
+    setEditingQuestion(q.id || null);
+    setNewQuestion({ ...q });
+    const existingImage = q.image ? `/storage/${q.image}` : null;
+    setImagePreview(existingImage);
+    setImageFile(null);
+    const optPreviews = (q.options || []).map(o => o.image ? `/storage/${o.image}` : null);
+    setOptionImagePreviews([...optPreviews, ...Array(4 - optPreviews.length).fill(null)]);
+    setOptionImageFiles([null, null, null, null]);
+    setIsEditModalOpen(true);
+  };
+
+  const handleBulkImport = async (importedQuestions: {
+    question_text: string;
+    question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
+    points: number;
+    passage?: string | null;
+    image?: string | File | null;
+    essay_keywords?: string[] | null;
+    options: { text: string; is_correct: boolean; image?: string | File | null }[];
+  }[]) => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < importedQuestions.length; i++) {
+      const q = importedQuestions[i];
+      try {
+        const formData = new FormData();
+        formData.append('question_text', q.question_text);
+        formData.append('question_type', q.question_type);
+        formData.append('points', String(q.points));
+        formData.append('order', String(questions.length + successCount + 1));
+
+        if (q.passage) {
+          formData.append('passage', q.passage);
+        }
+        // Handle image: File object (from Word import) or string path (from duplication)
+        if (q.image instanceof File) {
+          formData.append('image', q.image);
+        } else if (q.image) {
+          formData.append('image_path', q.image);
+        }
+        if (q.question_type === 'essay' && q.essay_keywords && q.essay_keywords.length > 0) {
+          q.essay_keywords.forEach((kw, idx) => {
+            formData.append(`essay_keywords[${idx}]`, kw);
+          });
+        }
+
+        if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') {
+          q.options.forEach((opt, idx) => {
+            formData.append(`options[${idx}][option_text]`, opt.text);
+            formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+            formData.append(`options[${idx}][order]`, String(idx + 1));
+            // Handle option image: File or string path
+            if (opt.image instanceof File) {
+              formData.append(`options[${idx}][image]`, opt.image);
+            } else if (opt.image) {
+              formData.append(`options[${idx}][image_path]`, opt.image);
+            }
+          });
+        }
+
+        await api.post(`/quizzes/${quizId}/questions`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    await fetchData();
+    if (failCount === 0) {
+      toast.success(`${successCount} soal berhasil diimpor`);
+    } else {
+      toast.warning(`${successCount} soal berhasil, ${failCount} gagal diimpor`);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!quiz) return;
+    try {
+      await quizAPI.publish(quiz.id);
+      toast.success(quiz.status === 'draft' ? 'Quiz berhasil dipublish' : 'Quiz dikembalikan ke draft');
+      fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal mengubah status');
+    }
+  };
+
+  // Prepare props for QuestionForm
+  const questionFormProps: QuestionFormProps = {
+    newQuestion,
+    setNewQuestion,
+    imagePreview,
+    setImagePreview,
+    imageFile,
+    setImageFile,
+    optionImagePreviews,
+    setOptionImagePreviews,
+    optionImageFiles,
+    setOptionImageFiles,
+    fileInputRef,
+    optionFileInputRefs,
+  };
 
   if (loading) {
     return (
@@ -733,7 +836,7 @@ export default function EditQuizPage() {
 
       {/* Add Question Modal */}
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Tambah Soal" size="lg">
-        <QuestionForm />
+        <QuestionForm {...questionFormProps} />
         <div className="flex justify-end gap-3 mt-4 pt-3 border-t dark:border-slate-700">
           <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Batal</Button>
           <Button onClick={() => handleSaveQuestion(false)} disabled={saving}>
@@ -745,7 +848,7 @@ export default function EditQuizPage() {
 
       {/* Edit Question Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Soal" size="lg">
-        <QuestionForm isEdit />
+        <QuestionForm {...questionFormProps} />
         <div className="flex justify-end gap-3 mt-4 pt-3 border-t dark:border-slate-700">
           <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Batal</Button>
           <Button onClick={() => handleSaveQuestion(true)} disabled={saving}>
