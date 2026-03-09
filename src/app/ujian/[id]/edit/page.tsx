@@ -438,21 +438,34 @@ export default function EditSoalPage() {
       const formData = new FormData();
       const q = questions.find(q => q.id === questionId);
       if (!q) return;
+      formData.append('_method', 'PUT');
       formData.append('question_text', q.question_text);
       formData.append('question_type', q.question_type);
       formData.append('points', String(newPoints));
       formData.append('order', String(q.order));
-      if (q.question_type === 'multiple_choice') {
+      if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_answer') {
         q.options.forEach((opt, idx) => {
           formData.append(`options[${idx}][option_text]`, opt.text);
           formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
           formData.append(`options[${idx}][order]`, String(idx + 1));
+          if (opt.image) {
+            formData.append(`options[${idx}][existing_image]`, opt.image);
+          }
         });
+      }
+      if (q.question_type === 'essay' && q.essay_keywords && q.essay_keywords.length > 0) {
+        q.essay_keywords.forEach((kw, idx) => {
+          formData.append(`essay_keywords[${idx}]`, kw);
+        });
+      }
+      if (q.passage) {
+        formData.append('passage', q.passage);
       }
       await api.post(`/questions/${questionId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, points: newPoints } : q));
+      toast.success('Poin soal berhasil diubah');
     } catch {
       toast.error('Gagal mengubah poin soal');
     }
@@ -582,6 +595,7 @@ export default function EditSoalPage() {
       formData.append('question_text', newQuestion.question_text);
       formData.append('question_type', newQuestion.question_type);
       formData.append('points', String(newQuestion.points));
+      formData.append('order', String(newQuestion.order));
       formData.append('passage', newQuestion.passage?.trim() || '');
       formData.append('_method', 'PUT');
 
