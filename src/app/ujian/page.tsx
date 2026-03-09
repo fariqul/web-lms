@@ -36,6 +36,7 @@ interface Exam {
 interface ClassOption {
   value: string;
   label: string;
+  grade_level?: string;
 }
 
 const subjects = SUBJECT_OPTIONS;
@@ -100,9 +101,10 @@ export default function UjianPage() {
       const classesRes = await classAPI.getAll();
       const classesData = classesRes.data?.data || [];
       setClasses(
-        classesData.map((c: { id: number; name: string }) => ({
+        classesData.map((c: { id: number; name: string; grade_level?: string }) => ({
           value: c.id.toString(),
           label: c.name,
+          grade_level: c.grade_level,
         }))
       );
 
@@ -487,7 +489,7 @@ export default function UjianPage() {
               <p className="text-sm text-slate-500">Memuat kelas...</p>
             ) : (
               <>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -501,9 +503,41 @@ export default function UjianPage() {
                   >
                     {formData.class_ids.length === classes.length ? 'Hapus Semua' : 'Pilih Semua'}
                   </button>
+                  <span className="text-slate-300 dark:text-slate-600">|</span>
+                  {['X', 'XI', 'XII'].map((grade) => {
+                    const gradeClasses = classes.filter(c => c.grade_level === grade);
+                    const allGradeSelected = gradeClasses.length > 0 && gradeClasses.every(c => formData.class_ids.includes(c.value));
+                    if (gradeClasses.length === 0) return null;
+                    return (
+                      <button
+                        key={grade}
+                        type="button"
+                        onClick={() => {
+                          if (allGradeSelected) {
+                            // Deselect all classes of this grade
+                            setFormData({
+                              ...formData,
+                              class_ids: formData.class_ids.filter(id => !gradeClasses.some(c => c.value === id))
+                            });
+                          } else {
+                            // Select all classes of this grade (add to existing selection)
+                            const newIds = new Set([...formData.class_ids, ...gradeClasses.map(c => c.value)]);
+                            setFormData({ ...formData, class_ids: Array.from(newIds) });
+                          }
+                        }}
+                        className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
+                          allGradeSelected
+                            ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-700'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        {allGradeSelected ? '✓ ' : ''}Kelas {grade}
+                      </button>
+                    );
+                  })}
                   {formData.class_ids.length > 0 && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {formData.class_ids.length} kelas dipilih
+                    <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">
+                      ({formData.class_ids.length} kelas dipilih)
                     </span>
                   )}
                 </div>

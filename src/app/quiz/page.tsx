@@ -17,7 +17,7 @@ export default function QuizPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [quizzes, setQuizzes] = useState<Exam[]>([]);
-  const [classes, setClasses] = useState<{ value: string; label: string }[]>([]);
+  const [classes, setClasses] = useState<{ value: string; label: string; grade_level?: string }[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteQuiz, setDeleteQuiz] = useState<{ id: number; title: string } | null>(null);
@@ -43,9 +43,10 @@ export default function QuizPage() {
         quizAPI.getAll(),
       ]);
       setClasses(
-        (classRes.data?.data || []).map((c: { id: number; name: string }) => ({
+        (classRes.data?.data || []).map((c: { id: number; name: string; grade_level?: string }) => ({
           value: c.id.toString(),
           label: c.name,
+          grade_level: c.grade_level,
         }))
       );
       const raw = quizRes.data?.data;
@@ -313,6 +314,48 @@ export default function QuizPage() {
           />
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kelas</label>
+            {/* Grade Level Selection Buttons */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(['X', 'XI', 'XII'] as const).map((grade) => {
+                const gradeClasses = classes.filter(c => c.grade_level === grade);
+                const allSelected = gradeClasses.length > 0 && gradeClasses.every(c => form.class_ids.includes(c.value));
+                return (
+                  <button
+                    key={grade}
+                    type="button"
+                    onClick={() => {
+                      const gradeClassIds = gradeClasses.map(c => c.value);
+                      if (allSelected) {
+                        setForm(f => ({
+                          ...f,
+                          class_ids: f.class_ids.filter(id => !gradeClassIds.includes(id)),
+                        }));
+                      } else {
+                        setForm(f => ({
+                          ...f,
+                          class_ids: [...new Set([...f.class_ids, ...gradeClassIds])],
+                        }));
+                      }
+                    }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors flex items-center gap-1.5 ${
+                      allSelected
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                    disabled={gradeClasses.length === 0}
+                  >
+                    {allSelected && <CheckCircle className="w-3.5 h-3.5" />}
+                    Kelas {grade}
+                    <span className="text-xs opacity-70">({gradeClasses.length})</span>
+                  </button>
+                );
+              })}
+              {form.class_ids.length > 0 && (
+                <span className="px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400">
+                  {form.class_ids.length} kelas dipilih
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
               {classes.map(c => (
                 <label key={c.value} className="flex items-center gap-2 text-sm cursor-pointer">
