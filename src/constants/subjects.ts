@@ -13,6 +13,7 @@ export const SUBJECT_LIST = [
   'Kimia',
   'Biologi',
   'Sejarah',
+  'Sejarah Tingkat Lanjut',
   'Sosiologi',
   'Ekonomi',
   'Geografi',
@@ -22,10 +23,7 @@ export const SUBJECT_LIST = [
   'Pendidikan Agama Islam',
   'Pendidikan Agama Kristen',
   'PJOK',
-  'IPA',
-  'Prakarya',
-  'Kewirausahaan',
-  'Pengetahuan Umum',
+  'Prakarya dan Kewirausahaan',
 ] as const;
 
 export type SubjectName = typeof SUBJECT_LIST[number];

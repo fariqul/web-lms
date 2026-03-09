@@ -7,8 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { bankQuestionAPI } from '@/services/api';
 
 const TRIVIA_CATEGORIES = [
-  { id: 9, name: 'Pengetahuan Umum', subject: 'Pengetahuan Umum' },
-  { id: 17, name: 'Sains & Alam', subject: 'IPA' },
+  { id: 17, name: 'Sains & Alam', subject: 'Biologi' },
   { id: 18, name: 'Komputer', subject: 'Informatika' },
   { id: 19, name: 'Matematika', subject: 'Matematika' },
   { id: 22, name: 'Geografi', subject: 'Geografi' },

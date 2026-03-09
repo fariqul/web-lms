@@ -41,6 +41,7 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor:
   'Kimia': { icon: FlaskConical, color: 'bg-orange-100', iconColor: 'text-orange-500' },
   'Biologi': { icon: Microscope, color: 'bg-green-100', iconColor: 'text-green-500' },
   'Sejarah': { icon: Landmark, color: 'bg-amber-100', iconColor: 'text-orange-500' },
+  'Sejarah Tingkat Lanjut': { icon: Landmark, color: 'bg-amber-50', iconColor: 'text-amber-600' },
   'Sosiologi': { icon: Users, color: 'bg-yellow-100', iconColor: 'text-yellow-600' },
   'Ekonomi': { icon: Coins, color: 'bg-emerald-100', iconColor: 'text-emerald-500' },
   'Geografi': { icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
@@ -50,10 +51,7 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor:
   'Pendidikan Agama Islam': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
   'Pendidikan Agama Kristen': { icon: BookOpen, color: 'bg-violet-50', iconColor: 'text-violet-400' },
   'PJOK': { icon: Target, color: 'bg-lime-100', iconColor: 'text-lime-600' },
-  'IPA': { icon: Microscope, color: 'bg-sky-100', iconColor: 'text-sky-500' },
-  'Prakarya': { icon: GraduationCap, color: 'bg-teal-100', iconColor: 'text-teal-500' },
-  'Kewirausahaan': { icon: Coins, color: 'bg-amber-50', iconColor: 'text-amber-500' },
-  'Pengetahuan Umum': { icon: BookOpen, color: 'bg-slate-100', iconColor: 'text-slate-600 dark:text-slate-400' },
+  'Prakarya dan Kewirausahaan': { icon: GraduationCap, color: 'bg-teal-100', iconColor: 'text-teal-500' },
 };
 
 const SUBJECTS = SUBJECT_LIST.map(name => ({

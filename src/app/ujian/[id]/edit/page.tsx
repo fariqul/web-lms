@@ -31,6 +31,7 @@ import {
   Lock,
   Shuffle,
   Users,
+  Pencil,
 } from 'lucide-react';
 import api, { getSecureFileUrl, classAPI } from '@/services/api';
 import { bankQuestionAPI } from '@/services/api';
@@ -131,6 +132,9 @@ export default function EditSoalPage() {
   const [savingSeb, setSavingSeb] = useState(false);
   const [savingShuffle, setSavingShuffle] = useState(false);
   const [savingDuration, setSavingDuration] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
   const [showExportBankSoal, setShowExportBankSoal] = useState(false);
   const [exportingBankSoal, setExportingBankSoal] = useState(false);
   const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
@@ -905,6 +909,36 @@ export default function EditSoalPage() {
     }
   };
 
+  const handleSaveTitle = async () => {
+    if (!editTitle.trim()) {
+      toast.error('Judul ujian tidak boleh kosong');
+      return;
+    }
+    setSavingTitle(true);
+    try {
+      await api.put(`/exams/${examId}`, {
+        title: editTitle.trim(),
+      });
+      setExam(prev => prev ? { ...prev, title: editTitle.trim() } : null);
+      setIsEditingTitle(false);
+      toast.success('Judul ujian berhasil disimpan');
+    } catch {
+      toast.error('Gagal menyimpan judul ujian');
+    } finally {
+      setSavingTitle(false);
+    }
+  };
+
+  const handleStartEditTitle = () => {
+    setEditTitle(exam?.title || '');
+    setIsEditingTitle(true);
+  };
+
+  const handleCancelEditTitle = () => {
+    setIsEditingTitle(false);
+    setEditTitle('');
+  };
+
   const handleSaveShuffleSettings = async () => {
     setSavingShuffle(true);
     try {
@@ -1096,7 +1130,51 @@ export default function EditSoalPage() {
               Kembali
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{exam?.title}</h1>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTitle();
+                      if (e.key === 'Escape') handleCancelEditTitle();
+                    }}
+                    className="text-2xl font-bold text-slate-900 dark:text-white bg-transparent border-b-2 border-teal-500 focus:outline-none px-1"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveTitle}
+                    disabled={savingTitle}
+                    className="h-8"
+                  >
+                    {savingTitle ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCancelEditTitle}
+                    disabled={savingTitle}
+                    className="h-8"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{exam?.title}</h1>
+                  {canEdit && (
+                    <button
+                      onClick={handleStartEditTitle}
+                      className="p-1 text-slate-400 hover:text-teal-500 transition-colors"
+                      title="Edit judul"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
               <p className="text-slate-600 dark:text-slate-400">
                 {exam?.subject} • {exam?.classes && exam.classes.length > 0 ? exam.classes.map((c: { id: number; name: string }) => c.name).join(', ') : exam?.class_name} • {exam?.duration} menit
               </p>

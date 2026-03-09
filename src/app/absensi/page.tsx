@@ -38,6 +38,7 @@ const subjects = [
   { value: 'Kimia', label: 'Kimia' },
   { value: 'Biologi', label: 'Biologi' },
   { value: 'Sejarah', label: 'Sejarah' },
+  { value: 'Sejarah Tingkat Lanjut', label: 'Sejarah Tingkat Lanjut' },
   { value: 'Sosiologi', label: 'Sosiologi' },
   { value: 'Ekonomi', label: 'Ekonomi' },
   { value: 'Geografi', label: 'Geografi' },
@@ -47,10 +48,7 @@ const subjects = [
   { value: 'Pendidikan Agama Islam', label: 'Pendidikan Agama Islam' },
   { value: 'Pendidikan Agama Kristen', label: 'Pendidikan Agama Kristen' },
   { value: 'PJOK', label: 'PJOK' },
-  { value: 'IPA', label: 'IPA' },
-  { value: 'Prakarya', label: 'Prakarya' },
-  { value: 'Kewirausahaan', label: 'Kewirausahaan' },
-  { value: 'Pengetahuan Umum', label: 'Pengetahuan Umum' },
+  { value: 'Prakarya dan Kewirausahaan', label: 'Prakarya dan Kewirausahaan' },
 ];
 
 export default function AbsensiPage() {
