@@ -79,11 +79,13 @@ export default function QuizTakingPage() {
       const data = response.data?.data;
 
       if (data) {
+        // Backend returns 'quiz' object (not 'exam') and 'text' field (not 'question_text')
+        const quizData = data.quiz || data.exam;
         const qs: Question[] = (data.questions || []).map((q: Record<string, unknown>, idx: number) => ({
           id: q.id as number,
-          number: idx + 1,
+          number: (q.number as number) || idx + 1,
           type: (q.question_type || q.type) as Question['type'],
-          text: q.question_text as string,
+          text: (q.text || q.question_text) as string,
           passage: q.passage as string | null,
           options: ((q.options || []) as (string | { text: string; image?: string | null })[]).map(
             (opt) => typeof opt === 'string' ? { text: opt, image: null } : { text: opt.text || '', image: opt.image || null }
@@ -92,23 +94,25 @@ export default function QuizTakingPage() {
         }));
 
         setQuiz({
-          id: data.exam?.id || quizId,
-          title: data.exam?.title || '',
-          subject: data.exam?.subject || '',
-          duration: data.exam?.duration || 60,
-          totalQuestions: qs.length,
+          id: quizData?.id || quizId,
+          title: quizData?.title || '',
+          subject: quizData?.subject || '',
+          duration: quizData?.duration || 60,
+          totalQuestions: quizData?.totalQuestions || qs.length,
           questions: qs,
-          show_result: data.exam?.show_result,
+          show_result: quizData?.show_result,
         });
         setQuestions(qs);
-        setTimeRemaining((data.remaining_time || (data.exam?.duration || 60) * 60));
+        // Backend returns 'remainingTime' (not 'remaining_time')
+        setTimeRemaining(data.remainingTime || data.remaining_time || (quizData?.duration || 60) * 60);
         setIsStarted(true);
         sessionStorage.setItem(`quiz_active_${quizId}`, '1');
 
-        // Restore saved answers
-        if (data.saved_answers && typeof data.saved_answers === 'object') {
+        // Restore saved answers - backend returns 'answers' (not 'saved_answers')
+        const savedAnswers = data.answers || data.saved_answers;
+        if (savedAnswers && typeof savedAnswers === 'object') {
           const restored: Record<number, string> = {};
-          Object.entries(data.saved_answers as Record<string, string>).forEach(([qId, ans]) => {
+          Object.entries(savedAnswers as Record<string, string>).forEach(([qId, ans]) => {
             restored[Number(qId)] = ans;
           });
           setAnswers(restored);
