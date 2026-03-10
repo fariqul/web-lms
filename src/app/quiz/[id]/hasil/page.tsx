@@ -7,9 +7,10 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
 import {
   ArrowLeft, Users, TrendingUp, TrendingDown, Loader2, Search, Eye,
-  BarChart3, FileText, ClipboardList, MessageSquare, AlertCircle,
+  BarChart3, FileText, ClipboardList, MessageSquare, AlertCircle, Download, FileSpreadsheet,
 } from 'lucide-react';
-import { quizAPI } from '@/services/api';
+import { quizAPI, exportAPI } from '@/services/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface StudentResult {
   id: number;
@@ -62,6 +63,7 @@ interface QuizInfo {
 export default function QuizResultsPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const quizId = Number(params.id);
 
   const [loading, setLoading] = useState(true);
@@ -72,6 +74,7 @@ export default function QuizResultsPage() {
   const [sortBy, setSortBy] = useState<'rank' | 'name'>('rank');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterClass, setFilterClass] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -221,6 +224,65 @@ export default function QuizResultsPage() {
                 {quizInfo ? `${quizInfo.title} — ${quizInfo.subject}` : 'Lihat hasil quiz seluruh siswa'}
               </p>
             </div>
+          </div>
+          {/* Export Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                setExporting(true);
+                try {
+                  const res = await exportAPI.exportQuizResults(quizId, { format: 'xlsx' });
+                  const url = window.URL.createObjectURL(new Blob([res.data]));
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', `Hasil_Quiz_${quizInfo?.title || quizId}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('Export Excel berhasil');
+                } catch {
+                  toast.error('Gagal export Excel');
+                } finally {
+                  setExporting(false);
+                }
+              }}
+              disabled={exporting || results.length === 0}
+              className="gap-1.5"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                setExporting(true);
+                try {
+                  const res = await exportAPI.exportQuizResults(quizId, { format: 'pdf' });
+                  const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', `Hasil_Quiz_${quizInfo?.title || quizId}_${new Date().toISOString().split('T')[0]}.pdf`);
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('Export PDF berhasil');
+                } catch {
+                  toast.error('Gagal export PDF');
+                } finally {
+                  setExporting(false);
+                }
+              }}
+              disabled={exporting || results.length === 0}
+              className="gap-1.5"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              PDF
+            </Button>
           </div>
         </div>
 

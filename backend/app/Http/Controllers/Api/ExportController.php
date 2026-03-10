@@ -843,4 +843,426 @@ class ExportController extends Controller
         ];
         return $months[$month] ?? '';
     }
+
+    // =========================================
+    // QUIZ RESULTS
+    // GET /api/export/quiz-results/{quizId}
+    // =========================================
+    public function quizResults(Request $request, int $quizId)
+    {
+        $request->validate([
+            'format' => 'required|in:xlsx,pdf',
+        ]);
+
+        try {
+            $format = $request->input('format');
+            $quiz = Exam::where('type', 'quiz')->with(['classRoom', 'classes:id,name'])->findOrFail($quizId);
+            $results = $quiz->results()
+                ->with(['student:id,name,nisn,nomor_tes,class_id', 'student.classRoom:id,name'])
+                ->join('users', 'users.id', '=', 'exam_results.student_id')
+                ->orderByRaw('users.name ASC')
+                ->select('exam_results.*')
+                ->get();
+
+            // Load answers per student
+            $allAnswers = \App\Models\Answer::where('exam_id', $quiz->id)
+                ->with('question:id,type,points')
+                ->get()
+                ->groupBy('student_id');
+
+            // Attach answers to each result
+            foreach ($results as $result) {
+                $result->setRelation('studentAnswers', $allAnswers->get($result->student_id, collect()));
+            }
+
+            $className = $quiz->classes->count() > 0
+                ? $quiz->classes->pluck('name')->join(', ')
+                : ($quiz->classRoom->name ?? '-');
+
+            // Count total MC questions for this quiz
+            $totalMcQuestions = $quiz->questions()->where('type', '!=', 'essay')->count();
+
+            // Get all students from quiz's classes (including those who didn't take the quiz)
+            $classIds = $quiz->classes->pluck('id')->toArray();
+            if ($quiz->class_id && !in_array($quiz->class_id, $classIds)) {
+                $classIds[] = $quiz->class_id;
+            }
+            $allClassStudents = \App\Models\User::where('role', 'siswa')
+                ->whereIn('class_id', $classIds)
+                ->with('classRoom:id,name')
+                ->orderBy('name')
+                ->get(['id', 'name', 'nisn', 'nomor_tes', 'class_id']);
+
+            $resultStudentIds = $results->pluck('student_id')->toArray();
+            $missingStudents = $allClassStudents->filter(fn($s) => !in_array($s->id, $resultStudentIds));
+
+            if ($format === 'xlsx') {
+                return $this->generateQuizResultsExcel($quiz, $results, $className, $totalMcQuestions, $missingStudents);
+            }
+
+            return $this->generateQuizResultsPdf($quiz, $results, $className, $totalMcQuestions, $missingStudents);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[Export] quizResults failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Export gagal: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate quiz results XLSX.
+     */
+    private function generateQuizResultsExcel(Exam $quiz, $results, string $className, int $totalMcQuestions = 0, $missingStudents = null)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Hasil Quiz');
+
+        // --- Info header (rows 1-3) ---
+        $sheet->mergeCells('A1:J1');
+        $sheet->setCellValue('A1', 'Hasil Quiz: ' . $quiz->title);
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->mergeCells('A2:J2');
+        $sheet->setCellValue('A2', 'Mata Pelajaran: ' . ($quiz->subject ?? '-') . '  |  Kelas: ' . $className . '  |  Durasi: ' . $quiz->duration . ' menit');
+        $sheet->getStyle('A2')->getFont()->setSize(11)->setItalic(true);
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->mergeCells('A3:J3');
+        $sheet->setCellValue('A3', 'Diekspor: ' . now()->format('d/m/Y H:i'));
+        $sheet->getStyle('A3')->getFont()->setSize(9)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF666666'));
+        $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        // --- Column headers (row 5) ---
+        $headerRow = 5;
+        $headers = ['No', 'Nama Siswa', 'NIS', 'Kelas', 'Benar', 'Salah', 'Nilai Essay', 'Nilai Total', 'Persentase', 'Status'];
+        $cols = range('A', 'J');
+
+        foreach ($headers as $idx => $header) {
+            $cell = $cols[$idx] . $headerRow;
+            $sheet->setCellValue($cell, $header);
+        }
+
+        // Header styling - purple fill for quiz
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '7C3AED']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $sheet->getStyle("A{$headerRow}:J{$headerRow}")->applyFromArray($headerStyle);
+
+        // --- Data rows ---
+        $dataRow = $headerRow + 1;
+        $totalScore = 0;
+        $passCount = 0;
+        $passingScore = $quiz->passing_score ?? 75;
+
+        foreach ($results as $i => $result) {
+            $row = $dataRow + $i;
+
+            // Count correct/wrong from answers and essay scores
+            $correct = 0;
+            $wrong = 0;
+            $hasEssay = false;
+            $essayScore = 0;
+            $essayMaxScore = 0;
+
+            if ($result->studentAnswers) {
+                foreach ($result->studentAnswers as $answer) {
+                    $qType = $answer->question->type ?? 'multiple_choice';
+                    if ($qType === 'essay') {
+                        $hasEssay = true;
+                        $essayMaxScore += ($answer->question->points ?? 0);
+                        if ($answer->score !== null) {
+                            $essayScore += $answer->score;
+                        }
+                    } else {
+                        if ($answer->is_correct) {
+                            $correct++;
+                        } else {
+                            $wrong++;
+                        }
+                    }
+                }
+            }
+
+            $pct = $result->max_score > 0 ? round(($result->total_score / $result->max_score) * 100, 2) : 0;
+            $status = $pct >= $passingScore ? 'Lulus' : 'Tidak Lulus';
+
+            // Nilai essay display
+            $nilaiEssay = $hasEssay ? $essayScore . '/' . $essayMaxScore : '-';
+
+            $sheet->setCellValue('A' . $row, $i + 1);
+            $sheet->setCellValue('B' . $row, $result->student->name ?? '-');
+            $sheet->setCellValue('C' . $row, $result->student->nisn ?? '-');
+            $sheet->setCellValue('D' . $row, $result->student->classRoom->name ?? '-');
+            $sheet->setCellValue('E' . $row, $correct);
+            $sheet->setCellValue('F' . $row, $wrong);
+            $sheet->setCellValue('G' . $row, $nilaiEssay);
+            $sheet->setCellValue('H' . $row, $result->total_score . '/' . ($result->max_score ?? 100));
+            $sheet->setCellValue('I' . $row, $pct . '%');
+            $sheet->setCellValue('J' . $row, $status);
+
+            // Status color
+            $statusColor = $status === 'Lulus' ? '27AE60' : 'E74C3C';
+            $sheet->getStyle('J' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF' . $statusColor));
+            $sheet->getStyle('J' . $row)->getFont()->setBold(true);
+
+            // Alternating row color
+            if ($i % 2 === 1) {
+                $sheet->getStyle("A{$row}:J{$row}")->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('F5F3FF');
+            }
+
+            $totalScore += $pct;
+            if ($status === 'Lulus') $passCount++;
+        }
+
+        // Add rows for students who didn't take the quiz
+        $missingCount = 0;
+        if ($missingStudents && $missingStudents->count() > 0) {
+            $missingCount = $missingStudents->count();
+            foreach ($missingStudents->values() as $j => $student) {
+                $row = $dataRow + count($results) + $j;
+                $idx = count($results) + $j;
+                $sheet->setCellValue('A' . $row, $idx + 1);
+                $sheet->setCellValue('B' . $row, $student->name ?? '-');
+                $sheet->setCellValue('C' . $row, $student->nisn ?? '-');
+                $sheet->setCellValue('D' . $row, $student->classRoom->name ?? '-');
+                $sheet->setCellValue('E' . $row, '-');
+                $sheet->setCellValue('F' . $row, '-');
+                $sheet->setCellValue('G' . $row, '-');
+                $sheet->setCellValue('H' . $row, '-');
+                $sheet->setCellValue('I' . $row, '-');
+                $sheet->setCellValue('J' . $row, 'Tidak Mengerjakan');
+
+                // Status color - orange for not attempted
+                $sheet->getStyle('J' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFFF8C00'));
+                $sheet->getStyle('J' . $row)->getFont()->setBold(true);
+
+                if ($idx % 2 === 1) {
+                    $sheet->getStyle("A{$row}:J{$row}")->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('F5F3FF');
+                }
+            }
+        }
+
+        $totalRows = count($results) + $missingCount;
+        $lastDataRow = $dataRow + $totalRows - 1;
+
+        // Data borders
+        if ($totalRows > 0) {
+            $sheet->getStyle("A{$dataRow}:J{$lastDataRow}")->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            // Center columns
+            $sheet->getStyle("A{$dataRow}:A{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("D{$dataRow}:J{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+
+        // --- Summary section ---
+        $summaryRow = $lastDataRow + 2;
+        $tookQuizCount = count($results);
+        $count = $totalRows;
+        $avgScore = $tookQuizCount > 0 ? round($totalScore / $tookQuizCount, 2) : 0;
+        $failCount = $tookQuizCount - $passCount;
+
+        $summaryData = [
+            ['Total Siswa', $count],
+            ['Mengerjakan', $tookQuizCount],
+            ['Tidak Mengerjakan', $missingCount],
+            ['Rata-rata Nilai', $avgScore . '%'],
+            ['Lulus (≥' . $passingScore . '%)', $passCount],
+            ['Tidak Lulus', $failCount],
+            ['Persentase Kelulusan', $tookQuizCount > 0 ? round(($passCount / $tookQuizCount) * 100, 1) . '%' : '0%'],
+        ];
+
+        $sheet->setCellValue('A' . $summaryRow, 'RINGKASAN');
+        $sheet->getStyle('A' . $summaryRow)->getFont()->setBold(true)->setSize(11);
+        $summaryRow++;
+
+        foreach ($summaryData as $item) {
+            $sheet->setCellValue('A' . $summaryRow, $item[0]);
+            $sheet->setCellValue('B' . $summaryRow, $item[1]);
+            $sheet->getStyle('A' . $summaryRow)->getFont()->setBold(true);
+            $summaryRow++;
+        }
+
+        // Column widths
+        $widths = ['A' => 5, 'B' => 25, 'C' => 15, 'D' => 12, 'E' => 8, 'F' => 8, 'G' => 14, 'H' => 14, 'I' => 12, 'J' => 18];
+        foreach ($widths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        // Write to temp file and return
+        $filename = 'Hasil_Quiz_' . str_replace(' ', '_', $quiz->title) . '_' . date('Y-m-d');
+        $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
+
+        return response()->download($tempFile, $filename . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Generate quiz results PDF.
+     */
+    private function generateQuizResultsPdf(Exam $quiz, $results, string $className, int $totalMcQuestions = 0, $missingStudents = null)
+    {
+        $rows = [];
+        $passingScore = $quiz->passing_score ?? 75;
+
+        foreach ($results as $i => $result) {
+            $correct = 0;
+            $wrong = 0;
+            $essayScore = 0;
+            $essayMaxScore = 0;
+            $hasEssay = false;
+
+            if ($result->studentAnswers) {
+                foreach ($result->studentAnswers as $answer) {
+                    $qType = $answer->question->type ?? 'multiple_choice';
+                    if ($qType === 'essay') {
+                        $hasEssay = true;
+                        $essayMaxScore += ($answer->question->points ?? 0);
+                        if ($answer->score !== null) {
+                            $essayScore += $answer->score;
+                        }
+                    } else {
+                        if ($answer->is_correct) $correct++;
+                        else $wrong++;
+                    }
+                }
+            }
+
+            $pct = $result->max_score > 0 ? round(($result->total_score / $result->max_score) * 100, 2) : 0;
+            $status = $pct >= $passingScore ? 'Lulus' : 'Tidak Lulus';
+
+            $rows[] = [
+                'no' => $i + 1,
+                'name' => $result->student->name ?? '-',
+                'nisn' => $result->student->nisn ?? '-',
+                'kelas' => $result->student->classRoom->name ?? '-',
+                'benar' => $correct,
+                'salah' => $wrong,
+                'essay' => $hasEssay ? $essayScore . '/' . $essayMaxScore : '-',
+                'skor' => $result->total_score . '/' . ($result->max_score ?? 100),
+                'pct' => $pct,
+                'status' => $status,
+            ];
+        }
+
+        // Add missing students
+        $missingCount = 0;
+        if ($missingStudents && $missingStudents->count() > 0) {
+            $missingCount = $missingStudents->count();
+            foreach ($missingStudents->values() as $j => $student) {
+                $rows[] = [
+                    'no' => count($results) + $j + 1,
+                    'name' => $student->name ?? '-',
+                    'nisn' => $student->nisn ?? '-',
+                    'kelas' => $student->classRoom->name ?? '-',
+                    'benar' => '-',
+                    'salah' => '-',
+                    'essay' => '-',
+                    'skor' => '-',
+                    'pct' => 0,
+                    'status' => 'Tidak Mengerjakan',
+                ];
+            }
+        }
+
+        $totalCount = count($rows);
+        $tookQuizRows = collect($rows)->where('status', '!=', 'Tidak Mengerjakan');
+        $avgScore = $tookQuizRows->count() > 0 ? round($tookQuizRows->avg('pct'), 2) : 0;
+        $passCount = $tookQuizRows->where('status', 'Lulus')->count();
+
+        $html = $this->quizResultsPdfHtml($quiz, $className, $rows, $totalCount, $avgScore, $passCount, $missingCount, $passingScore);
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape');
+        $filename = 'Hasil_Quiz_' . str_replace(' ', '_', $quiz->title) . '_' . date('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    private function quizResultsPdfHtml(Exam $quiz, string $className, array $rows, int $total, float $avg, int $pass, int $missingCount = 0, int $passingScore = 75): string
+    {
+        $exportDate = now()->format('d/m/Y H:i');
+        $tookCount = $total - $missingCount;
+        $failCount = $tookCount - $pass;
+        $passPct = $tookCount > 0 ? round(($pass / $tookCount) * 100, 1) : 0;
+
+        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+        $html .= '<style>';
+        $html .= 'body{font-family:Arial,sans-serif;font-size:11px;margin:15px 20px;color:#222}';
+        $html .= 'h1{font-size:16px;text-align:center;margin:0 0 4px;color:#7C3AED}';
+        $html .= '.subtitle{text-align:center;font-size:11px;color:#555;margin-bottom:2px}';
+        $html .= '.meta{text-align:center;font-size:9px;color:#888;margin-bottom:12px}';
+        $html .= 'table{width:100%;border-collapse:collapse;margin-bottom:12px}';
+        $html .= 'th,td{border:1px solid #444;padding:5px 7px}';
+        $html .= 'th{background:#7C3AED;color:#fff;font-weight:bold;text-align:center;font-size:10px}';
+        $html .= 'td{font-size:10px}';
+        $html .= 'tr:nth-child(even){background:#F5F3FF}';
+        $html .= '.center{text-align:center}';
+        $html .= '.lulus{color:#27ae60;font-weight:bold}';
+        $html .= '.tidak{color:#e74c3c;font-weight:bold}';
+        $html .= '.belum{color:#ff8c00;font-weight:bold}';
+        $html .= '.summary{margin-top:8px}';
+        $html .= '.summary td{border:none;padding:3px 8px;font-size:11px}';
+        $html .= '.summary .label{font-weight:bold;width:180px}';
+        $html .= '.footer{text-align:center;margin-top:15px;font-size:9px;color:#aaa}';
+        $html .= '</style></head><body>';
+
+        $html .= '<h1>' . htmlspecialchars('Hasil Quiz: ' . $quiz->title) . '</h1>';
+        $html .= '<div class="subtitle">Mata Pelajaran: ' . htmlspecialchars($quiz->subject ?? '-') . ' | Kelas: ' . htmlspecialchars($className) . ' | Durasi: ' . $quiz->duration . ' menit</div>';
+        $html .= '<div class="meta">Diekspor: ' . $exportDate . '</div>';
+
+        $html .= '<table><thead><tr>';
+        foreach (['No', 'Nama Siswa', 'NIS', 'Kelas', 'Benar', 'Salah', 'Nilai Essay', 'Nilai Total', 'Persentase', 'Status'] as $h) {
+            $html .= '<th>' . $h . '</th>';
+        }
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($rows as $r) {
+            $cls = $r['status'] === 'Lulus' ? 'lulus' : ($r['status'] === 'Tidak Mengerjakan' ? 'belum' : 'tidak');
+            $html .= '<tr>';
+            $html .= '<td class="center">' . $r['no'] . '</td>';
+            $html .= '<td>' . htmlspecialchars($r['name']) . '</td>';
+            $html .= '<td class="center">' . htmlspecialchars($r['nisn']) . '</td>';
+            $html .= '<td class="center">' . htmlspecialchars($r['kelas']) . '</td>';
+            $html .= '<td class="center">' . $r['benar'] . '</td>';
+            $html .= '<td class="center">' . $r['salah'] . '</td>';
+            $html .= '<td class="center">' . $r['essay'] . '</td>';
+            $html .= '<td class="center">' . $r['skor'] . '</td>';
+            $html .= '<td class="center">' . ($r['pct'] ? $r['pct'] . '%' : '-') . '</td>';
+            $html .= '<td class="center ' . $cls . '">' . $r['status'] . '</td>';
+            $html .= '</tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        $html .= '<table class="summary">';
+        $html .= '<tr><td class="label">Total Siswa:</td><td>' . $total . '</td></tr>';
+        $html .= '<tr><td class="label">Mengerjakan:</td><td>' . $tookCount . '</td></tr>';
+        $html .= '<tr><td class="label">Tidak Mengerjakan:</td><td>' . $missingCount . '</td></tr>';
+        $html .= '<tr><td class="label">Rata-rata Nilai:</td><td>' . $avg . '%</td></tr>';
+        $html .= '<tr><td class="label">Lulus (≥' . $passingScore . '%):</td><td>' . $pass . '</td></tr>';
+        $html .= '<tr><td class="label">Tidak Lulus:</td><td>' . $failCount . '</td></tr>';
+        $html .= '<tr><td class="label">Persentase Kelulusan:</td><td>' . $passPct . '%</td></tr>';
+        $html .= '</table>';
+
+        $html .= '<div class="footer">SMA 15 Makassar LMS - Diekspor pada ' . $exportDate . '</div>';
+        $html .= '</body></html>';
+
+        return $html;
+    }
 }

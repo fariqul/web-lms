@@ -830,6 +830,9 @@ export const exportAPI = {
 
   exportExamResults: (examId: number, params: { format: 'xlsx' | 'pdf' }) =>
     api.get(`/export/exam-results/${examId}`, { params, responseType: 'blob', timeout: 120000 }),
+
+  exportQuizResults: (quizId: number, params: { format: 'xlsx' | 'pdf' }) =>
+    api.get(`/export/quiz-results/${quizId}`, { params, responseType: 'blob', timeout: 120000 }),
 };
 
 // Audit Log API
