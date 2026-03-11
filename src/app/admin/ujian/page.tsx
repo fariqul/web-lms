@@ -330,8 +330,8 @@ export default function AdminUjianPage() {
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return '-';
     const d = new Date(dateStr);
-    // Check for far-future placeholder
-    if (d.getFullYear() > new Date().getFullYear() + 1) return 'Mulai saat publish';
+    // Check for far-future placeholder (exam not yet scheduled)
+    if (d.getFullYear() >= new Date().getFullYear() + 1) return 'Mulai saat publish';
     return d.toLocaleString('id-ID', {
       day: 'numeric',
       month: 'short',
