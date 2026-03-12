@@ -90,7 +90,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: lms-tunnel
     restart: unless-stopped
-    command: tunnel --url http://nginx:80
+    command: tunnel --protocol http2 --url http://nginx:80
     depends_on:
       - nginx
     networks:
