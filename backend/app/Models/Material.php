@@ -34,4 +34,35 @@ class Material extends Model
     {
         return $this->belongsTo(ClassRoom::class, 'class_id');
     }
+
+    /**
+     * Get file URL - dynamically converts old URLs to current APP_URL
+     */
+    public function getFileUrlAttribute($value)
+    {
+        return $this->convertStorageUrl($value);
+    }
+
+    /**
+     * Convert storage URL to use current APP_URL
+     */
+    protected function convertStorageUrl($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (str_contains($value, 'http://') || str_contains($value, 'https://')) {
+            $parsed = parse_url($value);
+            if (isset($parsed['path']) && str_contains($parsed['path'], '/storage/')) {
+                return url($parsed['path']);
+            }
+        }
+
+        if (!str_starts_with($value, 'http')) {
+            return url('/storage/' . $value);
+        }
+
+        return $value;
+    }
 }

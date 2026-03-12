@@ -185,10 +185,8 @@ class AuthController extends Controller
         $filename = 'profile_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs('photos', $filename, 'public');
         
-        // Get public URL
-        $publicUrl = url('/storage/' . $path);
-        
-        $user->photo = $publicUrl;
+        // Store relative path only - accessor will generate full URL dynamically
+        $user->photo = $path;
         $user->save();
 
         $user->load('classRoom');

@@ -68,6 +68,32 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    /**
+     * Get photo URL - dynamically converts old URLs to current APP_URL
+     */
+    public function getPhotoAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+
+        // If it's a full URL with trycloudflare or other domain, extract path and rebuild
+        if (str_contains($value, 'http://') || str_contains($value, 'https://')) {
+            $parsed = parse_url($value);
+            if (isset($parsed['path']) && str_contains($parsed['path'], '/storage/')) {
+                // Extract path starting from /storage/
+                return url($parsed['path']);
+            }
+        }
+
+        // If it's just a relative path like 'photos/filename.jpg'
+        if (!str_starts_with($value, 'http')) {
+            return url('/storage/' . $value);
+        }
+
+        return $value;
+    }
+
     // Role helpers
     public function isAdmin(): bool
     {
