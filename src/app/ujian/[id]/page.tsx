@@ -736,8 +736,9 @@ export default function ExamTakingPage() {
   // Work photo capture — suppress violations while camera app is open
   const handleWorkPhotoClick = (questionId: number) => {
     workPhotoQuestionRef.current = questionId;
-    // Suppress violations for 60s (camera app opens as separate activity on mobile)
-    suppressViolations(60000);
+    // Suppress violations for 90s (camera app opens as separate activity on mobile)
+    // This is longer because native camera app will completely take over the camera resource
+    suppressViolations(90000);
     workPhotoInputRef.current?.click();
   };
 
@@ -764,6 +765,19 @@ export default function ExamTakingPage() {
       console.error('Failed to upload work photo:', error);
     } finally {
       setUploadingPhoto(null);
+      
+      // After work photo upload, camera track is likely dead (was used by native camera app)
+      // Restart camera automatically and extend suppression period
+      if (isCameraActive) {
+        console.log('[WorkPhoto] Upload done, restarting proctoring camera...');
+        suppressViolations(10000); // Extra 10 seconds grace period
+        try {
+          await restartCamera();
+          console.log('[WorkPhoto] Camera restarted successfully');
+        } catch (err) {
+          console.warn('[WorkPhoto] Failed to restart camera:', err);
+        }
+      }
     }
   };
 

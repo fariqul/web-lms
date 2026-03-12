@@ -187,8 +187,12 @@ export function useExamMode({
   }, []);
 
   // Suppress violation reporting temporarily (for work photo capture on mobile)
+  // Also extends camera health check grace period to prevent false "camera_off" violations
   const suppressViolations = useCallback((durationMs: number) => {
-    suppressUntilRef.current = Date.now() + durationMs;
+    const until = Date.now() + durationMs;
+    suppressUntilRef.current = until;
+    // Also suppress camera health check — native camera app will take over camera resource
+    snapshotGraceUntilRef.current = until;
   }, []);
 
   // Fullscreen management
@@ -363,13 +367,16 @@ export function useExamMode({
     console.log('[Camera] Restarting camera...');
     
     // Suppress violations during camera restart (avoid blur/visibility false positives)
-    suppressUntilRef.current = Date.now() + 5000;
+    const suppressUntil = Date.now() + 8000; // 8 seconds grace period
+    suppressUntilRef.current = suppressUntil;
+    snapshotGraceUntilRef.current = suppressUntil; // Also suppress camera health check
     
     stopCamera();
     cameraRetryRef.current = 0;
+    cameraRestartAttemptsRef.current = 0; // Reset restart attempts
     
-    // Longer delay to let hardware fully release (important on mobile)
-    await new Promise(r => setTimeout(r, 1000));
+    // Longer delay to let hardware fully release (important on mobile after native camera app)
+    await new Promise(r => setTimeout(r, 1500));
     
     await startCamera();
     consecutiveFailsRef.current = 0;
