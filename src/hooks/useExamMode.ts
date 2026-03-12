@@ -218,7 +218,9 @@ export function useExamMode({
 
   // Camera management with retry — lowered to 320×240 for performance
   const cameraRetryRef = useRef(0);
+  const cameraRestartAttemptsRef = useRef(0); // Track auto-restart attempts for ended tracks
   const MAX_CAMERA_RETRIES = 3;
+  const MAX_AUTO_RESTART_ATTEMPTS = 3; // Max auto-restart before reporting violation
 
   // Virtual camera detection patterns
   const VIRTUAL_CAMERA_PATTERNS = [
@@ -235,6 +237,37 @@ export function useExamMode({
 
   const startCamera = useCallback(async () => {
     try {
+      // If we already have an active stream with working tracks, don't request again
+      if (streamRef.current) {
+        const existingTrack = streamRef.current.getVideoTracks()[0];
+        if (existingTrack && existingTrack.readyState === 'live' && existingTrack.enabled) {
+          console.log('[Camera] Stream already active, skipping re-request');
+          setIsCameraActive(true);
+          return;
+        }
+        // Stream exists but track is dead, clean it up first
+        console.log('[Camera] Existing stream has dead track, cleaning up...');
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      // Check permission status first (to avoid popup on denied state)
+      if (navigator.permissions) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          console.log('[Camera] Permission status:', permissionStatus.state);
+          if (permissionStatus.state === 'denied') {
+            console.warn('[Camera] Permission denied, cannot request camera');
+            if (cameraRetryRef.current >= MAX_CAMERA_RETRIES) {
+              reportViolation('camera_off', 'Izin kamera ditolak');
+            }
+            return;
+          }
+        } catch {
+          // Some browsers don't support permission query for camera
+        }
+      }
+
       console.log('[Camera] Requesting camera access (320×240)...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -254,6 +287,12 @@ export function useExamMode({
           console.warn('[Camera] Virtual camera detected:', label);
           reportViolation('virtual_camera', `Kamera virtual terdeteksi: ${label}`);
         }
+        
+        // Listen for track ended event to trigger auto-restart instead of violation
+        videoTrack.onended = () => {
+          console.log('[Camera] Video track ended event fired');
+          // Don't immediately report violation - camera health check will handle restart
+        };
       }
 
       // Also check all available video devices for suspicious labels
@@ -282,6 +321,7 @@ export function useExamMode({
       cameraRetryRef.current = 0;
       consecutiveFailsRef.current = 0;
       setConsecutiveSnapshotFails(0);
+      cameraRestartAttemptsRef.current = 0; // Reset restart counter on successful start
       console.log('[Camera] Camera started successfully');
     } catch (error) {
       console.error('[Camera] Camera access failed:', error);
@@ -311,12 +351,19 @@ export function useExamMode({
   }, []);
 
   // Restart camera — stop existing stream and re-acquire
+  // Add longer delay and suppress violations during restart to avoid false positives
   const restartCamera = useCallback(async () => {
     console.log('[Camera] Restarting camera...');
+    
+    // Suppress violations during camera restart (avoid blur/visibility false positives)
+    suppressUntilRef.current = Date.now() + 5000;
+    
     stopCamera();
     cameraRetryRef.current = 0;
-    // Small delay to let hardware release
-    await new Promise(r => setTimeout(r, 500));
+    
+    // Longer delay to let hardware fully release (important on mobile)
+    await new Promise(r => setTimeout(r, 1000));
+    
     await startCamera();
     consecutiveFailsRef.current = 0;
     setConsecutiveSnapshotFails(0);
@@ -706,25 +753,80 @@ export function useExamMode({
   }, [reportViolation, isMobile]);
 
   // Camera health check + auto-restart on consecutive snapshot failures
+  // Also handle track ended gracefully on mobile (don't immediately report violation)
   useEffect(() => {
     if (enableCamera && isCameraActive) {
+      // Track if we're currently attempting auto-restart
+      let isAutoRestarting = false;
+
       // Camera status check — detect if camera is turned off
-      const checkCamera = setInterval(() => {
+      const checkCamera = setInterval(async () => {
         if (streamRef.current) {
           const videoTrack = streamRef.current.getVideoTracks()[0];
+          
+          // Track ended or disabled — try auto-restart first before reporting violation
           if (!videoTrack || !videoTrack.enabled || videoTrack.readyState === 'ended') {
-            reportViolation('camera_off', 'Kamera dimatikan');
+            if (isAutoRestarting) return; // Already restarting, skip this check
+            
+            // On mobile, track can end due to OS suspending camera — try restart first
+            if (cameraRestartAttemptsRef.current < MAX_AUTO_RESTART_ATTEMPTS) {
+              console.log(`[Camera] Track ended/disabled, attempting auto-restart (${cameraRestartAttemptsRef.current + 1}/${MAX_AUTO_RESTART_ATTEMPTS})`);
+              isAutoRestarting = true;
+              cameraRestartAttemptsRef.current++;
+              
+              try {
+                await restartCamera();
+                console.log('[Camera] Auto-restart successful');
+                cameraRestartAttemptsRef.current = 0; // Reset on success
+              } catch (error) {
+                console.warn('[Camera] Auto-restart failed:', error);
+              } finally {
+                isAutoRestarting = false;
+              }
+            } else {
+              // Only report violation after multiple restart attempts failed
+              reportViolation('camera_off', 'Kamera dimatikan atau tidak dapat diakses');
+              cameraRestartAttemptsRef.current = 0; // Reset for next cycle
+            }
+          } else {
+            // Camera is working — reset restart attempts
+            cameraRestartAttemptsRef.current = 0;
           }
         }
+        
         // Auto-restart camera after 5 consecutive snapshot failures
-        if (consecutiveFailsRef.current >= 5) {
+        if (consecutiveFailsRef.current >= 5 && !isAutoRestarting) {
           console.warn('[Camera] 5 consecutive snapshot failures — auto-restarting camera');
-          restartCamera();
+          isAutoRestarting = true;
+          try {
+            await restartCamera();
+          } finally {
+            isAutoRestarting = false;
+          }
         }
       }, 5000);
 
+      // Listen for track ended event directly for faster response
+      const handleTrackEnded = () => {
+        console.log('[Camera] Video track ended event fired');
+        // Don't report immediately — let the interval handler restart
+      };
+
+      if (streamRef.current) {
+        const videoTrack = streamRef.current.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.addEventListener('ended', handleTrackEnded);
+        }
+      }
+
       return () => {
         clearInterval(checkCamera);
+        if (streamRef.current) {
+          const videoTrack = streamRef.current.getVideoTracks()[0];
+          if (videoTrack) {
+            videoTrack.removeEventListener('ended', handleTrackEnded);
+          }
+        }
       };
     }
   }, [enableCamera, isCameraActive, reportViolation, restartCamera]);
