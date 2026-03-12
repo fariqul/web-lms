@@ -127,6 +127,7 @@ export default function QuizResultsPage() {
 
   const filteredResults = results
     .filter(r => {
+      // 1. Search filter
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
@@ -134,22 +135,34 @@ export default function QuizResultsPage() {
           r.student?.nomor_tes?.toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
-      if (filterClass && String(r.student?.class_room?.id ?? r.student?.class_id) !== filterClass) return false;
       
-      // Status filtering with grouped statuses
-      if (filterStatus) {
-        if (filterStatus === 'needs_grading') {
-          return r.ungraded_essays > 0;
+      // 2. Class filter
+      if (filterClass) {
+        const studentClassId = r.student?.class_room?.id ?? r.student?.class_id;
+        if (String(studentClassId) !== filterClass) {
+          return false;
         }
-        if (filterStatus === 'all_finished') {
-          return r.status === 'completed' || r.status === 'graded' || r.status === 'submitted';
-        }
-        if (filterStatus === 'completed') {
-          // "Selesai" includes: completed, graded
-          return r.status === 'completed' || r.status === 'graded';
-        }
-        if (r.status !== filterStatus) return false;
       }
+      
+      // 3. Status filter
+      if (filterStatus) {
+        switch (filterStatus) {
+          case 'needs_grading':
+            if (!(r.ungraded_essays > 0)) return false;
+            break;
+          case 'all_finished':
+            if (!['completed', 'graded', 'submitted'].includes(r.status)) return false;
+            break;
+          case 'completed':
+            // "Selesai (Nilai Final)" includes completed and graded
+            if (!['completed', 'graded'].includes(r.status)) return false;
+            break;
+          default:
+            // Direct status match
+            if (r.status !== filterStatus) return false;
+        }
+      }
+      
       return true;
     })
     .sort((a, b) => {
