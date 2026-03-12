@@ -33,6 +33,7 @@ interface StudentResult {
     id: number;
     name: string;
     nisn: string;
+    nomor_tes?: string;
     class_id?: number;
     class_room?: { id: number; name: string } | null;
   };
@@ -128,12 +129,27 @@ export default function QuizResultsPage() {
     .filter(r => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const matchesSearch = r.student?.name?.toLowerCase().includes(q) || r.student?.nisn?.includes(searchQuery);
+        const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
+          r.student?.nisn?.toLowerCase().includes(q) ||
+          r.student?.nomor_tes?.toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
       if (filterClass && String(r.student?.class_room?.id ?? r.student?.class_id) !== filterClass) return false;
-      if (filterStatus === 'needs_grading') return r.ungraded_essays > 0;
-      if (filterStatus && r.status !== filterStatus) return false;
+      
+      // Status filtering with grouped statuses
+      if (filterStatus) {
+        if (filterStatus === 'needs_grading') {
+          return r.ungraded_essays > 0;
+        }
+        if (filterStatus === 'all_finished') {
+          return r.status === 'completed' || r.status === 'graded' || r.status === 'submitted';
+        }
+        if (filterStatus === 'completed') {
+          // "Selesai" includes: completed, graded
+          return r.status === 'completed' || r.status === 'graded';
+        }
+        if (r.status !== filterStatus) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -176,16 +192,17 @@ export default function QuizResultsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
+        return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full" title="Quiz selesai, nilai final">Selesai</span>;
       case 'graded':
-        return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">Selesai</span>;
+        return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full" title="Semua essay sudah dinilai">Selesai</span>;
       case 'in_progress':
-        return <span className="px-2 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-xs font-medium rounded-full">Mengerjakan</span>;
+        return <span className="px-2 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-xs font-medium rounded-full" title="Siswa sedang mengerjakan">Mengerjakan</span>;
       case 'submitted':
-        return <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium rounded-full">Dikumpulkan</span>;
+        return <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium rounded-full" title="Sudah dikumpulkan, ada essay belum dinilai">Perlu Dinilai</span>;
       case 'not_started':
-        return <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium rounded-full">Belum Mulai</span>;
+        return <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium rounded-full" title="Siswa belum memulai">Belum Mulai</span>;
       case 'missed':
-        return <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium rounded-full">Tidak Mengerjakan</span>;
+        return <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium rounded-full" title="Waktu habis, siswa tidak mengerjakan">Tidak Mengerjakan</span>;
       default:
         return <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full">{status}</span>;
     }
@@ -396,10 +413,13 @@ export default function QuizResultsPage() {
             name="filterStatus"
           >
             <option value="">Semua Status</option>
-            <option value="completed">Selesai</option>
-            <option value="in_progress">Mengerjakan</option>
-            <option value="needs_grading">Perlu Dinilai (Essay)</option>
+            <option value="all_finished">Semua Sudah Selesai</option>
+            <option value="completed">Selesai (Nilai Final)</option>
+            <option value="submitted">Dikumpulkan (Perlu Dinilai Essay)</option>
+            <option value="in_progress">Sedang Mengerjakan</option>
+            <option value="needs_grading">Semua Perlu Dinilai</option>
             <option value="not_started">Belum Mulai</option>
+            <option value="missed">Tidak Mengerjakan</option>
           </select>
           <select
             value={sortBy}
