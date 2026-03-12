@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 
@@ -19,6 +19,9 @@ interface User {
   nis?: string;
   nip?: string;
   nomor_tes?: string;
+  is_blocked?: boolean;
+  block_reason?: string;
+  blocked_at?: string;
 }
 
 interface ClassOption {
@@ -52,6 +55,9 @@ export default function AdminUsersPage() {
   const [resetPasswordData, setResetPasswordData] = useState({ password: '', showPassword: false });
   const [resetSuccess, setResetSuccess] = useState('');
   const [isClearNomorTesOpen, setIsClearNomorTesOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
+  const [blockAction, setBlockAction] = useState<'block' | 'unblock'>('block');
 
   // Sorting state
   const [sortKey, setSortKey] = useState<'name' | 'nomor_tes' | null>(null);
@@ -224,6 +230,31 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleBlockClick = (user: User, action: 'block' | 'unblock') => {
+    setSelectedUser(user);
+    setBlockAction(action);
+    setBlockReason('');
+    setIsBlockModalOpen(true);
+  };
+
+  const handleToggleBlock = async () => {
+    if (!selectedUser) return;
+    setSubmitting(true);
+    try {
+      const isBlocking = blockAction === 'block';
+      await userAPI.toggleBlock(selectedUser.id, isBlocking, blockReason || undefined);
+      const action = isBlocking ? 'diblokir' : 'diaktifkan kembali';
+      toast.success(`Akun ${selectedUser.name} berhasil ${action}`);
+      setIsBlockModalOpen(false);
+      fetchData();
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Gagal mengubah status blokir';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -310,6 +341,16 @@ export default function AdminUsersPage() {
           <SortIcon columnKey="name" />
         </button>
       ),
+      render: (item: User) => (
+        <div className="flex items-center gap-2">
+          <span>{item.name}</span>
+          {item.role === 'siswa' && item.is_blocked && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+              DIBLOKIR
+            </span>
+          )}
+        </div>
+      ),
     },
     { key: 'email', header: 'Email' },
     {
@@ -379,6 +420,27 @@ export default function AdminUsersPage() {
           >
             <KeyRound className="w-4 h-4" />
           </button>
+          {item.role === 'siswa' && (
+            item.is_blocked ? (
+              <button
+                onClick={() => handleBlockClick(item, 'unblock')}
+                className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                title="Aktifkan Kembali"
+                aria-label="Aktifkan kembali akun"
+              >
+                <UserCheck className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleBlockClick(item, 'block')}
+                className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                title="Blokir Siswa"
+                aria-label="Blokir siswa"
+              >
+                <Ban className="w-4 h-4" />
+              </button>
+            )
+          )}
           <button
             onClick={() => handleDeleteClick(item)}
             className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
@@ -711,6 +773,92 @@ export default function AdminUsersPage() {
         confirmText="Hapus Semua"
         variant="danger"
       />
+
+      {/* Block/Unblock Modal */}
+      <Modal
+        isOpen={isBlockModalOpen}
+        onClose={() => setIsBlockModalOpen(false)}
+        title={blockAction === 'block' ? 'Blokir Siswa' : 'Aktifkan Kembali Siswa'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className={`p-3 rounded-lg border ${
+            blockAction === 'block' 
+              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50' 
+              : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50'
+          }`}>
+            <p className={`text-sm ${
+              blockAction === 'block' 
+                ? 'text-amber-700 dark:text-amber-400' 
+                : 'text-green-700 dark:text-green-400'
+            }`}>
+              {blockAction === 'block' 
+                ? <>Blokir akun: <strong>{selectedUser?.name}</strong></>
+                : <>Aktifkan kembali: <strong>{selectedUser?.name}</strong></>
+              }
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{selectedUser?.email}</p>
+            {selectedUser?.class_room && (
+              <p className="text-xs text-slate-600 dark:text-slate-400">Kelas: {selectedUser.class_room.name}</p>
+            )}
+          </div>
+
+          {blockAction === 'block' && (
+            <>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  <strong>Perhatian:</strong> Siswa yang diblokir tidak dapat login ke sistem. 
+                  Gunakan fitur ini untuk mencegah siswa mengerjakan ujian di luar sekolah.
+                </p>
+              </div>
+
+              <Input
+                label="Alasan Pemblokiran (opsional)"
+                placeholder="Contoh: Tidak hadir di sekolah"
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+              />
+            </>
+          )}
+
+          {blockAction === 'unblock' && selectedUser?.block_reason && (
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                <strong>Alasan blokir sebelumnya:</strong> {selectedUser.block_reason}
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsBlockModalOpen(false)}>
+              Batal
+            </Button>
+            <Button 
+              onClick={handleToggleBlock} 
+              disabled={submitting}
+              variant={blockAction === 'block' ? 'primary' : 'primary'}
+              className={blockAction === 'block' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Memproses…
+                </>
+              ) : blockAction === 'block' ? (
+                <>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Blokir Siswa
+                </>
+              ) : (
+                <>
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Aktifkan Kembali
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

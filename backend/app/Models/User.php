@@ -21,6 +21,9 @@ class User extends Authenticatable
         'nomor_tes',
         'class_id',
         'photo',
+        'is_blocked',
+        'block_reason',
+        'blocked_at',
     ];
 
     /**
@@ -39,6 +42,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'class_id' => 'integer',
+            'is_blocked' => 'boolean',
+            'blocked_at' => 'datetime',
         ];
     }
 

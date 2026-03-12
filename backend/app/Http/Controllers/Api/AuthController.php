@@ -38,6 +38,16 @@ class AuthController extends Controller
             ]);
         }
 
+        // Check if user is blocked (only for students)
+        if ($user->role === 'siswa' && $user->is_blocked) {
+            $reason = $user->block_reason ?: 'Akun Anda diblokir oleh admin.';
+            return response()->json([
+                'success' => false,
+                'message' => $reason,
+                'error_code' => 'ACCOUNT_BLOCKED',
+            ], 403);
+        }
+
         // Single device enforcement for students
         if ($user->role === 'siswa') {
             $activeTokens = $user->tokens()->count();

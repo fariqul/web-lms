@@ -258,4 +258,132 @@ class UserController extends Controller
             'cleared_count' => $count,
         ]);
     }
+
+    /**
+     * Toggle block status for a student (admin only)
+     */
+    public function toggleBlock(Request $request, User $user)
+    {
+        // Only students can be blocked
+        if ($user->role !== 'siswa') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya siswa yang dapat diblokir',
+            ], 400);
+        }
+
+        $request->validate([
+            'is_blocked' => 'required|boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $user->is_blocked = $request->is_blocked;
+        
+        if ($request->is_blocked) {
+            $user->block_reason = $request->reason ?: 'Diblokir oleh admin';
+            $user->blocked_at = now();
+            // Force logout by deleting all tokens
+            $user->tokens()->delete();
+        } else {
+            $user->block_reason = null;
+            $user->blocked_at = null;
+        }
+
+        $user->save();
+        $user->load('classRoom:id,name');
+
+        $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
+
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+            'message' => "Akun siswa {$user->name} berhasil {$action}",
+        ]);
+    }
+
+    /**
+     * Get all blocked students (admin only)
+     */
+    public function blockedStudents(Request $request)
+    {
+        $query = User::with('classRoom:id,name')
+            ->where('role', 'siswa')
+            ->where('is_blocked', true);
+
+        // Filter by class
+        if ($request->has('class_id')) {
+            $query->where('class_id', $request->class_id);
+        }
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->orderBy('blocked_at', 'desc')
+            ->paginate($request->per_page ?? 15);
+
+        return response()->json([
+            'success' => true,
+            'data' => $students,
+        ]);
+    }
+
+    /**
+     * Bulk block/unblock students (admin only)
+     */
+    public function bulkToggleBlock(Request $request)
+    {
+        $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id',
+            'is_blocked' => 'required|boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $users = User::whereIn('id', $request->user_ids)
+            ->where('role', 'siswa')
+            ->get();
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada siswa yang ditemukan',
+            ], 404);
+        }
+
+        $updateData = [
+            'is_blocked' => $request->is_blocked,
+        ];
+
+        if ($request->is_blocked) {
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir oleh admin';
+            $updateData['blocked_at'] = now();
+        } else {
+            $updateData['block_reason'] = null;
+            $updateData['blocked_at'] = null;
+        }
+
+        User::whereIn('id', $users->pluck('id'))->update($updateData);
+
+        // Force logout blocked users
+        if ($request->is_blocked) {
+            foreach ($users as $user) {
+                $user->tokens()->delete();
+            }
+        }
+
+        $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$users->count()} siswa berhasil {$action}",
+            'affected_count' => $users->count(),
+        ]);
+    }
 }

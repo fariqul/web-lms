@@ -66,6 +66,8 @@ export default function LoginPage() {
       if (status === 409 && errorCode === 'DEVICE_LIMIT') {
         setDeviceLimited(true);
         setError(serverMessage || 'Akun sedang login di perangkat lain.');
+      } else if (status === 403 && errorCode === 'ACCOUNT_BLOCKED') {
+        setError(serverMessage || 'Akun Anda diblokir. Hubungi admin untuk informasi lebih lanjut.');
       } else if (status === 401 || status === 403) {
         setError('Email/NIS atau password salah. Silakan coba lagi.');
       } else if (status === 422) {
@@ -198,6 +200,7 @@ export default function LoginPage() {
                 placeholder="Masukkan email atau NIS"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
+                autoComplete="username"
                 required
               />
 
@@ -208,6 +211,7 @@ export default function LoginPage() {
                   placeholder="Masukkan password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   required
                 />
                 <button

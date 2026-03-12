@@ -204,6 +204,16 @@ export const userAPI = {
   
   clearNomorTes: (classId?: number) =>
     api.delete('/users/nomor-tes/clear', { params: classId ? { class_id: classId } : undefined }),
+
+  // Student blocking
+  toggleBlock: (id: number, isBlocked: boolean, reason?: string) =>
+    api.post(`/users/${id}/toggle-block`, { is_blocked: isBlocked, reason }),
+  
+  getBlockedStudents: (params?: { class_id?: number; search?: string; page?: number; per_page?: number }) =>
+    api.get('/students/blocked', { params }),
+  
+  bulkToggleBlock: (userIds: number[], isBlocked: boolean, reason?: string) =>
+    api.post('/students/bulk-toggle-block', { user_ids: userIds, is_blocked: isBlocked, reason }),
 };
 
 // Class API
