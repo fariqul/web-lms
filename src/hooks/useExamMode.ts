@@ -83,6 +83,11 @@ export function useExamMode({
   // Upload retry queue — max 3 blobs in memory
   const retryQueueRef = useRef<Blob[]>([]);
   const MAX_RETRY_QUEUE = 3;
+  // Track when snapshot is being captured (suppress camera health check)
+  const snapshotInProgressRef = useRef(false);
+  // Grace period after snapshot (milliseconds) — some phones need time to recover camera
+  const snapshotGraceUntilRef = useRef(0);
+  const SNAPSHOT_GRACE_MS = 3000; // 3 second grace period after snapshot
   
   // Mobile security: track initial window dimensions for split screen detection
   const initialDimensionsRef = useRef(getInitialDimensions());
@@ -113,6 +118,8 @@ export function useExamMode({
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return null;
       ctx.drawImage(video, 0, 0, w, h);
+      // Set short grace period after canvas draw (some phones need recovery time)
+      snapshotGraceUntilRef.current = Date.now() + 1500; // 1.5 seconds for quick capture
       // Synchronous conversion to blob via toDataURL
       const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
       const byteString = atob(dataUrl.split(',')[1]);
@@ -391,6 +398,9 @@ export function useExamMode({
       return null;
     }
 
+    // Mark snapshot in progress to suppress camera health check
+    snapshotInProgressRef.current = true;
+    
     const video = videoRef.current;
     const stream = video.srcObject as MediaStream | null;
     if (!stream) {
@@ -499,6 +509,10 @@ export function useExamMode({
       consecutiveFailsRef.current += 1;
       setConsecutiveSnapshotFails(consecutiveFailsRef.current);
       throw error;
+    } finally {
+      // Always clear snapshot in progress flag and set grace period
+      snapshotInProgressRef.current = false;
+      snapshotGraceUntilRef.current = Date.now() + SNAPSHOT_GRACE_MS;
     }
   }, [examId, isCameraActive, flushRetryQueue]);
 
@@ -761,6 +775,17 @@ export function useExamMode({
 
       // Camera status check — detect if camera is turned off
       const checkCamera = setInterval(async () => {
+        // Skip camera check during snapshot capture or grace period
+        // Some phones temporarily lose camera track during canvas draw operations
+        if (snapshotInProgressRef.current) {
+          console.log('[Camera Health] Skipping check — snapshot in progress');
+          return;
+        }
+        if (Date.now() < snapshotGraceUntilRef.current) {
+          console.log('[Camera Health] Skipping check — in grace period after snapshot');
+          return;
+        }
+
         if (streamRef.current) {
           const videoTrack = streamRef.current.getVideoTracks()[0];
           
