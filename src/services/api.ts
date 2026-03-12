@@ -26,11 +26,23 @@ function getBackendBaseUrl(): string {
  * Convert storage paths to accessible URLs.
  * Prefers direct backend URL (from NEXT_PUBLIC_API_URL) for reliability,
  * falls back to /storage/ proxy path (Vercel rewrite) if API URL is relative.
+ * Also converts http:// to https:// when page is served over HTTPS (avoid mixed content).
  */
 export function getSecureFileUrl(url: string | undefined | null): string {
   if (!url) return '';
-  // Already a full URL — return as-is
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  
+  // Force HTTPS if current page is served over HTTPS (avoid mixed content blocking)
+  const forceHttps = (u: string): string => {
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      return u.replace(/^http:\/\//i, 'https://');
+    }
+    return u;
+  };
+  
+  // Already a full URL — convert to HTTPS if needed and return
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return forceHttps(url);
+  }
 
   // Extract the relative storage path
   let relativePath: string;
