@@ -268,7 +268,8 @@ export default function ExamResultsPage() {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
-          r.student?.nisn?.includes(searchQuery);
+          r.student?.nisn?.toLowerCase().includes(q) ||
+          r.student?.nomor_tes?.toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
       if (filterClass && String(r.student?.class_room?.id ?? r.student?.class_id) !== filterClass) return false;
@@ -506,11 +507,11 @@ export default function ExamResultsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama atau NIS siswa…"
+              placeholder="Cari nama, NIS, atau No. Tes…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-              aria-label="Cari nama atau NIS siswa"
+              aria-label="Cari nama, NIS, atau No. Tes"
               name="searchResults"
             />
           </div>
