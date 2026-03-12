@@ -125,6 +125,12 @@ export default function QuizResultsPage() {
     fetchResults();
   }, [fetchResults]);
 
+  // Debug: log filter state
+  useEffect(() => {
+    console.log('[Quiz Filter Debug] filterClass:', filterClass, 'filterStatus:', filterStatus);
+    console.log('[Quiz Filter Debug] Total results:', results.length);
+  }, [filterClass, filterStatus, results]);
+
   const filteredResults = results
     .filter(r => {
       // 1. Search filter
@@ -136,9 +142,15 @@ export default function QuizResultsPage() {
         if (!matchesSearch) return false;
       }
       
-      // 2. Class filter
+      // 2. Class filter - check both class_room.id and class_id
       if (filterClass) {
-        const studentClassId = r.student?.class_room?.id ?? r.student?.class_id;
+        const classRoomId = r.student?.class_room?.id;
+        const classId = r.student?.class_id;
+        const studentClassId = classRoomId ?? classId;
+        
+        if (studentClassId === undefined || studentClassId === null) {
+          return false; // No class info, exclude
+        }
         if (String(studentClassId) !== filterClass) {
           return false;
         }
@@ -446,6 +458,29 @@ export default function QuizResultsPage() {
           </select>
         </div>
 
+        {/* Filter result counter */}
+        {(filterClass || filterStatus || searchQuery) && (
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+            <span>Menampilkan <strong className="text-slate-900 dark:text-white">{filteredResults.length}</strong> dari <strong>{results.length}</strong> hasil</span>
+            {filterClass && (
+              <span className="px-2 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 rounded-full text-xs">
+                Kelas: {uniqueClasses.find(c => String(c.id) === filterClass)?.name || filterClass}
+              </span>
+            )}
+            {filterStatus && (
+              <span className="px-2 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 rounded-full text-xs">
+                Status: {filterStatus}
+              </span>
+            )}
+            <button
+              onClick={() => { setFilterClass(''); setFilterStatus(''); setSearchQuery(''); }}
+              className="ml-auto text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+            >
+              Reset Filter
+            </button>
+          </div>
+        )}
+
         {/* Results Table */}
         <Card className="overflow-hidden">
           {filteredResults.length === 0 ? (
@@ -472,7 +507,7 @@ export default function QuizResultsPage() {
                 </thead>
                 <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700">
                   {filteredResults.map((result, index) => (
-                    <tr key={result.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <tr key={result.id ?? `student-${result.student_id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                       <td className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-400 font-medium">
                         {index + 1}
                       </td>
