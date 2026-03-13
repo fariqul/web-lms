@@ -63,6 +63,12 @@ interface ExamData {
   sebShowTaskbar: boolean;
 }
 
+const normalizeQuestionType = (type?: string): Question['type'] => {
+  if (type === 'multiple_answer') return 'multiple_answer';
+  if (type === 'essay') return 'essay';
+  return 'multiple_choice';
+};
+
 export default function ExamTakingPage() {
   const params = useParams();
   const router = useRouter();
@@ -219,7 +225,7 @@ export default function ExamTakingPage() {
     const mapQuestion = (q: { id: number; order?: number; question_text: string; type?: string; question_type?: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number): Question => ({
       id: q.id,
       number: idx + 1,
-      type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
+      type: normalizeQuestionType(q.question_type || q.type),
       text: q.question_text,
       passage: q.passage || null,
       options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
@@ -331,7 +337,7 @@ export default function ExamTakingPage() {
             const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
               id: q.id,
               number: idx + 1,
-              type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
+              type: normalizeQuestionType(q.question_type || q.type),
               text: q.question_text,
               passage: q.passage || null,
               options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
@@ -666,7 +672,7 @@ export default function ExamTakingPage() {
         const mappedQuestions = startData.questions.map((q: { id: number; order?: number; question_type?: string; type?: string; question_text: string; passage?: string; options?: (string | { text: string; image?: string | null })[]; image?: string }, idx: number) => ({
           id: q.id,
           number: idx + 1,
-          type: (q.question_type || q.type) === 'multiple_choice' ? 'multiple_choice' : 'essay',
+          type: normalizeQuestionType(q.question_type || q.type),
           text: q.question_text,
           passage: q.passage || null,
           options: (q.options || []).map((opt: string | { text: string; image?: string | null }) =>
@@ -735,6 +741,11 @@ export default function ExamTakingPage() {
 
   // Work photo capture — suppress violations while camera app is open
   const handleWorkPhotoClick = (questionId: number) => {
+    const selectedQuestion = questions.find((q) => q.id === questionId);
+    if (!selectedQuestion || selectedQuestion.type !== 'essay') {
+      return;
+    }
+
     workPhotoQuestionRef.current = questionId;
     // Suppress violations for 90s (camera app opens as separate activity on mobile)
     // This is longer because native camera app will completely take over the camera resource
@@ -746,6 +757,12 @@ export default function ExamTakingPage() {
     const file = e.target.files?.[0];
     const questionId = workPhotoQuestionRef.current;
     if (!file || !questionId) return;
+
+    const selectedQuestion = questions.find((q) => q.id === questionId);
+    if (!selectedQuestion || selectedQuestion.type !== 'essay') {
+      e.target.value = '';
+      return;
+    }
 
     // Reset file input so the same file can be re-selected
     e.target.value = '';
@@ -1313,50 +1330,54 @@ export default function ExamTakingPage() {
                 />
               )}
 
-              {/* Work photo (foto cara kerja) */}
-              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <input
-                  ref={workPhotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleWorkPhotoChange}
-                  className="hidden"
-                />
-                <div className="flex items-center gap-3 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => handleWorkPhotoClick(question.id)}
-                    disabled={uploadingPhoto === question.id}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors disabled:opacity-50"
-                  >
-                    {uploadingPhoto === question.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Camera className="w-4 h-4" />
-                    )}
-                    {uploadingPhoto === question.id ? 'Mengupload...' : workPhotos[question.id] ? 'Ganti Foto' : 'Foto Cara Kerja'}
-                  </button>
-                  {workPhotos[question.id] && (
-                    <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Foto terupload
-                    </span>
-                  )}
-                </div>
-                {workPhotos[question.id] && (
-                  <div className="mt-2">
-                    <img
-                      src={getSecureFileUrl(workPhotos[question.id])}
-                      alt="Foto cara kerja"
-                      className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+              {question?.type === 'essay' && (
+                <>
+                  {/* Work photo (foto cara kerja) */}
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <input
+                      ref={workPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleWorkPhotoChange}
+                      className="hidden"
                     />
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleWorkPhotoClick(question.id)}
+                        disabled={uploadingPhoto === question.id}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors disabled:opacity-50"
+                      >
+                        {uploadingPhoto === question.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                        {uploadingPhoto === question.id ? 'Mengupload...' : workPhotos[question.id] ? 'Ganti Foto' : 'Foto Cara Kerja'}
+                      </button>
+                      {workPhotos[question.id] && (
+                        <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Foto terupload
+                        </span>
+                      )}
+                    </div>
+                    {workPhotos[question.id] && (
+                      <div className="mt-2">
+                        <img
+                          src={getSecureFileUrl(workPhotos[question.id])}
+                          alt="Foto cara kerja"
+                          className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                        />
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+                      📸 Foto cara kerja/coretan Anda untuk soal ini (opsional)
+                    </p>
                   </div>
-                )}
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
-                  📸 Foto cara kerja/coretan Anda untuk soal ini (opsional)
-                </p>
-              </div>
+                </>
+              )}
             </Card>
             <div className="flex items-center justify-between mt-6 gap-2">
               <Button

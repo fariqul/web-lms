@@ -162,6 +162,14 @@ export default function AdminUsersPage() {
   }, [users, sortKey, sortOrder]);
 
   const filteredUsers = sortedUsers;
+  const allStudentCount = React.useMemo(
+    () => users.filter((u) => u.role === 'siswa').length,
+    [users]
+  );
+  const classScopedStudentCount = React.useMemo(() => {
+    if (!classFilter) return 0;
+    return users.filter((u) => u.role === 'siswa' && String(u.class_id) === classFilter).length;
+  }, [users, classFilter]);
   const filteredStudentIds = React.useMemo(
     () => filteredUsers.filter((u) => u.role === 'siswa').map((u) => u.id),
     [filteredUsers]
@@ -523,8 +531,14 @@ export default function AdminUsersPage() {
                   leftIcon={<Ban className="w-4 h-4" />}
                   onClick={() => handleBulkBlockClick('block')}
                   className="text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredStudentIds.length}`}
                 >
-                  Blokir Semua Siswa
+                  Blokir Siswa
+                  <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-semibold">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40">A:{allStudentCount}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredStudentIds.length}</span>
+                  </span>
                 </Button>
                 <Button
                   variant="outline"
@@ -532,8 +546,14 @@ export default function AdminUsersPage() {
                   leftIcon={<UserCheck className="w-4 h-4" />}
                   onClick={() => handleBulkBlockClick('unblock')}
                   className="text-green-700 dark:text-green-400 border-green-300 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-900/20"
+                  title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredStudentIds.length}`}
                 >
-                  Aktifkan Semua Siswa
+                  Aktifkan Siswa
+                  <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-semibold">
+                    <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40">A:{allStudentCount}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredStudentIds.length}</span>
+                  </span>
                 </Button>
                 <Button
                   variant="outline"

@@ -1491,6 +1491,13 @@ class ExamController extends Controller
             ], 422);
         }
 
+        if ($question->type !== 'essay') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto cara kerja hanya tersedia untuk soal essay',
+            ], 422);
+        }
+
         // Store the photo
         $path = $request->file('photo')->store(
             "work-photos/exam-{$exam->id}/student-{$user->id}",
