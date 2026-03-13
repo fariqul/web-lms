@@ -10,6 +10,7 @@ use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\User;
+use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -1928,6 +1929,14 @@ class ExamController extends Controller
                 ],
             ];
         }
+
+        $allEntries = collect($allEntries)
+            ->sortBy(fn (array $entry) => NomorTes::sortKey(
+                $entry['student']['nomor_tes'] ?? null,
+                $entry['student']['name'] ?? null
+            ))
+            ->values()
+            ->all();
 
         // Calculate summary
         $finished = $results->whereIn('status', ['completed', 'graded', 'submitted']);

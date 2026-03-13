@@ -9,6 +9,7 @@ use App\Models\ClassRoom;
 use App\Models\Exam;
 use App\Models\ExamResult;
 use App\Models\User;
+use App\Support\NomorTes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -38,9 +39,10 @@ class ExportController extends Controller
             $results = $exam->results()
                 ->with(['student:id,name,nisn,nomor_tes,class_id', 'student.classRoom:id,name'])
                 ->join('users', 'users.id', '=', 'exam_results.student_id')
-                ->orderByRaw('users.nomor_tes IS NULL, users.nomor_tes ASC')
                 ->select('exam_results.*')
-                ->get();
+                ->get()
+                ->sortBy(fn ($result) => NomorTes::sortKey($result->student?->nomor_tes, $result->student?->name))
+                ->values();
 
             // Load answers per student (Answer doesn't have exam_result_id, uses exam_id + student_id)
             $allAnswers = \App\Models\Answer::where('exam_id', $exam->id)
@@ -68,8 +70,9 @@ class ExportController extends Controller
             $allClassStudents = \App\Models\User::where('role', 'siswa')
                 ->whereIn('class_id', $classIds)
                 ->with('classRoom:id,name')
-                ->orderByRaw('nomor_tes IS NULL, nomor_tes ASC')
-                ->get(['id', 'name', 'nisn', 'nomor_tes', 'class_id']);
+                ->get(['id', 'name', 'nisn', 'nomor_tes', 'class_id'])
+                ->sortBy(fn ($student) => NomorTes::sortKey($student->nomor_tes, $student->name))
+                ->values();
 
             $resultStudentIds = $results->pluck('student_id')->toArray();
             $missingStudents = $allClassStudents->filter(fn($s) => !in_array($s->id, $resultStudentIds));
@@ -860,9 +863,10 @@ class ExportController extends Controller
             $results = $quiz->results()
                 ->with(['student:id,name,nisn,nomor_tes,class_id', 'student.classRoom:id,name'])
                 ->join('users', 'users.id', '=', 'exam_results.student_id')
-                ->orderByRaw('users.name ASC')
                 ->select('exam_results.*')
-                ->get();
+                ->get()
+                ->sortBy(fn ($result) => NomorTes::sortKey($result->student?->nomor_tes, $result->student?->name))
+                ->values();
 
             // Load answers per student
             $allAnswers = \App\Models\Answer::where('exam_id', $quiz->id)
@@ -890,8 +894,9 @@ class ExportController extends Controller
             $allClassStudents = \App\Models\User::where('role', 'siswa')
                 ->whereIn('class_id', $classIds)
                 ->with('classRoom:id,name')
-                ->orderBy('name')
-                ->get(['id', 'name', 'nisn', 'nomor_tes', 'class_id']);
+                ->get(['id', 'name', 'nisn', 'nomor_tes', 'class_id'])
+                ->sortBy(fn ($student) => NomorTes::sortKey($student->nomor_tes, $student->name))
+                ->values();
 
             $resultStudentIds = $results->pluck('student_id')->toArray();
             $missingStudents = $allClassStudents->filter(fn($s) => !in_array($s->id, $resultStudentIds));

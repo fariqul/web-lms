@@ -27,6 +27,7 @@ import {
 import api, { exportAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useExamSocket } from '@/hooks/useSocket';
+import { extractNomorTesNumber, matchesNomorTesQuery } from '@/utils/nomorTes';
 
 interface StudentResult {
   id: number;
@@ -283,7 +284,7 @@ export default function ExamResultsPage() {
         const q = searchQuery.toLowerCase();
         const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
           r.student?.nisn?.toLowerCase().includes(q) ||
-          r.student?.nomor_tes?.toLowerCase().includes(q);
+          matchesNomorTesQuery(r.student?.nomor_tes, q);
         if (!matchesSearch) return false;
       }
       
@@ -330,12 +331,16 @@ export default function ExamResultsPage() {
     .sort((a, b) => {
       if (sortBy === 'name') return (a.student?.name || '').localeCompare(b.student?.name || '');
       if (sortBy === 'nomor_tes') {
-        const aNt = a.student?.nomor_tes || '';
-        const bNt = b.student?.nomor_tes || '';
-        if (!aNt && !bNt) return 0;
-        if (!aNt) return 1;
-        if (!bNt) return -1;
-        return aNt.localeCompare(bNt, undefined, { numeric: true });
+        const aNumber = extractNomorTesNumber(a.student?.nomor_tes);
+        const bNumber = extractNomorTesNumber(b.student?.nomor_tes);
+        const hasANumber = aNumber > 0;
+        const hasBNumber = bNumber > 0;
+
+        if (!hasANumber && !hasBNumber) return 0;
+        if (!hasANumber) return 1;
+        if (!hasBNumber) return -1;
+
+        return aNumber - bNumber;
       }
       // rank (by score)
       // not_started and missed go to bottom

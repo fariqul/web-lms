@@ -6,6 +6,7 @@ import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } 
 import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { extractNomorTesNumber } from '@/utils/nomorTes';
 
 interface User {
   id: number;
@@ -128,13 +129,6 @@ export default function AdminUsersPage() {
       setSortKey(key);
       setSortOrder('asc');
     }
-  };
-
-  // Extract number from nomor_tes format "NISN-X"
-  const extractNomorTesNumber = (nomorTes: string | undefined): number => {
-    if (!nomorTes) return 0;
-    const match = nomorTes.match(/-(\d+)$/);
-    return match ? parseInt(match[1], 10) : 0;
   };
 
   // Sort users based on sortKey and sortOrder

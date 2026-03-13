@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { quizAPI, exportAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { extractNomorTesNumber, matchesNomorTesQuery } from '@/utils/nomorTes';
 
 interface StudentResult {
   id: number;
@@ -72,7 +73,7 @@ export default function QuizResultsPage() {
   const [summary, setSummary] = useState<ResultSummary | null>(null);
   const [quizInfo, setQuizInfo] = useState<QuizInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'rank' | 'name'>('rank');
+  const [sortBy, setSortBy] = useState<'rank' | 'name' | 'nomor_tes'>('rank');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterClass, setFilterClass] = useState<string>('');
   const [exporting, setExporting] = useState(false);
@@ -138,7 +139,7 @@ export default function QuizResultsPage() {
         const q = searchQuery.toLowerCase();
         const matchesSearch = r.student?.name?.toLowerCase().includes(q) ||
           r.student?.nisn?.toLowerCase().includes(q) ||
-          r.student?.nomor_tes?.toLowerCase().includes(q);
+          matchesNomorTesQuery(r.student?.nomor_tes, q);
         if (!matchesSearch) return false;
       }
       
@@ -179,6 +180,18 @@ export default function QuizResultsPage() {
     })
     .sort((a, b) => {
       if (sortBy === 'name') return (a.student?.name || '').localeCompare(b.student?.name || '');
+      if (sortBy === 'nomor_tes') {
+        const aNumber = extractNomorTesNumber(a.student?.nomor_tes);
+        const bNumber = extractNomorTesNumber(b.student?.nomor_tes);
+        const hasANumber = aNumber > 0;
+        const hasBNumber = bNumber > 0;
+
+        if (!hasANumber && !hasBNumber) return 0;
+        if (!hasANumber) return 1;
+        if (!hasBNumber) return -1;
+
+        return aNumber - bNumber;
+      }
       if ((a.status === 'not_started' || a.status === 'missed') && b.status !== 'not_started' && b.status !== 'missed') return 1;
       if ((b.status === 'not_started' || b.status === 'missed') && a.status !== 'not_started' && a.status !== 'missed') return -1;
       return b.percentage - a.percentage;
@@ -410,11 +423,11 @@ export default function QuizResultsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama atau NIS siswa…"
+              placeholder="Cari nama, NIS, atau No. Tes…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-              aria-label="Cari nama atau NIS siswa"
+              aria-label="Cari nama, NIS, atau No. Tes"
               name="searchResults"
             />
           </div>
@@ -448,13 +461,14 @@ export default function QuizResultsPage() {
           </select>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'rank' | 'name')}
+            onChange={(e) => setSortBy(e.target.value as 'rank' | 'name' | 'nomor_tes')}
             className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
             aria-label="Urutkan hasil"
             name="sortBy"
           >
             <option value="rank">Urutkan: Nilai Tertinggi</option>
             <option value="name">Urutkan: Nama A-Z</option>
+            <option value="nomor_tes">Urutkan: No. Tes</option>
           </select>
         </div>
 
