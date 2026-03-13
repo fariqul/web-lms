@@ -214,6 +214,12 @@ export const userAPI = {
   
   bulkToggleBlock: (userIds: number[], isBlocked: boolean, reason?: string) =>
     api.post('/students/bulk-toggle-block', { user_ids: userIds, is_blocked: isBlocked, reason }),
+
+  toggleBlockAllStudents: (isBlocked: boolean, reason?: string) =>
+    api.post('/students/toggle-block-all', { is_blocked: isBlocked, reason }),
+
+  toggleBlockStudentsByClass: (classId: number, isBlocked: boolean, reason?: string) =>
+    api.post('/students/toggle-block-by-class', { class_id: classId, is_blocked: isBlocked, reason }),
 };
 
 // Class API

@@ -8,7 +8,6 @@ use App\Models\Question;
 use App\Models\Answer;
 use App\Models\ExamResult;
 use App\Models\User;
-use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -929,14 +928,6 @@ class QuizController extends Controller
                 'ungraded_essays' => 0,
             ];
         }
-
-        $allEntries = collect($allEntries)
-            ->sortBy(fn (array $entry) => NomorTes::sortKey(
-                $entry['student']['nomor_tes'] ?? null,
-                $entry['student']['name'] ?? null
-            ))
-            ->values()
-            ->all();
 
         return response()->json([
             'success' => true,

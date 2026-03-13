@@ -386,4 +386,107 @@ class UserController extends Controller
             'affected_count' => $users->count(),
         ]);
     }
+
+    /**
+     * Block/unblock all student accounts at once (admin only)
+     */
+    public function toggleAllStudentsBlock(Request $request)
+    {
+        $request->validate([
+            'is_blocked' => 'required|boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $users = User::where('role', 'siswa')->get();
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada akun siswa yang ditemukan',
+            ], 404);
+        }
+
+        $updateData = [
+            'is_blocked' => $request->is_blocked,
+        ];
+
+        if ($request->is_blocked) {
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal oleh admin';
+            $updateData['blocked_at'] = now();
+        } else {
+            $updateData['block_reason'] = null;
+            $updateData['blocked_at'] = null;
+        }
+
+        User::where('role', 'siswa')->update($updateData);
+
+        // Force logout blocked users
+        if ($request->is_blocked) {
+            foreach ($users as $user) {
+                $user->tokens()->delete();
+            }
+        }
+
+        $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
+
+        return response()->json([
+            'success' => true,
+            'message' => "Semua akun siswa berhasil {$action}",
+            'affected_count' => $users->count(),
+        ]);
+    }
+
+    /**
+     * Block/unblock student accounts by class (admin only)
+     */
+    public function toggleStudentsBlockByClass(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|exists:classes,id',
+            'is_blocked' => 'required|boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $users = User::where('role', 'siswa')
+            ->where('class_id', $request->class_id)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada akun siswa di kelas tersebut',
+            ], 404);
+        }
+
+        $updateData = [
+            'is_blocked' => $request->is_blocked,
+        ];
+
+        if ($request->is_blocked) {
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal per kelas oleh admin';
+            $updateData['blocked_at'] = now();
+        } else {
+            $updateData['block_reason'] = null;
+            $updateData['blocked_at'] = null;
+        }
+
+        User::where('role', 'siswa')
+            ->where('class_id', $request->class_id)
+            ->update($updateData);
+
+        if ($request->is_blocked) {
+            foreach ($users as $user) {
+                $user->tokens()->delete();
+            }
+        }
+
+        $className = ClassRoom::find($request->class_id)?->name ?? 'Kelas';
+        $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$users->count()} siswa di {$className} berhasil {$action}",
+            'affected_count' => $users->count(),
+        ]);
+    }
 }

@@ -75,6 +75,8 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::post('/users/{user}/toggle-block', [UserController::class, 'toggleBlock']);
         Route::get('/students/blocked', [UserController::class, 'blockedStudents']);
         Route::post('/students/bulk-toggle-block', [UserController::class, 'bulkToggleBlock']);
+        Route::post('/students/toggle-block-all', [UserController::class, 'toggleAllStudentsBlock']);
+        Route::post('/students/toggle-block-by-class', [UserController::class, 'toggleStudentsBlockByClass']);
         
         // Class Management
         Route::apiResource('classes', ClassController::class)->except(['index', 'show']);

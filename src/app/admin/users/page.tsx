@@ -59,6 +59,10 @@ export default function AdminUsersPage() {
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [blockReason, setBlockReason] = useState('');
   const [blockAction, setBlockAction] = useState<'block' | 'unblock'>('block');
+  const [isBulkBlockModalOpen, setIsBulkBlockModalOpen] = useState(false);
+  const [bulkBlockReason, setBulkBlockReason] = useState('');
+  const [bulkBlockAction, setBulkBlockAction] = useState<'block' | 'unblock'>('block');
+  const [bulkBlockScope, setBulkBlockScope] = useState<'all' | 'class' | 'filter'>('all');
 
   // Sorting state
   const [sortKey, setSortKey] = useState<'name' | 'nomor_tes' | null>(null);
@@ -158,6 +162,11 @@ export default function AdminUsersPage() {
   }, [users, sortKey, sortOrder]);
 
   const filteredUsers = sortedUsers;
+  const filteredStudentIds = React.useMemo(
+    () => filteredUsers.filter((u) => u.role === 'siswa').map((u) => u.id),
+    [filteredUsers]
+  );
+  const selectedClassName = classes.find((c) => c.id.toString() === classFilter)?.name;
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -243,6 +252,47 @@ export default function AdminUsersPage() {
       fetchData();
     } catch (error: any) {
       const msg = error.response?.data?.message || 'Gagal mengubah status blokir';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBulkBlockClick = (action: 'block' | 'unblock') => {
+    setBulkBlockAction(action);
+    setBulkBlockReason('');
+    setBulkBlockScope('all');
+    setIsBulkBlockModalOpen(true);
+  };
+
+  const handleToggleAllStudentsBlock = async () => {
+    setSubmitting(true);
+    try {
+      const isBlocking = bulkBlockAction === 'block';
+      let response;
+
+      if (bulkBlockScope === 'all') {
+        response = await userAPI.toggleBlockAllStudents(isBlocking, bulkBlockReason || undefined);
+      } else if (bulkBlockScope === 'class') {
+        if (!classFilter) {
+          toast.error('Pilih filter kelas terlebih dahulu untuk aksi per kelas.');
+          return;
+        }
+        response = await userAPI.toggleBlockStudentsByClass(Number(classFilter), isBlocking, bulkBlockReason || undefined);
+      } else {
+        if (filteredStudentIds.length === 0) {
+          toast.error('Tidak ada siswa sesuai filter aktif.');
+          return;
+        }
+        response = await userAPI.bulkToggleBlock(filteredStudentIds, isBlocking, bulkBlockReason || undefined);
+      }
+
+      const message = response.data?.message || (isBlocking ? 'Akun siswa berhasil diblokir' : 'Akun siswa berhasil diaktifkan kembali');
+      toast.success(message);
+      setIsBulkBlockModalOpen(false);
+      fetchData();
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Gagal mengubah status blokir semua siswa';
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -467,6 +517,24 @@ export default function AdminUsersPage() {
             subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${classFilter ? ` — ${classes.find(c => c.id.toString() === classFilter)?.name || 'Kelas'}` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
             action={
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Ban className="w-4 h-4" />}
+                  onClick={() => handleBulkBlockClick('block')}
+                  className="text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  Blokir Semua Siswa
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<UserCheck className="w-4 h-4" />}
+                  onClick={() => handleBulkBlockClick('unblock')}
+                  className="text-green-700 dark:text-green-400 border-green-300 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-900/20"
+                >
+                  Aktifkan Semua Siswa
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -847,6 +915,100 @@ export default function AdminUsersPage() {
                 <>
                   <UserCheck className="w-4 h-4 mr-2" />
                   Aktifkan Kembali
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Block/Unblock Modal */}
+      <Modal
+        isOpen={isBulkBlockModalOpen}
+        onClose={() => setIsBulkBlockModalOpen(false)}
+        title={bulkBlockAction === 'block' ? 'Blokir Akun Siswa (Massal)' : 'Aktifkan Akun Siswa (Massal)'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Scope Aksi</label>
+            <Select
+              options={[
+                { value: 'all', label: 'Semua siswa' },
+                { value: 'class', label: classFilter ? `Semua siswa di kelas ${selectedClassName || classFilter}` : 'Semua siswa di kelas terfilter (pilih kelas dulu)' },
+                { value: 'filter', label: `Siswa sesuai filter aktif (${filteredStudentIds.length} siswa)` },
+              ]}
+              value={bulkBlockScope}
+              onChange={(e) => setBulkBlockScope(e.target.value as 'all' | 'class' | 'filter')}
+            />
+            {!classFilter && bulkBlockScope === 'class' && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">Filter kelas belum dipilih.</p>
+            )}
+          </div>
+
+          <div className={`p-3 rounded-lg border ${
+            bulkBlockAction === 'block'
+              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50'
+              : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50'
+          }`}>
+            <p className={`text-sm ${
+              bulkBlockAction === 'block'
+                ? 'text-amber-700 dark:text-amber-400'
+                : 'text-green-700 dark:text-green-400'
+            }`}>
+              {bulkBlockAction === 'block'
+                ? 'Anda akan memblokir akun siswa sesuai scope yang dipilih.'
+                : 'Anda akan mengaktifkan kembali akun siswa sesuai scope yang dipilih.'}
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              {bulkBlockScope === 'all'
+                ? 'Aksi akan mempengaruhi seluruh pengguna dengan role siswa.'
+                : bulkBlockScope === 'class'
+                  ? `Aksi akan mempengaruhi seluruh siswa pada ${selectedClassName || 'kelas terpilih'}.`
+                  : `Aksi akan mempengaruhi ${filteredStudentIds.length} siswa sesuai filter aktif.`}
+            </p>
+          </div>
+
+          {bulkBlockAction === 'block' && (
+            <>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  <strong>Perhatian:</strong> Siswa yang diblokir akan langsung logout dan tidak bisa login sampai diaktifkan kembali.
+                </p>
+              </div>
+
+              <Input
+                label="Alasan Pemblokiran Massal (opsional)"
+                placeholder="Contoh: Ujian sedang berlangsung di sekolah"
+                value={bulkBlockReason}
+                onChange={(e) => setBulkBlockReason(e.target.value)}
+              />
+            </>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsBulkBlockModalOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleToggleAllStudentsBlock}
+              disabled={submitting}
+              className={bulkBlockAction === 'block' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Memproses…
+                </>
+              ) : bulkBlockAction === 'block' ? (
+                <>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Blokir Semua Siswa
+                </>
+              ) : (
+                <>
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Aktifkan Semua Siswa
                 </>
               )}
             </Button>
