@@ -47,6 +47,7 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
+  const [studentBlockFilter, setStudentBlockFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -161,7 +162,26 @@ export default function AdminUsersPage() {
     });
   }, [users, sortKey, sortOrder]);
 
-  const filteredUsers = sortedUsers;
+  const filteredUsers = React.useMemo(() => {
+    if (studentBlockFilter === 'all') return sortedUsers;
+
+    return sortedUsers.filter((u) => {
+      if (u.role !== 'siswa') return false;
+      if (studentBlockFilter === 'blocked') return u.is_blocked === true;
+      return u.is_blocked !== true;
+    });
+  }, [sortedUsers, studentBlockFilter]);
+
+  const totalStudentsCount = React.useMemo(
+    () => users.filter((u) => u.role === 'siswa').length,
+    [users]
+  );
+  const blockedStudentsCount = React.useMemo(
+    () => users.filter((u) => u.role === 'siswa' && u.is_blocked === true).length,
+    [users]
+  );
+  const activeStudentsCount = Math.max(0, totalStudentsCount - blockedStudentsCount);
+
   const allStudentCount = React.useMemo(
     () => users.filter((u) => u.role === 'siswa').length,
     [users]
@@ -522,7 +542,7 @@ export default function AdminUsersPage() {
         <Card>
           <CardHeader
             title="Kelola Pengguna"
-            subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${classFilter ? ` — ${classes.find(c => c.id.toString() === classFilter)?.name || 'Kelas'}` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
+            subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${classFilter ? ` — ${classes.find(c => c.id.toString() === classFilter)?.name || 'Kelas'}` : ''}${studentBlockFilter !== 'all' ? ` — status ${studentBlockFilter === 'blocked' ? 'terblokir' : 'aktif'}` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
             action={
               <div className="flex gap-2">
                 <Button
@@ -612,6 +632,72 @@ export default function AdminUsersPage() {
                 }}
               />
             </div>
+            <div className="w-full md:w-56">
+              <Select
+                options={[
+                  { value: 'all', label: 'Status Siswa: Semua' },
+                  { value: 'active', label: 'Status Siswa: Aktif' },
+                  { value: 'blocked', label: 'Status Siswa: Terblokir' },
+                ]}
+                value={studentBlockFilter}
+                onChange={(e) => {
+                  const val = e.target.value as 'all' | 'active' | 'blocked';
+                  setStudentBlockFilter(val);
+                  if (val !== 'all' && roleFilter !== 'siswa') {
+                    setRoleFilter('siswa');
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Student block summary */}
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setStudentBlockFilter('all');
+                if (roleFilter !== 'siswa') setRoleFilter('siswa');
+              }}
+              className={`px-2.5 py-1 rounded-full border transition-colors ${
+                studentBlockFilter === 'all'
+                  ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100'
+                  : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              title="Tampilkan semua siswa"
+            >
+              Total Siswa: {totalStudentsCount}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStudentBlockFilter('active');
+                if (roleFilter !== 'siswa') setRoleFilter('siswa');
+              }}
+              className={`px-2.5 py-1 rounded-full border transition-colors ${
+                studentBlockFilter === 'active'
+                  ? 'bg-green-200 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300'
+                  : 'bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40'
+              }`}
+              title="Filter siswa aktif"
+            >
+              Aktif: {activeStudentsCount}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStudentBlockFilter('blocked');
+                if (roleFilter !== 'siswa') setRoleFilter('siswa');
+              }}
+              className={`px-2.5 py-1 rounded-full border transition-colors ${
+                studentBlockFilter === 'blocked'
+                  ? 'bg-red-200 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300'
+                  : 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40'
+              }`}
+              title="Filter siswa terblokir"
+            >
+              Terblokir: {blockedStudentsCount}
+            </button>
           </div>
 
           {/* Class info bar */}

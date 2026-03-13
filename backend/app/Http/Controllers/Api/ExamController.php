@@ -2107,7 +2107,7 @@ class ExamController extends Controller
                 ->whereNull('graded_at')
                 ->count();
             
-            if ($ungradedEssays === 0 && $examResult->status === 'completed') {
+            if ($ungradedEssays === 0 && in_array($examResult->status, ['completed', 'submitted'], true)) {
                 $examResult->status = 'graded';
                 $examResult->save();
             }

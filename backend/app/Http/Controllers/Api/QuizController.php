@@ -1029,12 +1029,29 @@ class QuizController extends Controller
 
         if ($examResult) {
             $examResult->calculateScore();
+
+            // If all essay answers are graded, promote submitted/completed to graded
+            $ungradedEssays = Answer::where('exam_id', $quiz->id)
+                ->where('student_id', $answer->student_id)
+                ->whereHas('question', function ($q) {
+                    $q->where('type', 'essay');
+                })
+                ->whereNull('graded_at')
+                ->count();
+
+            if ($ungradedEssays === 0 && in_array($examResult->status, ['completed', 'submitted'], true)) {
+                $examResult->status = 'graded';
+                $examResult->save();
+            }
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Nilai berhasil disimpan',
-            'data' => $answer,
+            'data' => [
+                'answer' => $answer,
+                'exam_result' => $examResult,
+            ],
         ]);
     }
 }
