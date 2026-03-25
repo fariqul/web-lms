@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Modal, ConfirmDialog } from '@/components/ui';
 import {
@@ -38,13 +39,29 @@ import { bankQuestionAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
-import { ImportTextModal } from '@/components/ujian/ImportTextModal';
-import { ImportBankSoalModal } from '@/components/ujian/ImportBankSoalModal';
-import { DuplicateExamModal } from '@/components/ujian/DuplicateExamModal';
-import { ImportExcelModal } from '@/components/ujian/ImportExcelModal';
-import { ImportWordModal } from '@/components/ujian/ImportWordModal';
 import { MathText } from '@/components/ui/MathText';
 import { useExamSocket } from '@/hooks/useSocket';
+
+const ImportTextModal = dynamic(
+  () => import('@/components/ujian/ImportTextModal').then((m) => m.ImportTextModal),
+  { ssr: false }
+);
+const ImportBankSoalModal = dynamic(
+  () => import('@/components/ujian/ImportBankSoalModal').then((m) => m.ImportBankSoalModal),
+  { ssr: false }
+);
+const DuplicateExamModal = dynamic(
+  () => import('@/components/ujian/DuplicateExamModal').then((m) => m.DuplicateExamModal),
+  { ssr: false }
+);
+const ImportExcelModal = dynamic(
+  () => import('@/components/ujian/ImportExcelModal').then((m) => m.ImportExcelModal),
+  { ssr: false }
+);
+const ImportWordModal = dynamic(
+  () => import('@/components/ujian/ImportWordModal').then((m) => m.ImportWordModal),
+  { ssr: false }
+);
 
 interface Option {
   id?: number;
@@ -112,6 +129,7 @@ export default function EditSoalPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deleteQuestionId, setDeleteQuestionId] = useState<number | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
+  const [visibleQuestionCount, setVisibleQuestionCount] = useState(15);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
@@ -1662,7 +1680,7 @@ export default function EditSoalPage() {
             </div>
           ) : (
             <div className="divide-y">
-              {questions.map((question, index) => (
+              {questions.slice(0, visibleQuestionCount).map((question, index) => (
                 <div key={question.id || index} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800">
                   <div className="flex items-start gap-4">
                     {canEdit && (
@@ -1691,6 +1709,8 @@ export default function EditSoalPage() {
                           <img
                             src={getSecureFileUrl(question.image)}
                             alt="Gambar Soal"
+                            loading="lazy"
+                            decoding="async"
                             className="max-w-xs max-h-40 rounded-lg border border-slate-200 dark:border-slate-700"
                           />
                         </div>
@@ -1719,6 +1739,8 @@ export default function EditSoalPage() {
                                   <img
                                     src={getSecureFileUrl(opt.image)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="mt-1 max-w-[200px] max-h-24 rounded border border-slate-200 dark:border-slate-700"
                                   />
                                 )}
@@ -1801,6 +1823,16 @@ export default function EditSoalPage() {
                   </div>
                 </div>
               ))}
+              {questions.length > visibleQuestionCount && (
+                <div className="p-4 flex justify-center border-t border-slate-100 dark:border-slate-800">
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleQuestionCount((prev) => Math.min(prev + 15, questions.length))}
+                  >
+                    Tampilkan lebih banyak ({questions.length - visibleQuestionCount} tersisa)
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </Card>

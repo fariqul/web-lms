@@ -10,6 +10,7 @@ use App\Models\ExamResult;
 use App\Models\User;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,20 @@ use Carbon\Carbon;
 
 class QuizController extends Controller
 {
+    private const QUIZ_SHOW_CACHE_TTL_SECONDS_DEFAULT = 20;
+
+    private function getQuizShowCacheTtlSeconds(): int
+    {
+        $ttl = (int) env('QUIZ_SHOW_CACHE_TTL_SECONDS', self::QUIZ_SHOW_CACHE_TTL_SECONDS_DEFAULT);
+        return max(5, $ttl);
+    }
+
+    private function forgetQuizShowCache(int $quizId): void
+    {
+        Cache::forget("quiz:show:{$quizId}:role:guru");
+        Cache::forget("quiz:show:{$quizId}:role:admin");
+    }
+
     /**
      * List quizzes - teacher sees own, student sees class quizzes
      */
@@ -76,14 +91,30 @@ class QuizController extends Controller
         }
 
         $user = $request->user();
+        $shouldUseShowCache = in_array($user->role, ['guru', 'admin'], true) && !$request->boolean('no_cache');
+        $showCacheKey = "quiz:show:{$quiz->id}:role:{$user->role}";
 
         // Teacher/admin: show with questions
         if ($user->role === 'guru' || $user->role === 'admin') {
             if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
+
+            if ($shouldUseShowCache) {
+                $cachedPayload = Cache::get($showCacheKey);
+                if (is_array($cachedPayload) && array_key_exists('success', $cachedPayload) && array_key_exists('data', $cachedPayload)) {
+                    return response()->json($cachedPayload);
+                }
+            }
+
             $quiz->load(['questions' => fn($q) => $q->orderBy('order'), 'classes:id,name', 'teacher:id,name']);
-            return response()->json(['success' => true, 'data' => $quiz]);
+            $payload = ['success' => true, 'data' => $quiz->toArray()];
+
+            if ($shouldUseShowCache) {
+                Cache::put($showCacheKey, $payload, now()->addSeconds($this->getQuizShowCacheTtlSeconds()));
+            }
+
+            return response()->json($payload);
         }
 
         // Student: show without questions (must start first)
@@ -183,6 +214,7 @@ class QuizController extends Controller
             $quiz->save();
             $quiz->classes()->sync($request->class_ids);
         }
+        $this->forgetQuizShowCache($quiz->id);
 
         $quiz->load('classes:id,name');
 
@@ -217,6 +249,7 @@ class QuizController extends Controller
 
         $quiz->questions()->delete();
         $quiz->classes()->detach();
+        $this->forgetQuizShowCache($quiz->id);
         $quiz->delete();
 
         return response()->json([
@@ -251,6 +284,7 @@ class QuizController extends Controller
             $quiz->start_time = now();
             $quiz->end_time = now()->addYear();
             $quiz->save();
+            $this->forgetQuizShowCache($quiz->id);
 
             return response()->json([
                 'success' => true,
@@ -263,6 +297,7 @@ class QuizController extends Controller
         if ($quiz->status === 'active' || $quiz->status === 'scheduled') {
             $quiz->status = 'draft';
             $quiz->save();
+            $this->forgetQuizShowCache($quiz->id);
 
             return response()->json([
                 'success' => true,
@@ -309,6 +344,7 @@ class QuizController extends Controller
         $quiz->status = 'completed';
         $quiz->end_time = now();
         $quiz->save();
+        $this->forgetQuizShowCache($quiz->id);
 
         return response()->json([
             'success' => true,
@@ -407,6 +443,7 @@ class QuizController extends Controller
 
         $quiz->total_questions = $quiz->questions()->count();
         $quiz->save();
+        $this->forgetQuizShowCache($quiz->id);
 
         return response()->json([
             'success' => true,
@@ -502,6 +539,7 @@ class QuizController extends Controller
             'essay_keywords' => $type === 'essay' ? ($request->essay_keywords ?? $question->essay_keywords) : null,
             'points' => $request->points ?? $question->points,
         ]);
+        $this->forgetQuizShowCache($quiz->id);
 
         return response()->json([
             'success' => true,
@@ -530,6 +568,7 @@ class QuizController extends Controller
 
         $quiz->total_questions = $quiz->questions()->count();
         $quiz->save();
+        $this->forgetQuizShowCache($quiz->id);
 
         return response()->json([
             'success' => true,

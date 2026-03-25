@@ -11,6 +11,72 @@ import Link from 'next/link';
 
 // Demo login only available in development mode
 const isDevelopment = process.env.NODE_ENV === 'development';
+const ANIMATED_TEXT = 'Learning Management System SMA 15';
+const CHAR_DELAY = 50;
+const CHAR_ANIM = 400;
+
+const LoginBrandPanel = React.memo(function LoginBrandPanel() {
+  const [cursorPhase, setCursorPhase] = useState<'blink' | 'solid' | 'hidden'>('blink');
+
+  useEffect(() => {
+    const total = ANIMATED_TEXT.length * CHAR_DELAY + CHAR_ANIM;
+    const t1 = setTimeout(() => setCursorPhase('solid'), total);
+    const t2 = setTimeout(() => setCursorPhase('hidden'), total + 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  return (
+    <div className="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden items-center justify-center p-12">
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl" />
+
+      <div className="relative z-10 max-w-md text-center">
+        <div className="inline-flex items-center justify-center w-28 h-28 mb-8">
+          <Image
+            src="/logo_sma15.png"
+            alt="Logo SMA 15 Makassar"
+            width={112}
+            height={112}
+            priority
+            fetchPriority="high"
+            className="object-contain w-full h-full drop-shadow-lg"
+          />
+        </div>
+        <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">SMA 15 Makassar</h1>
+
+        <div className="mt-2 flex items-center justify-center min-h-[2rem]">
+          <p
+            className="text-[1.15rem] font-semibold tracking-[0.04em] text-sky-300"
+            style={{ textShadow: '0 0 30px rgba(56, 189, 248, 0.15)' }}
+          >
+            {ANIMATED_TEXT.split('').map((char, i) => (
+              <span
+                key={i}
+                className="inline-block opacity-0"
+                style={{
+                  animation: `charReveal ${CHAR_ANIM}ms ease-out forwards`,
+                  animationDelay: `${i * CHAR_DELAY}ms`,
+                }}
+              >
+                {char === ' ' ? '\u00A0' : char}
+              </span>
+            ))}
+            <span
+              className={`inline-block w-[2px] h-5 rounded-full ml-1 align-middle bg-sky-400 ${
+                cursorPhase === 'blink'
+                  ? 'animate-[cursorBlink_0.8s_ease-in-out_infinite]'
+                  : cursorPhase === 'solid'
+                    ? 'opacity-70 transition-opacity duration-300'
+                    : 'opacity-0 transition-opacity duration-700'
+              }`}
+            />
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,18 +88,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [deviceLimited, setDeviceLimited] = useState(false);
   const [forceLoading, setForceLoading] = useState(false);
-  const [cursorPhase, setCursorPhase] = useState<'blink' | 'solid' | 'hidden'>('blink');
-
-  const ANIMATED_TEXT = 'Learning Management System SMA 15';
-  const CHAR_DELAY = 50;
-  const CHAR_ANIM = 400;
-
-  useEffect(() => {
-    const total = ANIMATED_TEXT.length * CHAR_DELAY + CHAR_ANIM;
-    const t1 = setTimeout(() => setCursorPhase('solid'), total);
-    const t2 = setTimeout(() => setCursorPhase('hidden'), total + 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,50 +167,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Left Panel - Brand */}
-      <div className="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden items-center justify-center p-12">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl" />
-
-        <div className="relative z-10 max-w-md text-center">
-          <div className="inline-flex items-center justify-center w-28 h-28 mb-8">
-            <Image src="/logo_sma15.png" alt="Logo SMA 15 Makassar" width={112} height={112} className="object-contain w-full h-full drop-shadow-lg" />
-          </div>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">SMA 15 Makassar</h1>
-
-          {/* Animated Text Reveal */}
-          <div className="mt-2 flex items-center justify-center min-h-[2rem]">
-            <p
-              className="text-[1.15rem] font-semibold tracking-[0.04em] text-sky-300"
-              style={{ textShadow: '0 0 30px rgba(56, 189, 248, 0.15)' }}
-            >
-              {ANIMATED_TEXT.split('').map((char, i) => (
-                <span
-                  key={i}
-                  className="inline-block opacity-0"
-                  style={{
-                    animation: `charReveal ${CHAR_ANIM}ms ease-out forwards`,
-                    animationDelay: `${i * CHAR_DELAY}ms`,
-                  }}
-                >
-                  {char === ' ' ? '\u00A0' : char}
-                </span>
-              ))}
-              <span
-                className={`inline-block w-[2px] h-5 rounded-full ml-1 align-middle bg-sky-400 ${
-                  cursorPhase === 'blink'
-                    ? 'animate-[cursorBlink_0.8s_ease-in-out_infinite]'
-                    : cursorPhase === 'solid'
-                      ? 'opacity-70 transition-opacity duration-300'
-                      : 'opacity-0 transition-opacity duration-700'
-                }`}
-              />
-            </p>
-          </div>
-        </div>
-      </div>
+      <LoginBrandPanel />
 
       {/* Right Panel - Form */}
       <div className="flex-1 flex items-center justify-center p-6">

@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,20 @@ use Carbon\Carbon;
 
 class ExamController extends Controller
 {
+    private const EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT = 20;
+
+    private function getExamShowCacheTtlSeconds(): int
+    {
+        $ttl = (int) env('EXAM_SHOW_CACHE_TTL_SECONDS', self::EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT);
+        return max(5, $ttl);
+    }
+
+    private function forgetExamShowCache(int $examId): void
+    {
+        Cache::forget("exam:show:{$examId}:role:guru");
+        Cache::forget("exam:show:{$examId}:role:admin");
+    }
+
     /**
      * Get teacher grades summary - all students with exam results
      */
@@ -328,6 +343,9 @@ class ExamController extends Controller
         $user = $request->user();
         $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name']);
 
+        $shouldUseShowCache = in_array($user->role, ['guru', 'admin'], true) && !$request->boolean('no_cache');
+        $showCacheKey = "exam:show:{$exam->id}:role:{$user->role}";
+
         // Students can only view exams for their class (check both direct and pivot)
         if ($user->role === 'siswa') {
             $hasAccess = $exam->class_id === $user->class_id
@@ -348,9 +366,32 @@ class ExamController extends Controller
             ], 403);
         }
 
+        if ($shouldUseShowCache) {
+            $cachedPayload = Cache::get($showCacheKey);
+            if (is_array($cachedPayload) && array_key_exists('success', $cachedPayload) && array_key_exists('data', $cachedPayload)) {
+                return response()->json($cachedPayload);
+            }
+        }
+
         // For teacher: include all questions with answers
         if ($user->role === 'guru' || $user->role === 'admin') {
-            $exam->load(['questions' => fn($q) => $q->orderBy('order')]);
+            $exam->load([
+                'questions' => fn($q) => $q
+                    ->select([
+                        'id',
+                        'exam_id',
+                        'passage',
+                        'question_text',
+                        'type',
+                        'points',
+                        'order',
+                        'image',
+                        'options',
+                        'correct_answer',
+                        'essay_keywords',
+                    ])
+                    ->orderBy('order')
+            ]);
             
             // Transform questions to include formatted options
             if ($exam->questions) {
@@ -435,10 +476,16 @@ class ExamController extends Controller
             $exam->seb_show_taskbar = $exam->seb_config['show_taskbar'] ?? true;
         }
 
-        return response()->json([
+        $payload = [
             'success' => true,
-            'data' => $exam,
-        ]);
+            'data' => $exam->toArray(),
+        ];
+
+        if ($shouldUseShowCache) {
+            Cache::put($showCacheKey, $payload, now()->addSeconds($this->getExamShowCacheTtlSeconds()));
+        }
+
+        return response()->json($payload);
     }
 
     /**
@@ -513,6 +560,7 @@ class ExamController extends Controller
         }
 
         $exam->save();
+        $this->forgetExamShowCache($exam->id);
 
         // Broadcast exam settings update to all participants
         try {
@@ -568,6 +616,7 @@ class ExamController extends Controller
         // Delete all related data in correct order to avoid orphans
         $examId = $exam->id;
         $classId = $exam->class_id;
+        $this->forgetExamShowCache($examId);
         DB::transaction(function () use ($exam) {
             // Delete answers for this exam
             Answer::where('exam_id', $exam->id)->delete();
@@ -644,6 +693,7 @@ class ExamController extends Controller
 
         $exam->status = 'scheduled';
         $exam->save();
+        $this->forgetExamShowCache($exam->id);
 
         // Broadcast exam published
         try {
@@ -677,6 +727,7 @@ class ExamController extends Controller
         $exam->locked_by = $user->id;
         $exam->locked_at = now();
         $exam->save();
+        $this->forgetExamShowCache($exam->id);
 
         // Broadcast exam locked
         try {
@@ -707,6 +758,7 @@ class ExamController extends Controller
         $exam->locked_by = null;
         $exam->locked_at = null;
         $exam->save();
+        $this->forgetExamShowCache($exam->id);
 
         // Broadcast exam unlocked
         try {
@@ -831,6 +883,7 @@ class ExamController extends Controller
         // Update exam total_questions count
         $exam->total_questions = $exam->questions()->count();
         $exam->save();
+        $this->forgetExamShowCache($exam->id);
 
         // Broadcast question added to active exam students
         app(SocketBroadcastService::class)->examQuestionAdded($exam->id, [
@@ -995,6 +1048,7 @@ class ExamController extends Controller
         }
 
         $question->save();
+        $this->forgetExamShowCache($question->exam_id);
 
         // Broadcast question updated to active exam students
         app(SocketBroadcastService::class)->examQuestionUpdated($question->exam_id, [
@@ -1065,6 +1119,7 @@ class ExamController extends Controller
         // Update total_questions count
         $exam->total_questions = $exam->questions()->count();
         $exam->save();
+        $this->forgetExamShowCache($exam->id);
 
         // Broadcast question deleted to active exam students
         app(SocketBroadcastService::class)->examQuestionDeleted($exam->id, [
