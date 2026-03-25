@@ -160,6 +160,20 @@ export default function EditSoalPage() {
     ],
   });
 
+  const normalizeStoragePathForApi = (path?: string | null): string => {
+    if (!path) return '';
+    const trimmed = path.trim();
+    if (!trimmed) return '';
+
+    // Convert full URL or absolute storage path to disk-relative path.
+    const storageMatch = trimmed.match(/\/storage\/(.+)/);
+    if (storageMatch?.[1]) {
+      return storageMatch[1].replace(/\\/g, '/').replace(/^storage\//, '').replace(/^\/+/, '');
+    }
+
+    return trimmed.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^storage\//, '');
+  };
+
   useEffect(() => {
     fetchExamData();
   }, [examId]);
@@ -453,7 +467,10 @@ export default function EditSoalPage() {
           formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
           formData.append(`options[${idx}][order]`, String(idx + 1));
           if (opt.image) {
-            formData.append(`options[${idx}][existing_image]`, opt.image);
+            const normalizedExistingImage = normalizeStoragePathForApi(opt.image);
+            if (normalizedExistingImage) {
+              formData.append(`options[${idx}][existing_image]`, normalizedExistingImage);
+            }
           }
         });
       }
@@ -624,7 +641,10 @@ export default function EditSoalPage() {
             formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
           } else if (opt.image) {
             // Keep existing image
-            formData.append(`options[${idx}][existing_image]`, opt.image);
+            const normalizedExistingImage = normalizeStoragePathForApi(opt.image);
+            if (normalizedExistingImage) {
+              formData.append(`options[${idx}][existing_image]`, normalizedExistingImage);
+            }
           }
           // If image was removed (had image before but now preview is null and no new file)
           if (!optionImagePreviews[idx] && !optionImageFiles[idx] && opt.image) {
@@ -805,7 +825,10 @@ export default function EditSoalPage() {
         if (q.image instanceof File) {
           formData.append('image', q.image);
         } else if (q.image) {
-          formData.append('image_path', q.image);
+          const normalizedQuestionImagePath = normalizeStoragePathForApi(q.image);
+          if (normalizedQuestionImagePath) {
+            formData.append('image_path', normalizedQuestionImagePath);
+          }
         }
 
         // Include essay keywords if present (from exam duplication)
@@ -824,7 +847,10 @@ export default function EditSoalPage() {
             if (opt.image instanceof File) {
               formData.append(`options[${idx}][image]`, opt.image);
             } else if (opt.image) {
-              formData.append(`options[${idx}][image_path]`, opt.image);
+              const normalizedOptionImagePath = normalizeStoragePathForApi(opt.image);
+              if (normalizedOptionImagePath) {
+                formData.append(`options[${idx}][image_path]`, normalizedOptionImagePath);
+              }
             }
           });
         }

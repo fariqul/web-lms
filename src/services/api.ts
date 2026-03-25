@@ -39,8 +39,22 @@ export function getSecureFileUrl(url: string | undefined | null): string {
     return u;
   };
   
-  // Already a full URL — convert to HTTPS if needed and return
+  // Already a full URL.
+  // If it contains /storage/, normalize to backend storage path so legacy hosts
+  // (e.g. localhost) do not break when opened from another domain.
   if (url.startsWith('http://') || url.startsWith('https://')) {
+    const storageMatch = url.match(/\/storage\/(.+)/);
+    if (storageMatch && storageMatch[1]) {
+      const normalizedRelative = storageMatch[1]
+        .replace(/\\/g, '/')
+        .replace(/^storage\//, '')
+        .replace(/^\/+/, '');
+      const backendBase = getBackendBaseUrl();
+      if (backendBase) {
+        return `${backendBase}/storage/${normalizedRelative}`;
+      }
+      return `/storage/${normalizedRelative}`;
+    }
     return forceHttps(url);
   }
 
@@ -48,6 +62,8 @@ export function getSecureFileUrl(url: string | undefined | null): string {
   let relativePath: string;
   if (url.startsWith('/storage/')) {
     relativePath = url.slice('/storage/'.length);
+  } else if (url.startsWith('storage/')) {
+    relativePath = url.slice('storage/'.length);
   } else {
     const storageMatch = url.match(/\/storage\/(.+)/);
     if (storageMatch) {
@@ -59,6 +75,8 @@ export function getSecureFileUrl(url: string | undefined | null): string {
       return url;
     }
   }
+
+  relativePath = relativePath.replace(/\\/g, '/').replace(/^storage\//, '').replace(/^\/+/, '');
 
   // Prefer direct backend URL for reliability (bypasses Vercel rewrite)
   const backendBase = getBackendBaseUrl();
