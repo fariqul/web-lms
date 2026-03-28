@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
-import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download, AlertTriangle, Info } from 'lucide-react';
+import { FileEdit, Clock, Calendar, CheckCircle, PlayCircle, AlertCircle, Plus, Loader2, Users, Trash2, Shield, Download } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI } from '@/services/api';
 import { SUBJECT_OPTIONS } from '@/constants/subjects';
@@ -41,6 +42,19 @@ interface ClassOption {
 
 const subjects = SUBJECT_OPTIONS;
 
+const SEBSettingsFields = dynamic(
+  () => import('@/components/ujian/SEBSettingsFields').then((m) => m.SEBSettingsFields),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+        <div className="h-10 rounded bg-slate-100 dark:bg-slate-700/60 animate-pulse" />
+        <div className="h-10 rounded bg-slate-100 dark:bg-slate-700/60 animate-pulse" />
+      </div>
+    ),
+  }
+);
+
 export default function UjianPage() {
   const router = useRouter();
   const toast = useToast();
@@ -50,6 +64,8 @@ export default function UjianPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteExam, setDeleteExam] = useState<{id: number, title: string} | null>(null);
+  const [visibleUpcomingCount, setVisibleUpcomingCount] = useState(8);
+  const [visibleCompletedCount, setVisibleCompletedCount] = useState(6);
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
@@ -91,30 +107,31 @@ export default function UjianPage() {
     return () => { cleanups.forEach(c => c && c()); };
   }, [listSocket, examIds]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      // Fetch classes
-      const classesRes = await classAPI.getAll();
-      const classesData = classesRes.data?.data || [];
-      setClasses(
-        classesData.map((c: { id: number; name: string; grade_level?: string }) => ({
-          value: c.id.toString(),
-          label: c.name,
-          grade_level: c.grade_level,
-        }))
-      );
+      const [classesResult, examsResult] = await Promise.allSettled([
+        classAPI.getAll(),
+        api.get('/exams'),
+      ]);
 
-      // Try to fetch exams
-      try {
-        const examsRes = await api.get('/exams');
-        const examsRaw = examsRes.data?.data;
+      if (classesResult.status === 'fulfilled') {
+        const classesData = classesResult.value.data?.data || [];
+        setClasses(
+          classesData.map((c: { id: number; name: string; grade_level?: string }) => ({
+            value: c.id.toString(),
+            label: c.name,
+            grade_level: c.grade_level,
+          }))
+        );
+      } else {
+        setClasses([]);
+      }
+
+      if (examsResult.status === 'fulfilled') {
+        const examsRaw = examsResult.value.data?.data;
         const examsList = Array.isArray(examsRaw) ? examsRaw : (examsRaw?.data || []);
         setExams(examsList);
-      } catch {
+      } else {
         // Exams API might not exist yet
         setExams([]);
       }
@@ -123,7 +140,11 @@ export default function UjianPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,26 +217,78 @@ export default function UjianPage() {
     }
   };
 
-  const now = new Date();
-  const upcomingExams = exams.filter((e) => {
-    // If backend says 'completed', it's not upcoming
-    if (e.status === 'completed') return false;
-    // If end_time has passed, treat as completed even if backend status is still 'scheduled'
-    if (e.end_time && new Date(e.end_time) < now && e.status !== 'draft') return false;
-    return true;
-  });
-  const completedExams = exams.filter((e) => {
-    if (e.status === 'completed') return true;
-    // Treat scheduled/active exams with passed end_time as completed
-    if (e.end_time && new Date(e.end_time) < now && e.status !== 'draft') return true;
-    return false;
-  });
+  const { upcomingExams, completedExams } = useMemo(() => {
+    const now = Date.now();
+    const upcoming: Exam[] = [];
+    const completed: Exam[] = [];
 
-  const handleDeleteExam = (examId: number, examTitle: string) => {
+    for (const exam of exams) {
+      const endTimeMs = exam.end_time ? new Date(exam.end_time).getTime() : null;
+      const isCompleted =
+        exam.status === 'completed' ||
+        (endTimeMs !== null && endTimeMs < now && exam.status !== 'draft');
+
+      if (isCompleted) {
+        completed.push(exam);
+      } else {
+        upcoming.push(exam);
+      }
+    }
+
+    return { upcomingExams: upcoming, completedExams: completed };
+  }, [exams]);
+
+  const visibleUpcomingExams = useMemo(
+    () => upcomingExams.slice(0, visibleUpcomingCount),
+    [upcomingExams, visibleUpcomingCount]
+  );
+
+  const visibleCompletedExams = useMemo(
+    () => completedExams.slice(0, visibleCompletedCount),
+    [completedExams, visibleCompletedCount]
+  );
+
+  useEffect(() => {
+    if (upcomingExams.length === 0) return;
+
+    const targets = upcomingExams.slice(0, 6);
+    let idleId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const runPrefetch = () => {
+      if (cancelled) return;
+      for (const exam of targets) {
+        router.prefetch(`/ujian/${exam.id}/edit`);
+        router.prefetch(`/ujian/${exam.id}/results`);
+      }
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout?: number }) => number }).requestIdleCallback(
+        runPrefetch,
+        { timeout: 1500 }
+      );
+    } else {
+      timeoutId = globalThis.setTimeout(runPrefetch, 600);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        globalThis.clearTimeout(timeoutId);
+      }
+    };
+  }, [router, upcomingExams]);
+
+  const handleDeleteExam = useCallback((examId: number, examTitle: string) => {
     setDeleteExam({ id: examId, title: examTitle });
-  };
+  }, []);
 
-  const confirmDeleteExam = async () => {
+  const confirmDeleteExam = useCallback(async () => {
     if (!deleteExam) return;
 
     try {
@@ -228,9 +301,9 @@ export default function UjianPage() {
     } finally {
       setDeleteExam(null);
     }
-  };
+  }, [deleteExam, fetchData, toast]);
 
-  const getStatusBadge = (exam: Exam) => {
+  const getStatusBadge = useCallback((exam: Exam) => {
     const now = new Date();
     const endTime = exam.end_time ? new Date(exam.end_time) : null;
     const startTime = exam.start_time ? new Date(exam.start_time) : null;
@@ -283,7 +356,129 @@ export default function UjianPage() {
     }
 
     return null;
-  };
+  }, []);
+
+  const upcomingExamCards = useMemo(() => {
+    return visibleUpcomingExams.map((exam) => (
+      <div
+        key={exam.id}
+        className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-sky-300 transition-colors"
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center">
+              <FileEdit className="w-6 h-6 text-sky-500" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
+            </div>
+          </div>
+          {getStatusBadge(exam)}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <Calendar className="w-4 h-4" />
+            <span>{exam.start_time ? new Date(exam.start_time).toLocaleDateString('id-ID') : '-'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <Clock className="w-4 h-4" />
+            <span>{exam.duration} menit</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <Users className="w-4 h-4" />
+            <span>{exam.classes && exam.classes.length > 0 ? exam.classes.map(c => c.name).join(', ') : (exam.class_name || 'Semua Kelas')}</span>
+          </div>
+        </div>
+
+        {exam.seb_required && (
+          <div className="flex items-center justify-between mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">SEB Required</span>
+            </div>
+            <button
+              onClick={() => downloadSEBConfig(exam.title, exam.id, {
+                sebRequired: true,
+                sebAllowQuit: exam.seb_allow_quit ?? true,
+                sebQuitPassword: exam.seb_quit_password ?? '',
+                sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
+                sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
+                sebShowTaskbar: exam.seb_show_taskbar ?? true,
+              })}
+              className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download .seb
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Link href={`/ujian/${exam.id}/edit`} className="flex-1">
+            <Button variant="outline" fullWidth>
+              <FileEdit className="w-4 h-4 mr-2" />
+              Edit Soal
+            </Button>
+          </Link>
+          {exam.status === 'draft' && (
+            <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+              <Button variant="outline" fullWidth>
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Menunggu Publish Admin
+              </Button>
+            </Link>
+          )}
+          {(exam.status === 'scheduled' || exam.status === 'active') && (
+            <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+              <Button fullWidth>
+                <Users className="w-4 h-4 mr-2" />
+                Lihat Hasil
+              </Button>
+            </Link>
+          )}
+          {exam.status === 'draft' && (
+            <Button
+              variant="outline"
+              onClick={() => handleDeleteExam(exam.id, exam.title)}
+              className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+              aria-label="Hapus ujian"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    ));
+  }, [visibleUpcomingExams, getStatusBadge, handleDeleteExam]);
+
+  const completedExamCards = useMemo(() => {
+    return visibleCompletedExams.map((exam) => (
+      <div
+        key={exam.id}
+        className="border border-slate-200 dark:border-slate-700 rounded-xl p-4"
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700/50 rounded-xl flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
+            </div>
+          </div>
+          {getStatusBadge(exam)}
+        </div>
+        <Link href={`/ujian/${exam.id}/results`}>
+          <Button variant="outline" fullWidth>
+            Lihat Hasil
+          </Button>
+        </Link>
+      </div>
+    ));
+  }, [visibleCompletedExams, getStatusBadge]);
 
   if (loading) {
     return (
@@ -321,104 +516,22 @@ export default function UjianPage() {
           />
           <div className="space-y-4">
             {upcomingExams.length > 0 ? (
-              upcomingExams.map((exam) => (
-                <div
-                  key={exam.id}
-                  className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-sky-300 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center">
-                        <FileEdit className="w-6 h-6 text-sky-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(exam)}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                      <Calendar className="w-4 h-4" />
-                      <span>{exam.start_time ? new Date(exam.start_time).toLocaleDateString('id-ID') : '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                      <Clock className="w-4 h-4" />
-                      <span>{exam.duration} menit</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                      <Users className="w-4 h-4" />
-                      <span>{exam.classes && exam.classes.length > 0 ? exam.classes.map(c => c.name).join(', ') : (exam.class_name || 'Semua Kelas')}</span>
-                    </div>
-                  </div>
-
-                  {/* SEB Badge + Download */}
-                  {exam.seb_required && (
-                    <div className="flex items-center justify-between mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">SEB Required</span>
-                      </div>
-                      <button
-                        onClick={() => downloadSEBConfig(exam.title, exam.id, {
-                          sebRequired: true,
-                          sebAllowQuit: exam.seb_allow_quit ?? true,
-                          sebQuitPassword: exam.seb_quit_password ?? '',
-                          sebBlockScreenCapture: exam.seb_block_screen_capture ?? true,
-                          sebAllowVirtualMachine: exam.seb_allow_virtual_machine ?? false,
-                          sebShowTaskbar: exam.seb_show_taskbar ?? true,
-                        })}
-                        className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Download .seb
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <Link href={`/ujian/${exam.id}/edit`} className="flex-1">
-                      <Button variant="outline" fullWidth>
-                        <FileEdit className="w-4 h-4 mr-2" />
-                        Edit Soal
-                      </Button>
-                    </Link>
-                    {exam.status === 'draft' && (
-                      <Link href={`/ujian/${exam.id}/results`} className="flex-1">
-                        <Button variant="outline" fullWidth>
-                          <AlertCircle className="w-4 h-4 mr-2" />
-                          Menunggu Publish Admin
-                        </Button>
-                      </Link>
-                    )}
-                    {(exam.status === 'scheduled' || exam.status === 'active') && (
-                      <Link href={`/ujian/${exam.id}/results`} className="flex-1">
-                        <Button fullWidth>
-                          <Users className="w-4 h-4 mr-2" />
-                          Lihat Hasil
-                        </Button>
-                      </Link>
-                    )}
-                    {(exam.status === 'draft') && (
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDeleteExam(exam.id, exam.title)}
-                        className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        aria-label="Hapus ujian"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))
+              upcomingExamCards
             ) : (
               <div className="text-center py-8 text-slate-600 dark:text-slate-400">
                 <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Belum ada ujian</p>
                 <p className="text-sm mt-1">Klik tombol "Buat Ujian Baru" untuk membuat ujian</p>
+              </div>
+            )}
+            {upcomingExams.length > visibleUpcomingCount && (
+              <div className="pt-2 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleUpcomingCount((prev) => Math.min(prev + 8, upcomingExams.length))}
+                >
+                  Tampilkan lebih banyak ({upcomingExams.length - visibleUpcomingCount} tersisa)
+                </Button>
               </div>
             )}
           </div>
@@ -432,36 +545,24 @@ export default function UjianPage() {
               subtitle="Ujian yang sudah selesai"
             />
             <div className="space-y-4">
-              {completedExams.map((exam) => (
-                <div
-                  key={exam.id}
-                  className="border border-slate-200 dark:border-slate-700 rounded-xl p-4"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700/50 rounded-xl flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(exam)}
-                  </div>
-                  <Link href={`/ujian/${exam.id}/results`}>
-                    <Button variant="outline" fullWidth>
-                      Lihat Hasil
-                    </Button>
-                  </Link>
+              {completedExamCards}
+              {completedExams.length > visibleCompletedCount && (
+                <div className="pt-2 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleCompletedCount((prev) => Math.min(prev + 6, completedExams.length))}
+                  >
+                    Tampilkan lebih banyak ({completedExams.length - visibleCompletedCount} tersisa)
+                  </Button>
                 </div>
-              ))}
+              )}
             </div>
           </Card>
         )}
       </div>
 
       {/* Create Exam Modal */}
+      {isModalOpen && (
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -614,91 +715,7 @@ export default function UjianPage() {
             </div>
 
             {sebSettings.sebRequired && (
-              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan keluar SEB</label>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Siswa bisa keluar SEB dengan password</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={sebSettings.sebAllowQuit}
-                      onChange={(e) => setSebSettings({ ...sebSettings, sebAllowQuit: e.target.checked })}
-                    />
-                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                {sebSettings.sebAllowQuit && (
-                  <div>
-                    <Input
-                      label="Password untuk keluar SEB *"
-                      type="text"
-                      value={sebSettings.sebQuitPassword}
-                      onChange={(e) => setSebSettings({ ...sebSettings, sebQuitPassword: e.target.value })}
-                      placeholder="Wajib diisi — password yang guru bagikan untuk keluar"
-                    />
-                    {!sebSettings.sebQuitPassword && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" /> Password wajib diisi agar guru/siswa bisa keluar SEB</p>
-                    )}
-                  </div>
-                )}
-
-                {!sebSettings.sebAllowQuit && (
-                  <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
-                    <p className="text-xs text-red-700 dark:text-red-300">
-                      <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" /><strong>Peringatan:</strong> Jika quit dinonaktifkan, tidak ada cara keluar SEB selain restart komputer! Sangat disarankan untuk mengaktifkan quit dengan password.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-slate-700 dark:text-slate-300">Blokir screen capture</label>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={sebSettings.sebBlockScreenCapture}
-                      onChange={(e) => setSebSettings({ ...sebSettings, sebBlockScreenCapture: e.target.checked })}
-                    />
-                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-slate-700 dark:text-slate-300">Izinkan Virtual Machine</label>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={sebSettings.sebAllowVirtualMachine}
-                      onChange={(e) => setSebSettings({ ...sebSettings, sebAllowVirtualMachine: e.target.checked })}
-                    />
-                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-slate-700 dark:text-slate-300">Tampilkan taskbar SEB</label>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={sebSettings.sebShowTaskbar}
-                      onChange={(e) => setSebSettings({ ...sebSettings, sebShowTaskbar: e.target.checked })}
-                    />
-                    <div className="w-9 h-5 bg-slate-200 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    <Info className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />File konfigurasi SEB (.seb) dapat didownload setelah ujian dibuat. Bagikan file tersebut ke siswa untuk membuka ujian menggunakan Safe Exam Browser.
-                  </p>
-                </div>
-              </div>
+              <SEBSettingsFields sebSettings={sebSettings} onChange={setSebSettings} />
             )}
           </div>
 
@@ -719,16 +736,19 @@ export default function UjianPage() {
           </div>
         </form>
       </Modal>
+      )}
 
-      <ConfirmDialog
-        isOpen={!!deleteExam}
-        onClose={() => setDeleteExam(null)}
-        onConfirm={confirmDeleteExam}
-        title="Hapus Ujian"
-        message={`Yakin ingin menghapus ujian "${deleteExam?.title}"? Tindakan ini tidak dapat dibatalkan.`}
-        confirmText="Hapus"
-        variant="danger"
-      />
+      {deleteExam && (
+        <ConfirmDialog
+          isOpen={!!deleteExam}
+          onClose={() => setDeleteExam(null)}
+          onConfirm={confirmDeleteExam}
+          title="Hapus Ujian"
+          message={`Yakin ingin menghapus ujian "${deleteExam?.title}"? Tindakan ini tidak dapat dibatalkan.`}
+          confirmText="Hapus"
+          variant="danger"
+        />
+      )}
     </DashboardLayout>
   );
 }
