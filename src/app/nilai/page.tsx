@@ -23,6 +23,7 @@ import {
 import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { SummativeScorePanel } from '@/components/nilai/SummativeScorePanel';
 
 interface ExamDetail {
   result_id: number;
@@ -58,7 +59,7 @@ interface StudentGrade {
   average: number;
 }
 
-type ViewTab = 'gabungan' | 'ujian' | 'tugas';
+type ViewTab = 'gabungan' | 'ujian' | 'tugas' | 'sumatif';
 
 export default function NilaiPage() {
   const toast = useToast();
@@ -221,7 +222,7 @@ export default function NilaiPage() {
           <div className="relative flex flex-col sm:flex-row justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white">Nilai Siswa</h1>
-              <p className="text-blue-100/80">Lihat dan kelola nilai ujian & tugas siswa</p>
+              <p className="text-blue-100/80">Lihat dan kelola nilai ujian, tugas, dan sumatif siswa</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => window.print()} className="print:hidden bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
@@ -242,6 +243,7 @@ export default function NilaiPage() {
             { key: 'gabungan' as ViewTab, label: 'Gabungan', icon: Layers },
             { key: 'ujian' as ViewTab, label: 'Ujian', icon: BookCheck },
             { key: 'tugas' as ViewTab, label: 'Tugas', icon: ClipboardList },
+            { key: 'sumatif' as ViewTab, label: 'Sumatif', icon: Award },
           ].map(tab => (
             <button
               key={tab.key}
@@ -258,8 +260,10 @@ export default function NilaiPage() {
           ))}
         </div>
 
+        {viewTab === 'sumatif' && <SummativeScorePanel />}
+
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {viewTab !== 'sumatif' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
@@ -312,10 +316,10 @@ export default function NilaiPage() {
               </div>
             </div>
           </Card>
-        </div>
+        </div>}
 
         {/* Class Averages */}
-        {classAverages.length > 0 && classAverages.some(c => c.count > 0) && (
+        {viewTab !== 'sumatif' && classAverages.length > 0 && classAverages.some(c => c.count > 0) && (
           <Card className="p-4">
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Rata-rata Per Kelas</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -335,7 +339,7 @@ export default function NilaiPage() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        {viewTab !== 'sumatif' && <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
             <input
@@ -360,10 +364,10 @@ export default function NilaiPage() {
               <option key={c.value} value={c.label}>{c.label}</option>
             ))}
           </select>
-        </div>
+        </div>}
 
         {/* Grades Table */}
-        <Card className="overflow-hidden">
+        {viewTab !== 'sumatif' && <Card className="overflow-hidden">
           {filteredGrades.length === 0 ? (
             <div className="p-8 text-center">
               <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
@@ -670,7 +674,7 @@ export default function NilaiPage() {
               </table>
             </div>
           )}
-        </Card>
+        </Card>}
       </div>
     </DashboardLayout>
   );

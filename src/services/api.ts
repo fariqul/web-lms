@@ -701,6 +701,45 @@ export const announcementAPI = {
     api.get('/announcements-unread-count'),
 };
 
+// Summative Score API (Nilai Sumatif)
+export const summativeAPI = {
+  getSubjects: (class_id: number) =>
+    api.get('/summative-scores/subjects', { params: { class_id } }),
+
+  getScores: (params: {
+    class_id: number;
+    subject: string;
+    academic_year: string;
+    semester: 'ganjil' | 'genap';
+  }) => api.get('/summative-scores', { params }),
+
+  bulkUpsert: (data: {
+    class_id: number;
+    subject: string;
+    academic_year: string;
+    semester: 'ganjil' | 'genap';
+    scores: Array<{
+      student_id: number;
+      sumatif_items: Array<number | null>;
+      sumatif_akhir: number;
+    }>;
+  }) => api.post('/summative-scores/bulk', data),
+
+  lock: (data: {
+    class_id: number;
+    subject: string;
+    academic_year: string;
+    semester: 'ganjil' | 'genap';
+  }) => api.post('/summative-scores/lock', data),
+
+  unlock: (data: {
+    class_id: number;
+    subject: string;
+    academic_year: string;
+    semester: 'ganjil' | 'genap';
+  }) => api.post('/summative-scores/unlock', data),
+};
+
 // Bank Question API
 export const bankQuestionAPI = {
   // For teachers

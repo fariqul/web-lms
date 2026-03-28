@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\QuizController;
+use App\Http\Controllers\Api\SummativeScoreController;
 
 /*
 |--------------------------------------------------------------------------
@@ -193,6 +194,13 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
     // ADMIN + GURU SHARED ROUTES
     // ============================================
     Route::middleware('role:admin,guru')->group(function () {
+        // Summative scores (input nilai sumatif guru/admin)
+        Route::get('/summative-scores/subjects', [SummativeScoreController::class, 'subjects']);
+        Route::get('/summative-scores', [SummativeScoreController::class, 'index']);
+        Route::post('/summative-scores/bulk', [SummativeScoreController::class, 'bulkUpsert']);
+        Route::post('/summative-scores/lock', [SummativeScoreController::class, 'lock']);
+        Route::post('/summative-scores/unlock', [SummativeScoreController::class, 'unlock']);
+
         // Announcements management (shared for admin + guru)
         Route::apiResource('announcements', AnnouncementController::class)->except(['index', 'show']);
 
