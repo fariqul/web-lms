@@ -4,8 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@/components/ui';
 import { Download, Loader2, Lock, LockOpen, Save } from 'lucide-react';
 import { classAPI, summativeAPI } from '@/services/api';
+import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
+import { SUBJECT_LIST } from '@/constants/subjects';
 
 type Semester = 'ganjil' | 'genap';
 
@@ -81,13 +83,40 @@ export function SummativeScorePanel() {
   useEffect(() => {
     const loadClasses = async () => {
       try {
-        const res = await classAPI.getAll();
-        const data = res.data?.data || [];
-        const mapped: ClassOption[] = data.map((c: { id: number; name: string; academic_year?: string }) => ({
-          value: String(c.id),
-          label: c.name,
-          academic_year: c.academic_year,
-        }));
+        let mapped: ClassOption[] = [];
+
+        if (user?.role === 'guru') {
+          const scheduleRes = await api.get('/teacher-schedule');
+          const grouped = scheduleRes.data?.data || {};
+          const flatSchedules = Object.values(grouped).flat() as Array<{
+            classRoom?: { id: number; name: string };
+            class_room?: { id: number; name: string };
+          }>;
+
+          const classMap = new Map<number, ClassOption>();
+          for (const schedule of flatSchedules) {
+            const cls = schedule.classRoom || schedule.class_room;
+            if (!cls?.id) continue;
+            if (!classMap.has(cls.id)) {
+              classMap.set(cls.id, {
+                value: String(cls.id),
+                label: cls.name,
+              });
+            }
+          }
+          mapped = Array.from(classMap.values());
+        }
+
+        // Fallback jika guru belum punya jadwal (atau role selain guru)
+        if (mapped.length === 0) {
+          const res = await classAPI.getAll();
+          const data = res.data?.data || [];
+          mapped = data.map((c: { id: number; name: string; academic_year?: string }) => ({
+            value: String(c.id),
+            label: c.name,
+            academic_year: c.academic_year,
+          }));
+        }
 
         setClasses(mapped);
         if (mapped.length > 0) {
@@ -102,7 +131,7 @@ export function SummativeScorePanel() {
     };
 
     loadClasses();
-  }, [toast]);
+  }, [toast, user?.role]);
 
   const loadSubjects = useCallback(async (classId: string) => {
     if (!classId) {
@@ -111,21 +140,10 @@ export function SummativeScorePanel() {
       return;
     }
 
-    try {
-      const res = await summativeAPI.getSubjects(Number(classId));
-      const subjects = res.data?.data || [];
-      setSubjectOptions(subjects);
-      if (subjects.length > 0) {
-        setSubject(subjects[0]);
-      } else {
-        setSubject('');
-      }
-    } catch {
-      setSubjectOptions([]);
-      setSubject('');
-      toast.error('Gagal memuat mapel untuk kelas ini');
-    }
-  }, [toast]);
+    const subjects = [...SUBJECT_LIST];
+    setSubjectOptions(subjects);
+    setSubject((prev) => (prev && subjects.includes(prev as typeof SUBJECT_LIST[number]) ? prev : subjects[0] || ''));
+  }, []);
 
   useEffect(() => {
     loadSubjects(selectedClassId);

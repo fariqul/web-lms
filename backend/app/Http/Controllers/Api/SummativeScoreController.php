@@ -23,15 +23,8 @@ class SummativeScoreController extends Controller
             return true;
         }
 
-        if ($user->role !== 'guru') {
-            return false;
-        }
-
-        return Schedule::query()
-            ->where('teacher_id', $user->id)
-            ->where('class_id', $classId)
-            ->whereRaw('LOWER(subject) = ?', [$this->normalizeSubject($subject)])
-            ->exists();
+        // Untuk fitur sumatif manual: guru boleh input/mapel tanpa wajib jadwal terpasang.
+        return $user->role === 'guru';
     }
 
     private function calculate(array $sumatifItems, float $sumatifAkhir): array
@@ -87,16 +80,33 @@ class SummativeScoreController extends Controller
 
         $classId = (int) $request->input('class_id');
 
-        $query = Schedule::query()->where('class_id', $classId);
+        $scheduleQuery = Schedule::query()->where('class_id', $classId);
         if ($user->role === 'guru') {
-            $query->where('teacher_id', $user->id);
+            $scheduleQuery->where('teacher_id', $user->id);
         }
 
-        $subjects = $query
+        $scheduleSubjects = $scheduleQuery
             ->select('subject')
             ->distinct()
             ->orderBy('subject')
-            ->pluck('subject')
+            ->pluck('subject');
+
+        // Fallback dari data sumatif tersimpan jika jadwal belum lengkap/terhapus
+        $savedQuery = SummativeScore::query()->where('class_id', $classId);
+        if ($user->role === 'guru') {
+            $savedQuery->where('teacher_id', $user->id);
+        }
+
+        $savedSubjects = $savedQuery
+            ->select('subject')
+            ->distinct()
+            ->pluck('subject');
+
+        $subjects = $scheduleSubjects
+            ->merge($savedSubjects)
+            ->filter(fn ($s) => is_string($s) && trim($s) !== '')
+            ->unique(fn ($s) => mb_strtolower(trim((string) $s)))
+            ->sort()
             ->values();
 
         return response()->json([
