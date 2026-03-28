@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Card, Button } from '@/components/ui';
-import { Download, Loader2, Lock, LockOpen, Save } from 'lucide-react';
+import { Card, Button, ConfirmDialog } from '@/components/ui';
+import { Download, Loader2, Lock, LockOpen, Save, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { classAPI, summativeAPI } from '@/services/api';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -71,6 +71,8 @@ export function SummativeScorePanel() {
   const [rows, setRows] = useState<SummativeRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveAndLocking, setSaveAndLocking] = useState(false);
+  const [confirmSaveAndLockOpen, setConfirmSaveAndLockOpen] = useState(false);
   const [kkm, setKkm] = useState(75);
   const [lockMeta, setLockMeta] = useState<LockMeta>({
     locked: false,
@@ -254,15 +256,15 @@ export function SummativeScorePanel() {
     }));
   }, []);
 
-  const handleSave = async () => {
+  const saveScores = async (): Promise<boolean> => {
     if (!selectedClassId || !subject.trim()) {
       toast.warning('Pilih kelas dan mata pelajaran dulu');
-      return;
+      return false;
     }
 
     if (!lockMeta.can_edit) {
       toast.warning('Data sudah terkunci. Hanya admin yang bisa mengubah.');
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -280,16 +282,24 @@ export function SummativeScorePanel() {
       });
       toast.success('Nilai sumatif berhasil disimpan');
       await loadScores();
+      return true;
     } catch {
       toast.error('Gagal menyimpan nilai sumatif');
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSave = async () => {
+    await saveScores();
+  };
+
   const className = useMemo(() => {
     return classes.find((c) => c.value === selectedClassId)?.label || '-';
   }, [classes, selectedClassId]);
+
+  const actionButtonClass = 'h-12 w-full rounded-2xl text-base font-semibold justify-center';
 
   const handleLock = async () => {
     if (!selectedClassId || !subject.trim()) {
@@ -328,6 +338,38 @@ export function SummativeScorePanel() {
       await loadScores();
     } catch {
       toast.error('Gagal membuka kunci nilai sumatif');
+    }
+  };
+
+  const handleSaveAndLock = async () => {
+    if (!lockMeta.can_lock) {
+      toast.warning('Data tidak dapat difinalisasi pada kondisi saat ini');
+      return;
+    }
+
+    setConfirmSaveAndLockOpen(true);
+  };
+
+  const confirmSaveAndLock = async () => {
+    setConfirmSaveAndLockOpen(false);
+
+    setSaveAndLocking(true);
+    try {
+      const saved = await saveScores();
+      if (!saved) return;
+
+      await summativeAPI.lock({
+        class_id: Number(selectedClassId),
+        subject: subject.trim(),
+        academic_year: academicYear.trim(),
+        semester,
+      });
+      toast.success('Nilai berhasil disimpan dan difinalisasi');
+      await loadScores();
+    } catch {
+      toast.error('Gagal menyimpan dan finalisasi nilai');
+    } finally {
+      setSaveAndLocking(false);
     }
   };
 
@@ -425,7 +467,7 @@ export function SummativeScorePanel() {
       )}
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Kelas</label>
             <select
@@ -487,31 +529,67 @@ export function SummativeScorePanel() {
             />
           </div>
 
-          <div className="flex items-end gap-2 md:col-span-2">
-            <Button onClick={loadScores} disabled={loading} className="w-full">
+        </div>
+
+        <div className="mt-3 sticky top-2 z-20 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/85 dark:bg-slate-900/75 backdrop-blur-md p-2">
+          <div className="mb-2 flex items-center justify-between rounded-xl border border-slate-200/70 dark:border-slate-700/70 bg-slate-50/80 dark:bg-slate-800/60 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              {lockMeta.can_edit ? (
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <ShieldAlert className="w-4 h-4 text-amber-500" />
+              )}
+              <span className="font-medium text-slate-700 dark:text-slate-200">
+                {lockMeta.can_edit ? 'Mode Edit Aktif' : 'Mode Terkunci (Read Only)'}
+              </span>
+            </div>
+            <span className="text-slate-500 dark:text-slate-400">
+              {lockMeta.locked && lockMeta.locked_by?.name
+                ? `Dikunci oleh ${lockMeta.locked_by.name}`
+                : 'Belum difinalisasi'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
+            <Button onClick={loadScores} disabled={loading} className={actionButtonClass}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Muat Data
             </Button>
-            <Button onClick={handleExportExcel} disabled={rows.length === 0} className="w-full bg-indigo-600 hover:bg-indigo-700">
-              <Download className="w-4 h-4 mr-2" />
-              Export Excel
-            </Button>
-            <Button onClick={handleSave} disabled={saving || rows.length === 0} className="w-full bg-emerald-600 hover:bg-emerald-700">
+
+            <Button onClick={handleSave} disabled={saving || saveAndLocking || rows.length === 0} className={`${actionButtonClass} bg-emerald-600 hover:bg-emerald-700`}>
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Simpan
             </Button>
+
+            {user?.role === 'guru' && lockMeta.can_lock && (
+              <Button
+                onClick={handleSaveAndLock}
+                disabled={saving || saveAndLocking || rows.length === 0}
+                className={`${actionButtonClass} bg-cyan-600 hover:bg-cyan-700`}
+              >
+                {saveAndLocking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
+                Simpan & Finalisasi
+              </Button>
+            )}
+
             {lockMeta.can_lock && (
-              <Button onClick={handleLock} disabled={rows.length === 0} className="w-full bg-amber-600 hover:bg-amber-700">
+              <Button onClick={handleLock} disabled={saving || saveAndLocking || rows.length === 0} className={`${actionButtonClass} bg-amber-600 hover:bg-amber-700`}>
                 <Lock className="w-4 h-4 mr-2" />
                 Finalisasi
               </Button>
             )}
+
             {lockMeta.can_unlock && (
-              <Button onClick={handleUnlock} className="w-full bg-rose-600 hover:bg-rose-700">
+              <Button onClick={handleUnlock} disabled={saving || saveAndLocking} className={`${actionButtonClass} bg-rose-600 hover:bg-rose-700`}>
                 <LockOpen className="w-4 h-4 mr-2" />
                 Buka Kunci
               </Button>
             )}
+
+            <Button onClick={handleExportExcel} disabled={rows.length === 0} className={`${actionButtonClass} bg-indigo-600 hover:bg-indigo-700`}>
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel
+            </Button>
           </div>
         </div>
       </Card>
@@ -520,31 +598,55 @@ export function SummativeScorePanel() {
         {rows.length === 0 ? (
           <div className="p-6 text-sm text-slate-600 dark:text-slate-400">Pilih filter lalu klik Muat Data untuk input nilai sumatif.</div>
         ) : (
-          <div className="overflow-auto">
-            <table className="min-w-[1600px] w-full border-collapse">
+          <div className="px-4 pt-3 text-xs text-slate-500 dark:text-slate-400">
+            Geser tabel ke kiri/kanan untuk melihat semua kolom nilai.
+          </div>
+        )}
+
+        {rows.length > 0 && (
+          <div className="overflow-x-auto overflow-y-auto max-h-[68vh] pb-2">
+            <table className="w-max min-w-[2200px] border-collapse">
+              <colgroup>
+                <col className="w-14" />
+                <col className="w-28" />
+                <col className="w-72" />
+                {Array.from({ length: 13 }).map((_, i) => (
+                  <col key={`sm-col-${i}`} className="w-20" />
+                ))}
+                <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-24" />
+                <col className="w-24" />
+                <col className="w-28" />
+              </colgroup>
               <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                  <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs">No</th>
-                  <th className="sticky left-10 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs">NIS</th>
-                  <th className="sticky left-32 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs text-left">Nama ({className})</th>
+                  <th rowSpan={2} className="sticky left-0 z-30 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs text-center whitespace-nowrap">No</th>
+                  <th rowSpan={2} className="sticky left-14 z-30 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs text-center whitespace-nowrap">NIS</th>
+                  <th rowSpan={2} className="sticky left-[10.5rem] z-30 bg-slate-50 dark:bg-slate-800 px-3 py-2 border text-xs text-left whitespace-nowrap shadow-[6px_0_8px_-8px_rgba(0,0,0,0.55)]">Nama ({className})</th>
+                  <th colSpan={13} className="px-2 py-2 border text-xs text-center font-semibold">SUMATIF LINGKUP MATERI</th>
+                  <th colSpan={1} className="px-2 py-2 border text-xs text-center font-semibold bg-orange-50 dark:bg-orange-900/20">BOBOT 70%</th>
+                  <th colSpan={2} className="px-2 py-2 border text-xs text-center font-semibold bg-blue-50 dark:bg-blue-900/20">BOBOT 30%</th>
+                  <th rowSpan={2} className="sticky right-28 z-30 px-2 py-2 border text-xs bg-green-50 dark:bg-green-900/20 text-center whitespace-nowrap shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">Nilai Rapor</th>
+                  <th rowSpan={2} className="sticky right-0 z-30 px-2 py-2 border text-xs bg-emerald-50 dark:bg-emerald-900/20 text-center whitespace-nowrap">Status</th>
+                </tr>
+                <tr>
                   {Array.from({ length: 13 }).map((_, i) => (
-                    <th key={i} className="px-2 py-2 border text-xs">SM_{i + 1}</th>
+                    <th key={i} className="px-2 py-2 border text-xs text-center whitespace-nowrap">SM_{i + 1}</th>
                   ))}
-                  <th className="px-2 py-2 border text-xs bg-orange-50 dark:bg-orange-900/20">Bobot 70% (Sumatif)</th>
-                  <th className="px-2 py-2 border text-xs bg-blue-50 dark:bg-blue-900/20">Sumatif Akhir</th>
-                  <th className="px-2 py-2 border text-xs bg-blue-50 dark:bg-blue-900/20">Bobot 30%</th>
-                  <th className="px-2 py-2 border text-xs bg-green-50 dark:bg-green-900/20">Nilai Rapor</th>
-                  <th className="px-2 py-2 border text-xs bg-emerald-50 dark:bg-emerald-900/20">Status</th>
+                  <th className="px-2 py-2 border text-xs bg-orange-50 dark:bg-orange-900/20 text-center whitespace-nowrap">N/A (Sumatif)</th>
+                  <th className="px-2 py-2 border text-xs bg-blue-50 dark:bg-blue-900/20 text-center whitespace-nowrap">Sumatif Akhir</th>
+                  <th className="px-2 py-2 border text-xs bg-blue-50 dark:bg-blue-900/20 text-center whitespace-nowrap">N/A</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, idx) => (
                   <tr key={row.student_id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${row.nilai_rapor < kkm ? 'bg-red-50/40 dark:bg-red-900/10' : ''}`}>
-                    <td className="sticky left-0 bg-white dark:bg-slate-900 px-2 py-2 border text-center text-xs">{idx + 1}</td>
-                    <td className="sticky left-10 bg-white dark:bg-slate-900 px-2 py-2 border text-xs">{row.student_nis}</td>
-                    <td className="sticky left-32 bg-white dark:bg-slate-900 px-2 py-2 border text-xs min-w-[220px]">{row.student_name}</td>
+                    <td className="sticky left-0 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-center text-xs whitespace-nowrap">{idx + 1}</td>
+                    <td className="sticky left-14 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-xs whitespace-nowrap">{row.student_nis}</td>
+                    <td className="sticky left-[10.5rem] z-20 bg-white dark:bg-slate-900 px-3 py-2 border text-xs whitespace-nowrap shadow-[6px_0_8px_-8px_rgba(0,0,0,0.55)]">{row.student_name}</td>
                     {row.sumatif_items.map((v, i) => (
-                      <td key={i} className="px-1 py-1 border">
+                      <td key={i} className="px-1 py-1 border text-center">
                         <input
                           type="number"
                           min={0}
@@ -552,14 +654,14 @@ export function SummativeScorePanel() {
                           value={v ?? ''}
                           onChange={(e) => updateItem(row.student_id, i, e.target.value)}
                           disabled={!lockMeta.can_edit}
-                          className="w-16 px-2 py-1 text-xs border border-slate-300 rounded"
+                          className="w-[72px] px-2 py-1 text-xs border border-slate-300 rounded-md text-center"
                         />
                       </td>
                     ))}
                     <td className="px-2 py-2 border text-sm font-semibold text-orange-700 dark:text-orange-400 text-center">
                       {formatNumber(row.bobot_70)}
                     </td>
-                    <td className="px-1 py-1 border">
+                    <td className="px-1 py-1 border text-center">
                       <input
                         type="number"
                         min={0}
@@ -567,16 +669,16 @@ export function SummativeScorePanel() {
                         value={row.sumatif_akhir}
                         onChange={(e) => updateSumatifAkhir(row.student_id, e.target.value)}
                         disabled={!lockMeta.can_edit}
-                        className="w-20 px-2 py-1 text-xs border border-slate-300 rounded"
+                        className="w-[88px] px-2 py-1 text-xs border border-slate-300 rounded-md text-center"
                       />
                     </td>
                     <td className="px-2 py-2 border text-sm font-semibold text-blue-700 dark:text-blue-400 text-center">
                       {formatNumber(row.bobot_30)}
                     </td>
-                    <td className="px-2 py-2 border text-sm font-bold text-green-700 dark:text-green-400 text-center">
+                    <td className="sticky right-28 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-sm font-bold text-green-700 dark:text-green-400 text-center shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">
                       {formatNumber(row.nilai_rapor)}
                     </td>
-                    <td className="px-2 py-2 border text-center">
+                    <td className="sticky right-0 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-center">
                       {getStatus(row.nilai_rapor) === 'Lulus' ? (
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                           Lulus
@@ -594,6 +696,18 @@ export function SummativeScorePanel() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        isOpen={confirmSaveAndLockOpen}
+        onClose={() => setConfirmSaveAndLockOpen(false)}
+        onConfirm={confirmSaveAndLock}
+        title="Simpan dan Finalisasi Nilai"
+        message="Setelah finalisasi, nilai sumatif akan terkunci dan guru tidak bisa mengubah lagi. Lanjutkan?"
+        confirmText="Ya, Finalisasi"
+        cancelText="Batal"
+        variant="warning"
+        isLoading={saveAndLocking}
+      />
     </div>
   );
 }
