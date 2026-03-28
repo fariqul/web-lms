@@ -131,11 +131,11 @@ class AnnouncementController extends Controller
     {
         $user = $request->user();
 
-        // Check permission
-        if ($user->role !== 'admin' && $announcement->author_id !== $user->id) {
+        // Admin dapat edit semua, guru hanya miliknya sendiri
+        if ($user->role !== 'admin' && !($user->role === 'guru' && $announcement->author_id === $user->id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized',
+                'message' => 'Anda hanya bisa mengubah pengumuman yang Anda buat sendiri',
             ], 403);
         }
 
@@ -167,11 +167,11 @@ class AnnouncementController extends Controller
     {
         $user = request()->user();
 
-        // Check permission
-        if ($user->role !== 'admin' && $announcement->author_id !== $user->id) {
+        // Admin dapat hapus semua, guru hanya miliknya sendiri
+        if ($user->role !== 'admin' && !($user->role === 'guru' && $announcement->author_id === $user->id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized',
+                'message' => 'Anda hanya bisa menghapus pengumuman yang Anda buat sendiri',
             ], 403);
         }
 

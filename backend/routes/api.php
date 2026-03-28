@@ -88,9 +88,6 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::get('/school-network-settings/test-ip', [SchoolNetworkController::class, 'testCurrentIp']);
         Route::apiResource('school-network-settings', SchoolNetworkController::class);
         
-        // Announcements Management
-        Route::apiResource('announcements', AnnouncementController::class)->except(['index', 'show']);
-        
         // Cache management
         Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearCache']);
 
@@ -157,8 +154,6 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::post('/url-import/preview', [UrlImportController::class, 'preview']);
         Route::post('/url-import/import', [UrlImportController::class, 'import']);
 
-        // Announcements Management (guru can also create/edit/delete)
-        Route::apiResource('announcements', AnnouncementController::class)->except(['index', 'show']);
     });
 
     // ============================================
@@ -198,6 +193,9 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
     // ADMIN + GURU SHARED ROUTES
     // ============================================
     Route::middleware('role:admin,guru')->group(function () {
+        // Announcements management (shared for admin + guru)
+        Route::apiResource('announcements', AnnouncementController::class)->except(['index', 'show']);
+
         // Exam update (guru edits content, admin can edit schedule)
         Route::put('/exams/{exam}', [ExamController::class, 'update']);
         // Exam results (guru grades, admin views)
