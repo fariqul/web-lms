@@ -8,6 +8,7 @@ import {
   Users,
   GraduationCap,
   Calendar,
+  BarChart3,
   ChevronRight,
   FolderOpen,
   FileEdit,
@@ -209,7 +210,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
           <QuickActionCard
             icon={<Users className="w-8 h-8" />}
             title="Kelola Pengguna"
@@ -226,6 +227,12 @@ export default function AdminDashboard() {
             icon={<Calendar className="w-8 h-8" />}
             title="Manajemen Jadwal"
             href="/admin/jadwal"
+            color="teal"
+          />
+          <QuickActionCard
+            icon={<BarChart3 className="w-8 h-8" />}
+            title="Nilai Siswa"
+            href="/nilai"
             color="teal"
           />
         </div>

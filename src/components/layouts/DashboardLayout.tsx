@@ -51,7 +51,7 @@ const navigation: NavItem[] = [
   { name: 'Bank Soal', href: '/bank-soal', icon: FileText, roles: ['guru'] },
   { name: 'Tugas', href: '/tugas', icon: FileText, roles: ['guru'] },
   { name: 'Materi Pelajaran', href: '/materi', icon: BookOpen, roles: ['guru'] },
-  { name: 'Nilai Siswa', href: '/nilai', icon: BarChart3, roles: ['guru'] },
+  { name: 'Nilai Siswa', href: '/nilai', icon: BarChart3, roles: ['admin', 'guru'] },
   { name: 'Progress Siswa', href: '/progress', icon: TrendingUp, roles: ['guru'] },
   // Siswa only
   { name: 'Scan QR Absensi', href: '/scan-qr', icon: QrCode, roles: ['siswa'] },

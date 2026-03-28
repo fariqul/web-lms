@@ -24,6 +24,7 @@ import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { SummativeScorePanel } from '@/components/nilai/SummativeScorePanel';
+import { useAuth } from '@/context/AuthContext';
 
 interface ExamDetail {
   result_id: number;
@@ -63,6 +64,7 @@ type ViewTab = 'gabungan' | 'ujian' | 'tugas' | 'sumatif';
 
 export default function NilaiPage() {
   const toast = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [grades, setGrades] = useState<StudentGrade[]>([]);
   const [classes, setClasses] = useState<{ value: string; label: string }[]>([]);
@@ -77,14 +79,17 @@ export default function NilaiPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?.role]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      setViewTab('sumatif');
+    }
+  }, [user?.role]);
 
   const fetchData = async () => {
     try {
-      const [classesRes, gradesRes] = await Promise.all([
-        classAPI.getAll(),
-        api.get('/teacher-grades'),
-      ]);
+      const classesRes = await classAPI.getAll();
       const classesData = classesRes.data?.data || [];
       setClasses(
         classesData.map((c: { id: number; name: string }) => ({
@@ -92,36 +97,42 @@ export default function NilaiPage() {
           label: c.name,
         }))
       );
-      const gradesData = gradesRes.data?.data || [];
-      setGrades(gradesData.map((g: StudentGrade) => ({
-        id: g.id,
-        student_name: g.student_name,
-        student_nis: g.student_nis,
-        class_name: g.class_name,
-        exam_average: g.exam_average || 0,
-        assignment_average: g.assignment_average || 0,
-        average: g.average || 0,
-        exams: (g.exams || []).map((e: ExamDetail) => ({
-          result_id: e.result_id,
-          exam_name: e.exam_name,
-          subject: e.subject || '',
-          score: e.score,
-          max_score: e.max_score,
-          percentage: e.percentage,
-          status: e.status,
-          submitted_at: e.submitted_at,
-        })),
-        assignments: (g.assignments || []).map((a: AssignmentDetail) => ({
-          submission_id: a.submission_id,
-          assignment_name: a.assignment_name,
-          subject: a.subject || '',
-          score: a.score,
-          max_score: a.max_score,
-          percentage: a.percentage,
-          status: a.status,
-          submitted_at: a.submitted_at,
-        })),
-      })));
+
+      if (user?.role === 'guru') {
+        const gradesRes = await api.get('/teacher-grades');
+        const gradesData = gradesRes.data?.data || [];
+        setGrades(gradesData.map((g: StudentGrade) => ({
+          id: g.id,
+          student_name: g.student_name,
+          student_nis: g.student_nis,
+          class_name: g.class_name,
+          exam_average: g.exam_average || 0,
+          assignment_average: g.assignment_average || 0,
+          average: g.average || 0,
+          exams: (g.exams || []).map((e: ExamDetail) => ({
+            result_id: e.result_id,
+            exam_name: e.exam_name,
+            subject: e.subject || '',
+            score: e.score,
+            max_score: e.max_score,
+            percentage: e.percentage,
+            status: e.status,
+            submitted_at: e.submitted_at,
+          })),
+          assignments: (g.assignments || []).map((a: AssignmentDetail) => ({
+            submission_id: a.submission_id,
+            assignment_name: a.assignment_name,
+            subject: a.subject || '',
+            score: a.score,
+            max_score: a.max_score,
+            percentage: a.percentage,
+            status: a.status,
+            submitted_at: a.submitted_at,
+          })),
+        })));
+      } else {
+        setGrades([]);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -239,12 +250,16 @@ export default function NilaiPage() {
 
         {/* View Tabs */}
         <div className="flex gap-1 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg w-fit">
-          {[
-            { key: 'gabungan' as ViewTab, label: 'Gabungan', icon: Layers },
-            { key: 'ujian' as ViewTab, label: 'Ujian', icon: BookCheck },
-            { key: 'tugas' as ViewTab, label: 'Tugas', icon: ClipboardList },
-            { key: 'sumatif' as ViewTab, label: 'Sumatif', icon: Award },
-          ].map(tab => (
+          {(
+            user?.role === 'admin'
+              ? [{ key: 'sumatif' as ViewTab, label: 'Sumatif', icon: Award }]
+              : [
+                  { key: 'gabungan' as ViewTab, label: 'Gabungan', icon: Layers },
+                  { key: 'ujian' as ViewTab, label: 'Ujian', icon: BookCheck },
+                  { key: 'tugas' as ViewTab, label: 'Tugas', icon: ClipboardList },
+                  { key: 'sumatif' as ViewTab, label: 'Sumatif', icon: Award },
+                ]
+          ).map(tab => (
             <button
               key={tab.key}
               onClick={() => setViewTab(tab.key)}
