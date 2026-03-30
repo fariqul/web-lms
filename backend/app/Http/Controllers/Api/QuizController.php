@@ -32,6 +32,24 @@ class QuizController extends Controller
         Cache::forget("quiz:show:{$quizId}:role:admin");
     }
 
+    private function clonePublicFilePath(?string $sourcePath, string $targetDir): ?string
+    {
+        if (!$sourcePath) {
+            return null;
+        }
+
+        if (!Storage::disk('public')->exists($sourcePath)) {
+            return $sourcePath;
+        }
+
+        $ext = pathinfo($sourcePath, PATHINFO_EXTENSION);
+        $filename = uniqid('dup_', true) . ($ext ? ".{$ext}" : '');
+        $newPath = trim($targetDir, '/') . '/' . $filename;
+
+        Storage::disk('public')->copy($sourcePath, $newPath);
+        return $newPath;
+    }
+
     /**
      * List quizzes - teacher sees own, student sees class quizzes
      */
@@ -450,6 +468,145 @@ class QuizController extends Controller
             'data' => $question,
             'message' => 'Soal berhasil ditambahkan',
         ], 201);
+    }
+
+    /**
+     * Duplicate questions from CBT exam into quiz/ujian harian
+     */
+    public function duplicateFromExam(Request $request, Exam $quiz)
+    {
+        if ($quiz->type !== 'quiz') {
+            return response()->json(['success' => false, 'message' => 'Target bukan quiz'], 404);
+        }
+
+        $user = $request->user();
+        if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'source_exam_id' => 'required|exists:exams,id',
+            'replace_existing' => 'nullable|boolean',
+            'question_ids' => 'nullable|array|min:1',
+            'question_ids.*' => 'integer|exists:questions,id',
+        ]);
+
+        $sourceExam = Exam::with(['questions' => fn($q) => $q->orderBy('order')])->findOrFail($request->source_exam_id);
+
+        if ($sourceExam->type === 'quiz') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sumber harus dari ujian CBT, bukan quiz',
+            ], 422);
+        }
+
+        if ($user->role === 'guru' && $sourceExam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda hanya dapat duplicate dari ujian CBT milik Anda',
+            ], 403);
+        }
+
+        if ($sourceExam->questions->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian sumber belum memiliki soal',
+            ], 422);
+        }
+
+        $selectedQuestionIds = collect($request->input('question_ids', []))
+            ->filter(fn($id) => is_numeric($id))
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $sourceQuestions = $sourceExam->questions;
+        if ($selectedQuestionIds->isNotEmpty()) {
+            $sourceQuestions = $sourceQuestions
+                ->whereIn('id', $selectedQuestionIds)
+                ->sortBy('order')
+                ->values();
+
+            if ($sourceQuestions->count() !== $selectedQuestionIds->count()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ada soal yang dipilih tidak berasal dari ujian CBT sumber',
+                ], 422);
+            }
+        }
+
+        if ($sourceQuestions->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada soal yang dipilih untuk diduplikasi',
+            ], 422);
+        }
+
+        $replaceExisting = (bool) $request->boolean('replace_existing', false);
+        $duplicatedCount = 0;
+
+        DB::transaction(function () use ($quiz, $sourceQuestions, $replaceExisting, &$duplicatedCount) {
+            if ($replaceExisting) {
+                $quiz->questions()->delete();
+            }
+
+            $order = ($quiz->questions()->max('order') ?? 0) + 1;
+
+            foreach ($sourceQuestions as $srcQuestion) {
+                $newQuestionImage = $this->clonePublicFilePath($srcQuestion->image, 'question-images');
+
+                $newOptions = null;
+                if (is_array($srcQuestion->options)) {
+                    $newOptions = collect($srcQuestion->options)->map(function ($opt) {
+                        if (is_string($opt)) {
+                            return $opt;
+                        }
+
+                        if (!is_array($opt)) {
+                            return $opt;
+                        }
+
+                        $newOpt = $opt;
+                        if (!empty($opt['image']) && is_string($opt['image'])) {
+                            $newOpt['image'] = $this->clonePublicFilePath($opt['image'], 'option-images');
+                        }
+                        return $newOpt;
+                    })->toArray();
+                }
+
+                Question::create([
+                    'exam_id' => $quiz->id,
+                    'passage' => $srcQuestion->passage,
+                    'question_text' => $srcQuestion->question_text,
+                    'type' => $srcQuestion->type,
+                    'image' => $newQuestionImage,
+                    'options' => $newOptions,
+                    'correct_answer' => $srcQuestion->correct_answer,
+                    'essay_keywords' => $srcQuestion->essay_keywords,
+                    'points' => $srcQuestion->points,
+                    'order' => $order,
+                ]);
+
+                $order++;
+                $duplicatedCount++;
+            }
+
+            $quiz->total_questions = $quiz->questions()->count();
+            $quiz->save();
+        });
+
+        $this->forgetQuizShowCache($quiz->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$duplicatedCount} soal berhasil diduplikasi dari ujian CBT",
+            'data' => [
+                'duplicated_count' => $duplicatedCount,
+                'source_exam_id' => $sourceExam->id,
+                'replace_existing' => $replaceExisting,
+                'selected_count' => $selectedQuestionIds->count(),
+            ],
+        ]);
     }
 
     /**

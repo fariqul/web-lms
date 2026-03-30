@@ -311,6 +311,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::put('/quizzes/{quiz}', [QuizController::class, 'update']);
         Route::post('/quizzes/{quiz}/publish', [QuizController::class, 'publish']);
         Route::post('/quizzes/{quiz}/end', [QuizController::class, 'endQuiz']);
+        Route::post('/quizzes/{quiz}/duplicate-from-exam', [QuizController::class, 'duplicateFromExam']);
         Route::post('/quizzes/{quiz}/questions', [QuizController::class, 'addQuestion']);
         Route::put('/quiz-questions/{question}', [QuizController::class, 'updateQuestion']);
         Route::delete('/quiz-questions/{question}', [QuizController::class, 'deleteQuestion']);

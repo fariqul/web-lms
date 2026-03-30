@@ -50,6 +50,22 @@ interface QuizData {
   shuffle_options?: boolean;
 }
 
+interface SourceExamItem {
+  id: number;
+  title: string;
+  subject: string;
+  total_questions: number;
+  teacher?: { id: number; name: string };
+}
+
+interface SourceExamQuestionItem {
+  id: number;
+  order: number;
+  question_text: string;
+  type: 'multiple_choice' | 'multiple_answer' | 'essay';
+  points: number;
+}
+
 // QuestionForm component defined OUTSIDE the main component to prevent recreation
 interface QuestionFormProps {
   newQuestion: Question;
@@ -331,6 +347,17 @@ export default function EditQuizPage() {
   const [showImportBankSoal, setShowImportBankSoal] = useState(false);
   const [showImportExcel, setShowImportExcel] = useState(false);
   const [showImportWord, setShowImportWord] = useState(false);
+  const [showDuplicateExamModal, setShowDuplicateExamModal] = useState(false);
+  const [sourceExams, setSourceExams] = useState<SourceExamItem[]>([]);
+  const [selectedSourceExamId, setSelectedSourceExamId] = useState<number | null>(null);
+  const [sourceExamQuestions, setSourceExamQuestions] = useState<SourceExamQuestionItem[]>([]);
+  const [loadingSourceQuestions, setLoadingSourceQuestions] = useState(false);
+  const [duplicateMode, setDuplicateMode] = useState<'all' | 'selected'>('all');
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
+  const [sourceQuestionSearch, setSourceQuestionSearch] = useState('');
+  const [replaceExistingQuestions, setReplaceExistingQuestions] = useState(false);
+  const [loadingSourceExams, setLoadingSourceExams] = useState(false);
+  const [duplicatingQuestions, setDuplicatingQuestions] = useState(false);
   const importMenuRef = React.useRef<HTMLDivElement>(null);
 
   const [newQuestion, setNewQuestion] = useState<Question>({
@@ -569,8 +596,9 @@ export default function EditQuizPage() {
     setImagePreview(existingImage);
     setImageFile(null);
     const optPreviews = (q.options || []).map(o => o.image ? `/storage/${o.image}` : null);
-    setOptionImagePreviews([...optPreviews, ...Array(4 - optPreviews.length).fill(null)]);
-    setOptionImageFiles([null, null, null, null]);
+    const slotCount = Math.max(4, optPreviews.length);
+    setOptionImagePreviews([...optPreviews, ...Array(Math.max(0, slotCount - optPreviews.length)).fill(null)]);
+    setOptionImageFiles(Array(slotCount).fill(null));
     setIsEditModalOpen(true);
   };
 
@@ -650,6 +678,85 @@ export default function EditQuizPage() {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e.response?.data?.message || 'Gagal mengubah status');
+    }
+  };
+
+  const loadSourceExamQuestions = async (examId: number) => {
+    setLoadingSourceQuestions(true);
+    try {
+      const res = await api.get(`/exams/${examId}`);
+      const rows = (res.data?.data?.questions || []) as Record<string, unknown>[];
+      const mapped: SourceExamQuestionItem[] = rows.map((q, idx) => ({
+        id: Number(q.id),
+        order: Number(q.order || idx + 1),
+        question_text: String(q.question_text || ''),
+        type: (q.type as SourceExamQuestionItem['type']) || 'multiple_choice',
+        points: Number(q.points || 10),
+      })).sort((a, b) => a.order - b.order);
+      setSourceExamQuestions(mapped);
+      setSelectedQuestionIds(mapped.map((q) => q.id));
+    } catch {
+      toast.error('Gagal memuat daftar soal dari ujian CBT sumber');
+      setSourceExamQuestions([]);
+      setSelectedQuestionIds([]);
+    } finally {
+      setLoadingSourceQuestions(false);
+    }
+  };
+
+  const openDuplicateExamModal = async () => {
+    setShowImportMenu(false);
+    setShowDuplicateExamModal(true);
+    setLoadingSourceExams(true);
+    try {
+      const res = await api.get('/exams', { params: { per_page: 100 } });
+      const examRows = (res.data?.data?.data || res.data?.data || []) as SourceExamItem[];
+      const eligible = examRows.filter((e) => (e.total_questions || 0) > 0);
+      setSourceExams(eligible);
+      if (eligible.length > 0) {
+        const firstId = eligible[0].id;
+        setSelectedSourceExamId(firstId);
+        await loadSourceExamQuestions(firstId);
+      } else {
+        setSourceExamQuestions([]);
+        setSelectedQuestionIds([]);
+      }
+      setSourceQuestionSearch('');
+    } catch {
+      toast.error('Gagal memuat daftar ujian CBT');
+    } finally {
+      setLoadingSourceExams(false);
+    }
+  };
+
+  const handleDuplicateFromExam = async () => {
+    if (!selectedSourceExamId) {
+      toast.warning('Pilih ujian CBT sumber terlebih dahulu');
+      return;
+    }
+
+    setDuplicatingQuestions(true);
+    try {
+      const res = await quizAPI.duplicateFromExam(quizId, {
+        source_exam_id: selectedSourceExamId,
+        replace_existing: replaceExistingQuestions,
+        ...(duplicateMode === 'selected' ? { question_ids: selectedQuestionIds } : {}),
+      });
+
+      const duplicatedCount = res.data?.data?.duplicated_count ?? 0;
+      toast.success(`${duplicatedCount} soal berhasil diduplikasi dari ujian CBT`);
+      setShowDuplicateExamModal(false);
+      setReplaceExistingQuestions(false);
+      setDuplicateMode('all');
+      setSelectedQuestionIds([]);
+      setSourceExamQuestions([]);
+      setSourceQuestionSearch('');
+      await fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal menduplikasi soal dari ujian CBT');
+    } finally {
+      setDuplicatingQuestions(false);
     }
   };
 
@@ -745,6 +852,9 @@ export default function EditQuizPage() {
                   </button>
                   <button onClick={() => { setShowImportBankSoal(true); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
                     <Library className="w-4 h-4 text-purple-500" /> Import dari Bank Soal
+                  </button>
+                  <button onClick={openDuplicateExamModal} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
+                    <BookUp className="w-4 h-4 text-indigo-500" /> Duplikat dari Ujian CBT
                   </button>
                 </div>
               )}
@@ -894,6 +1004,200 @@ export default function EditQuizPage() {
         onImport={handleBulkImport}
         existingCount={questions.length}
       />
+
+      <Modal
+        isOpen={showDuplicateExamModal}
+        onClose={() => {
+          if (!duplicatingQuestions) {
+            setShowDuplicateExamModal(false);
+          }
+        }}
+        title="Duplikat Soal dari Ujian CBT"
+        size="md"
+      >
+        <div className="space-y-4">
+          {loadingSourceExams ? (
+            <div className="flex items-center justify-center py-6 text-slate-500">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              Memuat daftar ujian CBT...
+            </div>
+          ) : sourceExams.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Belum ada ujian CBT yang memiliki soal untuk diduplikasi.
+            </p>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Pilih Ujian CBT Sumber
+                </label>
+                <select
+                  value={selectedSourceExamId ?? ''}
+                  onChange={async (e) => {
+                    const id = Number(e.target.value) || null;
+                    setSelectedSourceExamId(id);
+                    if (id) {
+                      await loadSourceExamQuestions(id);
+                    } else {
+                      setSourceExamQuestions([]);
+                      setSelectedQuestionIds([]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  {sourceExams.map((exam) => (
+                    <option key={exam.id} value={exam.id}>
+                      {exam.title} - {exam.subject} ({exam.total_questions} soal)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mode Duplikasi</label>
+                <div className="flex items-center gap-3 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="duplicate_mode"
+                      checked={duplicateMode === 'all'}
+                      onChange={() => setDuplicateMode('all')}
+                    />
+                    Semua soal
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="duplicate_mode"
+                      checked={duplicateMode === 'selected'}
+                      onChange={() => setDuplicateMode('selected')}
+                    />
+                    Pilih soal tertentu
+                  </label>
+                </div>
+              </div>
+
+              {duplicateMode === 'selected' && (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      Pilih Soal Sumber ({selectedQuestionIds.length}/{sourceExamQuestions.length})
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQuestionIds(sourceExamQuestions.map((q) => q.id))}
+                        className="text-xs text-indigo-600 hover:underline"
+                      >
+                        Pilih semua
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQuestionIds([])}
+                        className="text-xs text-slate-500 hover:underline"
+                      >
+                        Kosongkan
+                      </button>
+                    </div>
+                  </div>
+
+                  {loadingSourceQuestions ? (
+                    <div className="flex items-center text-sm text-slate-500">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" /> Memuat soal sumber...
+                    </div>
+                  ) : sourceExamQuestions.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Tidak ada soal pada ujian sumber.</p>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={sourceQuestionSearch}
+                        onChange={(e) => setSourceQuestionSearch(e.target.value)}
+                        placeholder="Cari nomor atau teks soal..."
+                        className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                      <div className="max-h-56 overflow-auto space-y-1">
+                      {sourceExamQuestions
+                        .filter((q) => {
+                          const needle = sourceQuestionSearch.trim().toLowerCase();
+                          if (!needle) return true;
+                          return (
+                            String(q.order).includes(needle) ||
+                            q.question_text.toLowerCase().includes(needle)
+                          );
+                        })
+                        .map((q) => (
+                        <label key={q.id} className="flex items-start gap-2 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <input
+                            type="checkbox"
+                            checked={selectedQuestionIds.includes(q.id)}
+                            onChange={(e) => {
+                              setSelectedQuestionIds((prev) => {
+                                if (e.target.checked) {
+                                  return [...prev, q.id];
+                                }
+                                return prev.filter((id) => id !== q.id);
+                              });
+                            }}
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              No. {q.order} - {q.type === 'essay' ? 'Essay' : q.type === 'multiple_answer' ? 'PG Kompleks' : 'Pilihan Ganda'} - {q.points} poin
+                            </p>
+                            <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{q.question_text}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={replaceExistingQuestions}
+                  onChange={(e) => setReplaceExistingQuestions(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Ganti semua soal quiz saat ini.
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    Jika tidak dicentang, soal CBT akan ditambahkan ke daftar soal yang sudah ada.
+                  </span>
+                </span>
+              </label>
+            </>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2 border-t dark:border-slate-700">
+            <Button
+              variant="outline"
+              onClick={() => setShowDuplicateExamModal(false)}
+              disabled={duplicatingQuestions}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleDuplicateFromExam}
+              disabled={
+                loadingSourceExams ||
+                loadingSourceQuestions ||
+                sourceExams.length === 0 ||
+                !selectedSourceExamId ||
+                duplicatingQuestions ||
+                (duplicateMode === 'selected' && selectedQuestionIds.length === 0)
+              }
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {duplicatingQuestions ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <BookUp className="w-4 h-4 mr-2" />}
+              Duplikat Soal
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

@@ -332,6 +332,9 @@ export const quizAPI = {
   end: (id: number) =>
     api.post(`/quizzes/${id}/end`),
 
+  duplicateFromExam: (quizId: number, data: { source_exam_id: number; replace_existing?: boolean; question_ids?: number[] }) =>
+    api.post(`/quizzes/${quizId}/duplicate-from-exam`, data),
+
   // Questions
   addQuestion: (quizId: number, data: FormData) =>
     api.post(`/quizzes/${quizId}/questions`, data, {
