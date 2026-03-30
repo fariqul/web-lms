@@ -69,7 +69,7 @@ export default function AdminUjianPage() {
 
   // Schedule edit
   const [editingSchedule, setEditingSchedule] = useState<Exam | null>(null);
-  const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60 });
+  const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60, class_id: '' });
   const [savingSchedule, setSavingSchedule] = useState(false);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
@@ -238,14 +238,36 @@ export default function AdminUjianPage() {
 
   const handleSaveSchedule = async () => {
     if (!editingSchedule || !scheduleData.start_time) return;
+    if (editingSchedule.status === 'draft' && !scheduleData.class_id) {
+      toast.warning('Pilih kelas terlebih dahulu');
+      return;
+    }
+
     setSavingSchedule(true);
     try {
       const startTime = new Date(scheduleData.start_time);
       const endTime = new Date(startTime.getTime() + scheduleData.duration * 60 * 1000);
-      await api.put(`/exams/${editingSchedule.id}`, {
+
+      const payload: {
+        start_time: string;
+        end_time: string;
+        duration_minutes: number;
+        class_id?: number;
+        class_ids?: number[];
+      } = {
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         duration_minutes: scheduleData.duration,
+      };
+
+      if (editingSchedule.status === 'draft' && scheduleData.class_id) {
+        const selectedClassId = Number(scheduleData.class_id);
+        payload.class_id = selectedClassId;
+        payload.class_ids = [selectedClassId];
+      }
+
+      await api.put(`/exams/${editingSchedule.id}`, {
+        ...payload,
       });
       toast.success('Jadwal ujian berhasil diperbarui');
       setEditingSchedule(null);
@@ -260,16 +282,36 @@ export default function AdminUjianPage() {
 
   const handleClearSchedule = async () => {
     if (!editingSchedule) return;
+    if (editingSchedule.status === 'draft' && !scheduleData.class_id) {
+      toast.warning('Pilih kelas terlebih dahulu');
+      return;
+    }
 
     setSavingSchedule(true);
     try {
       const duration = scheduleData.duration || editingSchedule.duration || 60;
       const immediateWindow = getImmediatePlaceholderTimes(duration);
 
-      await api.put(`/exams/${editingSchedule.id}`, {
+      const payload: {
+        start_time: string;
+        end_time: string;
+        duration_minutes: number;
+        class_id?: number;
+        class_ids?: number[];
+      } = {
         start_time: immediateWindow.start_time,
         end_time: immediateWindow.end_time,
         duration_minutes: duration,
+      };
+
+      if (editingSchedule.status === 'draft' && scheduleData.class_id) {
+        const selectedClassId = Number(scheduleData.class_id);
+        payload.class_id = selectedClassId;
+        payload.class_ids = [selectedClassId];
+      }
+
+      await api.put(`/exams/${editingSchedule.id}`, {
+        ...payload,
       });
 
       toast.success('Jadwal dibatalkan. Ujian akan mulai saat dipublish.');
@@ -507,6 +549,7 @@ export default function AdminUjianPage() {
                   setScheduleData({
                     start_time: isFarFuture ? '' : toDateTimeLocalInputValue(exam.start_time),
                     duration: exam.duration || 60,
+                    class_id: String(exam.class_id || exam.classes?.[0]?.id || ''),
                   });
                 }}
               >
@@ -531,6 +574,7 @@ export default function AdminUjianPage() {
                   setScheduleData({
                     start_time: toDateTimeLocalInputValue(exam.start_time),
                     duration: exam.duration || 60,
+                    class_id: String(exam.class_id || exam.classes?.[0]?.id || ''),
                   });
                 }}
               >
@@ -795,6 +839,27 @@ export default function AdminUjianPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{editingSchedule.title}</p>
 
             <div className="space-y-4">
+              {editingSchedule.status === 'draft' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Kelas
+                  </label>
+                  <select
+                    value={scheduleData.class_id}
+                    onChange={(e) => setScheduleData({ ...scheduleData, class_id: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Pilih Kelas</option>
+                    {classes.map((cls) => (
+                      <option key={cls.value} value={cls.value}>{cls.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Kelas ujian draft bisa diubah oleh admin sebelum dipublish.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Waktu Mulai
@@ -837,7 +902,7 @@ export default function AdminUjianPage() {
               )}
               <Button
                 onClick={handleSaveSchedule}
-                disabled={!scheduleData.start_time || savingSchedule}
+                disabled={!scheduleData.start_time || savingSchedule || (editingSchedule.status === 'draft' && !scheduleData.class_id)}
                 className="flex-1"
               >
                 {savingSchedule ? (
