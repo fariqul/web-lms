@@ -72,6 +72,31 @@ export default function AdminUjianPage() {
   const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60 });
   const [savingSchedule, setSavingSchedule] = useState(false);
 
+  const toDateTimeLocalInputValue = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getImmediatePlaceholderTimes = (durationMinutes: number) => {
+    const base = new Date();
+    base.setFullYear(base.getFullYear() + 2);
+    const end = new Date(base.getTime() + durationMinutes * 60 * 1000);
+
+    return {
+      start_time: base.toISOString(),
+      end_time: end.toISOString(),
+    };
+  };
+
   // Real-time updates via WebSocket
   const examIds = useMemo(() => exams.map(e => e.id), [exams]);
   const listSocket = useExamsListSocket(examIds);
@@ -228,6 +253,31 @@ export default function AdminUjianPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       toast.error(axiosError.response?.data?.message || 'Gagal mengubah jadwal');
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  const handleClearSchedule = async () => {
+    if (!editingSchedule) return;
+
+    setSavingSchedule(true);
+    try {
+      const duration = scheduleData.duration || editingSchedule.duration || 60;
+      const immediateWindow = getImmediatePlaceholderTimes(duration);
+
+      await api.put(`/exams/${editingSchedule.id}`, {
+        start_time: immediateWindow.start_time,
+        end_time: immediateWindow.end_time,
+        duration_minutes: duration,
+      });
+
+      toast.success('Jadwal dibatalkan. Ujian akan mulai saat dipublish.');
+      setEditingSchedule(null);
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal membatalkan jadwal');
     } finally {
       setSavingSchedule(false);
     }
@@ -455,7 +505,7 @@ export default function AdminUjianPage() {
                   const startTime = new Date(exam.start_time);
                   const isFarFuture = startTime.getTime() - now.getTime() > 30 * 24 * 60 * 60 * 1000;
                   setScheduleData({
-                    start_time: isFarFuture ? '' : exam.start_time?.slice(0, 16) || '',
+                    start_time: isFarFuture ? '' : toDateTimeLocalInputValue(exam.start_time),
                     duration: exam.duration || 60,
                   });
                 }}
@@ -479,7 +529,7 @@ export default function AdminUjianPage() {
                 onClick={() => {
                   setEditingSchedule(exam);
                   setScheduleData({
-                    start_time: exam.start_time?.slice(0, 16) || '',
+                    start_time: toDateTimeLocalInputValue(exam.start_time),
                     duration: exam.duration || 60,
                   });
                 }}
@@ -775,6 +825,16 @@ export default function AdminUjianPage() {
               <Button variant="outline" onClick={() => setEditingSchedule(null)} className="flex-1">
                 Batal
               </Button>
+              {editingSchedule.status === 'draft' && (
+                <Button
+                  variant="outline"
+                  onClick={handleClearSchedule}
+                  disabled={savingSchedule}
+                  className="flex-1"
+                >
+                  Batalkan Jadwal
+                </Button>
+              )}
               <Button
                 onClick={handleSaveSchedule}
                 disabled={!scheduleData.start_time || savingSchedule}
