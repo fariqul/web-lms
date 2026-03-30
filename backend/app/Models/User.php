@@ -114,4 +114,21 @@ class User extends Authenticatable
     {
         return $this->role === 'siswa';
     }
+
+    /**
+     * Normalize nomor_tes on write to avoid hidden mismatch issues.
+     */
+    public function setNomorTesAttribute($value): void
+    {
+        if ($value === null) {
+            $this->attributes['nomor_tes'] = null;
+            return;
+        }
+
+        $normalized = trim((string) $value);
+        $normalized = preg_replace('/[\s\x{00A0}\x{200B}-\x{200D}\x{FEFF}]+/u', '', $normalized) ?? $normalized;
+        $normalized = mb_strtoupper($normalized, 'UTF-8');
+
+        $this->attributes['nomor_tes'] = $normalized === '' ? null : $normalized;
+    }
 }

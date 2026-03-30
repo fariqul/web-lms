@@ -36,6 +36,90 @@ class ExamController extends Controller
         Cache::forget("exam:show:{$examId}:role:admin");
     }
 
+    private function getIosIgnoredCount(int $resultId): int
+    {
+        return AuditLog::query()
+            ->where('action', 'exam.violation.ios_ignored')
+            ->where('target_type', 'exam_result')
+            ->where('target_id', $resultId)
+            ->count();
+    }
+
+    private function logIosIgnoredViolation(
+        Request $request,
+        Exam $exam,
+        ExamResult $result,
+        string $violationType,
+        string $reasonCode,
+        string $message
+    ): void {
+        try {
+            AuditLog::create([
+                'user_id' => $request->user()?->id,
+                'action' => 'exam.violation.ios_ignored',
+                'description' => "Violation iOS diabaikan: {$violationType} ({$reasonCode})",
+                'target_type' => 'exam_result',
+                'target_id' => $result->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'new_values' => [
+                    'exam_id' => $exam->id,
+                    'student_id' => $result->student_id,
+                    'exam_result_id' => $result->id,
+                    'violation_type' => $violationType,
+                    'reason_code' => $reasonCode,
+                    'message' => $message,
+                    'recorded_at' => now()->toISOString(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log iOS ignored violation: ' . $e->getMessage());
+        }
+    }
+
+    private function buildIgnoredViolationResponse(
+        Request $request,
+        Exam $exam,
+        ExamResult $result,
+        string $violationType,
+        string $reasonCode,
+        string $message
+    ) {
+        $this->logIosIgnoredViolation($request, $exam, $result, $violationType, $reasonCode, $message);
+        $ignoredCount = $this->getIosIgnoredCount($result->id);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'violation_count' => $result->violation_count,
+                'max_violations' => $exam->max_violations,
+                'force_submit' => false,
+                'ignored' => true,
+                'ios_ignored' => true,
+                'ios_ignored_reason' => $reasonCode,
+                'ios_ignored_count' => $ignoredCount,
+                'message' => $message,
+            ],
+        ]);
+    }
+
+    /**
+     * Normalize nomor_tes for reliable comparison across devices/keyboards.
+     * Removes invisible chars/whitespace and compares in uppercase.
+     */
+    private function normalizeNomorTes(?string $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        $normalized = trim($value);
+        // Remove all whitespace (including NBSP) and zero-width chars.
+        $normalized = preg_replace('/[\s\x{00A0}\x{200B}-\x{200D}\x{FEFF}]+/u', '', $normalized) ?? $normalized;
+
+        return mb_strtoupper($normalized, 'UTF-8');
+    }
+
     /**
      * Get teacher grades summary - all students with exam results
      */
@@ -1317,7 +1401,10 @@ class ExamController extends Controller
                 'nomor_tes.required' => 'Nomor tes wajib diisi untuk memulai ujian.',
             ]);
 
-            if ($request->nomor_tes !== $user->nomor_tes) {
+            $inputNomorTes = $this->normalizeNomorTes($request->nomor_tes);
+            $userNomorTes = $this->normalizeNomorTes($user->nomor_tes);
+
+            if ($inputNomorTes !== $userNomorTes) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Nomor tes tidak sesuai dengan akun Anda. Silakan periksa kembali nomor tes yang diberikan.',
@@ -1556,31 +1643,6 @@ class ExamController extends Controller
                 'success' => false,
                 'message' => 'Sesi ujian tidak ditemukan',
             ], 422);
-        }
-
-        // Grace period after admin reactivation to reduce false positives on iOS/mobile.
-        $isMobileUa = preg_match('/iPhone|iPad|iPod|Android|Mobile/i', $request->userAgent() ?? '') === 1;
-        $isSensitiveType = in_array($request->type, [
-            'tab_switch',
-            'fullscreen_exit',
-            'camera_off',
-            'split_screen',
-            'floating_app',
-            'pip_mode',
-            'suspicious_resize',
-        ], true);
-
-        if ($isMobileUa && $isSensitiveType && $result->reactivated_at && now()->diffInSeconds($result->reactivated_at) <= 30) {
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'violation_count' => $result->violation_count,
-                    'max_violations' => $exam->max_violations,
-                    'force_submit' => false,
-                    'ignored' => true,
-                    'message' => 'Violation diabaikan sementara pasca reaktivasi',
-                ],
-            ]);
         }
 
         // Server-side time expiry check
@@ -1896,6 +1958,67 @@ class ExamController extends Controller
             ], 422);
         }
 
+        $violationType = $request->type;
+        $userAgent = $request->userAgent() ?? '';
+        $isIOSUa = preg_match('/iPhone|iPad|iPod/i', $userAgent) === 1;
+
+        // Guard iOS false positives: noisy events from Safari lifecycle are ignored unless repeated/persistent.
+        if ($isIOSUa) {
+            $volatileTypes = [
+                'tab_switch',
+                'fullscreen_exit',
+                'split_screen',
+                'floating_app',
+                'pip_mode',
+                'suspicious_resize',
+                'camera_off',
+                'screenshot_attempt',
+            ];
+
+            if (in_array($violationType, $volatileTypes, true)) {
+                // First 90s after start often has permission/UI transitions on iOS.
+                if ($result->started_at && now()->diffInSeconds($result->started_at) <= 90) {
+                    return $this->buildIgnoredViolationResponse(
+                        $request,
+                        $exam,
+                        $result,
+                        $violationType,
+                        'ios_early_phase',
+                        'Violation iOS diabaikan pada fase awal ujian'
+                    );
+                }
+
+                // Grace period after admin reactivation to reduce repeated iOS false positives.
+                if ($result->reactivated_at && now()->diffInSeconds($result->reactivated_at) <= 120) {
+                    return $this->buildIgnoredViolationResponse(
+                        $request,
+                        $exam,
+                        $result,
+                        $violationType,
+                        'ios_post_reactivation',
+                        'Violation iOS diabaikan sementara pasca reaktivasi'
+                    );
+                }
+
+                // Require repeated same event in short window before counting on iOS.
+                $recentSame = Violation::where('exam_result_id', $result->id)
+                    ->where('type', $violationType)
+                    ->where('recorded_at', '>=', now()->subSeconds(20))
+                    ->count();
+
+                if ($recentSame === 0) {
+                    return $this->buildIgnoredViolationResponse(
+                        $request,
+                        $exam,
+                        $result,
+                        $violationType,
+                        'ios_first_occurrence',
+                        'Violation iOS pertama untuk tipe ini diabaikan (konfirmasi berulang diperlukan)'
+                    );
+                }
+            }
+        }
+
         $screenshotPath = null;
         if ($request->hasFile('screenshot')) {
             $screenshotPath = $request->file('screenshot')->store('violation-screenshots', 'public');
@@ -1905,7 +2028,7 @@ class ExamController extends Controller
             'exam_result_id' => $result->id,
             'student_id' => $user->id,
             'exam_id' => $exam->id,
-            'type' => $request->type,
+            'type' => $violationType,
             'description' => $request->description,
             'screenshot' => $screenshotPath,
             'recorded_at' => now(),
@@ -1935,7 +2058,7 @@ class ExamController extends Controller
         app(SocketBroadcastService::class)->examViolation($exam->id, [
             'student_id' => $user->id,
             'student_name' => $user->name,
-            'type' => $request->type,
+            'type' => $violationType,
             'description' => $request->description,
             'violation_count' => $result->violation_count,
             'max_violations' => $exam->max_violations,
@@ -2448,6 +2571,17 @@ class ExamController extends Controller
             ->groupBy('student_id')
             ->pluck('count', 'student_id');
 
+        // Batch load iOS ignored violation counters from audit logs
+        $iosIgnoredRows = AuditLog::query()
+            ->where('action', 'exam.violation.ios_ignored')
+            ->where('target_type', 'exam_result')
+            ->whereIn('target_id', $resultIds)
+            ->selectRaw('target_id, COUNT(*) as total, MAX(created_at) as last_at')
+            ->groupBy('target_id')
+            ->get();
+        $iosIgnoredCountByResult = $iosIgnoredRows->pluck('total', 'target_id');
+        $iosIgnoredLastAtByResult = $iosIgnoredRows->pluck('last_at', 'target_id');
+
         // Batch load recent violations per exam result
         $violationsByResult = Violation::whereIn('exam_result_id', $resultIds)
             ->orderBy('recorded_at', 'desc')
@@ -2471,6 +2605,8 @@ class ExamController extends Controller
                     'score' => null,
                     'latest_snapshot' => null,
                     'violation_details' => [],
+                    'ios_ignored_count' => 0,
+                    'ios_ignored_last_at' => null,
                 ];
             }
 
@@ -2498,6 +2634,8 @@ class ExamController extends Controller
                 'score' => $result->status === 'completed' ? $result->percentage : null,
                 'latest_snapshot' => $latestSnapshots[$result->id] ?? null,
                 'violation_details' => $resultViolations,
+                'ios_ignored_count' => (int) ($iosIgnoredCountByResult[$result->id] ?? 0),
+                'ios_ignored_last_at' => $iosIgnoredLastAtByResult[$result->id] ?? null,
             ];
         });
 
@@ -2508,6 +2646,7 @@ class ExamController extends Controller
             'in_progress' => $monitoringData->where('status', 'in_progress')->count(),
             'completed' => $monitoringData->where('status', 'completed')->count(),
             'total_violations' => $monitoringData->sum('violation_count'),
+            'total_ios_ignored' => $monitoringData->sum('ios_ignored_count'),
         ];
 
         return response()->json([

@@ -45,6 +45,8 @@ interface Participant {
   total_questions: number;
   score: number | null;
   latest_snapshot: { image_path: string; captured_at: string } | null;
+  ios_ignored_count: number;
+  ios_ignored_last_at: string | null;
   violation_details: Array<{
     id: number;
     type: string;
@@ -68,6 +70,7 @@ interface Summary {
   in_progress: number;
   completed: number;
   total_violations: number;
+  total_ios_ignored: number;
 }
 
 export default function MonitorUjianPage() {
@@ -80,7 +83,7 @@ export default function MonitorUjianPage() {
   const [examDetail, setExamDetail] = useState<any>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started'>('all');
+  const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started' | 'ios_ignored'>('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
@@ -282,8 +285,29 @@ export default function MonitorUjianPage() {
 
   const filteredParticipants = participants.filter((p) => {
     if (filter === 'all') return true;
+    if (filter === 'ios_ignored') return (p.ios_ignored_count || 0) > 0;
     return p.status === filter;
   });
+
+  const displayedParticipants = React.useMemo(() => {
+    const list = [...filteredParticipants];
+    if (filter !== 'ios_ignored') return list;
+
+    // Fokuskan kasus paling berat di urutan atas saat filter iOS aktif.
+    list.sort((a, b) => {
+      const byIgnored = (b.ios_ignored_count || 0) - (a.ios_ignored_count || 0);
+      if (byIgnored !== 0) return byIgnored;
+
+      const byViolation = (b.violation_count || 0) - (a.violation_count || 0);
+      if (byViolation !== 0) return byViolation;
+
+      const timeA = a.ios_ignored_last_at ? new Date(a.ios_ignored_last_at).getTime() : 0;
+      const timeB = b.ios_ignored_last_at ? new Date(b.ios_ignored_last_at).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return list;
+  }, [filteredParticipants, filter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -538,7 +562,7 @@ export default function MonitorUjianPage() {
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center">
@@ -594,6 +618,17 @@ export default function MonitorUjianPage() {
               </div>
             </div>
           </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-600">{summary?.total_ios_ignored || 0}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">iOS Diabaikan</p>
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* Filter Tabs */}
@@ -603,13 +638,16 @@ export default function MonitorUjianPage() {
             { value: 'in_progress', label: 'Mengerjakan' },
             { value: 'completed', label: 'Selesai' },
             { value: 'not_started', label: 'Belum Mulai' },
+            { value: 'ios_ignored', label: `iOS Diabaikan (${summary?.total_ios_ignored || 0})` },
           ].map((tab) => (
             <button
               key={tab.value}
               onClick={() => setFilter(tab.value as typeof filter)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === tab.value
-                  ? 'bg-teal-600 text-white'
+                  ? tab.value === 'ios_ignored'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-teal-600 text-white'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
               }`}
             >
@@ -684,7 +722,7 @@ export default function MonitorUjianPage() {
         {viewMode === 'grid' && (
           <Card className="p-4">
             {(() => {
-              const snapshotParticipants = filteredParticipants.filter(p => p.status === 'in_progress');
+              const snapshotParticipants = displayedParticipants.filter(p => p.status === 'in_progress');
               if (snapshotParticipants.length === 0) {
                 return (
                   <div className="py-16 text-center text-slate-500 dark:text-slate-400">
@@ -785,7 +823,7 @@ export default function MonitorUjianPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {filteredParticipants.length === 0 ? (
+                {displayedParticipants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-600 dark:text-slate-400">
                       <Users className="w-12 h-12 mx-auto mb-3 text-slate-400 dark:text-slate-600" />
@@ -793,7 +831,7 @@ export default function MonitorUjianPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredParticipants.map((participant) => (
+                  displayedParticipants.map((participant) => (
                     <tr key={participant.student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                       <td className="py-3 px-4">
                         <div>
@@ -822,27 +860,35 @@ export default function MonitorUjianPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {participant.violation_count > 0 ? (
-                          <div className="flex items-center justify-center gap-1 text-red-600">
-                            <AlertTriangle className="w-4 h-4" />
-                            <span className="font-medium tabular-nums">{participant.violation_count}</span>
-                            {user?.role === 'admin' && participant.violation_details?.length > 0 && (
-                              <button
-                                onClick={() => setViolationModal({
-                                  studentName: participant.student.name,
-                                  violations: participant.violation_details,
-                                })}
-                                className="ml-1 p-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded"
-                                title="Lihat detail pelanggaran"
-                                aria-label="Lihat detail pelanggaran"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-600 dark:text-slate-400">-</span>
-                        )}
+                        <div className="flex flex-col items-center justify-center">
+                          {participant.violation_count > 0 ? (
+                            <div className="flex items-center justify-center gap-1 text-red-600">
+                              <AlertTriangle className="w-4 h-4" />
+                              <span className="font-medium tabular-nums">{participant.violation_count}</span>
+                              {user?.role === 'admin' && participant.violation_details?.length > 0 && (
+                                <button
+                                  onClick={() => setViolationModal({
+                                    studentName: participant.student.name,
+                                    violations: participant.violation_details,
+                                  })}
+                                  className="ml-1 p-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded"
+                                  title="Lihat detail pelanggaran"
+                                  aria-label="Lihat detail pelanggaran"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 dark:text-slate-400">-</span>
+                          )}
+
+                          {participant.ios_ignored_count > 0 && (
+                            <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                              iOS ignored: {participant.ios_ignored_count}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-center text-sm text-slate-600 dark:text-slate-400">
                         {participant.started_at ? formatTime(participant.started_at) : '-'}

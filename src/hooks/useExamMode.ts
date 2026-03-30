@@ -559,7 +559,7 @@ export function useExamMode({
       if (hiddenAtRef.current) {
         const hiddenDurationMs = Date.now() - hiddenAtRef.current;
         hiddenAtRef.current = null;
-        const thresholdMs = isIOS ? 3000 : 1200;
+        const thresholdMs = isIOS ? 8000 : 1200;
         if (hiddenDurationMs >= thresholdMs) {
           reportViolation('tab_switch', 'Pindah tab/aplikasi');
         }
@@ -593,6 +593,13 @@ export function useExamMode({
       // Skip if we don't have valid initial dimensions
       if (initialWidth === 0 || initialHeight === 0) {
         initialDimensionsRef.current = { width: currentWidth, height: currentHeight, ratio: currentWidth / currentHeight };
+        return;
+      }
+
+      // iOS Safari sering memicu resize palsu karena toolbar/keyboard/viewport dynamics.
+      // Hindari pelanggaran dari sumber ini agar tidak false positive.
+      if (isIOS) {
+        lastResizeTimeRef.current = now;
         return;
       }
       
@@ -737,6 +744,7 @@ export function useExamMode({
 
     // Multi-touch detection (possible screenshot gesture on mobile)
     const handleTouchStart = (e: TouchEvent) => {
+      if (isIOS) return;
       if (e.touches.length >= 3 && monitoringActiveRef.current) {
         reportViolation('screenshot_attempt', 'Gerakan multi-touch terdeteksi (kemungkinan screenshot)');
       }
@@ -803,6 +811,7 @@ export function useExamMode({
     if (enableCamera && isCameraActive) {
       // Track if we're currently attempting auto-restart
       let isAutoRestarting = false;
+      const autoRestartLimit = isIOS ? 6 : MAX_AUTO_RESTART_ATTEMPTS;
 
       // Camera status check — detect if camera is turned off
       const checkCamera = setInterval(async () => {
@@ -825,8 +834,8 @@ export function useExamMode({
             if (isAutoRestarting) return; // Already restarting, skip this check
             
             // On mobile, track can end due to OS suspending camera — try restart first
-            if (cameraRestartAttemptsRef.current < MAX_AUTO_RESTART_ATTEMPTS) {
-              console.log(`[Camera] Track ended/disabled, attempting auto-restart (${cameraRestartAttemptsRef.current + 1}/${MAX_AUTO_RESTART_ATTEMPTS})`);
+            if (cameraRestartAttemptsRef.current < autoRestartLimit) {
+              console.log(`[Camera] Track ended/disabled, attempting auto-restart (${cameraRestartAttemptsRef.current + 1}/${autoRestartLimit})`);
               isAutoRestarting = true;
               cameraRestartAttemptsRef.current++;
               
@@ -840,6 +849,13 @@ export function useExamMode({
                 isAutoRestarting = false;
               }
             } else {
+              if (isIOS) {
+                // iOS dapat menutup track kamera secara sporadis saat resource pressure.
+                // Beri jeda tambahan dan coba lagi, jangan langsung violation.
+                snapshotGraceUntilRef.current = Date.now() + 15000;
+                cameraRestartAttemptsRef.current = 0;
+                return;
+              }
               // Only report violation after multiple restart attempts failed
               reportViolation('camera_off', 'Kamera dimatikan atau tidak dapat diakses');
               cameraRestartAttemptsRef.current = 0; // Reset for next cycle
@@ -885,7 +901,7 @@ export function useExamMode({
         }
       };
     }
-  }, [enableCamera, isCameraActive, reportViolation, restartCamera]);
+  }, [enableCamera, isCameraActive, reportViolation, restartCamera, isIOS]);
 
   // Cleanup on unmount
   useEffect(() => {

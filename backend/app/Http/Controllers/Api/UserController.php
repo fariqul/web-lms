@@ -260,6 +260,102 @@ class UserController extends Controller
     }
 
     /**
+     * Bulk normalize nomor_tes for students (admin only)
+     * Normalization: trim, remove hidden/space chars, uppercase.
+     */
+    public function normalizeNomorTes(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'nullable|exists:classes,id',
+        ]);
+
+        $query = User::query()
+            ->where('role', 'siswa')
+            ->whereNotNull('nomor_tes');
+
+        if ($request->filled('class_id')) {
+            $query->where('class_id', $request->class_id);
+        }
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, User> $students */
+        $students = $query->get();
+
+        if ($students->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tidak ada nomor tes yang perlu dinormalisasi',
+                'processed_count' => 0,
+                'normalized_count' => 0,
+                'conflict_count' => 0,
+                'conflicts' => [],
+            ]);
+        }
+
+        $normalizedCount = 0;
+        $conflicts = [];
+
+        foreach ($students as $student) {
+            /** @var User $student */
+            $normalizedValue = $this->normalizeNomorTesValue($student->nomor_tes);
+
+            if ($normalizedValue === $student->nomor_tes) {
+                continue;
+            }
+
+            if ($normalizedValue !== null) {
+                $hasConflict = User::query()
+                    ->where('id', '!=', $student->id)
+                    ->where('nomor_tes', $normalizedValue)
+                    ->exists();
+
+                if ($hasConflict) {
+                    $conflicts[] = [
+                        'id' => $student->id,
+                        'name' => $student->name,
+                        'from' => $student->nomor_tes,
+                        'to' => $normalizedValue,
+                    ];
+                    continue;
+                }
+            }
+
+            $student->nomor_tes = $normalizedValue;
+            $student->save();
+            $normalizedCount++;
+        }
+
+        $conflictCount = count($conflicts);
+        $scopeText = $request->filled('class_id') ? 'di kelas terpilih' : 'di seluruh siswa';
+        $message = "Normalisasi nomor tes selesai {$scopeText}: {$normalizedCount} diubah";
+        if ($conflictCount > 0) {
+            $message .= ", {$conflictCount} konflik dilewati";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'processed_count' => $students->count(),
+            'normalized_count' => $normalizedCount,
+            'conflict_count' => $conflictCount,
+            // Batasi daftar konflik agar payload tetap ringan.
+            'conflicts' => array_slice($conflicts, 0, 20),
+        ]);
+    }
+
+    private function normalizeNomorTesValue(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+        $normalized = preg_replace('/[\s\x{00A0}\x{200B}-\x{200D}\x{FEFF}]+/u', '', $normalized) ?? $normalized;
+        $normalized = mb_strtoupper($normalized, 'UTF-8');
+
+        return $normalized === '' ? null : $normalized;
+    }
+
+    /**
      * Toggle block status for a student (admin only)
      */
     public function toggleBlock(Request $request, User $user)
@@ -374,6 +470,7 @@ class UserController extends Controller
         // Force logout blocked users
         if ($request->is_blocked) {
             foreach ($users as $user) {
+                /** @var User $user */
                 $user->tokens()->delete();
             }
         }
@@ -423,6 +520,7 @@ class UserController extends Controller
         // Force logout blocked users
         if ($request->is_blocked) {
             foreach ($users as $user) {
+                /** @var User $user */
                 $user->tokens()->delete();
             }
         }
@@ -476,6 +574,7 @@ class UserController extends Controller
 
         if ($request->is_blocked) {
             foreach ($users as $user) {
+                /** @var User $user */
                 $user->tokens()->delete();
             }
         }

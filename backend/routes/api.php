@@ -69,6 +69,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::apiResource('users', UserController::class);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::delete('/users/nomor-tes/clear', [UserController::class, 'clearNomorTes']);
+        Route::post('/users/nomor-tes/normalize', [UserController::class, 'normalizeNomorTes']);
         Route::get('/teachers', [UserController::class, 'teachers']);
         Route::get('/students/class/{classId}', [UserController::class, 'studentsByClass']);
         

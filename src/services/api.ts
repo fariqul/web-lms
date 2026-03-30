@@ -223,6 +223,9 @@ export const userAPI = {
   clearNomorTes: (classId?: number) =>
     api.delete('/users/nomor-tes/clear', { params: classId ? { class_id: classId } : undefined }),
 
+  normalizeNomorTes: (classId?: number) =>
+    api.post('/users/nomor-tes/normalize', classId ? { class_id: classId } : {}),
+
   // Student blocking
   toggleBlock: (id: number, isBlocked: boolean, reason?: string) =>
     api.post(`/users/${id}/toggle-block`, { is_blocked: isBlocked, reason }),

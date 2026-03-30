@@ -32,6 +32,13 @@ interface ClassOption {
   students_count?: number;
 }
 
+interface NomorTesConflict {
+  id: number;
+  name: string;
+  from: string;
+  to: string;
+}
+
 const roleOptions = [
   { value: '', label: 'Semua Role' },
   { value: 'siswa', label: 'Siswa' },
@@ -57,6 +64,9 @@ export default function AdminUsersPage() {
   const [resetPasswordData, setResetPasswordData] = useState({ password: '', showPassword: false });
   const [resetSuccess, setResetSuccess] = useState('');
   const [isClearNomorTesOpen, setIsClearNomorTesOpen] = useState(false);
+  const [isNormalizeNomorTesOpen, setIsNormalizeNomorTesOpen] = useState(false);
+  const [isNormalizeConflictOpen, setIsNormalizeConflictOpen] = useState(false);
+  const [normalizeConflicts, setNormalizeConflicts] = useState<NomorTesConflict[]>([]);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [blockReason, setBlockReason] = useState('');
   const [blockAction, setBlockAction] = useState<'block' | 'unblock'>('block');
@@ -391,6 +401,35 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleNormalizeNomorTes = async () => {
+    try {
+      const scopedClassId = classFilter ? Number(classFilter) : undefined;
+      const classId = Number.isFinite(scopedClassId as number) ? (scopedClassId as number) : undefined;
+      const res = await userAPI.normalizeNomorTes(classId);
+      const msg = res.data?.message || 'Normalisasi nomor tes selesai';
+      toast.success(msg);
+      const rawConflicts = Array.isArray(res.data?.conflicts) ? res.data.conflicts : [];
+      const parsedConflicts: NomorTesConflict[] = rawConflicts
+        .map((item: any) => ({
+          id: Number(item?.id) || 0,
+          name: String(item?.name || '-'),
+          from: String(item?.from || '-'),
+          to: String(item?.to || '-'),
+        }))
+        .filter((item: NomorTesConflict) => item.id > 0);
+
+      setNormalizeConflicts(parsedConflicts);
+      if (parsedConflicts.length > 0) {
+        toast.warning(`Ada ${parsedConflicts.length} konflik nomor tes. Periksa detail konflik.`);
+        setIsNormalizeConflictOpen(true);
+      }
+      setIsNormalizeNomorTesOpen(false);
+      fetchData();
+    } catch (error) {
+      toast.error('Gagal menormalisasi nomor tes');
+    }
+  };
+
   // Sort icon component
   const SortIcon = ({ columnKey }: { columnKey: 'name' | 'nomor_tes' }) => {
     if (sortKey !== columnKey) {
@@ -574,6 +613,15 @@ export default function AdminUsersPage() {
                     <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
                     <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredStudentIds.length}</span>
                   </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<ArrowUpDown className="w-4 h-4" />}
+                  onClick={() => setIsNormalizeNomorTesOpen(true)}
+                  className="text-sky-700 dark:text-sky-400 border-sky-300 dark:border-sky-800 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+                >
+                  Normalisasi No. Tes
                 </Button>
                 <Button
                   variant="outline"
@@ -941,6 +989,59 @@ export default function AdminUsersPage() {
         confirmText="Hapus Semua"
         variant="danger"
       />
+
+      {/* Normalize Nomor Tes Confirmation */}
+      <ConfirmDialog
+        isOpen={isNormalizeNomorTesOpen}
+        onClose={() => setIsNormalizeNomorTesOpen(false)}
+        onConfirm={handleNormalizeNomorTes}
+        title={classFilter ? 'Normalisasi Nomor Tes Kelas' : 'Normalisasi Semua Nomor Tes'}
+        message={classFilter
+          ? `Nomor tes siswa di kelas ${classes.find(c => c.id.toString() === classFilter)?.name || 'terpilih'} akan dinormalisasi (trim, hapus spasi/karakter tersembunyi, uppercase).`
+          : 'Nomor tes seluruh siswa akan dinormalisasi (trim, hapus spasi/karakter tersembunyi, uppercase).'}
+        confirmText="Normalisasi"
+      />
+
+      {/* Normalize Konflik Detail */}
+      <Modal
+        isOpen={isNormalizeConflictOpen}
+        onClose={() => setIsNormalizeConflictOpen(false)}
+        title="Detail Konflik Nomor Tes"
+        size="md"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Beberapa data dilewati karena hasil normalisasi bertabrakan dengan nomor tes yang sudah dipakai pengguna lain.
+          </p>
+
+          <div className="max-h-72 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
+                <tr>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-700 dark:text-slate-300">Siswa</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-700 dark:text-slate-300">Sebelum</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-700 dark:text-slate-300">Setelah</th>
+                </tr>
+              </thead>
+              <tbody>
+                {normalizeConflicts.map((item) => (
+                  <tr key={item.id} className="border-t border-slate-200 dark:border-slate-700">
+                    <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{item.name}</td>
+                    <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-300">{item.from}</td>
+                    <td className="px-3 py-2 font-mono text-red-600 dark:text-red-400">{item.to}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => setIsNormalizeConflictOpen(false)}>
+              Tutup
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Block/Unblock Modal */}
       <Modal

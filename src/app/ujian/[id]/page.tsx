@@ -653,6 +653,11 @@ export default function ExamTakingPage() {
       setNomorTesError(null);
     }
 
+    const normalizedNomorTes = nomorTes
+      .trim()
+      .replace(/[\s\u00A0\u200B-\u200D\uFEFF]+/g, '')
+      .toUpperCase();
+
     setStartingExam(true);
 
     // Stop preview stream if running
@@ -664,7 +669,7 @@ export default function ExamTakingPage() {
 
     try {
       // Call API to start exam — this returns questions for students
-      const response = await api.post(`/exams/${examId}/start`, hasNomorTes ? { nomor_tes: nomorTes.trim() } : {});
+      const response = await api.post(`/exams/${examId}/start`, hasNomorTes ? { nomor_tes: normalizedNomorTes } : {});
       const startData = response.data?.data;
 
       if (startData?.questions && startData.questions.length > 0) {
