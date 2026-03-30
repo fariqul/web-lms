@@ -2448,7 +2448,13 @@ class ExamController extends Controller
             ->groupBy('student_id')
             ->pluck('count', 'student_id');
 
-        $monitoringData = $allStudents->map(function ($student) use ($results, $latestSnapshots, $answerCounts, $exam) {
+        // Batch load recent violations per exam result
+        $violationsByResult = Violation::whereIn('exam_result_id', $resultIds)
+            ->orderBy('recorded_at', 'desc')
+            ->get()
+            ->groupBy('exam_result_id');
+
+        $monitoringData = $allStudents->map(function ($student) use ($results, $latestSnapshots, $answerCounts, $violationsByResult, $exam) {
             $result = $results->get($student->id);
             
             if (!$result) {
@@ -2464,8 +2470,21 @@ class ExamController extends Controller
                     'total_questions' => $exam->total_questions,
                     'score' => null,
                     'latest_snapshot' => null,
+                    'violation_details' => [],
                 ];
             }
+
+            $resultViolations = ($violationsByResult[$result->id] ?? collect())
+                ->take(10)
+                ->map(function ($v) {
+                    return [
+                        'id' => $v->id,
+                        'type' => $v->type,
+                        'description' => $v->description,
+                        'recorded_at' => $v->recorded_at,
+                    ];
+                })
+                ->values();
             
             return [
                 'student' => $student,
@@ -2478,6 +2497,7 @@ class ExamController extends Controller
                 'total_questions' => $exam->total_questions,
                 'score' => $result->status === 'completed' ? $result->percentage : null,
                 'latest_snapshot' => $latestSnapshots[$result->id] ?? null,
+                'violation_details' => $resultViolations,
             ];
         });
 

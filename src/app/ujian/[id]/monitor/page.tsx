@@ -45,6 +45,12 @@ interface Participant {
   total_questions: number;
   score: number | null;
   latest_snapshot: { image_path: string; captured_at: string } | null;
+  violation_details: Array<{
+    id: number;
+    type: string;
+    description?: string | null;
+    recorded_at: string;
+  }>;
 }
 
 interface ExamInfo {
@@ -85,6 +91,8 @@ export default function MonitorUjianPage() {
   const [reactivateModal, setReactivateModal] = useState<{ participantId: number; studentName: string; resultId: number } | null>(null);
   const [reactivateReason, setReactivateReason] = useState('');
   const [isReactivating, setIsReactivating] = useState(false);
+  const [violationModal, setViolationModal] = useState<{ studentName: string; violations: Participant['violation_details'] } | null>(null);
+  const [violationFilter, setViolationFilter] = useState<'all' | 'ios_risky'>('all');
 
   // WebSocket for real-time updates
   const examSocket = useExamSocket(examId);
@@ -305,6 +313,40 @@ export default function MonitorUjianPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getViolationTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      tab_switch: 'Pindah tab/aplikasi',
+      window_blur: 'Window blur',
+      copy_paste: 'Copy/Paste',
+      right_click: 'Klik kanan',
+      shortcut_key: 'Shortcut terlarang',
+      screen_capture: 'Screen capture',
+      multiple_face: 'Wajah ganda',
+      no_face: 'Wajah tidak terdeteksi',
+      split_screen: 'Split screen',
+      floating_app: 'Aplikasi mengambang',
+      pip_mode: 'Mode PiP',
+      suspicious_resize: 'Resize mencurigakan',
+      screenshot_attempt: 'Percobaan screenshot',
+      virtual_camera: 'Kamera virtual',
+      camera_off: 'Kamera mati/tidak akses',
+      fullscreen_exit: 'Keluar fullscreen',
+    };
+    return map[type] || type;
+  };
+
+  const isIosRiskyViolation = (type: string) => {
+    return [
+      'tab_switch',
+      'fullscreen_exit',
+      'camera_off',
+      'split_screen',
+      'floating_app',
+      'pip_mode',
+      'suspicious_resize',
+    ].includes(type);
   };
 
   const getTimeRemaining = () => {
@@ -781,10 +823,23 @@ export default function MonitorUjianPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         {participant.violation_count > 0 ? (
-                          <span className="flex items-center justify-center gap-1 text-red-600">
+                          <div className="flex items-center justify-center gap-1 text-red-600">
                             <AlertTriangle className="w-4 h-4" />
                             <span className="font-medium tabular-nums">{participant.violation_count}</span>
-                          </span>
+                            {user?.role === 'admin' && participant.violation_details?.length > 0 && (
+                              <button
+                                onClick={() => setViolationModal({
+                                  studentName: participant.student.name,
+                                  violations: participant.violation_details,
+                                })}
+                                className="ml-1 p-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded"
+                                title="Lihat detail pelanggaran"
+                                aria-label="Lihat detail pelanggaran"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-600 dark:text-slate-400">-</span>
                         )}
@@ -918,6 +973,102 @@ export default function MonitorUjianPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 text-center">
                 Foto diambil otomatis setiap 5 detik dari kamera siswa
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Violation Details Modal */}
+      {violationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setViolationModal(null)}>
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">Detail Pelanggaran</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Siswa: {violationModal.studentName}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setViolationModal(null);
+                  setViolationFilter('all');
+                }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                aria-label="Tutup detail pelanggaran"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="p-4 max-h-[60vh] overflow-auto">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setViolationFilter('all')}
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${
+                      violationFilter === 'all'
+                        ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  <button
+                    onClick={() => setViolationFilter('ios_risky')}
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${
+                      violationFilter === 'ios_risky'
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                    }`}
+                  >
+                    iOS-risky
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {violationFilter === 'all'
+                    ? `${violationModal.violations.length} pelanggaran`
+                    : `${violationModal.violations.filter(v => isIosRiskyViolation(v.type)).length} pelanggaran iOS-risky`}
+                </p>
+              </div>
+
+              {(() => {
+                const displayViolations = violationFilter === 'all'
+                  ? violationModal.violations
+                  : violationModal.violations.filter(v => isIosRiskyViolation(v.type));
+
+                if (displayViolations.length === 0) {
+                  return (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Tidak ada pelanggaran pada filter ini.
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {displayViolations.map((v, idx) => (
+                      <div key={v.id} className={`rounded-lg border p-3 ${isIosRiskyViolation(v.type) ? 'border-amber-200 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-900/10' : 'border-slate-200 dark:border-slate-700'}`}>
+                        <div className="flex items-center justify-between gap-3 mb-1">
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                            {idx + 1}. {getViolationTypeLabel(v.type)}
+                            {isIosRiskyViolation(v.type) && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                iOS-risky
+                              </span>
+                            )}
+                          </p>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">{formatDateTime(v.recorded_at)}</span>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          {v.description?.trim() || 'Tidak ada deskripsi tambahan dari sistem.'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
