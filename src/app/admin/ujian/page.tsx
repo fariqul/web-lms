@@ -50,6 +50,17 @@ interface ClassOption {
   label: string;
 }
 
+interface ClassScheduleRow {
+  class_id: number;
+  class_name: string;
+  has_override: boolean;
+  schedule_id: number | null;
+  start_time: string;
+  end_time: string;
+  override_start_time: string | null;
+  override_end_time: string | null;
+}
+
 export default function AdminUjianPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -79,6 +90,15 @@ export default function AdminUjianPage() {
   const [editingSchedule, setEditingSchedule] = useState<Exam | null>(null);
   const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60, class_id: '' });
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  // Per-class schedule management (admin)
+  const [classScheduleExam, setClassScheduleExam] = useState<Exam | null>(null);
+  const [classScheduleRows, setClassScheduleRows] = useState<ClassScheduleRow[]>([]);
+  const [loadingClassSchedules, setLoadingClassSchedules] = useState(false);
+  const [savingClassSchedules, setSavingClassSchedules] = useState(false);
+  const [deletingClassScheduleClassId, setDeletingClassScheduleClassId] = useState<number | null>(null);
+  const [selectedScheduleClassIds, setSelectedScheduleClassIds] = useState<Set<number>>(new Set());
+  const [classScheduleForm, setClassScheduleForm] = useState({ start_time: '', duration: 60 });
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -383,6 +403,75 @@ export default function AdminUjianPage() {
     }
   };
 
+  const loadClassSchedules = async (examId: number) => {
+    setLoadingClassSchedules(true);
+    try {
+      const res = await api.get(`/exams/${examId}/class-schedules`);
+      const rows = res.data?.data?.class_schedules || [];
+      setClassScheduleRows(rows);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal memuat jadwal per kelas');
+      setClassScheduleRows([]);
+    } finally {
+      setLoadingClassSchedules(false);
+    }
+  };
+
+  const openClassScheduleModal = async (exam: Exam) => {
+    setClassScheduleExam(exam);
+    setSelectedScheduleClassIds(new Set());
+    setClassScheduleForm({
+      start_time: toDateTimeLocalInputValue(exam.start_time),
+      duration: exam.duration || 60,
+    });
+    await loadClassSchedules(exam.id);
+  };
+
+  const handleApplyClassSchedules = async () => {
+    if (!classScheduleExam || !classScheduleForm.start_time) return;
+    const classIds = Array.from(selectedScheduleClassIds);
+    if (classIds.length === 0) {
+      toast.warning('Pilih minimal 1 kelas');
+      return;
+    }
+
+    setSavingClassSchedules(true);
+    try {
+      const startTime = new Date(classScheduleForm.start_time);
+      const endTime = new Date(startTime.getTime() + classScheduleForm.duration * 60 * 1000);
+
+      await api.post(`/exams/${classScheduleExam.id}/class-schedules/bulk`, {
+        class_ids: classIds,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+      });
+
+      toast.success(`Jadwal berhasil diterapkan ke ${classIds.length} kelas`);
+      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal menerapkan jadwal per kelas');
+    } finally {
+      setSavingClassSchedules(false);
+    }
+  };
+
+  const handleResetClassSchedule = async (classId: number) => {
+    if (!classScheduleExam) return;
+    setDeletingClassScheduleClassId(classId);
+    try {
+      await api.delete(`/exams/${classScheduleExam.id}/class-schedules/${classId}`);
+      toast.success('Jadwal kelas dikembalikan ke jadwal umum');
+      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mereset jadwal kelas');
+    } finally {
+      setDeletingClassScheduleClassId(null);
+    }
+  };
+
   const now = new Date();
 
   const getEffectiveStatus = (exam: Exam) => {
@@ -659,6 +748,18 @@ export default function AdminUjianPage() {
                 </Button>
               </Link>
             </>
+          )}
+
+          {(status === 'draft' || status === 'scheduled') && (exam.classes?.length ?? 0) > 1 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openClassScheduleModal(exam)}
+              className="text-indigo-600 dark:text-indigo-400"
+            >
+              <Calendar className="w-3.5 h-3.5 mr-1.5" />
+              Jadwal Per Kelas
+            </Button>
           )}
 
           {status === 'active' && (
@@ -1082,6 +1183,158 @@ export default function AdminUjianPage() {
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
                 ) : (
                   'Simpan Jadwal'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Per-Class Schedule Modal */}
+      {classScheduleExam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setClassScheduleExam(null)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1">Atur Jadwal Per Kelas</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{classScheduleExam.title}</p>
+
+            {loadingClassSchedules ? (
+              <div className="py-10 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Memuat jadwal kelas...
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Waktu Mulai (untuk kelas terpilih)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={classScheduleForm.start_time}
+                      onChange={(e) => setClassScheduleForm(prev => ({ ...prev, start_time: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Durasi (menit)
+                    </label>
+                    <input
+                      type="number"
+                      min={10}
+                      max={240}
+                      value={classScheduleForm.duration}
+                      onChange={(e) => setClassScheduleForm(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Daftar Kelas</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedScheduleClassIds(new Set(classScheduleRows.map(r => r.class_id)))}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      Pilih semua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedScheduleClassIds(new Set())}
+                      className="text-xs text-slate-500 dark:text-slate-400 hover:underline"
+                    >
+                      Kosongkan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50">
+                      <tr>
+                        <th className="text-left py-2 px-3 w-10" />
+                        <th className="text-left py-2 px-3">Kelas</th>
+                        <th className="text-left py-2 px-3">Jadwal Efektif</th>
+                        <th className="text-left py-2 px-3">Sumber</th>
+                        <th className="text-right py-2 px-3">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {classScheduleRows.map((row) => {
+                        const isSelected = selectedScheduleClassIds.has(row.class_id);
+                        return (
+                          <tr key={row.class_id} className={isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}>
+                            <td className="py-2 px-3">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const next = new Set(selectedScheduleClassIds);
+                                  if (e.target.checked) next.add(row.class_id);
+                                  else next.delete(row.class_id);
+                                  setSelectedScheduleClassIds(next);
+                                }}
+                              />
+                            </td>
+                            <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100">{row.class_name}</td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
+                              <div>{formatDateTime(row.start_time)}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">s.d. {formatDateTime(row.end_time)}</div>
+                            </td>
+                            <td className="py-2 px-3">
+                              {row.has_override ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                  Override kelas
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                  Jadwal umum
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              {row.has_override ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleResetClassSchedule(row.class_id)}
+                                  disabled={deletingClassScheduleClassId === row.class_id}
+                                >
+                                  {deletingClassScheduleClassId === row.class_id ? 'Menghapus...' : 'Reset'}
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-slate-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-3 mt-5 justify-end">
+              <Button variant="outline" onClick={() => setClassScheduleExam(null)}>
+                Tutup
+              </Button>
+              <Button
+                onClick={handleApplyClassSchedules}
+                disabled={
+                  loadingClassSchedules ||
+                  savingClassSchedules ||
+                  !classScheduleForm.start_time ||
+                  selectedScheduleClassIds.size === 0
+                }
+              >
+                {savingClassSchedules ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
+                ) : (
+                  `Terapkan ke ${selectedScheduleClassIds.size} kelas`
                 )}
               </Button>
             </div>

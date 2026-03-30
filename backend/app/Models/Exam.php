@@ -64,6 +64,14 @@ class Exam extends Model
         return $this->belongsToMany(ClassRoom::class, 'exam_class', 'exam_id', 'class_id')->withTimestamps();
     }
 
+    /**
+     * Per-class schedule overrides managed by admin.
+     */
+    public function classSchedules()
+    {
+        return $this->hasMany(ExamClassSchedule::class);
+    }
+
     public function teacher()
     {
         return $this->belongsTo(User::class, 'teacher_id');

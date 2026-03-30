@@ -10,6 +10,7 @@ use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\AuditLog;
+use App\Models\ExamClassSchedule;
 use App\Models\User;
 use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
@@ -118,6 +119,42 @@ class ExamController extends Controller
         $normalized = preg_replace('/[\s\x{00A0}\x{200B}-\x{200D}\x{FEFF}]+/u', '', $normalized) ?? $normalized;
 
         return mb_strtoupper($normalized, 'UTF-8');
+    }
+
+    private function getExamClassSchedule(Exam $exam, ?int $classId): ?ExamClassSchedule
+    {
+        if (!$classId) {
+            return null;
+        }
+
+        if ($exam->relationLoaded('classSchedules')) {
+            return $exam->classSchedules->firstWhere('class_id', $classId);
+        }
+
+        return $exam->classSchedules()
+            ->where('class_id', $classId)
+            ->first();
+    }
+
+    private function getEffectiveExamWindow(Exam $exam, ?int $classId): array
+    {
+        $classSchedule = $this->getExamClassSchedule($exam, $classId);
+
+        if ($classSchedule) {
+            return [
+                'start_time' => Carbon::parse($classSchedule->start_time),
+                'end_time' => Carbon::parse($classSchedule->end_time),
+                'is_override' => true,
+                'class_schedule_id' => $classSchedule->id,
+            ];
+        }
+
+        return [
+            'start_time' => Carbon::parse($exam->start_time),
+            'end_time' => Carbon::parse($exam->end_time),
+            'is_override' => false,
+            'class_schedule_id' => null,
+        ];
     }
 
     /**
@@ -306,7 +343,7 @@ class ExamController extends Controller
     {
         $user = $request->user();
         $query = Exam::where('type', '!=', 'quiz')
-            ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name']);
+            ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time']);
 
         if ($user->role === 'guru') {
             $query->where('teacher_id', $user->id);
@@ -346,8 +383,18 @@ class ExamController extends Controller
                 ->get(['id', 'exam_id', 'status', 'submitted_at', 'finished_at'])
                 ->keyBy('exam_id');
 
-            $exams->getCollection()->transform(function ($exam) use ($myResults) {
+            $exams->getCollection()->transform(function ($exam) use ($myResults, $user) {
                 $exam->my_result = $myResults[$exam->id] ?? null;
+
+                $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+                $exam->effective_start_time = $window['start_time'];
+                $exam->effective_end_time = $window['end_time'];
+                $exam->has_class_schedule_override = $window['is_override'];
+
+                // For siswa, always expose the schedule relevant to their own class.
+                $exam->start_time = $window['start_time'];
+                $exam->end_time = $window['end_time'];
+
                 // Flatten SEB config for frontend (without exposing quit password)
                 if ($exam->seb_required && is_array($exam->seb_config)) {
                     $exam->seb_allow_quit = $exam->seb_config['allow_quit'] ?? true;
@@ -426,7 +473,7 @@ class ExamController extends Controller
     public function show(Request $request, Exam $exam)
     {
         $user = $request->user();
-        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name']);
+        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time']);
 
         $shouldUseShowCache = in_array($user->role, ['guru', 'admin'], true) && !$request->boolean('no_cache');
         $showCacheKey = "exam:show:{$exam->id}:role:{$user->role}";
@@ -538,11 +585,20 @@ class ExamController extends Controller
                 ->first(['id', 'status', 'started_at', 'submitted_at']);
             $exam->my_result = $result;
 
+            $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+            $exam->effective_start_time = $window['start_time'];
+            $exam->effective_end_time = $window['end_time'];
+            $exam->has_class_schedule_override = $window['is_override'];
+
+            // For siswa, always expose their class-specific schedule.
+            $exam->start_time = $window['start_time'];
+            $exam->end_time = $window['end_time'];
+
             // Check if student can access exam
             $now = now();
             if (in_array($exam->status, ['scheduled', 'active']) && 
-                $now >= $exam->start_time && 
-                $now <= $exam->end_time) {
+                $now >= $window['start_time'] && 
+                $now <= $window['end_time']) {
                 $exam->can_start = !$result || $result->status === 'in_progress';
             } else {
                 $exam->can_start = false;
@@ -672,6 +728,203 @@ class ExamController extends Controller
             'success' => true,
             'data' => $exam,
             'message' => 'Ujian berhasil diupdate',
+        ]);
+    }
+
+    /**
+     * Get per-class schedule overrides for an exam.
+     */
+    public function classSchedules(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke jadwal ujian ini',
+            ], 403);
+        }
+
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+
+        $targetClassIds = $examClassIds;
+
+        $classRooms = \App\Models\ClassRoom::whereIn('id', $targetClassIds)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $schedules = ExamClassSchedule::where('exam_id', $exam->id)
+            ->whereIn('class_id', $targetClassIds)
+            ->get()
+            ->keyBy('class_id');
+
+        $rows = $classRooms->map(function ($classRoom) use ($schedules, $exam) {
+            $override = $schedules->get($classRoom->id);
+
+            return [
+                'class_id' => $classRoom->id,
+                'class_name' => $classRoom->name,
+                'has_override' => (bool) $override,
+                'schedule_id' => $override?->id,
+                'start_time' => $override?->start_time ?? $exam->start_time,
+                'end_time' => $override?->end_time ?? $exam->end_time,
+                'override_start_time' => $override?->start_time,
+                'override_end_time' => $override?->end_time,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'exam_id' => $exam->id,
+                'exam_start_time' => $exam->start_time,
+                'exam_end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+                'class_schedules' => $rows,
+            ],
+        ]);
+    }
+
+    /**
+     * Upsert schedule override for a single class in an exam (admin only).
+     */
+    public function upsertClassSchedule(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengatur jadwal per kelas',
+            ], 403);
+        }
+
+        $request->validate([
+            'class_id' => 'required|exists:classes,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+        ]);
+
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+
+        if (!in_array((int) $request->class_id, $examClassIds, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kelas tidak terdaftar pada ujian ini',
+            ], 422);
+        }
+
+        $schedule = ExamClassSchedule::updateOrCreate(
+            [
+                'exam_id' => $exam->id,
+                'class_id' => $request->class_id,
+            ],
+            [
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+            ]
+        );
+
+        $this->forgetExamShowCache($exam->id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedule,
+            'message' => 'Jadwal per kelas berhasil diperbarui',
+        ]);
+    }
+
+    /**
+     * Upsert schedule override for many classes in one request (admin only).
+     */
+    public function upsertClassScheduleBulk(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengatur jadwal per kelas',
+            ], 403);
+        }
+
+        $request->validate([
+            'class_ids' => 'required|array|min:1',
+            'class_ids.*' => 'exists:classes,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+        ]);
+
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+
+        $targetClassIds = collect($request->class_ids)
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $invalidClassIds = array_values(array_diff($targetClassIds, $examClassIds));
+        if (!empty($invalidClassIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sebagian kelas tidak terdaftar pada ujian ini',
+                'invalid_class_ids' => $invalidClassIds,
+            ], 422);
+        }
+
+        DB::transaction(function () use ($targetClassIds, $request, $exam) {
+            foreach ($targetClassIds as $classId) {
+                ExamClassSchedule::updateOrCreate(
+                    [
+                        'exam_id' => $exam->id,
+                        'class_id' => $classId,
+                    ],
+                    [
+                        'start_time' => $request->start_time,
+                        'end_time' => $request->end_time,
+                    ]
+                );
+            }
+        });
+
+        $this->forgetExamShowCache($exam->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jadwal berhasil diterapkan ke beberapa kelas',
+            'affected_count' => count($targetClassIds),
+        ]);
+    }
+
+    /**
+     * Delete schedule override for one class (fallback to exam default schedule).
+     */
+    public function deleteClassSchedule(Request $request, Exam $exam, int $classId)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat menghapus jadwal per kelas',
+            ], 403);
+        }
+
+        ExamClassSchedule::where('exam_id', $exam->id)
+            ->where('class_id', $classId)
+            ->delete();
+
+        $this->forgetExamShowCache($exam->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jadwal kelas dikembalikan ke jadwal umum ujian',
         ]);
     }
 
@@ -1420,11 +1673,15 @@ class ExamController extends Controller
             ], 422);
         }
 
+        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+        $effectiveStartTime = $window['start_time'];
+        $effectiveEndTime = $window['end_time'];
+
         $now = now();
-        if ($now < $exam->start_time || $now > $exam->end_time) {
+        if ($now < $effectiveStartTime || $now > $effectiveEndTime) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ujian tidak dalam waktu pelaksanaan',
+                'message' => 'Ujian tidak dalam waktu pelaksanaan untuk kelas Anda',
             ], 422);
         }
 
@@ -1600,7 +1857,14 @@ class ExamController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'exam' => $exam->only(['id', 'title', 'duration', 'max_violations']),
+                'exam' => array_merge(
+                    $exam->only(['id', 'title', 'duration', 'max_violations']),
+                    [
+                        'effective_start_time' => $effectiveStartTime,
+                        'effective_end_time' => $effectiveEndTime,
+                        'has_class_schedule_override' => $window['is_override'],
+                    ]
+                ),
                 'result' => $result,
                 'questions' => $questions->values(),
                 'existing_answers' => $existingAnswers,
@@ -1647,9 +1911,11 @@ class ExamController extends Controller
 
         // Server-side time expiry check
         $now = now();
+        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+        $effectiveEndTime = $window['end_time'];
         
         // Check exam end_time
-        if ($exam->end_time && $now->greaterThan(Carbon::parse($exam->end_time)->addSeconds(30))) {
+        if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Waktu ujian telah berakhir',
