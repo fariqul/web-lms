@@ -11,6 +11,7 @@ use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\AuditLog;
 use App\Models\ExamClassSchedule;
+use App\Models\ClassRoom;
 use App\Models\User;
 use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
@@ -155,6 +156,63 @@ class ExamController extends Controller
             'is_override' => false,
             'class_schedule_id' => null,
         ];
+    }
+
+    private function findClassScheduleConflicts(int $currentExamId, array $classIds, Carbon $startTime, Carbon $endTime): array
+    {
+        $cleanClassIds = collect($classIds)
+            ->map(fn($id) => (int) $id)
+            ->filter(fn($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($cleanClassIds->isEmpty()) {
+            return [];
+        }
+
+        $classNameMap = ClassRoom::whereIn('id', $cleanClassIds->all())
+            ->pluck('name', 'id');
+
+        $conflicts = [];
+
+        foreach ($cleanClassIds as $classId) {
+            $candidateExams = Exam::query()
+                ->where('id', '!=', $currentExamId)
+                ->whereIn('status', ['scheduled', 'active'])
+                ->where(function ($q) use ($classId) {
+                    $q->where('class_id', $classId)
+                        ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $classId));
+                })
+                ->with([
+                    'classSchedules' => fn($q) => $q->where('class_id', $classId),
+                    'class:id,name',
+                ])
+                ->get(['id', 'title', 'class_id', 'start_time', 'end_time', 'status']);
+
+            foreach ($candidateExams as $candidate) {
+                $candidateSchedule = $candidate->classSchedules->first();
+                $candidateStart = Carbon::parse($candidateSchedule?->start_time ?? $candidate->start_time);
+                $candidateEnd = Carbon::parse($candidateSchedule?->end_time ?? $candidate->end_time);
+
+                $isOverlap = $startTime->lt($candidateEnd) && $endTime->gt($candidateStart);
+                if (!$isOverlap) {
+                    continue;
+                }
+
+                $conflicts[] = [
+                    'class_id' => $classId,
+                    'class_name' => $classNameMap[$classId] ?? ('Kelas ' . $classId),
+                    'exam_id' => $candidate->id,
+                    'exam_title' => $candidate->title,
+                    'status' => $candidate->status,
+                    'start_time' => $candidateStart->toISOString(),
+                    'end_time' => $candidateEnd->toISOString(),
+                    'has_class_override' => (bool) $candidateSchedule,
+                ];
+            }
+        }
+
+        return $conflicts;
     }
 
     /**
@@ -819,15 +877,25 @@ class ExamController extends Controller
             ], 422);
         }
 
+        $startTime = Carbon::parse($request->start_time);
+        $endTime = Carbon::parse($request->end_time);
+
         $schedule = ExamClassSchedule::updateOrCreate(
             [
                 'exam_id' => $exam->id,
                 'class_id' => $request->class_id,
             ],
             [
-                'start_time' => $request->start_time,
-                'end_time' => $request->end_time,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
             ]
+        );
+
+        $conflicts = $this->findClassScheduleConflicts(
+            $exam->id,
+            [(int) $request->class_id],
+            $startTime,
+            $endTime
         );
 
         $this->forgetExamShowCache($exam->id);
@@ -836,6 +904,8 @@ class ExamController extends Controller
             'success' => true,
             'data' => $schedule,
             'message' => 'Jadwal per kelas berhasil diperbarui',
+            'conflict_count' => count($conflicts),
+            'conflicts' => $conflicts,
         ]);
     }
 
@@ -879,7 +949,10 @@ class ExamController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($targetClassIds, $request, $exam) {
+        $startTime = Carbon::parse($request->start_time);
+        $endTime = Carbon::parse($request->end_time);
+
+        DB::transaction(function () use ($targetClassIds, $startTime, $endTime, $exam) {
             foreach ($targetClassIds as $classId) {
                 ExamClassSchedule::updateOrCreate(
                     [
@@ -887,12 +960,19 @@ class ExamController extends Controller
                         'class_id' => $classId,
                     ],
                     [
-                        'start_time' => $request->start_time,
-                        'end_time' => $request->end_time,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
                     ]
                 );
             }
         });
+
+        $conflicts = $this->findClassScheduleConflicts(
+            $exam->id,
+            $targetClassIds,
+            $startTime,
+            $endTime
+        );
 
         $this->forgetExamShowCache($exam->id);
 
@@ -900,6 +980,8 @@ class ExamController extends Controller
             'success' => true,
             'message' => 'Jadwal berhasil diterapkan ke beberapa kelas',
             'affected_count' => count($targetClassIds),
+            'conflict_count' => count($conflicts),
+            'conflicts' => $conflicts,
         ]);
     }
 

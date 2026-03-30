@@ -43,6 +43,12 @@ interface Exam {
   seb_block_screen_capture?: boolean;
   seb_allow_virtual_machine?: boolean;
   seb_show_taskbar?: boolean;
+  class_schedules?: Array<{
+    id: number;
+    class_id: number;
+    start_time: string;
+    end_time: string;
+  }>;
 }
 
 interface ClassOption {
@@ -59,6 +65,17 @@ interface ClassScheduleRow {
   end_time: string;
   override_start_time: string | null;
   override_end_time: string | null;
+}
+
+interface ClassScheduleConflict {
+  class_id: number;
+  class_name: string;
+  exam_id: number;
+  exam_title: string;
+  status: string;
+  start_time: string;
+  end_time: string;
+  has_class_override: boolean;
 }
 
 export default function AdminUjianPage() {
@@ -99,6 +116,7 @@ export default function AdminUjianPage() {
   const [deletingClassScheduleClassId, setDeletingClassScheduleClassId] = useState<number | null>(null);
   const [selectedScheduleClassIds, setSelectedScheduleClassIds] = useState<Set<number>>(new Set());
   const [classScheduleForm, setClassScheduleForm] = useState({ start_time: '', duration: 60 });
+  const [classScheduleConflicts, setClassScheduleConflicts] = useState<ClassScheduleConflict[]>([]);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -421,6 +439,7 @@ export default function AdminUjianPage() {
   const openClassScheduleModal = async (exam: Exam) => {
     setClassScheduleExam(exam);
     setSelectedScheduleClassIds(new Set());
+    setClassScheduleConflicts([]);
     setClassScheduleForm({
       start_time: toDateTimeLocalInputValue(exam.start_time),
       duration: exam.duration || 60,
@@ -441,13 +460,20 @@ export default function AdminUjianPage() {
       const startTime = new Date(classScheduleForm.start_time);
       const endTime = new Date(startTime.getTime() + classScheduleForm.duration * 60 * 1000);
 
-      await api.post(`/exams/${classScheduleExam.id}/class-schedules/bulk`, {
+      const response = await api.post(`/exams/${classScheduleExam.id}/class-schedules/bulk`, {
         class_ids: classIds,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
       });
 
-      toast.success(`Jadwal berhasil diterapkan ke ${classIds.length} kelas`);
+      const conflicts = Array.isArray(response.data?.conflicts) ? response.data.conflicts : [];
+      setClassScheduleConflicts(conflicts);
+
+      if (conflicts.length > 0) {
+        toast.warning(`Jadwal disimpan, tapi ada ${conflicts.length} konflik dengan ujian lain.`);
+      } else {
+        toast.success(`Jadwal berhasil diterapkan ke ${classIds.length} kelas`);
+      }
       await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
@@ -565,6 +591,8 @@ export default function AdminUjianPage() {
     const status = getEffectiveStatus(exam);
     const isScheduled = status === 'scheduled';
     const isSelected = selectedExams.has(exam.id);
+    const totalAssignedClasses = (exam.classes && exam.classes.length > 0) ? exam.classes.length : 1;
+    const classOverrideCount = exam.class_schedules?.length ?? 0;
     
     return (
       <div className={`border rounded-xl p-4 transition-colors relative ${
@@ -652,6 +680,28 @@ export default function AdminUjianPage() {
               .seb
             </button>
           </div>
+        )}
+
+        {/* Per-class schedule override badge */}
+        {totalAssignedClasses > 1 && (
+          <button
+            type="button"
+            onClick={() => openClassScheduleModal(exam)}
+            className="w-full flex items-center justify-between mb-3 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100/80 dark:hover:bg-indigo-900/30 transition-colors text-left"
+            title="Klik untuk mengatur jadwal per kelas"
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                Override jadwal kelas: {classOverrideCount}/{totalAssignedClasses}
+              </span>
+            </div>
+            {classOverrideCount > 0 ? (
+              <span className="text-xs text-indigo-600 dark:text-indigo-300">Aktif</span>
+            ) : (
+              <span className="text-xs text-slate-500 dark:text-slate-400">Default</span>
+            )}
+          </button>
         )}
 
         {/* Lock Badge */}
@@ -1204,6 +1254,21 @@ export default function AdminUjianPage() {
               </div>
             ) : (
               <>
+                {classScheduleConflicts.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
+                      Warning: ditemukan konflik jadwal dengan ujian lain
+                    </p>
+                    <ul className="space-y-1 max-h-32 overflow-auto text-xs text-amber-900 dark:text-amber-200">
+                      {classScheduleConflicts.slice(0, 10).map((conflict, idx) => (
+                        <li key={`${conflict.class_id}-${conflict.exam_id}-${idx}`}>
+                          • {conflict.class_name} bentrok dengan "{conflict.exam_title}" ({formatDateTime(conflict.start_time)} - {formatDateTime(conflict.end_time)})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
