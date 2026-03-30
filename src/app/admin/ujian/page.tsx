@@ -59,6 +59,12 @@ export default function AdminUjianPage() {
   const [showPublishConfirm, setShowPublishConfirm] = useState<{ id: number; title: string } | null>(null);
   const [showUnpublishConfirm, setShowUnpublishConfirm] = useState<{ id: number; title: string } | null>(null);
   const [unpublishingId, setUnpublishingId] = useState<number | null>(null);
+  
+  // Multi-select and bulk unpublish
+  const [selectedExams, setSelectedExams] = useState<Set<number>>(new Set());
+  const [showUnpublishDialog, setShowUnpublishDialog] = useState<{ ids: number[]; isBulk: boolean } | null>(null);
+  const [unpublishReason, setUnpublishReason] = useState('');
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string; activeCount?: number } | null>(null);
   const [endingExamId, setEndingExamId] = useState<number | null>(null);
   const [checkingActive, setCheckingActive] = useState(false);
@@ -222,18 +228,34 @@ export default function AdminUjianPage() {
     }
   };
 
-  const handleUnpublish = async (examId: number) => {
-    setUnpublishingId(examId);
+  const handleUnpublish = async (examIds: number | number[], reason: string = '') => {
+    setIsUnpublishing(true);
     try {
-      await api.post(`/exams/${examId}/unpublish`);
-      toast.success('Publish ujian dibatalkan. Ujian kembali ke draft.');
-      setShowUnpublishConfirm(null);
+      const ids = Array.isArray(examIds) ? examIds : [examIds];
+      
+      if (ids.length === 1) {
+        // Single unpublish
+        await api.post(`/exams/${ids[0]}/unpublish`, { reason });
+        toast.success('Publish ujian dibatalkan. Ujian kembali ke draft.');
+      } else {
+        // Bulk unpublish
+        const response = await api.post('/exams/unpublish-multiple', {
+          exam_ids: ids,
+          reason,
+        });
+        const data = response.data as { success: boolean; message?: string; success_count?: number };
+        toast.success(`${data.success_count || ids.length} ujian berhasil dibatalkan publish-nya.`);
+      }
+      
+      setShowUnpublishDialog(null);
+      setUnpublishReason('');
+      setSelectedExams(new Set());
       fetchData();
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       toast.error(axiosError.response?.data?.message || 'Gagal membatalkan publish ujian');
     } finally {
-      setUnpublishingId(null);
+      setIsUnpublishing(false);
     }
   };
 
@@ -452,9 +474,32 @@ export default function AdminUjianPage() {
 
   const ExamCard = ({ exam }: { exam: Exam }) => {
     const status = getEffectiveStatus(exam);
+    const isScheduled = status === 'scheduled';
+    const isSelected = selectedExams.has(exam.id);
+    
     return (
-      <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors">
-        <div className="flex items-start justify-between mb-3">
+      <div className={`border rounded-xl p-4 transition-colors relative ${
+        isScheduled && isSelected
+          ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/20'
+          : 'border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-700'
+      }`}>
+        {isScheduled && (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              const newSelected = new Set(selectedExams);
+              if (e.target.checked) {
+                newSelected.add(exam.id);
+              } else {
+                newSelected.delete(exam.id);
+              }
+              setSelectedExams(newSelected);
+            }}
+            className="absolute top-4 left-4 w-4 h-4 rounded cursor-pointer"
+          />
+        )}
+        <div className={`flex items-start justify-between mb-3 ${isScheduled ? 'ml-6' : ''}`}>
           <div className="flex items-center gap-3 min-w-0">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
               status === 'active' ? 'bg-green-100 dark:bg-green-900/30' :
@@ -586,7 +631,7 @@ export default function AdminUjianPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowUnpublishConfirm({ id: exam.id, title: exam.title })}
+                onClick={() => setShowUnpublishDialog({ ids: [exam.id], isBulk: false })}
                 className="text-amber-700 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
               >
                 <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
@@ -757,6 +802,35 @@ export default function AdminUjianPage() {
           </div>
         </div>
 
+        {/* Bulk Actions */}
+        {selectedExams.size > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border-2 border-amber-600 bg-amber-100" />
+              <span className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                {selectedExams.size} ujian terjadwal dipilih
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedExams(new Set())}
+                className="text-amber-700 dark:text-amber-300"
+              >
+                Batal Pilih
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setShowUnpublishDialog({ ids: Array.from(selectedExams), isBulk: true })}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Batalkan Publish Massal ({selectedExams.size})
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Active Exams (highest priority) */}
         {activeExams.length > 0 && (
           <Card>
@@ -829,7 +903,6 @@ export default function AdminUjianPage() {
         )}
       </div>
 
-      {/* Publish Confirm Dialog */}
       <ConfirmDialog
         isOpen={!!showPublishConfirm}
         onClose={() => setShowPublishConfirm(null)}
@@ -840,16 +913,79 @@ export default function AdminUjianPage() {
         variant="info"
       />
 
-      <ConfirmDialog
-        isOpen={!!showUnpublishConfirm}
-        onClose={() => setShowUnpublishConfirm(null)}
-        onConfirm={() => showUnpublishConfirm && handleUnpublish(showUnpublishConfirm.id)}
-        title="Batalkan Publish Ujian"
-        message={`Batalkan publish ujian "${showUnpublishConfirm?.title}"? Ujian akan kembali ke status draft tanpa menghapus soal.`}
-        confirmText={unpublishingId ? 'Memproses...' : 'Ya, Batalkan Publish'}
-        cancelText="Batal"
-        variant="warning"
-      />
+      {/* Unpublish Dialog with Reason */}
+      {showUnpublishDialog && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <div className="p-6">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                Batalkan Publish {showUnpublishDialog.isBulk ? 'Massal' : ''} Ujian
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                {showUnpublishDialog.isBulk 
+                  ? `${showUnpublishDialog.ids.length} ujian akan dikembalikan ke status draft.`
+                  : 'Ujian akan dikembalikan ke status draft tanpa menghapus soal.'
+                }
+              </p>
+
+              {/* Exam list (for bulk) */}
+              {showUnpublishDialog.isBulk && showUnpublishDialog.ids.length > 0 && (
+                <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg max-h-40 overflow-y-auto">
+                  <ul className="space-y-1 text-xs">
+                    {showUnpublishDialog.ids.map(id => {
+                      const exam = exams.find(e => e.id === id);
+                      return (
+                        <li key={id} className="text-slate-700 dark:text-slate-300">
+                          • {exam?.title || `Ujian #${id}`}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Reason textarea */}
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Alasan pembatalan (opsional)
+                </label>
+                <textarea
+                  value={unpublishReason}
+                  onChange={(e) => setUnpublishReason(e.target.value)}
+                  placeholder="Cth: Jadwal berubah, ada perbaikan soal, dll..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+                  rows={4}
+                  maxLength={500}
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {unpublishReason.length}/500 karakter
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowUnpublishDialog(null);
+                    setUnpublishReason('');
+                  }}
+                  disabled={isUnpublishing}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={() => handleUnpublish(showUnpublishDialog.ids, unpublishReason)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  disabled={isUnpublishing}
+                >
+                  {isUnpublishing ? 'Memproses...' : 'Ya, Batalkan Publish'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* End Exam Confirm Dialog */}
       <ConfirmDialog

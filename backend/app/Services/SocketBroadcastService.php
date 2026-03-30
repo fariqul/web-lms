@@ -258,6 +258,18 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * Student exam result reactivated by admin (allowed to retry).
+     */
+    public function examStudentReactivated(int $examId, array $reactivationData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.student-reactivated",
+            $reactivationData,
+            "exam.{$examId}"
+        );
+    }
+
     // ─── Attendance Events ──────────────────────────────────────
 
     /**

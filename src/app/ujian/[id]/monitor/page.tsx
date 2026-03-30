@@ -22,6 +22,7 @@ import {
   X,
   LayoutGrid,
   List,
+  RotateCcw,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
@@ -35,6 +36,7 @@ interface Student {
 
 interface Participant {
   student: Student;
+  result_id: number | null;
   status: 'not_started' | 'in_progress' | 'completed';
   started_at: string | null;
   finished_at: string | null;
@@ -78,6 +80,11 @@ export default function MonitorUjianPage() {
   const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
   const [snapshotModal, setSnapshotModal] = useState<{ student: Student; snapshot: { image_path: string; captured_at: string } } | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  
+  // Reactivate exam result states
+  const [reactivateModal, setReactivateModal] = useState<{ participantId: number; studentName: string; resultId: number } | null>(null);
+  const [reactivateReason, setReactivateReason] = useState('');
+  const [isReactivating, setIsReactivating] = useState(false);
 
   // WebSocket for real-time updates
   const examSocket = useExamSocket(examId);
@@ -343,6 +350,40 @@ export default function MonitorUjianPage() {
   const isSnapshotFresh = (dateString: string) => {
     const diffMs = new Date().getTime() - new Date(dateString).getTime();
     return diffMs < 10000;
+  };
+
+  const handleReactivate = async () => {
+    if (!reactivateModal) return;
+
+    setIsReactivating(true);
+    try {
+      const response = await api.post(`/exam-results/${reactivateModal.resultId}/reactivate`, {
+        reason: reactivateReason || undefined,
+      });
+
+      if (response.data?.success) {
+        await fetchData();
+        setReactivateModal(null);
+        setReactivateReason('');
+        setRealtimeEvents(prev => [{
+          type: 'reactivate',
+          message: `${reactivateModal.studentName} berhasil direaktivasikan`,
+          time: new Date(),
+        }, ...prev].slice(0, 20));
+      } else {
+        throw new Error(response.data?.message || 'Reactivation failed');
+      }
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Gagal mengaktifkan kembali siswa';
+      console.error('Reactivate error:', errMsg);
+      setRealtimeEvents(prev => [{
+        type: 'error',
+        message: `Gagal reaktivasikan: ${errMsg}`,
+        time: new Date(),
+      }, ...prev].slice(0, 20));
+    } finally {
+      setIsReactivating(false);
+    }
   };
 
   if (loading) {
@@ -783,6 +824,20 @@ export default function MonitorUjianPage() {
                               <Camera className="w-4 h-4" />
                             </button>
                           )}
+                          {user?.role === 'admin' && participant.status === 'completed' && participant.violation_count > 0 && participant.result_id && (
+                            <button
+                              onClick={() => setReactivateModal({
+                                participantId: participant.student.id,
+                                studentName: participant.student.name,
+                                resultId: participant.result_id!,
+                              })}
+                              className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"
+                              title="Aktifkan kembali siswa"
+                              aria-label="Aktifkan kembali siswa"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -863,6 +918,55 @@ export default function MonitorUjianPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 text-center">
                 Foto diambil otomatis setiap 5 detik dari kamera siswa
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reactivate Result Modal */}
+      {reactivateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !isReactivating && setReactivateModal(null)}>
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Aktifkan Kembali Siswa</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Siswa <span className="font-medium">{reactivateModal.studentName}</span> akan diizinkan ikut ujian kembali.
+              </p>
+            </div>
+
+            <div className="p-5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Alasan reaktivasi (opsional)
+              </label>
+              <textarea
+                value={reactivateReason}
+                onChange={(e) => setReactivateReason(e.target.value)}
+                maxLength={500}
+                rows={4}
+                placeholder="Contoh: salah terdeteksi pelanggaran, kendala teknis kamera, dll"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{reactivateReason.length}/500</p>
+
+              <div className="flex items-center justify-end gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setReactivateModal(null)}
+                  disabled={isReactivating}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleReactivate}
+                  disabled={isReactivating}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {isReactivating ? 'Memproses...' : 'Aktifkan Kembali'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

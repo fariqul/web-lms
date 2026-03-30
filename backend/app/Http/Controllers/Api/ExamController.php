@@ -9,6 +9,7 @@ use App\Models\Answer;
 use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
@@ -737,9 +738,31 @@ class ExamController extends Controller
             ], 422);
         }
 
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $oldStatus = $exam->status;
         $exam->status = 'draft';
         $exam->save();
         $this->forgetExamShowCache($exam->id);
+
+        // Log to audit trail
+        try {
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'exam.unpublish',
+                'description' => 'Membatalkan publish ujian: ' . $exam->title . ($request->reason ? ' (Alasan: ' . $request->reason . ')' : ''),
+                'target_type' => 'Exam',
+                'target_id' => $exam->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'old_values' => ['status' => $oldStatus],
+                'new_values' => ['status' => 'draft', 'reason' => $request->reason],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Audit log unpublish failed: ' . $e->getMessage());
+        }
 
         // Broadcast status change to draft
         try {
@@ -759,6 +782,105 @@ class ExamController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Publish ujian berhasil dibatalkan. Ujian kembali ke draft.',
+        ]);
+    }
+
+    /**
+     * Cancel publish multiple exams (bulk unpublish)
+     */
+    public function unpublishMultiple(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat membatalkan publish ujian',
+            ], 403);
+        }
+
+        $request->validate([
+            'exam_ids' => 'required|array|min:1',
+            'exam_ids.*' => 'integer|exists:exams,id',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $examIds = $request->exam_ids;
+        $reason = $request->reason;
+
+        // Get all exams
+        $exams = Exam::whereIn('id', $examIds)->get();
+
+        // Verify all are scheduled
+        $notScheduled = $exams->where('status', '!=', 'scheduled')->pluck('id')->toArray();
+        if (!empty($notScheduled)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Beberapa ujian bukan status terjadwal dan tidak dapat dibatalkan',
+                'invalid_ids' => $notScheduled,
+            ], 422);
+        }
+
+        $successCount = 0;
+        $failedExams = [];
+
+        DB::transaction(function () use ($exams, $user, $reason, &$successCount, &$failedExams, $request) {
+            foreach ($exams as $exam) {
+                try {
+                    $oldStatus = $exam->status;
+                    $exam->status = 'draft';
+                    $exam->save();
+                    $this->forgetExamShowCache($exam->id);
+
+                    // Log to audit trail
+                    AuditLog::create([
+                        'user_id' => $user->id,
+                        'action' => 'exam.unpublish',
+                        'description' => 'Membatalkan publish ujian (massal): ' . $exam->title . ($reason ? ' (Alasan: ' . $reason . ')' : ''),
+                        'target_type' => 'Exam',
+                        'target_id' => $exam->id,
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'old_values' => ['status' => $oldStatus],
+                        'new_values' => ['status' => 'draft', 'reason' => $reason],
+                    ]);
+
+                    $successCount++;
+                } catch (\Exception $e) {
+                    Log::warning('Bulk unpublish failed for exam ' . $exam->id . ': ' . $e->getMessage());
+                    $failedExams[] = [
+                        'id' => $exam->id,
+                        'title' => $exam->title,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+        });
+
+        // Broadcast all status changes
+        foreach ($exams as $exam) {
+            if ($exam->status === 'draft') {
+                try {
+                    $broadcast = app(\App\Services\SocketBroadcastService::class);
+                    $broadcast->examUpdated($exam->id, [
+                        'exam_id' => $exam->id,
+                        'title' => $exam->title,
+                        'status' => 'draft',
+                        'start_time' => $exam->start_time,
+                        'end_time' => $exam->end_time,
+                        'duration' => $exam->duration,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Broadcast examUpdated (bulk unpublish) failed: ' . $e->getMessage());
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "$successCount ujian berhasil dibatalkan publish-nya",
+            'success_count' => $successCount,
+            'failed_exams' => $failedExams,
         ]);
     }
 
@@ -2308,6 +2430,7 @@ class ExamController extends Controller
                 // Student hasn't started yet
                 return [
                     'student' => $student,
+                    'result_id' => null,
                     'status' => 'not_started',
                     'started_at' => null,
                     'finished_at' => null,
@@ -2321,6 +2444,7 @@ class ExamController extends Controller
             
             return [
                 'student' => $student,
+                'result_id' => $result->id,
                 'status' => $result->status,
                 'started_at' => $result->started_at,
                 'finished_at' => $result->finished_at,
@@ -2446,6 +2570,122 @@ class ExamController extends Controller
                 'force_finished_count' => $forceFinishedCount,
                 'total_completed' => $completed->count(),
                 'average_score' => $completed->count() > 0 ? round($completed->avg('percentage'), 1) : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Reactivate exam result for student to retry (when ended due to violation)
+     */
+    public function reactivateResult(Request $request, ExamResult $result)
+    {
+        $user = $request->user();
+
+        // Only admin can reactivate
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengaktifkan kembali hasil ujian',
+            ], 403);
+        }
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        // Can only reactivate if result is completed AND has violations
+        if ($result->status !== 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya hasil ujian dengan status selesai yang dapat diaktifkan kembali',
+            ], 422);
+        }
+
+        if ($result->violation_count <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya hasil ujian yang berakhir karena pelanggaran yang dapat direaktivasikan',
+            ], 422);
+        }
+
+        if (!in_array($result->exam->status, ['scheduled', 'active'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian tidak aktif/terjadwal, siswa tidak dapat diaktifkan kembali',
+            ], 422);
+        }
+
+        // Reactivate in transaction
+        DB::transaction(function () use ($result, $user, $request) {
+            // Reset result status to in_progress
+            $oldStatus = $result->status;
+            $oldViolationCount = $result->violation_count;
+            
+            $result->status = 'in_progress';
+            $result->submitted_at = null;
+            $result->finished_at = null;
+            $result->total_score = 0;
+            $result->max_score = 0;
+            $result->percentage = 0;
+            $result->reactivation_count = ($result->reactivation_count ?? 0) + 1;
+            $result->reactivated_by = $user->id;
+            $result->reactivated_at = now();
+            $result->reactivation_reason = $request->reason;
+            $result->save();
+
+            // Clear all violations for this result
+            Violation::where('exam_result_id', $result->id)->delete();
+            $result->violation_count = 0;
+            $result->save();
+
+            // Clear all answers to let student retry fresh
+            Answer::where('exam_id', $result->exam_id)
+                ->where('student_id', $result->student_id)
+                ->delete();
+
+            // Log to audit trail
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'exam.result.reactivate',
+                'description' => 'Mengaktifkan kembali hasil ujian siswa: ' . $result->student->name . ' (Ujian: ' . $result->exam->title . ')' 
+                    . ($request->reason ? ' (Alasan: ' . $request->reason . ')' : ''),
+                'target_type' => 'ExamResult',
+                'target_id' => $result->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'old_values' => [
+                    'status' => $oldStatus,
+                    'violation_count' => $oldViolationCount,
+                ],
+                'new_values' => [
+                    'status' => 'in_progress',
+                    'violation_count' => 0,
+                    'reason' => $request->reason,
+                ],
+            ]);
+        });
+
+        // Broadcast to student that they can retry exam
+        try {
+            $broadcast = app(SocketBroadcastService::class);
+            $broadcast->examStudentReactivated($result->exam_id, [
+                'exam_id' => $result->exam_id,
+                'student_id' => $result->student_id,
+                'student_name' => $result->student->name,
+                'message' => 'Ujian Anda telah diaktifkan kembali oleh admin. Silakan coba lagi.',
+                'reason' => $request->reason,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examStudentReactivated failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hasil ujian siswa berhasil diaktifkan kembali. Siswa dapat mengerjakan ujian lagi.',
+            'data' => [
+                'student_id' => $result->student_id,
+                'exam_id' => $result->exam_id,
+                'reactivation_count' => $result->reactivation_count,
             ],
         ]);
     }

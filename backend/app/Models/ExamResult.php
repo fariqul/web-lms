@@ -24,6 +24,10 @@ class ExamResult extends Model
         'started_at',
         'submitted_at',
         'finished_at',
+        'reactivation_count',
+        'reactivated_by',
+        'reactivated_at',
+        'reactivation_reason',
     ];
 
     protected $casts = [
@@ -38,6 +42,8 @@ class ExamResult extends Model
         'started_at' => 'datetime',
         'submitted_at' => 'datetime',
         'finished_at' => 'datetime',
+        'reactivation_count' => 'integer',
+        'reactivated_at' => 'datetime',
     ];
 
     public function exam()
