@@ -38,6 +38,12 @@ function detectMobile(): boolean {
     || (window.innerWidth <= 768);
 }
 
+function detectIOS(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPad|iPod/i.test(ua);
+}
+
 // Get initial window dimensions for split screen detection
 function getInitialDimensions() {
   if (typeof window === 'undefined') return { width: 0, height: 0, ratio: 0 };
@@ -58,6 +64,7 @@ export function useExamMode({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isMobile] = useState(() => detectMobile());
+  const [isIOS] = useState(() => detectIOS());
   const [violations, setViolations] = useState<string[]>([]);
   const [violationCount, setViolationCount] = useState(0);
   const [maxViolations, setMaxViolations] = useState<number | null>(null);
@@ -100,6 +107,7 @@ export function useExamMode({
   // Track resize events for suspicious patterns
   const resizeCountRef = useRef(0);
   const lastResizeTimeRef = useRef(0);
+  const hiddenAtRef = useRef<number | null>(null);
 
   // Capture a quick snapshot blob from camera (for violation reports)
   const captureViolationBlob = useCallback((): Blob | null => {
@@ -540,14 +548,29 @@ export function useExamMode({
 
     // Tab visibility change detection (works on both mobile & desktop)
     const handleVisibilityChange = () => {
-      if (document.hidden && monitoringActiveRef.current && !fullscreenTransitionRef.current) {
-        reportViolation('tab_switch', 'Pindah tab/aplikasi');
+      if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
+
+      if (document.hidden) {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+
+      // Only report after returning if hidden duration is meaningful.
+      if (hiddenAtRef.current) {
+        const hiddenDurationMs = Date.now() - hiddenAtRef.current;
+        hiddenAtRef.current = null;
+        const thresholdMs = isIOS ? 3000 : 1200;
+        if (hiddenDurationMs >= thresholdMs) {
+          reportViolation('tab_switch', 'Pindah tab/aplikasi');
+        }
       }
     };
 
     // Window blur/focus — more reliable on mobile for app switching
     const handleWindowBlur = () => {
       windowFocusedRef.current = false;
+      // On iOS, blur is noisy and often duplicated with visibilitychange.
+      if (isIOS) return;
       if (monitoringActiveRef.current && !fullscreenTransitionRef.current) {
         reportViolation('tab_switch', 'Keluar dari halaman ujian');
       }
@@ -665,6 +688,7 @@ export function useExamMode({
 
     // pagehide — Safari mobile fallback (fires when user switches apps)
     const handlePageHide = (e: PageTransitionEvent) => {
+      if (isIOS) return;
       if (!e.persisted && monitoringActiveRef.current) {
         // Page is actually being unloaded, not just hidden
         return;
@@ -771,7 +795,7 @@ export function useExamMode({
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('enterpictureinpicture', handlePiPEnter);
     };
-  }, [reportViolation, isMobile]);
+  }, [reportViolation, isMobile, isIOS]);
 
   // Camera health check + auto-restart on consecutive snapshot failures
   // Also handle track ended gracefully on mobile (don't immediately report violation)

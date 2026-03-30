@@ -1558,6 +1558,31 @@ class ExamController extends Controller
             ], 422);
         }
 
+        // Grace period after admin reactivation to reduce false positives on iOS/mobile.
+        $isMobileUa = preg_match('/iPhone|iPad|iPod|Android|Mobile/i', $request->userAgent() ?? '') === 1;
+        $isSensitiveType = in_array($request->type, [
+            'tab_switch',
+            'fullscreen_exit',
+            'camera_off',
+            'split_screen',
+            'floating_app',
+            'pip_mode',
+            'suspicious_resize',
+        ], true);
+
+        if ($isMobileUa && $isSensitiveType && $result->reactivated_at && now()->diffInSeconds($result->reactivated_at) <= 30) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'violation_count' => $result->violation_count,
+                    'max_violations' => $exam->max_violations,
+                    'force_submit' => false,
+                    'ignored' => true,
+                    'message' => 'Violation diabaikan sementara pasca reaktivasi',
+                ],
+            ]);
+        }
+
         // Server-side time expiry check
         $now = now();
         
