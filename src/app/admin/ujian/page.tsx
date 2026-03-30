@@ -57,6 +57,8 @@ export default function AdminUjianPage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [publishingId, setPublishingId] = useState<number | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<number | null>(null);
   const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string; activeCount?: number } | null>(null);
   const [endingExamId, setEndingExamId] = useState<number | null>(null);
   const [checkingActive, setCheckingActive] = useState(false);
@@ -217,6 +219,21 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal menyelesaikan ujian');
     } finally {
       setEndingExamId(null);
+    }
+  };
+
+  const handleUnpublish = async (examId: number) => {
+    setUnpublishingId(examId);
+    try {
+      await api.post(`/exams/${examId}/unpublish`);
+      toast.success('Publish ujian dibatalkan. Ujian kembali ke draft.');
+      setShowUnpublishConfirm(null);
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal membatalkan publish ujian');
+    } finally {
+      setUnpublishingId(null);
     }
   };
 
@@ -569,6 +586,15 @@ export default function AdminUjianPage() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() => setShowUnpublishConfirm({ id: exam.id, title: exam.title })}
+                className="text-amber-700 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+              >
+                <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
+                Batalkan Publish
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => {
                   setEditingSchedule(exam);
                   setScheduleData({
@@ -812,6 +838,17 @@ export default function AdminUjianPage() {
         message={`Publish ujian "${showPublishConfirm?.title}"? Setelah dipublish, ujian akan dijadwalkan dan siswa dapat mengaksesnya pada waktu yang ditentukan.`}
         confirmText={publishingId ? 'Memproses...' : 'Publish'}
         variant="info"
+      />
+
+      <ConfirmDialog
+        isOpen={!!showUnpublishConfirm}
+        onClose={() => setShowUnpublishConfirm(null)}
+        onConfirm={() => showUnpublishConfirm && handleUnpublish(showUnpublishConfirm.id)}
+        title="Batalkan Publish Ujian"
+        message={`Batalkan publish ujian "${showUnpublishConfirm?.title}"? Ujian akan kembali ke status draft tanpa menghapus soal.`}
+        confirmText={unpublishingId ? 'Memproses...' : 'Ya, Batalkan Publish'}
+        cancelText="Batal"
+        variant="warning"
       />
 
       {/* End Exam Confirm Dialog */}

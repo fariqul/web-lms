@@ -717,6 +717,52 @@ class ExamController extends Controller
     }
 
     /**
+     * Cancel publish exam (scheduled -> draft)
+     */
+    public function unpublish(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat membatalkan publish ujian',
+            ], 403);
+        }
+
+        if ($exam->status !== 'scheduled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya ujian terjadwal yang dapat dibatalkan publish-nya',
+            ], 422);
+        }
+
+        $exam->status = 'draft';
+        $exam->save();
+        $this->forgetExamShowCache($exam->id);
+
+        // Broadcast status change to draft
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examUpdated($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'status' => 'draft',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examUpdated (unpublish) failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Publish ujian berhasil dibatalkan. Ujian kembali ke draft.',
+        ]);
+    }
+
+    /**
      * Lock exam - prevent guru from editing questions (admin only)
      */
     public function lockExam(Request $request, Exam $exam)
