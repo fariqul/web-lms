@@ -1353,10 +1353,43 @@ class ExamController extends Controller
         }
 
         if ($exam->status !== 'completed') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Re-publish hanya bisa untuk ujian yang sudah selesai',
-            ], 422);
+            $now = now();
+
+            $hasPublishedClassSchedules = ExamClassSchedule::where('exam_id', $exam->id)
+                ->where('is_published', true)
+                ->exists();
+
+            $hasOngoingOrFuturePublishedClassSchedules = ExamClassSchedule::where('exam_id', $exam->id)
+                ->where('is_published', true)
+                ->where('end_time', '>', $now)
+                ->exists();
+
+            $globalWindowEnded = $exam->end_time
+                ? Carbon::parse($exam->end_time)->lte($now)
+                : false;
+
+            $hasInProgressAttempt = ExamResult::where('exam_id', $exam->id)
+                ->where('status', 'in_progress')
+                ->exists();
+
+            $canAutoTreatAsCompleted = !$hasInProgressAttempt
+                && (
+                    ($hasPublishedClassSchedules && !$hasOngoingOrFuturePublishedClassSchedules)
+                    || (!$hasPublishedClassSchedules && $globalWindowEnded)
+                );
+
+            if ($canAutoTreatAsCompleted) {
+                $exam->status = 'completed';
+                if (!$exam->end_time) {
+                    $exam->end_time = $now;
+                }
+                $exam->save();
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Re-publish hanya bisa untuk ujian yang sudah selesai',
+                ], 422);
+            }
         }
 
         if ($exam->questions()->count() === 0) {
@@ -1386,12 +1419,10 @@ class ExamController extends Controller
             ? collect($request->class_ids)->map(fn($id) => (int) $id)->filter(fn($id) => $id > 0)->unique()->values()->all()
             : $examClassIds;
 
-        $invalidClassIds = array_values(array_diff($targetClassIds, $examClassIds));
-        if (!empty($invalidClassIds)) {
+        if (empty($targetClassIds)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Sebagian kelas tidak terdaftar pada ujian ini',
-                'invalid_class_ids' => $invalidClassIds,
+                'message' => 'Pilih minimal satu kelas untuk re-publish',
             ], 422);
         }
 
