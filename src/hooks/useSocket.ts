@@ -180,15 +180,15 @@ export function useExamSocket(examId: number) {
   }, [on, examId]);
 
   useEffect(() => {
-    if (examId > 0) {
+    if (examId > 0 && isConnected) {
       joinExamRoom();
     }
     return () => {
-      if (examId > 0) {
+      if (examId > 0 && isConnected) {
         leaveExamRoom();
       }
     };
-  }, [examId, joinExamRoom, leaveExamRoom]);
+  }, [examId, isConnected, joinExamRoom, leaveExamRoom]);
 
   return useMemo(() => ({
     isConnected,
@@ -223,6 +223,8 @@ export function useExamsListSocket(examIds: number[]) {
   const { on, off, emit, isConnected, connect, disconnect } = useSocket();
 
   useEffect(() => {
+    if (!isConnected) return;
+
     for (const id of examIds) {
       emit('join-exam', { examId: id });
     }
@@ -231,7 +233,7 @@ export function useExamsListSocket(examIds: number[]) {
         emit('leave-exam', { examId: id });
       }
     };
-  }, [emit, examIds]);
+  }, [emit, examIds, isConnected]);
 
   const onAnyExamUpdated = useCallback((callback: (data: unknown) => void) => {
     for (const id of examIds) {
