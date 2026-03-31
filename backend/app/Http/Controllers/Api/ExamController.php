@@ -243,6 +243,31 @@ class ExamController extends Controller
         return $conflicts;
     }
 
+    private function ensureExamScheduledForClassPublish(Exam $exam): void
+    {
+        if ($exam->status !== 'draft') {
+            return;
+        }
+
+        $exam->status = 'scheduled';
+        $exam->save();
+        $this->forgetExamShowCache($exam->id);
+
+        try {
+            $broadcast = app(SocketBroadcastService::class);
+            $broadcast->examUpdated($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'status' => 'scheduled',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Broadcast examUpdated (class publish) failed: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Get teacher grades summary - all students with exam results
      */
@@ -940,6 +965,10 @@ class ExamController extends Controller
             ]
         );
 
+        if ((bool) $schedule->is_published) {
+            $this->ensureExamScheduledForClassPublish($exam);
+        }
+
         $conflicts = $this->findClassScheduleConflicts(
             $exam->id,
             [(int) $request->class_id],
@@ -1020,6 +1049,10 @@ class ExamController extends Controller
             }
         });
 
+        if ($isPublished) {
+            $this->ensureExamScheduledForClassPublish($exam);
+        }
+
         $conflicts = $this->findClassScheduleConflicts(
             $exam->id,
             $targetClassIds,
@@ -1069,6 +1102,11 @@ class ExamController extends Controller
 
         $schedule->is_published = (bool) $request->boolean('is_published');
         $schedule->save();
+
+        if ((bool) $schedule->is_published) {
+            $this->ensureExamScheduledForClassPublish($exam);
+        }
+
         $this->forgetExamShowCache($exam->id);
 
         return response()->json([
@@ -1195,6 +1233,13 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian harus memiliki minimal 1 soal',
+            ], 422);
+        }
+
+        if ($exam->classSchedules()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian ini memakai override per kelas. Publish dari menu Jadwal Per Kelas.',
             ], 422);
         }
 

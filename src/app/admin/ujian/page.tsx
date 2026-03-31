@@ -896,6 +896,7 @@ export default function AdminUjianPage() {
     const totalAssignedClasses = (exam.classes && exam.classes.length > 0) ? exam.classes.length : 1;
     const classOverrideCount = exam.class_schedules?.length ?? 0;
     const publishedOverrideCount = exam.class_schedules?.filter((schedule) => schedule.is_published).length ?? 0;
+    const usePerClassPublish = totalAssignedClasses > 1 && classOverrideCount > 0;
     
     return (
       <div className={`border rounded-xl p-4 transition-colors relative ${
@@ -1039,11 +1040,12 @@ export default function AdminUjianPage() {
                     setShowPublishConfirm({ id: exam.id, title: exam.title });
                   }
                 }}
-                disabled={exam.total_questions === 0}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                disabled={exam.total_questions === 0 || usePerClassPublish}
+                className={usePerClassPublish ? '' : 'bg-green-600 hover:bg-green-700 text-white'}
+                variant={usePerClassPublish ? 'outline' : undefined}
               >
                 <Send className="w-3.5 h-3.5 mr-1.5" />
-                Publish
+                {usePerClassPublish ? 'Publish via Per Kelas' : 'Publish'}
               </Button>
               <Button
                 size="sm"
@@ -1065,6 +1067,11 @@ export default function AdminUjianPage() {
               {exam.total_questions === 0 && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 ml-1">
                   <AlertCircle className="w-3 h-3" /> Belum ada soal
+                </span>
+              )}
+              {usePerClassPublish && (
+                <span className="text-xs text-indigo-600 dark:text-indigo-300 flex items-center gap-1 ml-1">
+                  <AlertCircle className="w-3 h-3" /> Gunakan publish di Jadwal Per Kelas
                 </span>
               )}
             </>
