@@ -32,6 +32,16 @@ interface Student {
   id: number;
   name: string;
   nisn: string;
+  class_id: number;
+  class_room?: {
+    id: number;
+    name: string;
+  };
+}
+
+interface MonitoringClassOption {
+  id: number;
+  name: string;
 }
 
 interface Participant {
@@ -83,6 +93,8 @@ export default function MonitorUjianPage() {
   const [examDetail, setExamDetail] = useState<any>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [monitoringClasses, setMonitoringClasses] = useState<MonitoringClassOption[]>([]);
+  const [classFilter, setClassFilter] = useState<string>('all');
   const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started' | 'ios_ignored'>('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -108,11 +120,15 @@ export default function MonitorUjianPage() {
       setExamDetail(examData);
 
       // Fetch monitoring data
-      const monitorRes = await api.get(`/exams/${examId}/monitoring`);
+      const monitorRes = await api.get(`/exams/${examId}/monitoring`, {
+        params: classFilter !== 'all' ? { class_id: Number(classFilter) } : undefined,
+      });
       const monitorData = monitorRes.data?.data;
       
       if (monitorData) {
         setExam(monitorData.exam);
+        const classes = Array.isArray(monitorData.classes) ? monitorData.classes : [];
+        setMonitoringClasses(classes);
         setParticipants(monitorData.participants || []);
         setSummary(monitorData.summary);
 
@@ -133,7 +149,7 @@ export default function MonitorUjianPage() {
     } finally {
       setLoading(false);
     }
-  }, [examId]);
+  }, [examId, classFilter]);
 
   useEffect(() => {
     fetchData();
@@ -632,7 +648,20 @@ export default function MonitorUjianPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
+          {monitoringClasses.length > 1 && (
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">Semua Kelas</option>
+              {monitoringClasses.map((cls) => (
+                <option key={cls.id} value={String(cls.id)}>{cls.name}</option>
+              ))}
+            </select>
+          )}
+
           {[
             { value: 'all', label: 'Semua' },
             { value: 'in_progress', label: 'Mengerjakan' },
@@ -836,7 +865,10 @@ export default function MonitorUjianPage() {
                       <td className="py-3 px-4">
                         <div>
                           <p className="font-medium text-slate-900 dark:text-white">{participant.student.name}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">NISN: {participant.student.nisn}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            NISN: {participant.student.nisn}
+                            {participant.student.class_room?.name ? ` · ${participant.student.class_room.name}` : ''}
+                          </p>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">

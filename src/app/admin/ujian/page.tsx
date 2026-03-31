@@ -725,7 +725,7 @@ export default function AdminUjianPage() {
     setClassScheduleForm({
       start_time: toDateTimeLocalInputValue(exam.start_time),
       duration: exam.duration || 60,
-      is_published: false,
+      is_published: exam.status === 'scheduled' || exam.status === 'active',
     });
     await loadClassSchedules(exam.id);
   };

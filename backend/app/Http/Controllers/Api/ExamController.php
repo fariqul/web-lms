@@ -953,6 +953,11 @@ class ExamController extends Controller
         $startTime = Carbon::parse($request->start_time);
         $endTime = Carbon::parse($request->end_time);
 
+        $defaultPublishForExamStatus = in_array($exam->status, ['scheduled', 'active'], true);
+        $isPublished = $request->has('is_published')
+            ? (bool) $request->boolean('is_published')
+            : $defaultPublishForExamStatus;
+
         $schedule = ExamClassSchedule::updateOrCreate(
             [
                 'exam_id' => $exam->id,
@@ -961,7 +966,7 @@ class ExamController extends Controller
             [
                 'start_time' => $startTime,
                 'end_time' => $endTime,
-                'is_published' => (bool) $request->boolean('is_published', false),
+                'is_published' => $isPublished,
             ]
         );
 
@@ -1031,7 +1036,10 @@ class ExamController extends Controller
         $startTime = Carbon::parse($request->start_time);
         $endTime = Carbon::parse($request->end_time);
 
-        $isPublished = (bool) $request->boolean('is_published', false);
+        $defaultPublishForExamStatus = in_array($exam->status, ['scheduled', 'active'], true);
+        $isPublished = $request->has('is_published')
+            ? (bool) $request->boolean('is_published')
+            : $defaultPublishForExamStatus;
 
         DB::transaction(function () use ($targetClassIds, $startTime, $endTime, $exam, $isPublished) {
             foreach ($targetClassIds as $classId) {
@@ -3268,9 +3276,37 @@ class ExamController extends Controller
         if (empty($examClassIds)) {
             $examClassIds = [$exam->class_id];
         }
+
+        $selectedClassId = $request->filled('class_id') ? (int) $request->class_id : null;
+        if ($selectedClassId && !in_array($selectedClassId, $examClassIds, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kelas tidak terdaftar pada ujian ini',
+            ], 422);
+        }
+
+        $targetClassIds = $selectedClassId ? [$selectedClassId] : $examClassIds;
+
+        $classNameMap = $exam->classes->pluck('name', 'id');
+        if ($classNameMap->isEmpty() && $exam->class) {
+            $classNameMap = collect([$exam->class->id => $exam->class->name]);
+        }
+
+        $monitoringClasses = collect($examClassIds)
+            ->unique()
+            ->values()
+            ->map(function ($classId) use ($classNameMap) {
+                return [
+                    'id' => (int) $classId,
+                    'name' => $classNameMap[$classId] ?? ('Kelas ' . $classId),
+                ];
+            })
+            ->values();
+
         $allStudents = User::where('role', 'siswa')
-            ->whereIn('class_id', $examClassIds)
-            ->select('id', 'name', 'nisn', 'nomor_tes')
+            ->whereIn('class_id', $targetClassIds)
+            ->with('classRoom:id,name')
+            ->select('id', 'name', 'nisn', 'nomor_tes', 'class_id')
             ->get();
 
         // Get all exam results
@@ -3385,6 +3421,8 @@ class ExamController extends Controller
                     'start_time' => $exam->start_time,
                     'end_time' => $exam->end_time,
                 ],
+                'classes' => $monitoringClasses,
+                'selected_class_id' => $selectedClassId,
                 'participants' => $monitoringData,
                 'summary' => $summary,
             ],
