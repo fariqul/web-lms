@@ -159,6 +159,18 @@ export default function ExamTakingPage() {
     onViolation: () => {},
     onForceSubmit: handleForceSubmit,
   });
+
+  const forceExitExamByAdmin = React.useCallback(() => {
+    setSubmitting(true);
+    stopCamera();
+    clearExamSession();
+    toast.warning('Ujian telah diselesaikan oleh admin. Jawaban Anda telah dikumpulkan otomatis.');
+    setTimeout(() => {
+      isNavigatingAwayRef.current = true;
+      router.push('/ujian-siswa?reason=admin_ended');
+    }, 1500);
+  }, [stopCamera, toast, router]);
+
   const [snapshotStatus, setSnapshotStatus] = useState<'idle' | 'capturing' | 'success' | 'error'>('idle');
   const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
@@ -201,24 +213,42 @@ export default function ExamTakingPage() {
   
   useEffect(() => {
     if (!isStarted) return;
-    
+
     const handleExamEnded = () => {
       // Admin ended the exam — auto-cleanup and redirect
-      setSubmitting(true);
-      stopCamera();
-      clearExamSession();
-      toast.warning('Ujian telah diselesaikan oleh admin. Jawaban Anda telah dikumpulkan otomatis.');
-      setTimeout(() => {
-        isNavigatingAwayRef.current = true;
-        router.push('/ujian-siswa?reason=admin_ended');
-      }, 1500);
+      forceExitExamByAdmin();
     };
 
     examSocket.onExamEnded(handleExamEnded);
     return () => {
       examSocket.off(`exam.${examId}.ended`);
     };
-  }, [isStarted, examId, examSocket, stopCamera, router, toast]);
+  }, [isStarted, examId, examSocket, forceExitExamByAdmin]);
+
+  // Fallback: poll exam status periodically in case websocket event is missed
+  useEffect(() => {
+    if (!isStarted || submitting) return;
+
+    const checkEndedStatus = async () => {
+      try {
+        const response = await api.get(`/exams/${examId}`);
+        const examData = response.data?.data;
+        if (!examData) return;
+
+        const statusCompleted = examData.status === 'completed';
+        const endedByTime = examData.end_time ? new Date(examData.end_time).getTime() <= Date.now() : false;
+
+        if (statusCompleted || endedByTime) {
+          forceExitExamByAdmin();
+        }
+      } catch {
+        // Ignore transient polling errors; websocket remains primary channel.
+      }
+    };
+
+    const interval = setInterval(checkEndedStatus, 5000);
+    return () => clearInterval(interval);
+  }, [isStarted, submitting, examId, forceExitExamByAdmin]);
 
   // Socket: listen for real-time question changes (admin/guru editing during exam)
   useEffect(() => {
