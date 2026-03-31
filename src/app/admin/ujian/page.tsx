@@ -167,6 +167,7 @@ export default function AdminUjianPage() {
   const [expandedRepublishSessions, setExpandedRepublishSessions] = useState<Set<number>>(new Set());
   const [republishAnswerSearch, setRepublishAnswerSearch] = useState<Record<number, string>>({});
   const [republishAnswerPage, setRepublishAnswerPage] = useState<Record<number, number>>({});
+  const [allClassesForRepublish, setAllClassesForRepublish] = useState<Array<{ id: number; name: string }>>([]);
   const ANSWER_ROWS_PER_PAGE = 25;
   const [republishData, setRepublishData] = useState({
     start_time: '',
@@ -1344,7 +1345,7 @@ export default function AdminUjianPage() {
             <>
               <Button
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   const defaultClassIds = (exam.classes && exam.classes.length > 0)
                     ? exam.classes.map((c) => c.id)
                     : (exam.class_id ? [exam.class_id] : []);
@@ -1357,6 +1358,20 @@ export default function AdminUjianPage() {
                     class_ids: defaultClassIds,
                     reason: '',
                   });
+                  
+                  // Fetch all available classes for republish
+                  try {
+                    const response = await classAPI.getAll();
+                    const allClasses = response.data?.data || [];
+                    setAllClassesForRepublish(
+                      allClasses.map((c: { id: number; name: string }) => ({
+                        id: c.id,
+                        name: c.name,
+                      }))
+                    );
+                  } catch (error) {
+                    console.error('Failed to fetch all classes:', error);
+                  }
                 }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white"
               >
@@ -2037,9 +2052,7 @@ export default function AdminUjianPage() {
                       type="button"
                       onClick={() => setRepublishData(prev => ({
                         ...prev,
-                        class_ids: showRepublishModal.classes && showRepublishModal.classes.length > 0
-                          ? showRepublishModal.classes.map(c => c.id)
-                          : (showRepublishModal.class_id ? [showRepublishModal.class_id] : []),
+                        class_ids: allClassesForRepublish.map(c => c.id),
                       }))}
                       className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                     >
@@ -2056,16 +2069,9 @@ export default function AdminUjianPage() {
                 </div>
 
                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-40 overflow-auto space-y-2">
-                  {((showRepublishModal.classes && showRepublishModal.classes.length > 0)
-                    ? showRepublishModal.classes
-                    : (showRepublishModal.class_id
-                      ? [{
-                          id: showRepublishModal.class_id,
-                          name: showRepublishModal.class_name || classes.find(c => Number(c.value) === showRepublishModal.class_id)?.label || `Kelas ${showRepublishModal.class_id}`,
-                        }]
-                      : [])
-                  ).map((cls) => {
+                  {(allClassesForRepublish.length > 0 ? allClassesForRepublish : []).map((cls) => {
                     const selected = republishData.class_ids.includes(cls.id);
+                    const hasParticipated = showRepublishModal?.classes?.some(c => c.id === cls.id);
                     return (
                       <label key={cls.id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                         <input
@@ -2080,7 +2086,10 @@ export default function AdminUjianPage() {
                             });
                           }}
                         />
-                        {cls.name}
+                        <span>{cls.name}</span>
+                        {hasParticipated && (
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">Sudah mengikuti</span>
+                        )}
                       </label>
                     );
                   })}
