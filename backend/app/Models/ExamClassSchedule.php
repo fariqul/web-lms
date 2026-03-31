@@ -14,11 +14,13 @@ class ExamClassSchedule extends Model
         'class_id',
         'start_time',
         'end_time',
+        'is_published',
     ];
 
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'is_published' => 'boolean',
     ];
 
     public function exam()

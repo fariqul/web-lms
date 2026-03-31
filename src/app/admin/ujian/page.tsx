@@ -7,10 +7,10 @@ import { Card, CardHeader, Button, ConfirmDialog } from '@/components/ui';
 import {
   GraduationCap, FileEdit, Clock, Calendar, CheckCircle, PlayCircle,
   AlertCircle, Loader2, Users, Shield, Download, Eye, Send,
-  Search, Monitor, BarChart3, StopCircle, Lock, Unlock,
+  Search, Monitor, BarChart3, StopCircle, Lock, Unlock, RotateCcw,
 } from 'lucide-react';
 import api from '@/services/api';
-import { classAPI } from '@/services/api';
+import { classAPI, examAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { downloadSEBConfig, type SEBExamSettings } from '@/utils/seb';
 import { useExamsListSocket } from '@/hooks/useSocket';
@@ -48,6 +48,7 @@ interface Exam {
     class_id: number;
     start_time: string;
     end_time: string;
+    is_published?: boolean;
   }>;
 }
 
@@ -60,6 +61,7 @@ interface ClassScheduleRow {
   class_id: number;
   class_name: string;
   has_override: boolean;
+  is_published: boolean;
   schedule_id: number | null;
   start_time: string;
   end_time: string;
@@ -76,6 +78,39 @@ interface ClassScheduleConflict {
   start_time: string;
   end_time: string;
   has_class_override: boolean;
+}
+
+interface RepublishHistorySession {
+  id: number;
+  session_no: number;
+  republished_by: number;
+  republisher?: { id: number; name: string };
+  reason?: string | null;
+  keep_class_schedules: boolean;
+  old_start_time: string;
+  old_end_time: string;
+  new_start_time: string;
+  new_end_time: string;
+  reset_summary?: {
+    result_count?: number;
+    answer_count?: number;
+    violation_count?: number;
+    snapshot_count?: number;
+  };
+  results_snapshot?: Array<{
+    student_id: number;
+    student_name?: string | null;
+    student_nisn?: string | null;
+    class_name?: string | null;
+    status?: string | null;
+    percentage?: number | null;
+    total_score?: number | null;
+    max_score?: number | null;
+    total_answered?: number | null;
+    violation_count?: number | null;
+    submitted_at?: string | null;
+  }>;
+  archived_at: string;
 }
 
 export default function AdminUjianPage() {
@@ -97,6 +132,18 @@ export default function AdminUjianPage() {
   const [endingExamId, setEndingExamId] = useState<number | null>(null);
   const [checkingActive, setCheckingActive] = useState(false);
   const [lockingExamId, setLockingExamId] = useState<number | null>(null);
+  const [showRepublishModal, setShowRepublishModal] = useState<Exam | null>(null);
+  const [republishingId, setRepublishingId] = useState<number | null>(null);
+  const [republishHistoryExam, setRepublishHistoryExam] = useState<Exam | null>(null);
+  const [republishHistoryLoading, setRepublishHistoryLoading] = useState(false);
+  const [republishHistorySessions, setRepublishHistorySessions] = useState<RepublishHistorySession[]>([]);
+  const [expandedRepublishSessions, setExpandedRepublishSessions] = useState<Set<number>>(new Set());
+  const [republishData, setRepublishData] = useState({
+    start_time: '',
+    duration: 60,
+    keep_class_schedules: false,
+    reason: '',
+  });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,8 +161,9 @@ export default function AdminUjianPage() {
   const [loadingClassSchedules, setLoadingClassSchedules] = useState(false);
   const [savingClassSchedules, setSavingClassSchedules] = useState(false);
   const [deletingClassScheduleClassId, setDeletingClassScheduleClassId] = useState<number | null>(null);
+  const [publishingClassScheduleClassId, setPublishingClassScheduleClassId] = useState<number | null>(null);
   const [selectedScheduleClassIds, setSelectedScheduleClassIds] = useState<Set<number>>(new Set());
-  const [classScheduleForm, setClassScheduleForm] = useState({ start_time: '', duration: 60 });
+  const [classScheduleForm, setClassScheduleForm] = useState({ start_time: '', duration: 60, is_published: false });
   const [classScheduleConflicts, setClassScheduleConflicts] = useState<ClassScheduleConflict[]>([]);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
@@ -421,6 +469,240 @@ export default function AdminUjianPage() {
     }
   };
 
+  const handleRepublishExam = async () => {
+    if (!showRepublishModal || !republishData.start_time) return;
+
+    setRepublishingId(showRepublishModal.id);
+    try {
+      const startTime = new Date(republishData.start_time);
+      const response = await examAPI.republish(showRepublishModal.id, {
+        start_time: startTime.toISOString(),
+        duration_minutes: republishData.duration,
+        keep_class_schedules: republishData.keep_class_schedules,
+        reason: republishData.reason || undefined,
+      });
+
+      const reset = response.data?.data?.reset_summary;
+      const sessionNo = response.data?.data?.session_no;
+      const resetText = reset
+        ? ` Reset: ${reset.result_count || 0} hasil, ${reset.answer_count || 0} jawaban, ${reset.violation_count || 0} pelanggaran.`
+        : '';
+      const sessionText = sessionNo ? ` Arsip sesi #${sessionNo} dibuat.` : '';
+
+      toast.success((response.data?.message || 'Ujian berhasil di re-publish') + sessionText + resetText);
+      setShowRepublishModal(null);
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal melakukan re-publish ujian');
+    } finally {
+      setRepublishingId(null);
+    }
+  };
+
+  const openRepublishHistoryModal = async (exam: Exam) => {
+    setRepublishHistoryExam(exam);
+    setRepublishHistoryLoading(true);
+    setRepublishHistorySessions([]);
+    setExpandedRepublishSessions(new Set());
+
+    try {
+      const response = await examAPI.getRepublishHistory(exam.id);
+      const sessions = response.data?.data?.sessions;
+      setRepublishHistorySessions(Array.isArray(sessions) ? sessions : []);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal memuat riwayat re-publish');
+    } finally {
+      setRepublishHistoryLoading(false);
+    }
+  };
+
+  const toggleRepublishSessionExpanded = (sessionId: number) => {
+    setExpandedRepublishSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) {
+        next.delete(sessionId);
+      } else {
+        next.add(sessionId);
+      }
+      return next;
+    });
+  };
+
+  const getSessionSnapshotSummary = (session: RepublishHistorySession) => {
+    const snapshots = Array.isArray(session.results_snapshot) ? session.results_snapshot : [];
+    if (snapshots.length === 0) {
+      return {
+        participantCount: 0,
+        submittedCount: 0,
+        inProgressCount: 0,
+        avgPercentage: null as number | null,
+      };
+    }
+
+    const submittedCount = snapshots.filter((item) => item.status === 'submitted' || item.status === 'graded').length;
+    const inProgressCount = snapshots.filter((item) => item.status === 'in_progress').length;
+    const validPercentages = snapshots
+      .map((item) => (typeof item.percentage === 'number' ? item.percentage : null))
+      .filter((value): value is number => value !== null);
+
+    const avgPercentage = validPercentages.length > 0
+      ? (validPercentages.reduce((sum, value) => sum + value, 0) / validPercentages.length)
+      : null;
+
+    return {
+      participantCount: snapshots.length,
+      submittedCount,
+      inProgressCount,
+      avgPercentage,
+    };
+  };
+
+  const exportRepublishHistoryCsv = () => {
+    if (!republishHistoryExam || republishHistorySessions.length === 0) {
+      toast.warning('Tidak ada data riwayat untuk diexport');
+      return;
+    }
+
+    const escapeCsv = (value: unknown) => {
+      const text = String(value ?? '');
+      if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const header = [
+      'session_no',
+      'archived_at',
+      'republished_by',
+      'old_start_time',
+      'old_end_time',
+      'new_start_time',
+      'new_end_time',
+      'result_count',
+      'answer_count',
+      'violation_count',
+      'snapshot_count',
+      'participant_count',
+      'submitted_or_graded_count',
+      'in_progress_count',
+      'avg_percentage',
+      'reason',
+    ];
+
+    const rows = republishHistorySessions.map((session) => {
+      const summary = getSessionSnapshotSummary(session);
+      return [
+        session.session_no,
+        session.archived_at,
+        session.republisher?.name || `User #${session.republished_by}`,
+        session.old_start_time,
+        session.old_end_time,
+        session.new_start_time,
+        session.new_end_time,
+        session.reset_summary?.result_count || 0,
+        session.reset_summary?.answer_count || 0,
+        session.reset_summary?.violation_count || 0,
+        session.reset_summary?.snapshot_count || 0,
+        summary.participantCount,
+        summary.submittedCount,
+        summary.inProgressCount,
+        summary.avgPercentage === null ? '' : summary.avgPercentage.toFixed(2),
+        session.reason || '',
+      ];
+    });
+
+    const csvLines = [header, ...rows].map((row) => row.map(escapeCsv).join(','));
+    const csvContent = csvLines.join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const examSlug = republishHistoryExam.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const fileName = `riwayat-republish-${examSlug || republishHistoryExam.id}.csv`;
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.setAttribute('download', fileName);
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    toast.success('Riwayat re-publish berhasil diexport ke CSV');
+  };
+
+  const exportRepublishSessionDetailCsv = (session: RepublishHistorySession) => {
+    const snapshots = Array.isArray(session.results_snapshot) ? session.results_snapshot : [];
+    if (!republishHistoryExam || snapshots.length === 0) {
+      toast.warning('Tidak ada detail siswa untuk diexport pada sesi ini');
+      return;
+    }
+
+    const escapeCsv = (value: unknown) => {
+      const text = String(value ?? '');
+      if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const header = [
+      'session_no',
+      'student_id',
+      'student_name',
+      'student_nisn',
+      'class_name',
+      'status',
+      'percentage',
+      'total_score',
+      'max_score',
+      'total_answered',
+      'violation_count',
+      'submitted_at',
+    ];
+
+    const rows = snapshots.map((item) => [
+      session.session_no,
+      item.student_id,
+      item.student_name || '',
+      item.student_nisn || '',
+      item.class_name || '',
+      item.status || '',
+      typeof item.percentage === 'number' ? item.percentage.toFixed(2) : '',
+      item.total_score ?? '',
+      item.max_score ?? '',
+      item.total_answered ?? '',
+      item.violation_count ?? 0,
+      item.submitted_at || '',
+    ]);
+
+    const csvLines = [header, ...rows].map((row) => row.map(escapeCsv).join(','));
+    const csvContent = csvLines.join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const examSlug = republishHistoryExam.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const fileName = `riwayat-republish-sesi-${session.session_no}-${examSlug || republishHistoryExam.id}.csv`;
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.setAttribute('download', fileName);
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Detail siswa sesi #${session.session_no} berhasil diexport`);
+  };
+
   const loadClassSchedules = async (examId: number) => {
     setLoadingClassSchedules(true);
     try {
@@ -443,6 +725,7 @@ export default function AdminUjianPage() {
     setClassScheduleForm({
       start_time: toDateTimeLocalInputValue(exam.start_time),
       duration: exam.duration || 60,
+      is_published: false,
     });
     await loadClassSchedules(exam.id);
   };
@@ -464,15 +747,17 @@ export default function AdminUjianPage() {
         class_ids: classIds,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
+        is_published: classScheduleForm.is_published,
       });
 
       const conflicts = Array.isArray(response.data?.conflicts) ? response.data.conflicts : [];
       setClassScheduleConflicts(conflicts);
 
+      const publishText = classScheduleForm.is_published ? 'dan dipublish' : 'sebagai draft kelas (belum publish)';
       if (conflicts.length > 0) {
         toast.warning(`Jadwal disimpan, tapi ada ${conflicts.length} konflik dengan ujian lain.`);
       } else {
-        toast.success(`Jadwal berhasil diterapkan ke ${classIds.length} kelas`);
+        toast.success(`Jadwal berhasil diterapkan ke ${classIds.length} kelas ${publishText}`);
       }
       await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
     } catch (error: unknown) {
@@ -495,6 +780,23 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal mereset jadwal kelas');
     } finally {
       setDeletingClassScheduleClassId(null);
+    }
+  };
+
+  const handleToggleClassSchedulePublish = async (classId: number, isPublished: boolean) => {
+    if (!classScheduleExam) return;
+    setPublishingClassScheduleClassId(classId);
+    try {
+      await api.patch(`/exams/${classScheduleExam.id}/class-schedules/${classId}/publish`, {
+        is_published: isPublished,
+      });
+      toast.success(isPublished ? 'Kelas berhasil dipublish' : 'Publish kelas dibatalkan');
+      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mengubah publish kelas');
+    } finally {
+      setPublishingClassScheduleClassId(null);
     }
   };
 
@@ -593,6 +895,7 @@ export default function AdminUjianPage() {
     const isSelected = selectedExams.has(exam.id);
     const totalAssignedClasses = (exam.classes && exam.classes.length > 0) ? exam.classes.length : 1;
     const classOverrideCount = exam.class_schedules?.length ?? 0;
+    const publishedOverrideCount = exam.class_schedules?.filter((schedule) => schedule.is_published).length ?? 0;
     
     return (
       <div className={`border rounded-xl p-4 transition-colors relative ${
@@ -693,11 +996,13 @@ export default function AdminUjianPage() {
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                Override jadwal kelas: {classOverrideCount}/{totalAssignedClasses}
+                Override jadwal: {classOverrideCount}/{totalAssignedClasses} · Published: {publishedOverrideCount}
               </span>
             </div>
             {classOverrideCount > 0 ? (
-              <span className="text-xs text-indigo-600 dark:text-indigo-300">Aktif</span>
+              <span className="text-xs text-indigo-600 dark:text-indigo-300">
+                {publishedOverrideCount > 0 ? `${publishedOverrideCount} kelas live` : 'Belum dipublish'}
+              </span>
             ) : (
               <span className="text-xs text-slate-500 dark:text-slate-400">Default</span>
             )}
@@ -833,12 +1138,34 @@ export default function AdminUjianPage() {
           )}
 
           {status === 'completed' && (
-            <Link href={`/ujian/${exam.id}/results`}>
-              <Button size="sm" variant="outline">
-                <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
-                Lihat Hasil
+            <>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setShowRepublishModal(exam);
+                  setRepublishData({
+                    start_time: toDateTimeLocalInputValue(new Date(Date.now() + 60 * 60 * 1000).toISOString()),
+                    duration: exam.duration || 60,
+                    keep_class_schedules: false,
+                    reason: '',
+                  });
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                Re-Publish
               </Button>
-            </Link>
+              <Link href={`/ujian/${exam.id}/results`}>
+                <Button size="sm" variant="outline">
+                  <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
+                  Lihat Hasil
+                </Button>
+              </Link>
+              <Button size="sm" variant="outline" onClick={() => openRepublishHistoryModal(exam)}>
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                Riwayat Re-Publish
+              </Button>
+            </>
           )}
 
           {/* View/Edit questions for all statuses */}
@@ -1296,6 +1623,19 @@ export default function AdminUjianPage() {
                   </div>
                 </div>
 
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={classScheduleForm.is_published}
+                    onChange={(e) => setClassScheduleForm(prev => ({ ...prev, is_published: e.target.checked }))}
+                  />
+                  Publish langsung untuk kelas yang dipilih
+                </label>
+
+                <div className="mb-4 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-900/20 p-2.5 text-xs text-indigo-800 dark:text-indigo-200">
+                  Jika ujian sudah memakai override per kelas, hanya kelas override yang berstatus publish yang terlihat oleh siswa.
+                </div>
+
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Daftar Kelas</p>
                   <div className="flex items-center gap-2">
@@ -1324,6 +1664,7 @@ export default function AdminUjianPage() {
                         <th className="text-left py-2 px-3">Kelas</th>
                         <th className="text-left py-2 px-3">Jadwal Efektif</th>
                         <th className="text-left py-2 px-3">Sumber</th>
+                        <th className="text-left py-2 px-3">Publish Kelas</th>
                         <th className="text-right py-2 px-3">Aksi</th>
                       </tr>
                     </thead>
@@ -1360,16 +1701,43 @@ export default function AdminUjianPage() {
                                 </span>
                               )}
                             </td>
+                            <td className="py-2 px-3">
+                              {row.has_override ? (
+                                row.is_published ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                    Published
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                    Draft kelas
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-xs text-slate-400">-</span>
+                              )}
+                            </td>
                             <td className="py-2 px-3 text-right">
                               {row.has_override ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleResetClassSchedule(row.class_id)}
-                                  disabled={deletingClassScheduleClassId === row.class_id}
-                                >
-                                  {deletingClassScheduleClassId === row.class_id ? 'Menghapus...' : 'Reset'}
-                                </Button>
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleToggleClassSchedulePublish(row.class_id, !row.is_published)}
+                                    disabled={publishingClassScheduleClassId === row.class_id}
+                                  >
+                                    {publishingClassScheduleClassId === row.class_id
+                                      ? 'Menyimpan...'
+                                      : (row.is_published ? 'Batalkan Publish' : 'Publish')}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleResetClassSchedule(row.class_id)}
+                                    disabled={deletingClassScheduleClassId === row.class_id}
+                                  >
+                                    {deletingClassScheduleClassId === row.class_id ? 'Menghapus...' : 'Reset'}
+                                  </Button>
+                                </div>
                               ) : (
                                 <span className="text-xs text-slate-400">-</span>
                               )}
@@ -1401,6 +1769,256 @@ export default function AdminUjianPage() {
                 ) : (
                   `Terapkan ke ${selectedScheduleClassIds.size} kelas`
                 )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-Publish Modal */}
+      {showRepublishModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowRepublishModal(null)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-lg">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1">Re-Publish Ujian</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{showRepublishModal.title}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Waktu Mulai Baru</label>
+                <input
+                  type="datetime-local"
+                  value={republishData.start_time}
+                  onChange={(e) => setRepublishData(prev => ({ ...prev, start_time: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Durasi (menit)</label>
+                <input
+                  type="number"
+                  min={10}
+                  max={240}
+                  value={republishData.duration}
+                  onChange={(e) => setRepublishData(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={republishData.keep_class_schedules}
+                  onChange={(e) => setRepublishData(prev => ({ ...prev, keep_class_schedules: e.target.checked }))}
+                />
+                Pertahankan override jadwal per kelas yang sudah ada
+              </label>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Alasan (opsional)</label>
+                <textarea
+                  value={republishData.reason}
+                  onChange={(e) => setRepublishData(prev => ({ ...prev, reason: e.target.value }))}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Contoh: Ujian remidi / ujian ulang periodik"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-200">
+                Re-publish akan mereset hasil/jawaban/pelanggaran sesi sebelumnya agar siswa bisa ujian ulang.
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 justify-end">
+              <Button variant="outline" onClick={() => setShowRepublishModal(null)} disabled={republishingId === showRepublishModal.id}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleRepublishExam}
+                disabled={!republishData.start_time || republishingId === showRepublishModal.id}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {republishingId === showRepublishModal.id ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Memproses...</>
+                ) : (
+                  <><RotateCcw className="w-4 h-4 mr-2" /> Re-Publish</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Re-Publish History Modal */}
+      {republishHistoryExam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setRepublishHistoryExam(null)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1">Riwayat Re-Publish</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{republishHistoryExam.title}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportRepublishHistoryCsv}
+                disabled={republishHistoryLoading || republishHistorySessions.length === 0}
+              >
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                Export CSV
+              </Button>
+            </div>
+
+            {republishHistoryLoading ? (
+              <div className="py-10 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Memuat riwayat...
+              </div>
+            ) : republishHistorySessions.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                Belum ada riwayat re-publish untuk ujian ini.
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-900/50">
+                    <tr>
+                      <th className="text-left py-2 px-3">Sesi</th>
+                      <th className="text-left py-2 px-3">Arsip</th>
+                      <th className="text-left py-2 px-3">Jadwal Lama</th>
+                      <th className="text-left py-2 px-3">Jadwal Baru</th>
+                      <th className="text-left py-2 px-3">Reset Data</th>
+                      <th className="text-left py-2 px-3">Alasan</th>
+                      <th className="text-right py-2 px-3">Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {republishHistorySessions.map((session) => {
+                      const isExpanded = expandedRepublishSessions.has(session.id);
+                      const summary = getSessionSnapshotSummary(session);
+
+                      return (
+                        <React.Fragment key={session.id}>
+                          <tr>
+                            <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100">#{session.session_no}</td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
+                              <div>{formatDateTime(session.archived_at)}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">oleh {session.republisher?.name || `User #${session.republished_by}`}</div>
+                            </td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
+                              <div>{formatDateTime(session.old_start_time)}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">s.d. {formatDateTime(session.old_end_time)}</div>
+                            </td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
+                              <div>{formatDateTime(session.new_start_time)}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">s.d. {formatDateTime(session.new_end_time)}</div>
+                            </td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
+                              <div>{session.reset_summary?.result_count || 0} hasil</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {session.reset_summary?.answer_count || 0} jawaban, {session.reset_summary?.violation_count || 0} pelanggaran
+                              </div>
+                            </td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300 max-w-56">
+                              <p className="line-clamp-2">{session.reason?.trim() ? session.reason : '-'}</p>
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              <Button size="sm" variant="outline" onClick={() => toggleRepublishSessionExpanded(session.id)}>
+                                {isExpanded ? 'Sembunyikan' : 'Lihat Detail'}
+                              </Button>
+                            </td>
+                          </tr>
+
+                          {isExpanded && (
+                            <tr>
+                              <td colSpan={7} className="px-3 pb-3">
+                                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/70 dark:bg-slate-900/40">
+                                  <div className="flex items-center justify-end mb-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => exportRepublishSessionDetailCsv(session)}
+                                      disabled={!Array.isArray(session.results_snapshot) || session.results_snapshot.length === 0}
+                                    >
+                                      <Download className="w-3.5 h-3.5 mr-1.5" />
+                                      Export Detail Sesi
+                                    </Button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3 text-xs">
+                                    <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                                      <p className="text-slate-500 dark:text-slate-400">Peserta Arsip</p>
+                                      <p className="text-slate-800 dark:text-slate-100 font-semibold">{summary.participantCount}</p>
+                                    </div>
+                                    <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                                      <p className="text-slate-500 dark:text-slate-400">Submitted/Graded</p>
+                                      <p className="text-slate-800 dark:text-slate-100 font-semibold">{summary.submittedCount}</p>
+                                    </div>
+                                    <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                                      <p className="text-slate-500 dark:text-slate-400">Masih In Progress</p>
+                                      <p className="text-slate-800 dark:text-slate-100 font-semibold">{summary.inProgressCount}</p>
+                                    </div>
+                                    <div className="rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                                      <p className="text-slate-500 dark:text-slate-400">Rata-rata Nilai</p>
+                                      <p className="text-slate-800 dark:text-slate-100 font-semibold">
+                                        {summary.avgPercentage === null ? '-' : `${summary.avgPercentage.toFixed(1)}%`}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {Array.isArray(session.results_snapshot) && session.results_snapshot.length > 0 ? (
+                                    <div className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-slate-100 dark:bg-slate-800/60">
+                                          <tr>
+                                            <th className="text-left py-1.5 px-2">Siswa</th>
+                                            <th className="text-left py-1.5 px-2">Kelas</th>
+                                            <th className="text-left py-1.5 px-2">Status</th>
+                                            <th className="text-left py-1.5 px-2">Nilai</th>
+                                            <th className="text-left py-1.5 px-2">Jawaban</th>
+                                            <th className="text-left py-1.5 px-2">Pelanggaran</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                          {session.results_snapshot.map((item) => (
+                                            <tr key={`${session.id}-${item.student_id}`}>
+                                              <td className="py-1.5 px-2 text-slate-700 dark:text-slate-200">
+                                                <div className="font-medium">{item.student_name || `Siswa #${item.student_id}`}</div>
+                                                <div className="text-slate-500 dark:text-slate-400">{item.student_nisn || '-'}</div>
+                                              </td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">{item.class_name || '-'}</td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">{item.status || '-'}</td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">
+                                                {typeof item.percentage === 'number' ? `${item.percentage}%` : '-'}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">{item.total_answered ?? '-'}</td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">{item.violation_count ?? 0}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">Tidak ada snapshot hasil siswa di sesi ini.</div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-5">
+              <Button variant="outline" onClick={() => setRepublishHistoryExam(null)}>
+                Tutup
               </Button>
             </div>
           </div>

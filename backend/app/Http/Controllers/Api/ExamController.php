@@ -11,6 +11,7 @@ use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\AuditLog;
 use App\Models\ExamClassSchedule;
+use App\Models\ExamRepublishArchive;
 use App\Models\ClassRoom;
 use App\Models\User;
 use App\Support\NomorTes;
@@ -156,6 +157,33 @@ class ExamController extends Controller
             'is_override' => false,
             'class_schedule_id' => null,
         ];
+    }
+
+    private function shouldRestrictStudentVisibilityToOverrides(Exam $exam): bool
+    {
+        if ($exam->relationLoaded('classSchedules')) {
+            return $exam->classSchedules->isNotEmpty();
+        }
+
+        return $exam->classSchedules()->exists();
+    }
+
+    private function canStudentSeeExamByClassSchedule(Exam $exam, ?int $classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        if (!$this->shouldRestrictStudentVisibilityToOverrides($exam)) {
+            return true;
+        }
+
+        $classSchedule = $this->getExamClassSchedule($exam, $classId);
+        if (!$classSchedule) {
+            return false;
+        }
+
+        return (bool) $classSchedule->is_published;
     }
 
     private function findClassScheduleConflicts(int $currentExamId, array $classIds, Carbon $startTime, Carbon $endTime): array
@@ -401,7 +429,7 @@ class ExamController extends Controller
     {
         $user = $request->user();
         $query = Exam::where('type', '!=', 'quiz')
-            ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time']);
+            ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time,is_published']);
 
         if ($user->role === 'guru') {
             $query->where('teacher_id', $user->id);
@@ -410,6 +438,16 @@ class ExamController extends Controller
                 $q->where('class_id', $user->class_id)
                   ->orWhereHas('classes', fn($cq) => $cq->where('classes.id', $user->class_id));
             });
+
+            // Jika sudah menggunakan override jadwal per kelas, hanya kelas override yang publish yang bisa melihat ujian.
+            $query->where(function ($q) use ($user) {
+                $q->whereDoesntHave('classSchedules')
+                    ->orWhereHas('classSchedules', function ($sq) use ($user) {
+                        $sq->where('class_id', $user->class_id)
+                            ->where('is_published', true);
+                    });
+            });
+
             // Only filter by status if not explicitly provided
             if (!$request->has('status')) {
                 $query->whereIn('status', ['scheduled', 'active']);
@@ -531,7 +569,7 @@ class ExamController extends Controller
     public function show(Request $request, Exam $exam)
     {
         $user = $request->user();
-        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time']);
+        $exam->load(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time,is_published']);
 
         $shouldUseShowCache = in_array($user->role, ['guru', 'admin'], true) && !$request->boolean('no_cache');
         $showCacheKey = "exam:show:{$exam->id}:role:{$user->role}";
@@ -544,6 +582,13 @@ class ExamController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Anda tidak memiliki akses ke ujian ini',
+                ], 403);
+            }
+
+            if (!$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ujian belum dipublish untuk kelas Anda',
                 ], 403);
             }
         }
@@ -831,6 +876,7 @@ class ExamController extends Controller
                 'end_time' => $override?->end_time ?? $exam->end_time,
                 'override_start_time' => $override?->start_time,
                 'override_end_time' => $override?->end_time,
+                'is_published' => (bool) ($override?->is_published),
             ];
         })->values();
 
@@ -841,6 +887,7 @@ class ExamController extends Controller
                 'exam_start_time' => $exam->start_time,
                 'exam_end_time' => $exam->end_time,
                 'duration' => $exam->duration,
+                'override_only_visibility' => $rows->contains(fn($row) => $row['has_override']),
                 'class_schedules' => $rows,
             ],
         ]);
@@ -863,6 +910,7 @@ class ExamController extends Controller
             'class_id' => 'required|exists:classes,id',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
+            'is_published' => 'nullable|boolean',
         ]);
 
         $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
@@ -888,6 +936,7 @@ class ExamController extends Controller
             [
                 'start_time' => $startTime,
                 'end_time' => $endTime,
+                'is_published' => (bool) $request->boolean('is_published', false),
             ]
         );
 
@@ -927,6 +976,7 @@ class ExamController extends Controller
             'class_ids.*' => 'exists:classes,id',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
+            'is_published' => 'nullable|boolean',
         ]);
 
         $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
@@ -952,7 +1002,9 @@ class ExamController extends Controller
         $startTime = Carbon::parse($request->start_time);
         $endTime = Carbon::parse($request->end_time);
 
-        DB::transaction(function () use ($targetClassIds, $startTime, $endTime, $exam) {
+        $isPublished = (bool) $request->boolean('is_published', false);
+
+        DB::transaction(function () use ($targetClassIds, $startTime, $endTime, $exam, $isPublished) {
             foreach ($targetClassIds as $classId) {
                 ExamClassSchedule::updateOrCreate(
                     [
@@ -962,6 +1014,7 @@ class ExamController extends Controller
                     [
                         'start_time' => $startTime,
                         'end_time' => $endTime,
+                        'is_published' => $isPublished,
                     ]
                 );
             }
@@ -980,8 +1033,50 @@ class ExamController extends Controller
             'success' => true,
             'message' => 'Jadwal berhasil diterapkan ke beberapa kelas',
             'affected_count' => count($targetClassIds),
+            'published' => $isPublished,
             'conflict_count' => count($conflicts),
             'conflicts' => $conflicts,
+        ]);
+    }
+
+    /**
+     * Toggle publish state for class schedule override.
+     */
+    public function setClassSchedulePublishStatus(Request $request, Exam $exam, int $classId)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengubah publish per kelas',
+            ], 403);
+        }
+
+        $request->validate([
+            'is_published' => 'required|boolean',
+        ]);
+
+        $schedule = ExamClassSchedule::where('exam_id', $exam->id)
+            ->where('class_id', $classId)
+            ->first();
+
+        if (!$schedule) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Override jadwal kelas belum dibuat',
+            ], 422);
+        }
+
+        $schedule->is_published = (bool) $request->boolean('is_published');
+        $schedule->save();
+        $this->forgetExamShowCache($exam->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => $schedule->is_published
+                ? 'Kelas berhasil dipublish untuk ujian ini'
+                : 'Publish kelas berhasil dibatalkan',
+            'data' => $schedule,
         ]);
     }
 
@@ -1133,6 +1228,229 @@ class ExamController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Ujian berhasil dipublish',
+        ]);
+    }
+
+    /**
+     * Re-publish completed exam for repeated sessions.
+     * Resets previous attempts so students can take the exam again.
+     */
+    public function republish(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat melakukan re-publish ujian',
+            ], 403);
+        }
+
+        if ($exam->status !== 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Re-publish hanya bisa untuk ujian yang sudah selesai',
+            ], 422);
+        }
+
+        if ($exam->questions()->count() === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian harus memiliki minimal 1 soal sebelum re-publish',
+            ], 422);
+        }
+
+        $request->validate([
+            'start_time' => 'required|date',
+            'duration_minutes' => 'nullable|integer|min:1|max:240',
+            'end_time' => 'nullable|date|after:start_time',
+            'keep_class_schedules' => 'nullable|boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $startTime = Carbon::parse($request->start_time);
+        $duration = (int) ($request->duration_minutes ?? $exam->duration ?? 60);
+        $endTime = $request->filled('end_time')
+            ? Carbon::parse($request->end_time)
+            : (clone $startTime)->addMinutes($duration);
+
+        $keepClassSchedules = (bool) $request->boolean('keep_class_schedules', false);
+
+        $oldStartTime = $exam->start_time ? Carbon::parse($exam->start_time) : null;
+        $oldEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
+
+        $sessionNo = ((int) ExamRepublishArchive::where('exam_id', $exam->id)->max('session_no')) + 1;
+
+        $resultsSnapshot = ExamResult::with(['student:id,name,nisn,class_id', 'student.classRoom:id,name'])
+            ->where('exam_id', $exam->id)
+            ->get()
+            ->map(function ($result) {
+                return [
+                    'student_id' => $result->student_id,
+                    'student_name' => $result->student?->name,
+                    'student_nisn' => $result->student?->nisn,
+                    'class_id' => $result->student?->class_id,
+                    'class_name' => $result->student?->classRoom?->name,
+                    'status' => $result->status,
+                    'total_score' => $result->total_score,
+                    'max_score' => $result->max_score,
+                    'percentage' => $result->percentage,
+                    'violation_count' => $result->violation_count,
+                    'total_answered' => $result->total_answered,
+                    'started_at' => $result->started_at,
+                    'submitted_at' => $result->submitted_at,
+                    'finished_at' => $result->finished_at,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $archive = null;
+        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $request, $sessionNo, $oldStartTime, $oldEndTime, $resultsSnapshot, &$archive) {
+            $resultCount = ExamResult::where('exam_id', $exam->id)->count();
+            $answerRows = Answer::where('exam_id', $exam->id)->get(['id', 'work_photo']);
+            $answerCount = $answerRows->count();
+            $violationCount = Violation::where('exam_id', $exam->id)->count();
+
+            $snapshotCount = 0;
+            MonitoringSnapshot::where('exam_id', $exam->id)->each(function ($snap) use (&$snapshotCount) {
+                if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
+                    Storage::disk('public')->delete($snap->image_path);
+                }
+                $snap->delete();
+                $snapshotCount++;
+            });
+
+            foreach ($answerRows as $answer) {
+                if ($answer->work_photo && Storage::disk('public')->exists($answer->work_photo)) {
+                    Storage::disk('public')->delete($answer->work_photo);
+                }
+            }
+
+            Answer::where('exam_id', $exam->id)->delete();
+            Violation::where('exam_id', $exam->id)->delete();
+            ExamResult::where('exam_id', $exam->id)->delete();
+
+            if (!$keepClassSchedules) {
+                ExamClassSchedule::where('exam_id', $exam->id)->delete();
+            }
+
+            $archive = ExamRepublishArchive::create([
+                'exam_id' => $exam->id,
+                'session_no' => $sessionNo,
+                'republished_by' => $request->user()?->id,
+                'reason' => $request->reason,
+                'keep_class_schedules' => $keepClassSchedules,
+                'old_start_time' => $oldStartTime,
+                'old_end_time' => $oldEndTime,
+                'new_start_time' => $startTime,
+                'new_end_time' => $endTime,
+                'reset_summary' => [
+                    'result_count' => $resultCount,
+                    'answer_count' => $answerCount,
+                    'violation_count' => $violationCount,
+                    'snapshot_count' => $snapshotCount,
+                    'class_schedule_cleared' => !$keepClassSchedules,
+                ],
+                'results_snapshot' => $resultsSnapshot,
+                'archived_at' => now(),
+            ]);
+
+            $exam->status = 'scheduled';
+            $exam->start_time = $startTime;
+            $exam->end_time = $endTime;
+            $exam->duration = $duration;
+            $exam->save();
+
+            return [
+                'result_count' => $resultCount,
+                'answer_count' => $answerCount,
+                'violation_count' => $violationCount,
+                'snapshot_count' => $snapshotCount,
+                'class_schedule_cleared' => !$keepClassSchedules,
+            ];
+        });
+
+        $this->forgetExamShowCache($exam->id);
+
+        try {
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'exam.republish',
+                'description' => 'Re-publish ujian selesai: ' . $exam->title . ($request->reason ? ' (Alasan: ' . $request->reason . ')' : ''),
+                'target_type' => 'Exam',
+                'target_id' => $exam->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'new_values' => [
+                    'status' => 'scheduled',
+                    'start_time' => $exam->start_time,
+                    'end_time' => $exam->end_time,
+                    'duration' => $exam->duration,
+                    'keep_class_schedules' => $keepClassSchedules,
+                    'reset_summary' => $resetSummary,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Audit log republish failed: ' . $e->getMessage());
+        }
+
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examUpdated($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'status' => 'scheduled',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Broadcast examUpdated (republish) failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ujian berhasil di re-publish untuk sesi ulang',
+            'data' => [
+                'exam_id' => $exam->id,
+                'archive_id' => $archive?->id,
+                'session_no' => $sessionNo,
+                'status' => 'scheduled',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+                'reset_summary' => $resetSummary,
+            ],
+        ]);
+    }
+
+    /**
+     * Get republish session history for an exam.
+     */
+    public function republishHistory(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke riwayat re-publish ujian ini',
+            ], 403);
+        }
+
+        $archives = ExamRepublishArchive::with('republisher:id,name')
+            ->where('exam_id', $exam->id)
+            ->orderByDesc('session_no')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'exam_id' => $exam->id,
+                'total_sessions' => $archives->count(),
+                'sessions' => $archives,
+            ],
         ]);
     }
 
@@ -1796,6 +2114,13 @@ class ExamController extends Controller
             ], 422);
         }
 
+        if (!$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian belum dipublish untuk kelas Anda',
+            ], 422);
+        }
+
         // Check existing result (with lock to prevent race condition on double-click)
         $result = DB::transaction(function () use ($exam, $user) {
             $result = ExamResult::where('exam_id', $exam->id)
@@ -1977,6 +2302,13 @@ class ExamController extends Controller
         ]);
 
         $user = $request->user();
+
+        if (!$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian belum dipublish untuk kelas Anda',
+            ], 422);
+        }
 
         // Validate exam and result
         $result = ExamResult::where('exam_id', $exam->id)

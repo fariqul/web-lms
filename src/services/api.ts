@@ -465,6 +465,19 @@ export const examAPI = {
   
   getAllResults: (examId: number) =>
     api.get(`/exams/${examId}/results`),
+
+  republish: (
+    examId: number,
+    data: {
+      start_time: string;
+      duration_minutes: number;
+      keep_class_schedules?: boolean;
+      reason?: string;
+    }
+  ) => api.post(`/exams/${examId}/republish`, data),
+
+  getRepublishHistory: (examId: number) =>
+    api.get(`/exams/${examId}/republish-history`),
 };
 
 // Monitoring API
