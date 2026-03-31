@@ -102,6 +102,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::get('/exams/{exam}/class-schedules', [ExamController::class, 'classSchedules']);
         Route::post('/exams/{exam}/class-schedules', [ExamController::class, 'upsertClassSchedule']);
         Route::post('/exams/{exam}/class-schedules/bulk', [ExamController::class, 'upsertClassScheduleBulk']);
+        Route::post('/exams/{exam}/class-schedules/sync-publish', [ExamController::class, 'syncClassSchedulePublish']);
         Route::patch('/exams/{exam}/class-schedules/{classId}/publish', [ExamController::class, 'setClassSchedulePublishStatus']);
         Route::delete('/exams/{exam}/class-schedules/{classId}', [ExamController::class, 'deleteClassSchedule']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);

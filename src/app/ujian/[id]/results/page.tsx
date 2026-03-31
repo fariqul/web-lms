@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -79,6 +79,26 @@ interface ExamInfo {
   end_time: string | null;
 }
 
+interface QuestionStat {
+  question_id: number;
+  question_no: number;
+  type: string;
+  question_text: string;
+  participants: number;
+  answered_count: number;
+  correct_count: number;
+  wrong_count: number;
+  unanswered_count: number;
+  correct_percentage: number;
+  wrong_percentage: number;
+  unanswered_percentage: number;
+}
+
+interface QuestionStatsScope {
+  class_id: number | null;
+  participants: number;
+}
+
 export default function ExamResultsPage() {
   const params = useParams();
   const router = useRouter();
@@ -89,7 +109,12 @@ export default function ExamResultsPage() {
   const [results, setResults] = useState<StudentResult[]>([]);
   const [summary, setSummary] = useState<ResultSummary | null>(null);
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
+  const [questionStatsScope, setQuestionStatsScope] = useState<QuestionStatsScope>({ class_id: null, participants: 0 });
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<string>('all');
+  const [questionSortBy, setQuestionSortBy] = useState<'default' | 'most_wrong' | 'most_correct'>('default');
   const [searchQuery, setSearchQuery] = useState('');
+  const [exportingAnalytics, setExportingAnalytics] = useState(false);
   const [sortBy, setSortBy] = useState<'rank' | 'name' | 'nomor_tes'>('nomor_tes');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterClass, setFilterClass] = useState<string>('');
@@ -97,7 +122,10 @@ export default function ExamResultsPage() {
 
   const fetchResults = useCallback(async () => {
     try {
-      const response = await api.get(`/exams/${examId}/results`);
+      const scopedClassId = filterClass ? Number(filterClass) : undefined;
+      const response = await api.get(`/exams/${examId}/results`, {
+        params: scopedClassId ? { class_id: scopedClassId } : undefined,
+      });
       const data = response.data?.data;
       if (data) {
         setExamInfo(data.exam || null);
@@ -131,13 +159,28 @@ export default function ExamResultsPage() {
             students_with_ungraded: Number(s.students_with_ungraded) || 0,
           });
         }
+        setQuestionStats((data.question_stats || []).map((q: QuestionStat) => ({
+          ...q,
+          participants: Number(q.participants) || 0,
+          answered_count: Number(q.answered_count) || 0,
+          correct_count: Number(q.correct_count) || 0,
+          wrong_count: Number(q.wrong_count) || 0,
+          unanswered_count: Number(q.unanswered_count) || 0,
+          correct_percentage: Number(q.correct_percentage) || 0,
+          wrong_percentage: Number(q.wrong_percentage) || 0,
+          unanswered_percentage: Number(q.unanswered_percentage) || 0,
+        })));
+        setQuestionStatsScope({
+          class_id: data.question_stats_scope?.class_id != null ? Number(data.question_stats_scope.class_id) : null,
+          participants: Number(data.question_stats_scope?.participants) || 0,
+        });
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
     } finally {
       setLoading(false);
     }
-  }, [examId]);
+  }, [examId, filterClass]);
 
   useEffect(() => {
     fetchResults();
@@ -264,19 +307,6 @@ export default function ExamResultsPage() {
     }
   };
 
-  // Debug: log filter state
-  useEffect(() => {
-    console.log('[Filter Debug] filterClass:', filterClass, 'filterStatus:', filterStatus);
-    console.log('[Filter Debug] Total results:', results.length);
-    if (filterClass) {
-      const matchingByClass = results.filter(r => {
-        const cid = r.student?.class_room?.id ?? r.student?.class_id;
-        return String(cid) === filterClass;
-      });
-      console.log('[Filter Debug] Matching class filter:', matchingByClass.length);
-    }
-  }, [filterClass, filterStatus, results]);
-
   const filteredResults = results
     .filter(r => {
       // 1. Search filter
@@ -293,11 +323,6 @@ export default function ExamResultsPage() {
         const classRoomId = r.student?.class_room?.id;
         const classId = r.student?.class_id;
         const studentClassId = classRoomId ?? classId;
-        
-        // Debug first few items
-        if (results.indexOf(r) < 3) {
-          console.log(`[Filter] Student ${r.student?.name}: class_room.id=${classRoomId}, class_id=${classId}, filterClass=${filterClass}`);
-        }
         
         if (studentClassId === undefined || studentClassId === null) {
           return false; // No class info, exclude
@@ -357,6 +382,82 @@ export default function ExamResultsPage() {
         .map(r => [r.student.class_room!.id, r.student.class_room!])
     ).values()
   ).sort((a, b) => a.name.localeCompare(b.name));
+
+  const getQuestionDifficulty = (wrongPercentage: number) => {
+    if (wrongPercentage <= 25) return { level: 'Mudah', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' };
+    if (wrongPercentage <= 60) return { level: 'Sedang', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' };
+    return { level: 'Sulit', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' };
+  };
+
+  const exportAnalyticsCsv = () => {
+    if (displayedQuestionStats.length === 0) return;
+    setExportingAnalytics(true);
+    try {
+      const escapeCsv = (value: unknown) => {
+        const text = String(value ?? '');
+        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+          return `"${text.replace(/"/g, '""')}"` ;
+        }
+        return text;
+      };
+      const header = ['No', 'Tipe Soal', 'Teks Soal', 'Peserta', 'Benar (%)', 'Salah (%)', 'Kosong (%)', 'Kesulitan'];
+      const rows = displayedQuestionStats.map((q) => {
+        const difficulty = getQuestionDifficulty(q.wrong_percentage);
+        return [
+          q.question_no,
+          q.type,
+          q.question_text || '',
+          q.participants,
+          q.correct_percentage.toFixed(1),
+          q.wrong_percentage.toFixed(1),
+          q.unanswered_percentage.toFixed(1),
+          difficulty.level,
+        ];
+      });
+      const csvContent = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const fileName = `Analitik-Soal-${examInfo?.title?.replace(/\s+/g, '_') || 'ujian'}-${new Date().toISOString().slice(0, 10)}.csv`;
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.setAttribute('download', fileName);
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export analytics failed:', error);
+    } finally {
+      setExportingAnalytics(false);
+    }
+  };
+
+  const displayedQuestionStats = useMemo(() => {
+    const filtered = questionStats.filter((q) => {
+      if (questionTypeFilter === 'all') return true;
+      return q.type === questionTypeFilter;
+    });
+
+    if (questionSortBy === 'most_wrong') {
+      return [...filtered].sort((a, b) => {
+        if (b.wrong_percentage !== a.wrong_percentage) {
+          return b.wrong_percentage - a.wrong_percentage;
+        }
+        return b.wrong_count - a.wrong_count;
+      });
+    }
+
+    if (questionSortBy === 'most_correct') {
+      return [...filtered].sort((a, b) => {
+        if (b.correct_percentage !== a.correct_percentage) {
+          return b.correct_percentage - a.correct_percentage;
+        }
+        return b.correct_count - a.correct_count;
+      });
+    }
+
+    return filtered;
+  }, [questionStats, questionTypeFilter, questionSortBy]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-700 dark:text-green-400';
@@ -557,6 +658,118 @@ export default function ExamResultsPage() {
               </div>
             </Card>
           </div>
+        )}
+
+        {/* Filters */}
+        {questionStats.length > 0 && (
+          <Card className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Analitik Soal (Benar/Salah)</h2>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={exportAnalyticsCsv}
+                  disabled={displayedQuestionStats.length === 0 || exportingAnalytics}
+                >
+                  {exportingAnalytics ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Export CSV
+                </Button>
+                <select
+                  value={questionTypeFilter}
+                  onChange={(e) => setQuestionTypeFilter(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                >
+                  <option value="all">Semua Tipe Soal</option>
+                  <option value="multiple_choice">Pilihan Ganda</option>
+                  <option value="multiple_answer">Pilihan Ganda Kompleks</option>
+                  <option value="essay">Essay</option>
+                </select>
+                <select
+                  value={questionSortBy}
+                  onChange={(e) => setQuestionSortBy(e.target.value as 'default' | 'most_wrong' | 'most_correct')}
+                  className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                >
+                  <option value="default">Urutan Default</option>
+                  <option value="most_wrong">Paling Banyak Salah</option>
+                  <option value="most_correct">Paling Banyak Benar</option>
+                </select>
+              </div>
+            </div>
+            <div className="mb-3 text-xs text-slate-600 dark:text-slate-400">
+              Scope: {filterClass ? `Kelas ${uniqueClasses.find(c => String(c.id) === filterClass)?.name || filterClass}` : 'Semua Kelas'} · Peserta: {questionStatsScope.participants} · Soal tampil: {displayedQuestionStats.length}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">No</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Soal</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Benar</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Salah</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Kosong</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Grafik</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700">
+                  {displayedQuestionStats.map((q) => {
+                    const preview = (q.question_text || '').replace(/\s+/g, ' ').trim();
+                    const difficulty = getQuestionDifficulty(q.wrong_percentage);
+                    return (
+                      <tr key={q.question_id}>
+                        <td className="px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">#{q.question_no}</td>
+                        <td className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
+                          <p className="line-clamp-2">{preview || '(Tanpa teks soal)'}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">Tipe: {q.type}</span>
+                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${difficulty.color}`}>{difficulty.level}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-center text-sm">
+                          <span className="font-semibold text-green-700 dark:text-green-400">{q.correct_percentage.toFixed(1)}%</span>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{q.correct_count} siswa</p>
+                        </td>
+                        <td className="px-3 py-2 text-center text-sm">
+                          <span className="font-semibold text-red-700 dark:text-red-400">{q.wrong_percentage.toFixed(1)}%</span>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{q.wrong_count} siswa</p>
+                        </td>
+                        <td className="px-3 py-2 text-center text-sm">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{q.unanswered_percentage.toFixed(1)}%</span>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{q.unanswered_count} siswa</p>
+                        </td>
+                        <td className="px-3 py-2 text-sm min-w-[220px]">
+                          <div className="w-full h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex">
+                            <div
+                              className="h-full bg-green-500"
+                              style={{ width: `${Math.max(0, Math.min(100, q.correct_percentage))}%` }}
+                              title={`Benar ${q.correct_percentage.toFixed(1)}%`}
+                            />
+                            <div
+                              className="h-full bg-red-500"
+                              style={{ width: `${Math.max(0, Math.min(100, q.wrong_percentage))}%` }}
+                              title={`Salah ${q.wrong_percentage.toFixed(1)}%`}
+                            />
+                            <div
+                              className="h-full bg-slate-400"
+                              style={{ width: `${Math.max(0, Math.min(100, q.unanswered_percentage))}%` }}
+                              title={`Kosong ${q.unanswered_percentage.toFixed(1)}%`}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
 
         {/* Filters */}

@@ -97,7 +97,34 @@ interface RepublishHistorySession {
     violation_count?: number;
     snapshot_count?: number;
   };
-  results_snapshot?: Array<{
+  results_snapshot?: {
+    result_rows?: Array<{
+      student_id: number;
+      student_name?: string | null;
+      student_nisn?: string | null;
+      class_name?: string | null;
+      status?: string | null;
+      percentage?: number | null;
+      total_score?: number | null;
+      max_score?: number | null;
+      total_answered?: number | null;
+      violation_count?: number | null;
+      submitted_at?: string | null;
+    }>;
+    answer_rows?: Array<{
+      student_id: number;
+      question_id: number;
+      question_text?: string | null;
+      question_type?: string | null;
+      question_points?: number | null;
+      answer?: string | null;
+      is_correct?: boolean | null;
+      score?: number | null;
+      feedback?: string | null;
+      submitted_at?: string | null;
+      graded_at?: string | null;
+    }>;
+  } | Array<{
     student_id: number;
     student_name?: string | null;
     student_nisn?: string | null;
@@ -138,10 +165,14 @@ export default function AdminUjianPage() {
   const [republishHistoryLoading, setRepublishHistoryLoading] = useState(false);
   const [republishHistorySessions, setRepublishHistorySessions] = useState<RepublishHistorySession[]>([]);
   const [expandedRepublishSessions, setExpandedRepublishSessions] = useState<Set<number>>(new Set());
+  const [republishAnswerSearch, setRepublishAnswerSearch] = useState<Record<number, string>>({});
+  const [republishAnswerPage, setRepublishAnswerPage] = useState<Record<number, number>>({});
+  const ANSWER_ROWS_PER_PAGE = 25;
   const [republishData, setRepublishData] = useState({
     start_time: '',
     duration: 60,
     keep_class_schedules: false,
+    class_ids: [] as number[],
     reason: '',
   });
 
@@ -162,6 +193,7 @@ export default function AdminUjianPage() {
   const [savingClassSchedules, setSavingClassSchedules] = useState(false);
   const [deletingClassScheduleClassId, setDeletingClassScheduleClassId] = useState<number | null>(null);
   const [publishingClassScheduleClassId, setPublishingClassScheduleClassId] = useState<number | null>(null);
+  const [syncingClassSchedulePublish, setSyncingClassSchedulePublish] = useState(false);
   const [selectedScheduleClassIds, setSelectedScheduleClassIds] = useState<Set<number>>(new Set());
   const [classScheduleForm, setClassScheduleForm] = useState({ start_time: '', duration: 60, is_published: false });
   const [classScheduleConflicts, setClassScheduleConflicts] = useState<ClassScheduleConflict[]>([]);
@@ -471,6 +503,10 @@ export default function AdminUjianPage() {
 
   const handleRepublishExam = async () => {
     if (!showRepublishModal || !republishData.start_time) return;
+    if (republishData.class_ids.length === 0) {
+      toast.warning('Pilih minimal 1 kelas untuk sesi re-publish');
+      return;
+    }
 
     setRepublishingId(showRepublishModal.id);
     try {
@@ -479,6 +515,7 @@ export default function AdminUjianPage() {
         start_time: startTime.toISOString(),
         duration_minutes: republishData.duration,
         keep_class_schedules: republishData.keep_class_schedules,
+        class_ids: republishData.class_ids,
         reason: republishData.reason || undefined,
       });
 
@@ -531,7 +568,9 @@ export default function AdminUjianPage() {
   };
 
   const getSessionSnapshotSummary = (session: RepublishHistorySession) => {
-    const snapshots = Array.isArray(session.results_snapshot) ? session.results_snapshot : [];
+    const snapshots = Array.isArray(session.results_snapshot)
+      ? session.results_snapshot
+      : (Array.isArray(session.results_snapshot?.result_rows) ? session.results_snapshot.result_rows : []);
     if (snapshots.length === 0) {
       return {
         participantCount: 0,
@@ -557,6 +596,21 @@ export default function AdminUjianPage() {
       inProgressCount,
       avgPercentage,
     };
+  };
+
+  const getSessionResultRows = (session: RepublishHistorySession) => {
+    if (Array.isArray(session.results_snapshot)) return session.results_snapshot;
+    return Array.isArray(session.results_snapshot?.result_rows) ? session.results_snapshot.result_rows : [];
+  };
+
+  const getSessionAnswerRows = (session: RepublishHistorySession) => {
+    if (Array.isArray(session.results_snapshot)) return [];
+    return Array.isArray(session.results_snapshot?.answer_rows) ? session.results_snapshot.answer_rows : [];
+  };
+
+  const getSessionStudentNameMap = (session: RepublishHistorySession) => {
+    const rows = getSessionResultRows(session);
+    return new Map(rows.map((row) => [row.student_id, row.student_name || `Siswa #${row.student_id}`]));
   };
 
   const exportRepublishHistoryCsv = () => {
@@ -637,7 +691,7 @@ export default function AdminUjianPage() {
   };
 
   const exportRepublishSessionDetailCsv = (session: RepublishHistorySession) => {
-    const snapshots = Array.isArray(session.results_snapshot) ? session.results_snapshot : [];
+    const snapshots = getSessionResultRows(session);
     if (!republishHistoryExam || snapshots.length === 0) {
       toast.warning('Tidak ada detail siswa untuk diexport pada sesi ini');
       return;
@@ -701,6 +755,73 @@ export default function AdminUjianPage() {
     URL.revokeObjectURL(url);
 
     toast.success(`Detail siswa sesi #${session.session_no} berhasil diexport`);
+  };
+
+  const exportRepublishSessionAnswersCsv = (session: RepublishHistorySession) => {
+    const answerRows = getSessionAnswerRows(session);
+    if (!republishHistoryExam || answerRows.length === 0) {
+      toast.warning('Tidak ada arsip jawaban untuk diexport pada sesi ini');
+      return;
+    }
+
+    const escapeCsv = (value: unknown) => {
+      const text = String(value ?? '');
+      if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const header = [
+      'session_no',
+      'student_id',
+      'question_id',
+      'question_type',
+      'question_points',
+      'is_correct',
+      'score',
+      'question_text',
+      'answer',
+      'feedback',
+      'submitted_at',
+      'graded_at',
+    ];
+
+    const rows = answerRows.map((item) => [
+      session.session_no,
+      item.student_id,
+      item.question_id,
+      item.question_type || '',
+      item.question_points ?? '',
+      item.is_correct == null ? '' : (item.is_correct ? 'true' : 'false'),
+      item.score ?? '',
+      item.question_text || '',
+      item.answer || '',
+      item.feedback || '',
+      item.submitted_at || '',
+      item.graded_at || '',
+    ]);
+
+    const csvLines = [header, ...rows].map((row) => row.map(escapeCsv).join(','));
+    const csvContent = csvLines.join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const examSlug = republishHistoryExam.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const fileName = `riwayat-jawaban-sesi-${session.session_no}-${examSlug || republishHistoryExam.id}.csv`;
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.setAttribute('download', fileName);
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Arsip jawaban sesi #${session.session_no} berhasil diexport`);
   };
 
   const loadClassSchedules = async (examId: number) => {
@@ -800,16 +921,91 @@ export default function AdminUjianPage() {
     }
   };
 
+  const handleSyncClassSchedulePublish = async () => {
+    if (!classScheduleExam) return;
+    setSyncingClassSchedulePublish(true);
+    try {
+      const response = await api.post(`/exams/${classScheduleExam.id}/class-schedules/sync-publish`);
+      const affected = response.data?.data?.affected_count || 0;
+      if (affected > 0) {
+        toast.success(`${affected} kelas berhasil disinkronkan ke Published`);
+      } else {
+        toast.info(response.data?.message || 'Tidak ada data yang perlu disinkronkan');
+      }
+      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal sinkronisasi publish kelas');
+    } finally {
+      setSyncingClassSchedulePublish(false);
+    }
+  };
+
   const now = new Date();
+
+  const getExamScheduleWindows = (exam: Exam) => {
+    const overrideWindows = (exam.class_schedules || [])
+      .filter((schedule) => schedule.is_published)
+      .map((schedule) => ({
+        start: new Date(schedule.start_time),
+        end: new Date(schedule.end_time),
+      }))
+      .filter((window) => !Number.isNaN(window.start.getTime()) && !Number.isNaN(window.end.getTime()));
+
+    if (overrideWindows.length > 0) {
+      return overrideWindows;
+    }
+
+    const fallbackStart = new Date(exam.start_time);
+    const fallbackEnd = new Date(exam.end_time);
+    if (Number.isNaN(fallbackStart.getTime()) || Number.isNaN(fallbackEnd.getTime())) {
+      return [] as Array<{ start: Date; end: Date }>;
+    }
+
+    return [{ start: fallbackStart, end: fallbackEnd }];
+  };
+
+  const getExamDisplayWindow = (exam: Exam) => {
+    const windows = (exam.class_schedules || []).length > 0
+      ? (exam.class_schedules || [])
+          .map((schedule) => ({
+            start: new Date(schedule.start_time),
+            end: new Date(schedule.end_time),
+          }))
+          .filter((window) => !Number.isNaN(window.start.getTime()) && !Number.isNaN(window.end.getTime()))
+      : getExamScheduleWindows(exam);
+
+    if (windows.length === 0) {
+      return {
+        start: exam.start_time,
+        end: exam.end_time,
+      };
+    }
+
+    const start = new Date(Math.min(...windows.map((window) => window.start.getTime())));
+    const end = new Date(Math.max(...windows.map((window) => window.end.getTime())));
+
+    return {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    };
+  };
 
   const getEffectiveStatus = (exam: Exam) => {
     if (exam.status === 'completed') return 'completed';
-    if (exam.end_time && new Date(exam.end_time) < now && exam.status !== 'draft') return 'completed';
-    if (exam.start_time && exam.end_time) {
-      const start = new Date(exam.start_time);
-      const end = new Date(exam.end_time);
-      if (now >= start && now <= end && exam.status !== 'draft') return 'active';
+
+    const windows = getExamScheduleWindows(exam);
+    if (windows.length > 0 && exam.status !== 'draft') {
+      const anyActive = windows.some((window) => now >= window.start && now <= window.end);
+      if (anyActive) return 'active';
+
+      const allEnded = windows.every((window) => now > window.end);
+      if (allEnded) return 'completed';
+
+      const hasUpcoming = windows.some((window) => now < window.start);
+      if (hasUpcoming) return 'scheduled';
     }
+
     if (exam.status === 'scheduled') return 'scheduled';
     return exam.status;
   };
@@ -954,7 +1150,7 @@ export default function AdminUjianPage() {
           </div>
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span>{formatDateTime(exam.start_time)}</span>
+            <span>{formatDateTime(getExamDisplayWindow(exam).start)}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -1149,11 +1345,16 @@ export default function AdminUjianPage() {
               <Button
                 size="sm"
                 onClick={() => {
+                  const defaultClassIds = (exam.classes && exam.classes.length > 0)
+                    ? exam.classes.map((c) => c.id)
+                    : (exam.class_id ? [exam.class_id] : []);
+
                   setShowRepublishModal(exam);
                   setRepublishData({
                     start_time: toDateTimeLocalInputValue(new Date(Date.now() + 60 * 60 * 1000).toISOString()),
                     duration: exam.duration || 60,
                     keep_class_schedules: false,
+                    class_ids: defaultClassIds,
                     reason: '',
                   });
                 }}
@@ -1643,6 +1844,21 @@ export default function AdminUjianPage() {
                   Jika ujian sudah memakai override per kelas, hanya kelas override yang berstatus publish yang terlihat oleh siswa.
                 </div>
 
+                <div className="mb-4 flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSyncClassSchedulePublish}
+                    disabled={syncingClassSchedulePublish}
+                  >
+                    {syncingClassSchedulePublish ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Sinkronkan...</>
+                    ) : (
+                      'Sinkronkan Publish Override'
+                    )}
+                  </Button>
+                </div>
+
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Daftar Kelas</p>
                   <div className="flex items-center gap-2">
@@ -1813,6 +2029,67 @@ export default function AdminUjianPage() {
                 />
               </div>
 
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Pilih Kelas Sesi Re-Publish</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRepublishData(prev => ({
+                        ...prev,
+                        class_ids: showRepublishModal.classes && showRepublishModal.classes.length > 0
+                          ? showRepublishModal.classes.map(c => c.id)
+                          : (showRepublishModal.class_id ? [showRepublishModal.class_id] : []),
+                      }))}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      Pilih semua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRepublishData(prev => ({ ...prev, class_ids: [] }))}
+                      className="text-xs text-slate-500 dark:text-slate-400 hover:underline"
+                    >
+                      Kosongkan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-40 overflow-auto space-y-2">
+                  {((showRepublishModal.classes && showRepublishModal.classes.length > 0)
+                    ? showRepublishModal.classes
+                    : (showRepublishModal.class_id
+                      ? [{
+                          id: showRepublishModal.class_id,
+                          name: showRepublishModal.class_name || classes.find(c => Number(c.value) === showRepublishModal.class_id)?.label || `Kelas ${showRepublishModal.class_id}`,
+                        }]
+                      : [])
+                  ).map((cls) => {
+                    const selected = republishData.class_ids.includes(cls.id);
+                    return (
+                      <label key={cls.id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={(e) => {
+                            setRepublishData(prev => {
+                              const next = new Set(prev.class_ids);
+                              if (e.target.checked) next.add(cls.id);
+                              else next.delete(cls.id);
+                              return { ...prev, class_ids: Array.from(next) };
+                            });
+                          }}
+                        />
+                        {cls.name}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Kelas terpilih: {republishData.class_ids.length}
+                </p>
+              </div>
+
               <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                 <input
                   type="checkbox"
@@ -1845,7 +2122,7 @@ export default function AdminUjianPage() {
               </Button>
               <Button
                 onClick={handleRepublishExam}
-                disabled={!republishData.start_time || republishingId === showRepublishModal.id}
+                disabled={!republishData.start_time || republishData.class_ids.length === 0 || republishingId === showRepublishModal.id}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white"
               >
                 {republishingId === showRepublishModal.id ? (
@@ -1906,6 +2183,23 @@ export default function AdminUjianPage() {
                     {republishHistorySessions.map((session) => {
                       const isExpanded = expandedRepublishSessions.has(session.id);
                       const summary = getSessionSnapshotSummary(session);
+                      const answerRows = getSessionAnswerRows(session);
+                      const answerQuery = (republishAnswerSearch[session.id] || '').trim().toLowerCase();
+                      const studentNameMap = getSessionStudentNameMap(session);
+                      const filteredAnswerRows = answerRows.filter((item) => {
+                        if (!answerQuery) return true;
+                        const studentName = (studentNameMap.get(item.student_id) || '').toLowerCase();
+                        const questionText = (item.question_text || '').toLowerCase();
+                        const answerText = (item.answer || '').toLowerCase();
+                        return studentName.includes(answerQuery)
+                          || String(item.student_id).includes(answerQuery)
+                          || questionText.includes(answerQuery)
+                          || answerText.includes(answerQuery);
+                      });
+                      const currentPage = republishAnswerPage[session.id] || 1;
+                      const totalPages = Math.ceil(filteredAnswerRows.length / ANSWER_ROWS_PER_PAGE);
+                      const startIdx = (currentPage - 1) * ANSWER_ROWS_PER_PAGE;
+                      const paginatedAnswerRows = filteredAnswerRows.slice(startIdx, startIdx + ANSWER_ROWS_PER_PAGE);
 
                       return (
                         <React.Fragment key={session.id}>
@@ -1944,15 +2238,26 @@ export default function AdminUjianPage() {
                               <td colSpan={7} className="px-3 pb-3">
                                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50/70 dark:bg-slate-900/40">
                                   <div className="flex items-center justify-end mb-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => exportRepublishSessionDetailCsv(session)}
-                                      disabled={!Array.isArray(session.results_snapshot) || session.results_snapshot.length === 0}
-                                    >
-                                      <Download className="w-3.5 h-3.5 mr-1.5" />
-                                      Export Detail Sesi
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => exportRepublishSessionDetailCsv(session)}
+                                        disabled={getSessionResultRows(session).length === 0}
+                                      >
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                        Export Detail Siswa
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => exportRepublishSessionAnswersCsv(session)}
+                                        disabled={getSessionAnswerRows(session).length === 0}
+                                      >
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                        Export Arsip Jawaban
+                                      </Button>
+                                    </div>
                                   </div>
 
                                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3 text-xs">
@@ -1976,7 +2281,11 @@ export default function AdminUjianPage() {
                                     </div>
                                   </div>
 
-                                  {Array.isArray(session.results_snapshot) && session.results_snapshot.length > 0 ? (
+                                  <div className="mb-3 text-xs text-slate-600 dark:text-slate-300">
+                                    Arsip jawaban tersimpan: {answerRows.length} baris
+                                  </div>
+
+                                  {getSessionResultRows(session).length > 0 ? (
                                     <div className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
                                       <table className="w-full text-xs">
                                         <thead className="bg-slate-100 dark:bg-slate-800/60">
@@ -1990,7 +2299,7 @@ export default function AdminUjianPage() {
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                          {session.results_snapshot.map((item) => (
+                                          {getSessionResultRows(session).map((item) => (
                                             <tr key={`${session.id}-${item.student_id}`}>
                                               <td className="py-1.5 px-2 text-slate-700 dark:text-slate-200">
                                                 <div className="font-medium">{item.student_name || `Siswa #${item.student_id}`}</div>
@@ -2010,6 +2319,80 @@ export default function AdminUjianPage() {
                                     </div>
                                   ) : (
                                     <div className="text-xs text-slate-500 dark:text-slate-400">Tidak ada snapshot hasil siswa di sesi ini.</div>
+                                  )}
+
+                                  {answerRows.length > 0 && (
+                                    <div className="mt-3 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
+                                      <div className="p-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60">
+                                        <input
+                                          type="text"
+                                          value={republishAnswerSearch[session.id] || ''}
+                                          onChange={(e) => setRepublishAnswerSearch((prev) => ({ ...prev, [session.id]: e.target.value }))}
+                                          placeholder="Cari nama siswa / id siswa / isi jawaban / teks soal"
+                                          className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                                        />
+                                      </div>
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-slate-100 dark:bg-slate-800/60">
+                                          <tr>
+                                            <th className="text-left py-1.5 px-2">Siswa</th>
+                                            <th className="text-left py-1.5 px-2">Soal</th>
+                                            <th className="text-left py-1.5 px-2">Jawaban</th>
+                                            <th className="text-left py-1.5 px-2">Benar</th>
+                                            <th className="text-left py-1.5 px-2">Skor</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                          {paginatedAnswerRows.map((item, idx) => (
+                                            <tr key={`${session.id}-answer-${idx}`}>
+                                              <td className="py-1.5 px-2 text-slate-700 dark:text-slate-200">
+                                                <div className="font-medium">{studentNameMap.get(item.student_id) || `Siswa #${item.student_id}`}</div>
+                                                <div className="text-slate-500 dark:text-slate-400 text-[11px]">#{item.student_id}</div>
+                                              </td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">
+                                                <div className="line-clamp-2">{item.question_text || `Soal #${item.question_id}`}</div>
+                                                <div className="text-slate-500 dark:text-slate-400">{item.question_type || '-'}</div>
+                                              </td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">
+                                                <div className="line-clamp-2">{item.answer || '-'}</div>
+                                              </td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">
+                                                {item.is_correct == null ? '-' : (item.is_correct ? 'Benar' : 'Salah')}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-slate-600 dark:text-slate-300">{item.score ?? '-'}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                      {filteredAnswerRows.length === 0 && (
+                                        <div className="px-2 py-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
+                                          Tidak ada data jawaban yang cocok dengan pencarian.
+                                        </div>
+                                      )}
+                                      {filteredAnswerRows.length > 0 && totalPages > 1 && (
+                                        <div className="px-2 py-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px]">
+                                          <span className="text-slate-500 dark:text-slate-400">
+                                            Halaman {currentPage} dari {totalPages} · Total {filteredAnswerRows.length} jawaban
+                                          </span>
+                                          <div className="flex gap-1">
+                                            <button
+                                              onClick={() => setRepublishAnswerPage((prev) => ({ ...prev, [session.id]: Math.max(1, (prev[session.id] || 1) - 1) }))}
+                                              disabled={currentPage === 1}
+                                              className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-slate-300 dark:hover:bg-slate-600 transition text-[11px]"
+                                            >
+                                              ← Sebelumnya
+                                            </button>
+                                            <button
+                                              onClick={() => setRepublishAnswerPage((prev) => ({ ...prev, [session.id]: Math.min(totalPages, (prev[session.id] || 1) + 1) }))}
+                                              disabled={currentPage === totalPages}
+                                              className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-50 hover:bg-slate-300 dark:hover:bg-slate-600 transition text-[11px]"
+                                            >
+                                              Selanjutnya →
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               </td>

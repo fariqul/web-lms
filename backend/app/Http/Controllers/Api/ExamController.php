@@ -826,6 +826,11 @@ class ExamController extends Controller
             $classIds = $request->class_ids;
             $exam->class_id = $classIds[0]; // primary class for backward compat
             $exam->classes()->sync($classIds);
+
+            // Remove stale class schedule overrides for classes no longer attached to exam.
+            ExamClassSchedule::where('exam_id', $exam->id)
+                ->whereNotIn('class_id', $classIds)
+                ->delete();
         }
 
         $exam->save();
@@ -1127,6 +1132,40 @@ class ExamController extends Controller
     }
 
     /**
+     * Sync old/unpublished class overrides to published for active schedule contexts.
+     */
+    public function syncClassSchedulePublish(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat sinkronisasi publish per kelas',
+            ], 403);
+        }
+
+        $affected = 0;
+        if (in_array($exam->status, ['scheduled', 'active'], true)) {
+            $affected = ExamClassSchedule::where('exam_id', $exam->id)
+                ->where('is_published', false)
+                ->update(['is_published' => true]);
+        }
+
+        $this->forgetExamShowCache($exam->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => $affected > 0
+                ? "Sinkronisasi selesai. {$affected} override kelas dipublish."
+                : 'Tidak ada override kelas yang perlu disinkronkan.',
+            'data' => [
+                'affected_count' => $affected,
+                'exam_status' => $exam->status,
+            ],
+        ]);
+    }
+
+    /**
      * Delete schedule override for one class (fallback to exam default schedule).
      */
     public function deleteClassSchedule(Request $request, Exam $exam, int $classId)
@@ -1244,11 +1283,25 @@ class ExamController extends Controller
             ], 422);
         }
 
-        if ($exam->classSchedules()->exists()) {
+        $attachedClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($attachedClassIds)) {
+            $attachedClassIds = [$exam->class_id];
+        }
+
+        $hasMultiClass = count(array_unique($attachedClassIds)) > 1;
+
+        if ($hasMultiClass && $exam->classSchedules()->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian ini memakai override per kelas. Publish dari menu Jadwal Per Kelas.',
             ], 422);
+        }
+
+        // Single-class: global publish should also publish existing class override
+        // so the exam does not become hidden for students.
+        if (!$hasMultiClass) {
+            ExamClassSchedule::where('exam_id', $exam->id)
+                ->update(['is_published' => true]);
         }
 
         // Only allow publishing from draft status
@@ -1318,8 +1371,29 @@ class ExamController extends Controller
             'duration_minutes' => 'nullable|integer|min:1|max:240',
             'end_time' => 'nullable|date|after:start_time',
             'keep_class_schedules' => 'nullable|boolean',
+            'class_ids' => 'nullable|array|min:1',
+            'class_ids.*' => 'exists:classes,id',
             'reason' => 'nullable|string|max:500',
         ]);
+
+        $examClassIds = $exam->classes()->pluck('classes.id')->map(fn($id) => (int) $id)->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [(int) $exam->class_id];
+        }
+
+        $hasClassSelection = $request->filled('class_ids');
+        $targetClassIds = $hasClassSelection
+            ? collect($request->class_ids)->map(fn($id) => (int) $id)->filter(fn($id) => $id > 0)->unique()->values()->all()
+            : $examClassIds;
+
+        $invalidClassIds = array_values(array_diff($targetClassIds, $examClassIds));
+        if (!empty($invalidClassIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sebagian kelas tidak terdaftar pada ujian ini',
+                'invalid_class_ids' => $invalidClassIds,
+            ], 422);
+        }
 
         $startTime = Carbon::parse($request->start_time);
         $duration = (int) ($request->duration_minutes ?? $exam->duration ?? 60);
@@ -1358,8 +1432,29 @@ class ExamController extends Controller
             ->values()
             ->all();
 
+        $answersSnapshot = Answer::with(['question:id,question_text,type,points'])
+            ->where('exam_id', $exam->id)
+            ->get()
+            ->map(function ($answer) {
+                return [
+                    'student_id' => $answer->student_id,
+                    'question_id' => $answer->question_id,
+                    'question_text' => $answer->question?->question_text,
+                    'question_type' => $answer->question?->type,
+                    'question_points' => $answer->question?->points,
+                    'answer' => $answer->answer,
+                    'is_correct' => $answer->is_correct,
+                    'score' => $answer->score,
+                    'feedback' => $answer->feedback,
+                    'submitted_at' => $answer->submitted_at,
+                    'graded_at' => $answer->graded_at,
+                ];
+            })
+            ->values()
+            ->all();
+
         $archive = null;
-        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $request, $sessionNo, $oldStartTime, $oldEndTime, $resultsSnapshot, &$archive) {
+        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $request, $sessionNo, $oldStartTime, $oldEndTime, $resultsSnapshot, $answersSnapshot, $targetClassIds, $hasClassSelection, &$archive) {
             $resultCount = ExamResult::where('exam_id', $exam->id)->count();
             $answerRows = Answer::where('exam_id', $exam->id)->get(['id', 'work_photo']);
             $answerCount = $answerRows->count();
@@ -1386,6 +1481,15 @@ class ExamController extends Controller
 
             if (!$keepClassSchedules) {
                 ExamClassSchedule::where('exam_id', $exam->id)->delete();
+            } elseif ($hasClassSelection) {
+                ExamClassSchedule::where('exam_id', $exam->id)
+                    ->whereNotIn('class_id', $targetClassIds)
+                    ->delete();
+            }
+
+            if ($hasClassSelection) {
+                $exam->classes()->sync($targetClassIds);
+                $exam->class_id = $targetClassIds[0] ?? $exam->class_id;
             }
 
             $archive = ExamRepublishArchive::create([
@@ -1404,8 +1508,12 @@ class ExamController extends Controller
                     'violation_count' => $violationCount,
                     'snapshot_count' => $snapshotCount,
                     'class_schedule_cleared' => !$keepClassSchedules,
+                    'selected_class_ids' => $targetClassIds,
                 ],
-                'results_snapshot' => $resultsSnapshot,
+                'results_snapshot' => [
+                    'result_rows' => $resultsSnapshot,
+                    'answer_rows' => $answersSnapshot,
+                ],
                 'archived_at' => now(),
             ]);
 
@@ -1421,6 +1529,7 @@ class ExamController extends Controller
                 'violation_count' => $violationCount,
                 'snapshot_count' => $snapshotCount,
                 'class_schedule_cleared' => !$keepClassSchedules,
+                'selected_class_ids' => $targetClassIds,
             ];
         });
 
@@ -1441,6 +1550,7 @@ class ExamController extends Controller
                     'end_time' => $exam->end_time,
                     'duration' => $exam->duration,
                     'keep_class_schedules' => $keepClassSchedules,
+                    'class_ids' => $targetClassIds,
                     'reset_summary' => $resetSummary,
                 ],
             ]);
@@ -1473,6 +1583,11 @@ class ExamController extends Controller
                 'start_time' => $exam->start_time,
                 'end_time' => $exam->end_time,
                 'duration' => $exam->duration,
+                'class_ids' => $targetClassIds,
+                'archive_snapshot' => [
+                    'result_count' => count($resultsSnapshot),
+                    'answer_count' => count($answersSnapshot),
+                ],
                 'reset_summary' => $resetSummary,
             ],
         ]);
@@ -2574,6 +2689,27 @@ class ExamController extends Controller
     public function finishExam(Request $request, Exam $exam)
     {
         $user = $request->user();
+        $forceSubmit = (bool) $request->boolean('force_submit', false);
+
+        if (!$forceSubmit) {
+            $resultForTimeCheck = ExamResult::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)
+                ->where('status', 'in_progress')
+                ->first();
+
+            if ($resultForTimeCheck && $resultForTimeCheck->started_at && $exam->duration) {
+                $personalDeadline = Carbon::parse($resultForTimeCheck->started_at)->addMinutes((int) $exam->duration);
+                $manualSubmitOpensAt = (clone $personalDeadline)->subMinutes(10);
+
+                if (now()->lt($manualSubmitOpensAt)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tombol kumpulkan baru aktif 10 menit sebelum waktu ujian habis',
+                        'manual_submit_available_at' => $manualSubmitOpensAt->toISOString(),
+                    ], 422);
+                }
+            }
+        }
 
         // Use transaction with lock to prevent double-submit race condition
         $responseData = DB::transaction(function () use ($exam, $user) {
@@ -3080,6 +3216,73 @@ class ExamController extends Controller
             'students_with_ungraded' => $totalStudentsWithUngraded,
         ];
 
+        $questionStats = [];
+        $questionStatClassId = $request->filled('class_id') ? (int) $request->class_id : null;
+
+        $questionStatEntries = collect($allEntries);
+        if ($questionStatClassId) {
+            $questionStatEntries = $questionStatEntries->filter(function (array $entry) use ($questionStatClassId) {
+                $studentClassRoomId = (int) ($entry['student']['class_room']['id'] ?? 0);
+                $studentClassId = (int) ($entry['student']['class_id'] ?? 0);
+                return $studentClassRoomId === $questionStatClassId || $studentClassId === $questionStatClassId;
+            })->values();
+        }
+
+        $questionStatStudentIds = $questionStatEntries
+            ->map(fn (array $entry) => (int) ($entry['student_id'] ?? 0))
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $questionStatsParticipantCount = count($questionStatStudentIds);
+        $questionList = Question::where('exam_id', $exam->id)
+            ->orderBy('order')
+            ->orderBy('id')
+            ->get(['id', 'question_text', 'type']);
+
+        if ($questionList->isNotEmpty()) {
+            $answerCountsQuery = Answer::where('exam_id', $exam->id)
+                ->selectRaw('question_id, COUNT(*) as answered_count, SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_count, SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) as wrong_count')
+                ->groupBy('question_id');
+
+            if (!empty($questionStatStudentIds)) {
+                $answerCountsQuery->whereIn('student_id', $questionStatStudentIds);
+            } elseif ($questionStatClassId) {
+                $answerCountsQuery->whereRaw('1 = 0');
+            }
+
+            $answerCounts = $answerCountsQuery->get()->keyBy('question_id');
+
+            $totalParticipants = $questionStatsParticipantCount;
+
+            foreach ($questionList as $index => $question) {
+                $counts = $answerCounts->get($question->id);
+                $answeredCount = (int) ($counts->answered_count ?? 0);
+                $correctCount = (int) ($counts->correct_count ?? 0);
+                $wrongCount = (int) ($counts->wrong_count ?? 0);
+                $unansweredCount = max(0, $totalParticipants - $answeredCount);
+                $correctPercentage = $totalParticipants > 0 ? round(($correctCount / $totalParticipants) * 100, 1) : 0.0;
+                $wrongPercentage = $totalParticipants > 0 ? round(($wrongCount / $totalParticipants) * 100, 1) : 0.0;
+                $unansweredPercentage = $totalParticipants > 0 ? round(($unansweredCount / $totalParticipants) * 100, 1) : 0.0;
+
+                $questionStats[] = [
+                    'question_id' => $question->id,
+                    'question_no' => $index + 1,
+                    'type' => $question->type,
+                    'question_text' => $question->question_text,
+                    'participants' => $totalParticipants,
+                    'answered_count' => $answeredCount,
+                    'correct_count' => $correctCount,
+                    'wrong_count' => $wrongCount,
+                    'unanswered_count' => $unansweredCount,
+                    'correct_percentage' => $correctPercentage,
+                    'wrong_percentage' => $wrongPercentage,
+                    'unanswered_percentage' => $unansweredPercentage,
+                ];
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -3092,6 +3295,11 @@ class ExamController extends Controller
                 ],
                 'results' => $allEntries,
                 'summary' => $summary,
+                'question_stats_scope' => [
+                    'class_id' => $questionStatClassId,
+                    'participants' => $questionStatsParticipantCount,
+                ],
+                'question_stats' => $questionStats,
             ],
         ]);
     }
@@ -3303,6 +3511,32 @@ class ExamController extends Controller
             })
             ->values();
 
+        // Determine effective monitor window.
+        // If specific class selected, use its override if exists.
+        // Otherwise, when overrides exist, use min(start)-max(end) of published overrides.
+        $effectiveStart = $exam->start_time;
+        $effectiveEnd = $exam->end_time;
+
+        if ($selectedClassId) {
+            $selectedSchedule = ExamClassSchedule::where('exam_id', $exam->id)
+                ->where('class_id', $selectedClassId)
+                ->first();
+            if ($selectedSchedule) {
+                $effectiveStart = $selectedSchedule->start_time;
+                $effectiveEnd = $selectedSchedule->end_time;
+            }
+        } else {
+            $overrideWindow = ExamClassSchedule::where('exam_id', $exam->id)
+                ->where('is_published', true)
+                ->selectRaw('MIN(start_time) as min_start, MAX(end_time) as max_end')
+                ->first();
+
+            if ($overrideWindow && $overrideWindow->min_start && $overrideWindow->max_end) {
+                $effectiveStart = $overrideWindow->min_start;
+                $effectiveEnd = $overrideWindow->max_end;
+            }
+        }
+
         $allStudents = User::where('role', 'siswa')
             ->whereIn('class_id', $targetClassIds)
             ->with('classRoom:id,name')
@@ -3418,8 +3652,8 @@ class ExamController extends Controller
                     'title' => $exam->title,
                     'duration' => $exam->duration,
                     'total_questions' => $exam->total_questions,
-                    'start_time' => $exam->start_time,
-                    'end_time' => $exam->end_time,
+                    'start_time' => $effectiveStart,
+                    'end_time' => $effectiveEnd,
                 ],
                 'classes' => $monitoringClasses,
                 'selected_class_id' => $selectedClassId,
@@ -3464,6 +3698,19 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian masih draft, tidak bisa diselesaikan',
+            ], 422);
+        }
+
+        // Jika masih ada jadwal kelas berikutnya yang dipublish, jangan selesaikan ujian global.
+        $hasFuturePublishedClassSchedules = ExamClassSchedule::where('exam_id', $exam->id)
+            ->where('is_published', true)
+            ->where('start_time', '>', now())
+            ->exists();
+
+        if ($hasFuturePublishedClassSchedules) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Masih ada jadwal kelas berikutnya. Ujian tidak bisa diselesaikan global agar kelas selanjutnya tetap terjadwal.',
             ], 422);
         }
 

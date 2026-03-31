@@ -472,6 +472,7 @@ export const examAPI = {
       start_time: string;
       duration_minutes: number;
       keep_class_schedules?: boolean;
+      class_ids?: number[];
       reason?: string;
     }
   ) => api.post(`/exams/${examId}/republish`, data),

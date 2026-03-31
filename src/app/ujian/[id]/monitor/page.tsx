@@ -178,48 +178,22 @@ export default function MonitorUjianPage() {
     examSocket.onStudentJoined((data: unknown) => {
       const d = data as { student_name?: string; student_id?: number };
       addEvent('join', `${d.student_name || 'Siswa'} mulai mengerjakan`);
-      // Update summary
-      setSummary(prev => prev ? {
-        ...prev,
-        in_progress: prev.in_progress + 1,
-        not_started: Math.max(0, prev.not_started - 1),
-      } : prev);
-      // Update participant status
-      setParticipants(prev => prev.map(p =>
-        p.student.id === d.student_id ? { ...p, status: 'in_progress' as const, started_at: new Date().toISOString() } : p
-      ));
-      setLastRefresh(new Date());
+      // Re-fetch to keep summary/participants accurate when class filter is active.
+      fetchData();
     });
 
     // Student submitted exam
     examSocket.onStudentSubmitted((data: unknown) => {
       const d = data as { student_name?: string; student_id?: number; score?: number };
       addEvent('submit', `${d.student_name || 'Siswa'} selesai (nilai: ${d.score ?? '-'})`);
-      setSummary(prev => prev ? {
-        ...prev,
-        completed: prev.completed + 1,
-        in_progress: Math.max(0, prev.in_progress - 1),
-      } : prev);
-      setParticipants(prev => prev.map(p =>
-        p.student.id === d.student_id ? {
-          ...p,
-          status: 'completed' as const,
-          finished_at: new Date().toISOString(),
-          score: d.score ?? p.score,
-        } : p
-      ));
-      setLastRefresh(new Date());
+      fetchData();
     });
 
     // Violation reported
     examSocket.onViolationReported((data: unknown) => {
       const d = data as { student_name?: string; student_id?: number; type?: string; violation_count?: number };
       addEvent('violation', `⚠️ ${d.student_name || 'Siswa'}: ${d.type || 'pelanggaran'} (${d.violation_count}x)`);
-      setSummary(prev => prev ? { ...prev, total_violations: prev.total_violations + 1 } : prev);
-      setParticipants(prev => prev.map(p =>
-        p.student.id === d.student_id ? { ...p, violation_count: d.violation_count ?? p.violation_count + 1 } : p
-      ));
-      setLastRefresh(new Date());
+      fetchData();
     });
 
     // Answer progress
@@ -297,7 +271,7 @@ export default function MonitorUjianPage() {
       examSocket.off(`exam.${examId}.updated`);
       examSocket.off(`exam.${examId}.proctor-alert`);
     };
-  }, [examSocket.isConnected, examId]);
+  }, [examSocket.isConnected, examId, fetchData]);
 
   const filteredParticipants = participants.filter((p) => {
     if (filter === 'all') return true;
