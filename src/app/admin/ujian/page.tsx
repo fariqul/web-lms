@@ -33,6 +33,7 @@ interface Exam {
   duration: number;
   status: 'draft' | 'scheduled' | 'active' | 'completed';
   total_questions: number;
+  results_count?: number;
   is_locked?: boolean;
   locked_by?: number;
   locked_at?: string;
@@ -758,6 +759,14 @@ export default function AdminUjianPage() {
                   Monitor
                 </Button>
               </Link>
+              {(exam.results_count ?? 0) > 0 && (
+                <Link href={`/ujian/${exam.id}/results`}>
+                  <Button size="sm" variant="outline">
+                    <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
+                    Lihat Hasil ({exam.results_count})
+                  </Button>
+                </Link>
+              )}
             </>
           )}
 

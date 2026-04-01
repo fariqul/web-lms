@@ -456,7 +456,8 @@ class ExamController extends Controller
                 $q->whereNull('type')
                     ->orWhere('type', '!=', 'quiz');
             })
-            ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time,is_published']);
+            ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time,is_published'])
+            ->withCount('results');
 
         if ($user->role === 'guru') {
             $query->where('teacher_id', $user->id);
