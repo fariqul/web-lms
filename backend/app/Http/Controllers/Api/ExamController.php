@@ -2722,6 +2722,13 @@ class ExamController extends Controller
         $user = $request->user();
         $forceSubmit = (bool) $request->boolean('force_submit', false);
 
+        $request->validate([
+            'answers' => 'nullable|array',
+            'answers.*' => 'nullable|string',
+            'time_spent' => 'nullable|integer|min:0',
+            'force_submit' => 'nullable|boolean',
+        ]);
+
         if (!$forceSubmit) {
             $resultForTimeCheck = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
@@ -2743,7 +2750,7 @@ class ExamController extends Controller
         }
 
         // Use transaction with lock to prevent double-submit race condition
-        $responseData = DB::transaction(function () use ($exam, $user) {
+        $responseData = DB::transaction(function () use ($exam, $user, $request) {
             $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
                 ->where('status', 'in_progress')
@@ -2778,6 +2785,103 @@ class ExamController extends Controller
                 }
 
                 return ['error' => true, 'message' => 'Sesi ujian tidak ditemukan'];
+            }
+
+            // Persist last known client answers before final scoring.
+            // This prevents score=0 when force/manual submit happens while autosave is lagging.
+            $submittedAnswers = $request->input('answers', []);
+            if (is_array($submittedAnswers) && !empty($submittedAnswers)) {
+                $questionIds = array_keys($submittedAnswers);
+                $questions = Question::where('exam_id', $exam->id)
+                    ->whereIn('id', $questionIds)
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($submittedAnswers as $questionId => $answerText) {
+                    $questionId = (int) $questionId;
+                    if ($questionId <= 0) {
+                        continue;
+                    }
+
+                    if (!is_string($answerText)) {
+                        continue;
+                    }
+
+                    $answerText = trim($answerText);
+                    if ($answerText === '') {
+                        continue;
+                    }
+
+                    $question = $questions->get($questionId);
+                    if (!$question) {
+                        continue;
+                    }
+
+                    $isCorrect = null;
+                    $answerScore = 0;
+                    $essayScore = null;
+
+                    if ($question->type === 'multiple_choice') {
+                        $isCorrect = strtolower($answerText) === strtolower(trim((string) $question->correct_answer));
+                        $answerScore = $isCorrect ? (int) $question->points : 0;
+                    } elseif ($question->type === 'multiple_answer') {
+                        $studentAnswers = json_decode($answerText, true);
+                        $correctAnswers = json_decode((string) $question->correct_answer, true);
+
+                        if (is_array($studentAnswers) && is_array($correctAnswers)) {
+                            $studentNorm = array_map(fn($a) => strtolower(trim((string) $a)), $studentAnswers);
+                            $correctNorm = array_map(fn($a) => strtolower(trim((string) $a)), $correctAnswers);
+                            sort($studentNorm);
+                            sort($correctNorm);
+                            $isCorrect = $studentNorm === $correctNorm;
+
+                            $correctCount = count(array_intersect($studentNorm, $correctNorm));
+                            $wrongCount = count(array_diff($studentNorm, $correctNorm));
+                            $totalCorrect = count($correctNorm);
+                            if ($totalCorrect > 0) {
+                                $score = max(0, ($correctCount - $wrongCount) / $totalCorrect);
+                                $answerScore = (int) round($score * (int) $question->points);
+                            }
+                        } else {
+                            $isCorrect = false;
+                            $answerScore = 0;
+                        }
+                    } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
+                        $studentAnswer = mb_strtolower($answerText);
+                        $keywords = $question->essay_keywords;
+                        $totalKeywords = count($keywords);
+                        $matchedCount = 0;
+
+                        foreach ($keywords as $keyword) {
+                            if (mb_stripos($studentAnswer, mb_strtolower(trim((string) $keyword))) !== false) {
+                                $matchedCount++;
+                            }
+                        }
+
+                        if ($totalKeywords > 0 && $matchedCount > 0) {
+                            $essayScore = round(($matchedCount / $totalKeywords) * (int) $question->points);
+                            $essayScore = max(1, (int) $essayScore);
+                            $isCorrect = $matchedCount === $totalKeywords;
+                        } else {
+                            $essayScore = 1;
+                            $isCorrect = false;
+                        }
+                    }
+
+                    Answer::updateOrCreate(
+                        [
+                            'student_id' => $user->id,
+                            'question_id' => $question->id,
+                            'exam_id' => $exam->id,
+                        ],
+                        [
+                            'answer' => $answerText,
+                            'is_correct' => $isCorrect,
+                            'score' => $question->type === 'essay' ? $essayScore : $answerScore,
+                            'submitted_at' => now(),
+                        ]
+                    );
+                }
             }
 
             // Calculate score

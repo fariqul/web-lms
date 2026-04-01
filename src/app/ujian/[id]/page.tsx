@@ -118,10 +118,25 @@ export default function ExamTakingPage() {
     sessionStorage.removeItem(`exam_question_${examId}`);
   };
 
+  const flushAnswersBeforeFinish = React.useCallback(async () => {
+    const entries = Object.entries(answers).filter(([, value]) => typeof value === 'string' && value.trim() !== '');
+    if (entries.length === 0) return;
+
+    await Promise.allSettled(
+      entries.map(([questionId, value]) =>
+        api.post(`/exams/${examId}/answer`, {
+          question_id: Number(questionId),
+          answer: value,
+        })
+      )
+    );
+  }, [answers, examId]);
+
   // Force submit handler
   const handleForceSubmit = async () => {
     setSubmitting(true);
     try {
+      await flushAnswersBeforeFinish();
       await api.post(`/exams/${examId}/finish`, {
         answers,
         time_spent: (exam?.duration || 90) * 60 - timeRemaining,
@@ -654,7 +669,11 @@ export default function ExamTakingPage() {
   const autoSubmitExam = async () => {
     setSubmitting(true);
     try {
-      await api.post(`/exams/${examId}/finish`);
+      await flushAnswersBeforeFinish();
+      await api.post(`/exams/${examId}/finish`, {
+        answers,
+        time_spent: (exam?.duration || 90) * 60 - timeRemaining,
+      });
       clearExamSession();
       toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
       // Mark as intentionally navigating away to bypass beforeunload
@@ -899,7 +918,11 @@ export default function ExamTakingPage() {
     setSubmitting(true);
     setShowSubmitConfirm(false); // Close dialog immediately
     try {
-      await api.post(`/exams/${examId}/finish`);
+      await flushAnswersBeforeFinish();
+      await api.post(`/exams/${examId}/finish`, {
+        answers,
+        time_spent: (exam?.duration || 90) * 60 - timeRemaining,
+      });
       clearExamSession();
       // Mark as intentionally navigating away to bypass beforeunload
       isNavigatingAwayRef.current = true;
