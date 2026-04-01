@@ -479,6 +479,9 @@ export const examAPI = {
 
   getRepublishHistory: (examId: number) =>
     api.get(`/exams/${examId}/republish-history`),
+
+  restoreRepublishHistory: (examId: number, sessionNo: number, targetExamId?: number) =>
+    api.post(`/exams/${examId}/republish-history/${sessionNo}/restore`, targetExamId ? { target_exam_id: targetExamId } : {}),
 };
 
 // Monitoring API

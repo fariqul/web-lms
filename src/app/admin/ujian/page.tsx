@@ -162,11 +162,13 @@ export default function AdminUjianPage() {
   const [showRepublishModal, setShowRepublishModal] = useState<Exam | null>(null);
   const [republishingId, setRepublishingId] = useState<number | null>(null);
   const [republishHistoryExam, setRepublishHistoryExam] = useState<Exam | null>(null);
+  const [republishHistorySourceExamId, setRepublishHistorySourceExamId] = useState<number | null>(null);
   const [republishHistoryLoading, setRepublishHistoryLoading] = useState(false);
   const [republishHistorySessions, setRepublishHistorySessions] = useState<RepublishHistorySession[]>([]);
   const [expandedRepublishSessions, setExpandedRepublishSessions] = useState<Set<number>>(new Set());
   const [republishAnswerSearch, setRepublishAnswerSearch] = useState<Record<number, string>>({});
   const [republishAnswerPage, setRepublishAnswerPage] = useState<Record<number, number>>({});
+  const [restoringRepublishSessionId, setRestoringRepublishSessionId] = useState<number | null>(null);
   const [allClassesForRepublish, setAllClassesForRepublish] = useState<Array<{ id: number; name: string }>>([]);
   const ANSWER_ROWS_PER_PAGE = 25;
   const [republishData, setRepublishData] = useState({
@@ -540,6 +542,7 @@ export default function AdminUjianPage() {
 
   const openRepublishHistoryModal = async (exam: Exam) => {
     setRepublishHistoryExam(exam);
+    setRepublishHistorySourceExamId(exam.id);
     setRepublishHistoryLoading(true);
     setRepublishHistorySessions([]);
     setExpandedRepublishSessions(new Set());
@@ -547,12 +550,45 @@ export default function AdminUjianPage() {
     try {
       const response = await examAPI.getRepublishHistory(exam.id);
       const sessions = response.data?.data?.sessions;
+      const sourceExamId = Number(response.data?.data?.source_exam_id || exam.id);
+      setRepublishHistorySourceExamId(sourceExamId);
       setRepublishHistorySessions(Array.isArray(sessions) ? sessions : []);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       toast.error(axiosError.response?.data?.message || 'Gagal memuat riwayat re-publish');
     } finally {
       setRepublishHistoryLoading(false);
+    }
+  };
+
+  const restoreRepublishSession = async (session: RepublishHistorySession) => {
+    if (!republishHistoryExam) return;
+
+    const confirmed = window.confirm(
+      `Restore arsip sesi #${session.session_no} untuk ujian ini?\n\nData hasil/jawaban aktif saat ini bisa tertimpa oleh data arsip.`
+    );
+
+    if (!confirmed) return;
+
+    setRestoringRepublishSessionId(session.id);
+    try {
+      const restoreSourceExamId = republishHistorySourceExamId || republishHistoryExam.id;
+      const response = await examAPI.restoreRepublishHistory(restoreSourceExamId, session.session_no, republishHistoryExam.id);
+      const restoredResult = response.data?.data?.result_restored ?? 0;
+      const restoredAnswer = response.data?.data?.answer_restored ?? 0;
+      const skippedAnswer = response.data?.data?.answer_skipped ?? 0;
+
+      toast.success(
+        `${response.data?.message || 'Restore selesai'} Result: ${restoredResult}, Jawaban: ${restoredAnswer}, Skip: ${skippedAnswer}`
+      );
+
+      fetchData();
+      await openRepublishHistoryModal(republishHistoryExam);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal restore arsip sesi');
+    } finally {
+      setRestoringRepublishSessionId(null);
     }
   };
 
@@ -1384,12 +1420,13 @@ export default function AdminUjianPage() {
                   Lihat Hasil
                 </Button>
               </Link>
-              <Button size="sm" variant="outline" onClick={() => openRepublishHistoryModal(exam)}>
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                Riwayat Re-Publish
-              </Button>
             </>
           )}
+
+          <Button size="sm" variant="outline" onClick={() => openRepublishHistoryModal(exam)}>
+            <Eye className="w-3.5 h-3.5 mr-1.5" />
+            Riwayat Re-Publish
+          </Button>
 
           {/* View/Edit questions for all statuses */}
           <Link href={`/ujian/${exam.id}/edit`}>
@@ -2236,9 +2273,24 @@ export default function AdminUjianPage() {
                               <p className="line-clamp-2">{session.reason?.trim() ? session.reason : '-'}</p>
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <Button size="sm" variant="outline" onClick={() => toggleRepublishSessionExpanded(session.id)}>
-                                {isExpanded ? 'Sembunyikan' : 'Lihat Detail'}
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => restoreRepublishSession(session)}
+                                  disabled={restoringRepublishSessionId === session.id}
+                                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+                                >
+                                  {restoringRepublishSessionId === session.id ? (
+                                    <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Restore...</>
+                                  ) : (
+                                    <><RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Restore</>
+                                  )}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => toggleRepublishSessionExpanded(session.id)}>
+                                  {isExpanded ? 'Sembunyikan' : 'Lihat Detail'}
+                                </Button>
+                              </div>
                             </td>
                           </tr>
 
