@@ -1434,59 +1434,13 @@ class ExamController extends Controller
 
         $keepClassSchedules = (bool) $request->boolean('keep_class_schedules', false);
 
-        $oldStartTime = $exam->start_time ? Carbon::parse($exam->start_time) : null;
-        $oldEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
+        $sessionNo = Exam::query()
+            ->where('teacher_id', $exam->teacher_id)
+            ->where('title', 'like', $exam->title . ' - Sesi Ulang %')
+            ->count() + 1;
 
-        $sessionNo = ((int) ExamRepublishArchive::where('exam_id', $exam->id)->max('session_no')) + 1;
-
-        $resultsSnapshot = ExamResult::with(['student:id,name,nisn,class_id', 'student.classRoom:id,name'])
-            ->where('exam_id', $exam->id)
-            ->get()
-            ->map(function ($result) {
-                return [
-                    'student_id' => $result->student_id,
-                    'student_name' => $result->student?->name,
-                    'student_nisn' => $result->student?->nisn,
-                    'class_id' => $result->student?->class_id,
-                    'class_name' => $result->student?->classRoom?->name,
-                    'status' => $result->status,
-                    'total_score' => $result->total_score,
-                    'max_score' => $result->max_score,
-                    'percentage' => $result->percentage,
-                    'violation_count' => $result->violation_count,
-                    'total_answered' => $result->total_answered,
-                    'started_at' => $result->started_at,
-                    'submitted_at' => $result->submitted_at,
-                    'finished_at' => $result->finished_at,
-                ];
-            })
-            ->values()
-            ->all();
-
-        $answersSnapshot = Answer::with(['question:id,question_text,type,points'])
-            ->where('exam_id', $exam->id)
-            ->get()
-            ->map(function ($answer) {
-                return [
-                    'student_id' => $answer->student_id,
-                    'question_id' => $answer->question_id,
-                    'question_text' => $answer->question?->question_text,
-                    'question_type' => $answer->question?->type,
-                    'question_points' => $answer->question?->points,
-                    'answer' => $answer->answer,
-                    'is_correct' => $answer->is_correct,
-                    'score' => $answer->score,
-                    'feedback' => $answer->feedback,
-                    'submitted_at' => $answer->submitted_at,
-                    'graded_at' => $answer->graded_at,
-                ];
-            })
-            ->values()
-            ->all();
-
-        $archive = null;
         $newExam = null;
-        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $request, $sessionNo, $oldStartTime, $oldEndTime, $resultsSnapshot, $answersSnapshot, $targetClassIds, &$archive, &$newExam) {
+        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $sessionNo, $targetClassIds, &$newExam) {
             $resultCount = ExamResult::where('exam_id', $exam->id)->count();
             $answerCount = Answer::where('exam_id', $exam->id)->count();
             $violationCount = Violation::where('exam_id', $exam->id)->count();
@@ -1559,32 +1513,6 @@ class ExamController extends Controller
                 }
             }
 
-            $archive = ExamRepublishArchive::create([
-                'exam_id' => $exam->id,
-                'session_no' => $sessionNo,
-                'republished_by' => $request->user()?->id,
-                'reason' => $request->reason,
-                'keep_class_schedules' => $keepClassSchedules,
-                'old_start_time' => $oldStartTime,
-                'old_end_time' => $oldEndTime,
-                'new_start_time' => $startTime,
-                'new_end_time' => $endTime,
-                'reset_summary' => [
-                    'mode' => 'clone',
-                    'result_count' => $resultCount,
-                    'answer_count' => $answerCount,
-                    'violation_count' => $violationCount,
-                    'snapshot_count' => $snapshotCount,
-                    'selected_class_ids' => $targetClassIds,
-                    'cloned_exam_id' => $newExam->id,
-                ],
-                'results_snapshot' => [
-                    'result_rows' => $resultsSnapshot,
-                    'answer_rows' => $answersSnapshot,
-                ],
-                'archived_at' => now(),
-            ]);
-
             return [
                 'mode' => 'clone',
                 'result_count' => $resultCount,
@@ -1648,17 +1576,12 @@ class ExamController extends Controller
                 'exam_id' => $newExam?->id,
                 'source_exam_id' => $exam->id,
                 'new_exam_id' => $newExam?->id,
-                'archive_id' => $archive?->id,
                 'session_no' => $sessionNo,
                 'status' => 'scheduled',
                 'start_time' => $newExam?->start_time,
                 'end_time' => $newExam?->end_time,
                 'duration' => $newExam?->duration,
                 'class_ids' => $targetClassIds,
-                'archive_snapshot' => [
-                    'result_count' => count($resultsSnapshot),
-                    'answer_count' => count($answersSnapshot),
-                ],
                 'reset_summary' => $resetSummary,
             ],
         ]);
@@ -1915,6 +1838,56 @@ class ExamController extends Controller
                 'answer_skipped' => $skippedAnswers,
             ],
         ]);
+    }
+
+    /**
+     * One-click restore dari arsip lama (mode republish lama) ke ujian aktif.
+     * Endpoint ini otomatis memilih sesi arsip terbaru yang tersedia.
+     */
+    public function restoreLatestLegacyResults(Request $request, Exam $exam)
+    {
+        $sourceExamId = (int) $exam->id;
+
+        $latestArchive = ExamRepublishArchive::query()
+            ->where('exam_id', $sourceExamId)
+            ->orderByDesc('session_no')
+            ->first();
+
+        if (!$latestArchive) {
+            $sourceArchive = ExamRepublishArchive::query()
+                ->where('reset_summary->cloned_exam_id', $exam->id)
+                ->orderByDesc('session_no')
+                ->first();
+
+            if ($sourceArchive) {
+                $sourceExamId = (int) $sourceArchive->exam_id;
+                $latestArchive = ExamRepublishArchive::query()
+                    ->where('exam_id', $sourceExamId)
+                    ->orderByDesc('session_no')
+                    ->first();
+            }
+        }
+
+        if (!$latestArchive) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada arsip legacy yang bisa direstore untuk ujian ini.',
+            ], 404);
+        }
+
+        $sourceExam = Exam::find($sourceExamId);
+        if (!$sourceExam) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian sumber arsip tidak ditemukan.',
+            ], 404);
+        }
+
+        if (!$request->filled('target_exam_id')) {
+            $request->merge(['target_exam_id' => $exam->id]);
+        }
+
+        return $this->restoreRepublishHistory($request, $sourceExam, (int) $latestArchive->session_no);
     }
 
     /**

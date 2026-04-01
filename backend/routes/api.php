@@ -96,8 +96,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Exam Publishing & Monitoring (admin only)
         Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
         Route::post('/exams/{exam}/republish', [ExamController::class, 'republish']);
-        Route::get('/exams/{exam}/republish-history', [ExamController::class, 'republishHistory']);
-        Route::post('/exams/{exam}/republish-history/{sessionNo}/restore', [ExamController::class, 'restoreRepublishHistory']);
+        Route::post('/exams/{exam}/restore-legacy-results', [ExamController::class, 'restoreLatestLegacyResults']);
         Route::post('/exams/{exam}/unpublish', [ExamController::class, 'unpublish']);
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
         Route::get('/exams/{exam}/class-schedules', [ExamController::class, 'classSchedules']);

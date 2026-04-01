@@ -477,11 +477,8 @@ export const examAPI = {
     }
   ) => api.post(`/exams/${examId}/republish`, data),
 
-  getRepublishHistory: (examId: number) =>
-    api.get(`/exams/${examId}/republish-history`),
-
-  restoreRepublishHistory: (examId: number, sessionNo: number, targetExamId?: number) =>
-    api.post(`/exams/${examId}/republish-history/${sessionNo}/restore`, targetExamId ? { target_exam_id: targetExamId } : {}),
+  restoreLegacyResults: (examId: number, targetExamId?: number) =>
+    api.post(`/exams/${examId}/restore-legacy-results`, targetExamId ? { target_exam_id: targetExamId } : {}),
 };
 
 // Monitoring API
