@@ -102,6 +102,8 @@ export default function AdminUjianPage() {
   const [showRepublishModal, setShowRepublishModal] = useState<Exam | null>(null);
   const [republishingId, setRepublishingId] = useState<number | null>(null);
   const [restoringLegacyExamId, setRestoringLegacyExamId] = useState<number | null>(null);
+  const [restoreByExamId, setRestoreByExamId] = useState('');
+  const [restoringByExamId, setRestoringByExamId] = useState(false);
   const [allClassesForRepublish, setAllClassesForRepublish] = useState<Array<{ id: number; name: string }>>([]);
   const [republishData, setRepublishData] = useState({
     start_time: '',
@@ -492,6 +494,38 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal mengembalikan data lama');
     } finally {
       setRestoringLegacyExamId(null);
+    }
+  };
+
+  const handleRestoreLegacyResultsById = async () => {
+    const examId = Number(restoreByExamId);
+    if (!Number.isInteger(examId) || examId <= 0) {
+      toast.warning('Masukkan exam_id yang valid (angka > 0)');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Restore data lama untuk exam_id=${examId}?\n\nProses ini akan mencoba memulihkan hasil/jawaban dari arsip legacy terbaru.`
+    );
+    if (!confirmed) return;
+
+    setRestoringByExamId(true);
+    try {
+      const response = await examAPI.restoreLegacyResults(examId, examId);
+      const restoredResult = response.data?.data?.result_restored ?? 0;
+      const restoredAnswer = response.data?.data?.answer_restored ?? 0;
+      const skippedAnswer = response.data?.data?.answer_skipped ?? 0;
+
+      toast.success(
+        `${response.data?.message || 'Restore selesai'} Result: ${restoredResult}, Jawaban: ${restoredAnswer}, Skip: ${skippedAnswer}`
+      );
+
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mengembalikan data lama via exam_id');
+    } finally {
+      setRestoringByExamId(false);
     }
   };
 
@@ -1182,6 +1216,34 @@ export default function AdminUjianPage() {
             </select>
           </div>
         </div>
+
+        <Card>
+          <div className="p-4 flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Restore Data Lama via Exam ID</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pakai ini kalau card ujian tidak muncul di list admin.</p>
+              <input
+                type="number"
+                min={1}
+                value={restoreByExamId}
+                onChange={(e) => setRestoreByExamId(e.target.value)}
+                placeholder="Contoh: 221"
+                className="mt-2 w-full sm:max-w-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <Button
+              onClick={handleRestoreLegacyResultsById}
+              disabled={restoringByExamId}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {restoringByExamId ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengembalikan...</>
+              ) : (
+                <><RotateCcw className="w-4 h-4 mr-2" /> Restore Sekarang</>
+              )}
+            </Button>
+          </div>
+        </Card>
 
         {/* Bulk Actions */}
         {selectedExams.size > 0 && (

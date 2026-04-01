@@ -453,7 +453,10 @@ class ExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Exam::where('type', '!=', 'quiz')
+        $query = Exam::where(function ($q) {
+                $q->whereNull('type')
+                    ->orWhere('type', '!=', 'quiz');
+            })
             ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time,is_published']);
 
         if ($user->role === 'guru') {
