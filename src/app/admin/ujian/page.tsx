@@ -57,29 +57,6 @@ interface ClassOption {
   label: string;
 }
 
-interface ClassScheduleRow {
-  class_id: number;
-  class_name: string;
-  has_override: boolean;
-  is_published: boolean;
-  schedule_id: number | null;
-  start_time: string;
-  end_time: string;
-  override_start_time: string | null;
-  override_end_time: string | null;
-}
-
-interface ClassScheduleConflict {
-  class_id: number;
-  class_name: string;
-  exam_id: number;
-  exam_title: string;
-  status: string;
-  start_time: string;
-  end_time: string;
-  has_class_override: boolean;
-}
-
 export default function AdminUjianPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -101,14 +78,10 @@ export default function AdminUjianPage() {
   const [lockingExamId, setLockingExamId] = useState<number | null>(null);
   const [showRepublishModal, setShowRepublishModal] = useState<Exam | null>(null);
   const [republishingId, setRepublishingId] = useState<number | null>(null);
-  const [restoringLegacyExamId, setRestoringLegacyExamId] = useState<number | null>(null);
-  const [restoreByExamId, setRestoreByExamId] = useState('');
-  const [restoringByExamId, setRestoringByExamId] = useState(false);
   const [allClassesForRepublish, setAllClassesForRepublish] = useState<Array<{ id: number; name: string }>>([]);
   const [republishData, setRepublishData] = useState({
     start_time: '',
     duration: 60,
-    keep_class_schedules: false,
     class_ids: [] as number[],
     reason: '',
   });
@@ -122,18 +95,6 @@ export default function AdminUjianPage() {
   const [editingSchedule, setEditingSchedule] = useState<Exam | null>(null);
   const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60, class_id: '' });
   const [savingSchedule, setSavingSchedule] = useState(false);
-
-  // Per-class schedule management (admin)
-  const [classScheduleExam, setClassScheduleExam] = useState<Exam | null>(null);
-  const [classScheduleRows, setClassScheduleRows] = useState<ClassScheduleRow[]>([]);
-  const [loadingClassSchedules, setLoadingClassSchedules] = useState(false);
-  const [savingClassSchedules, setSavingClassSchedules] = useState(false);
-  const [deletingClassScheduleClassId, setDeletingClassScheduleClassId] = useState<number | null>(null);
-  const [publishingClassScheduleClassId, setPublishingClassScheduleClassId] = useState<number | null>(null);
-  const [syncingClassSchedulePublish, setSyncingClassSchedulePublish] = useState(false);
-  const [selectedScheduleClassIds, setSelectedScheduleClassIds] = useState<Set<number>>(new Set());
-  const [classScheduleForm, setClassScheduleForm] = useState({ start_time: '', duration: 60, is_published: false });
-  const [classScheduleConflicts, setClassScheduleConflicts] = useState<ClassScheduleConflict[]>([]);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -332,7 +293,7 @@ export default function AdminUjianPage() {
 
   const handleSaveSchedule = async () => {
     if (!editingSchedule || !scheduleData.start_time) return;
-    if (editingSchedule.status === 'draft' && !scheduleData.class_id) {
+    if (!scheduleData.class_id) {
       toast.warning('Pilih kelas terlebih dahulu');
       return;
     }
@@ -354,11 +315,9 @@ export default function AdminUjianPage() {
         duration_minutes: scheduleData.duration,
       };
 
-      if (editingSchedule.status === 'draft' && scheduleData.class_id) {
-        const selectedClassId = Number(scheduleData.class_id);
-        payload.class_id = selectedClassId;
-        payload.class_ids = [selectedClassId];
-      }
+      const selectedClassId = Number(scheduleData.class_id);
+      payload.class_id = selectedClassId;
+      payload.class_ids = [selectedClassId];
 
       await api.put(`/exams/${editingSchedule.id}`, {
         ...payload,
@@ -376,7 +335,7 @@ export default function AdminUjianPage() {
 
   const handleClearSchedule = async () => {
     if (!editingSchedule) return;
-    if (editingSchedule.status === 'draft' && !scheduleData.class_id) {
+    if (!scheduleData.class_id) {
       toast.warning('Pilih kelas terlebih dahulu');
       return;
     }
@@ -398,11 +357,9 @@ export default function AdminUjianPage() {
         duration_minutes: duration,
       };
 
-      if (editingSchedule.status === 'draft' && scheduleData.class_id) {
-        const selectedClassId = Number(scheduleData.class_id);
-        payload.class_id = selectedClassId;
-        payload.class_ids = [selectedClassId];
-      }
+      const selectedClassId = Number(scheduleData.class_id);
+      payload.class_id = selectedClassId;
+      payload.class_ids = [selectedClassId];
 
       await api.put(`/exams/${editingSchedule.id}`, {
         ...payload,
@@ -451,7 +408,6 @@ export default function AdminUjianPage() {
       const response = await examAPI.republish(showRepublishModal.id, {
         start_time: startTime.toISOString(),
         duration_minutes: republishData.duration,
-        keep_class_schedules: republishData.keep_class_schedules,
         class_ids: republishData.class_ids,
         reason: republishData.reason || undefined,
       });
@@ -469,180 +425,6 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal melakukan re-publish ujian');
     } finally {
       setRepublishingId(null);
-    }
-  };
-
-  const handleRestoreLegacyResults = async (exam: Exam) => {
-    const confirmed = window.confirm(
-      'Kembalikan data hasil lama dari arsip legacy ke ujian ini sekarang?\n\nJika tidak ada arsip lama, proses akan dibatalkan otomatis.'
-    );
-    if (!confirmed) return;
-
-    setRestoringLegacyExamId(exam.id);
-    try {
-      const response = await examAPI.restoreLegacyResults(exam.id, exam.id);
-      const restoredResult = response.data?.data?.result_restored ?? 0;
-      const restoredAnswer = response.data?.data?.answer_restored ?? 0;
-      const skippedAnswer = response.data?.data?.answer_skipped ?? 0;
-
-      toast.success(
-        `${response.data?.message || 'Restore selesai'} Result: ${restoredResult}, Jawaban: ${restoredAnswer}, Skip: ${skippedAnswer}`
-      );
-      fetchData();
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal mengembalikan data lama');
-    } finally {
-      setRestoringLegacyExamId(null);
-    }
-  };
-
-  const handleRestoreLegacyResultsById = async () => {
-    const examId = Number(restoreByExamId);
-    if (!Number.isInteger(examId) || examId <= 0) {
-      toast.warning('Masukkan exam_id yang valid (angka > 0)');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Restore data lama untuk exam_id=${examId}?\n\nProses ini akan mencoba memulihkan hasil/jawaban dari arsip legacy terbaru.`
-    );
-    if (!confirmed) return;
-
-    setRestoringByExamId(true);
-    try {
-      const response = await examAPI.restoreLegacyResults(examId, examId);
-      const restoredResult = response.data?.data?.result_restored ?? 0;
-      const restoredAnswer = response.data?.data?.answer_restored ?? 0;
-      const skippedAnswer = response.data?.data?.answer_skipped ?? 0;
-
-      toast.success(
-        `${response.data?.message || 'Restore selesai'} Result: ${restoredResult}, Jawaban: ${restoredAnswer}, Skip: ${skippedAnswer}`
-      );
-
-      fetchData();
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal mengembalikan data lama via exam_id');
-    } finally {
-      setRestoringByExamId(false);
-    }
-  };
-
-  const loadClassSchedules = async (examId: number) => {
-    setLoadingClassSchedules(true);
-    try {
-      const res = await api.get(`/exams/${examId}/class-schedules`);
-      const rows = res.data?.data?.class_schedules || [];
-      setClassScheduleRows(rows);
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal memuat jadwal per kelas');
-      setClassScheduleRows([]);
-    } finally {
-      setLoadingClassSchedules(false);
-    }
-  };
-
-  const openClassScheduleModal = async (exam: Exam) => {
-    setClassScheduleExam(exam);
-    setSelectedScheduleClassIds(new Set());
-    setClassScheduleConflicts([]);
-    setClassScheduleForm({
-      start_time: toDateTimeLocalInputValue(exam.start_time),
-      duration: exam.duration || 60,
-      is_published: exam.status === 'scheduled' || exam.status === 'active',
-    });
-    await loadClassSchedules(exam.id);
-  };
-
-  const handleApplyClassSchedules = async () => {
-    if (!classScheduleExam || !classScheduleForm.start_time) return;
-    const classIds = Array.from(selectedScheduleClassIds);
-    if (classIds.length === 0) {
-      toast.warning('Pilih minimal 1 kelas');
-      return;
-    }
-
-    setSavingClassSchedules(true);
-    try {
-      const startTime = new Date(classScheduleForm.start_time);
-      const endTime = new Date(startTime.getTime() + classScheduleForm.duration * 60 * 1000);
-
-      const response = await api.post(`/exams/${classScheduleExam.id}/class-schedules/bulk`, {
-        class_ids: classIds,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-        is_published: classScheduleForm.is_published,
-      });
-
-      const conflicts = Array.isArray(response.data?.conflicts) ? response.data.conflicts : [];
-      setClassScheduleConflicts(conflicts);
-
-      const publishText = classScheduleForm.is_published ? 'dan dipublish' : 'sebagai draft kelas (belum publish)';
-      if (conflicts.length > 0) {
-        toast.warning(`Jadwal disimpan, tapi ada ${conflicts.length} konflik dengan ujian lain.`);
-      } else {
-        toast.success(`Jadwal berhasil diterapkan ke ${classIds.length} kelas ${publishText}`);
-      }
-      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal menerapkan jadwal per kelas');
-    } finally {
-      setSavingClassSchedules(false);
-    }
-  };
-
-  const handleResetClassSchedule = async (classId: number) => {
-    if (!classScheduleExam) return;
-    setDeletingClassScheduleClassId(classId);
-    try {
-      await api.delete(`/exams/${classScheduleExam.id}/class-schedules/${classId}`);
-      toast.success('Jadwal kelas dikembalikan ke jadwal umum');
-      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal mereset jadwal kelas');
-    } finally {
-      setDeletingClassScheduleClassId(null);
-    }
-  };
-
-  const handleToggleClassSchedulePublish = async (classId: number, isPublished: boolean) => {
-    if (!classScheduleExam) return;
-    setPublishingClassScheduleClassId(classId);
-    try {
-      await api.patch(`/exams/${classScheduleExam.id}/class-schedules/${classId}/publish`, {
-        is_published: isPublished,
-      });
-      toast.success(isPublished ? 'Kelas berhasil dipublish' : 'Publish kelas dibatalkan');
-      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal mengubah publish kelas');
-    } finally {
-      setPublishingClassScheduleClassId(null);
-    }
-  };
-
-  const handleSyncClassSchedulePublish = async () => {
-    if (!classScheduleExam) return;
-    setSyncingClassSchedulePublish(true);
-    try {
-      const response = await api.post(`/exams/${classScheduleExam.id}/class-schedules/sync-publish`);
-      const affected = response.data?.data?.affected_count || 0;
-      if (affected > 0) {
-        toast.success(`${affected} kelas berhasil disinkronkan ke Published`);
-      } else {
-        toast.info(response.data?.message || 'Tidak ada data yang perlu disinkronkan');
-      }
-      await Promise.all([loadClassSchedules(classScheduleExam.id), fetchData()]);
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Gagal sinkronisasi publish kelas');
-    } finally {
-      setSyncingClassSchedulePublish(false);
     }
   };
 
@@ -794,10 +576,6 @@ export default function AdminUjianPage() {
     const status = getEffectiveStatus(exam);
     const isScheduled = status === 'scheduled';
     const isSelected = selectedExams.has(exam.id);
-    const totalAssignedClasses = (exam.classes && exam.classes.length > 0) ? exam.classes.length : 1;
-    const classOverrideCount = exam.class_schedules?.length ?? 0;
-    const publishedOverrideCount = exam.class_schedules?.filter((schedule) => schedule.is_published).length ?? 0;
-    const usePerClassPublish = totalAssignedClasses > 1 && classOverrideCount > 0;
     
     return (
       <div className={`border rounded-xl p-4 transition-colors relative ${
@@ -887,30 +665,6 @@ export default function AdminUjianPage() {
           </div>
         )}
 
-        {/* Per-class schedule override badge */}
-        {totalAssignedClasses > 1 && (
-          <button
-            type="button"
-            onClick={() => openClassScheduleModal(exam)}
-            className="w-full flex items-center justify-between mb-3 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100/80 dark:hover:bg-indigo-900/30 transition-colors text-left"
-            title="Klik untuk mengatur jadwal per kelas"
-          >
-            <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                Override jadwal: {classOverrideCount}/{totalAssignedClasses} · Published: {publishedOverrideCount}
-              </span>
-            </div>
-            {classOverrideCount > 0 ? (
-              <span className="text-xs text-indigo-600 dark:text-indigo-300">
-                {publishedOverrideCount > 0 ? `${publishedOverrideCount} kelas live` : 'Belum dipublish'}
-              </span>
-            ) : (
-              <span className="text-xs text-slate-500 dark:text-slate-400">Default</span>
-            )}
-          </button>
-        )}
-
         {/* Lock Badge */}
         {exam.is_locked && (
           <div className="flex items-center justify-between mb-3 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -941,12 +695,11 @@ export default function AdminUjianPage() {
                     setShowPublishConfirm({ id: exam.id, title: exam.title });
                   }
                 }}
-                disabled={exam.total_questions === 0 || usePerClassPublish}
-                className={usePerClassPublish ? '' : 'bg-green-600 hover:bg-green-700 text-white'}
-                variant={usePerClassPublish ? 'outline' : undefined}
+                disabled={exam.total_questions === 0}
+                className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <Send className="w-3.5 h-3.5 mr-1.5" />
-                {usePerClassPublish ? 'Publish via Per Kelas' : 'Publish'}
+                Publish
               </Button>
               <Button
                 size="sm"
@@ -968,11 +721,6 @@ export default function AdminUjianPage() {
               {exam.total_questions === 0 && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 ml-1">
                   <AlertCircle className="w-3 h-3" /> Belum ada soal
-                </span>
-              )}
-              {usePerClassPublish && (
-                <span className="text-xs text-indigo-600 dark:text-indigo-300 flex items-center gap-1 ml-1">
-                  <AlertCircle className="w-3 h-3" /> Gunakan publish di Jadwal Per Kelas
                 </span>
               )}
             </>
@@ -1013,18 +761,6 @@ export default function AdminUjianPage() {
             </>
           )}
 
-          {(status === 'draft' || status === 'scheduled') && (exam.classes?.length ?? 0) > 1 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openClassScheduleModal(exam)}
-              className="text-indigo-600 dark:text-indigo-400"
-            >
-              <Calendar className="w-3.5 h-3.5 mr-1.5" />
-              Jadwal Per Kelas
-            </Button>
-          )}
-
           {status === 'active' && (
             <>
               <Link href={`/ujian/${exam.id}/monitor`}>
@@ -1058,7 +794,6 @@ export default function AdminUjianPage() {
                   setRepublishData({
                     start_time: toDateTimeLocalInputValue(new Date(Date.now() + 60 * 60 * 1000).toISOString()),
                     duration: exam.duration || 60,
-                    keep_class_schedules: false,
                     class_ids: defaultClassIds,
                     reason: '',
                   });
@@ -1090,20 +825,6 @@ export default function AdminUjianPage() {
               </Link>
             </>
           )}
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleRestoreLegacyResults(exam)}
-            disabled={restoringLegacyExamId === exam.id}
-            className="text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-          >
-            {restoringLegacyExamId === exam.id ? (
-              <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Mengembalikan...</>
-            ) : (
-              <><RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Kembalikan Data Lama</>
-            )}
-          </Button>
 
           {/* View/Edit questions for all statuses */}
           <Link href={`/ujian/${exam.id}/edit`}>
@@ -1216,34 +937,6 @@ export default function AdminUjianPage() {
             </select>
           </div>
         </div>
-
-        <Card>
-          <div className="p-4 flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Restore Data Lama via Exam ID</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pakai ini kalau card ujian tidak muncul di list admin.</p>
-              <input
-                type="number"
-                min={1}
-                value={restoreByExamId}
-                onChange={(e) => setRestoreByExamId(e.target.value)}
-                placeholder="Contoh: 221"
-                className="mt-2 w-full sm:max-w-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
-            </div>
-            <Button
-              onClick={handleRestoreLegacyResultsById}
-              disabled={restoringByExamId}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {restoringByExamId ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengembalikan...</>
-              ) : (
-                <><RotateCcw className="w-4 h-4 mr-2" /> Restore Sekarang</>
-              )}
-            </Button>
-          </div>
-        </Card>
 
         {/* Bulk Actions */}
         {selectedExams.size > 0 && (
@@ -1455,26 +1148,24 @@ export default function AdminUjianPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{editingSchedule.title}</p>
 
             <div className="space-y-4">
-              {editingSchedule.status === 'draft' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Kelas
-                  </label>
-                  <select
-                    value={scheduleData.class_id}
-                    onChange={(e) => setScheduleData({ ...scheduleData, class_id: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Pilih Kelas</option>
-                    {classes.map((cls) => (
-                      <option key={cls.value} value={cls.value}>{cls.label}</option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Kelas ujian draft bisa diubah oleh admin sebelum dipublish.
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Kelas
+                </label>
+                <select
+                  value={scheduleData.class_id}
+                  onChange={(e) => setScheduleData({ ...scheduleData, class_id: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Pilih Kelas</option>
+                  {classes.map((cls) => (
+                    <option key={cls.value} value={cls.value}>{cls.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Admin bisa ganti kelas langsung dari menu Atur Jadwal.
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1506,248 +1197,23 @@ export default function AdminUjianPage() {
               <Button variant="outline" onClick={() => setEditingSchedule(null)} className="flex-1">
                 Batal
               </Button>
-              {editingSchedule.status === 'draft' && (
-                <Button
-                  variant="outline"
-                  onClick={handleClearSchedule}
-                  disabled={savingSchedule}
-                  className="flex-1"
-                >
-                  Batalkan Jadwal
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                onClick={handleClearSchedule}
+                disabled={savingSchedule}
+                className="flex-1"
+              >
+                Batalkan Jadwal
+              </Button>
               <Button
                 onClick={handleSaveSchedule}
-                disabled={!scheduleData.start_time || savingSchedule || (editingSchedule.status === 'draft' && !scheduleData.class_id)}
+                disabled={!scheduleData.start_time || savingSchedule || !scheduleData.class_id}
                 className="flex-1"
               >
                 {savingSchedule ? (
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
                 ) : (
                   'Simpan Jadwal'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Per-Class Schedule Modal */}
-      {classScheduleExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setClassScheduleExam(null)} />
-          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1">Atur Jadwal Per Kelas</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{classScheduleExam.title}</p>
-
-            {loadingClassSchedules ? (
-              <div className="py-10 flex items-center justify-center text-slate-500 dark:text-slate-400">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Memuat jadwal kelas...
-              </div>
-            ) : (
-              <>
-                {classScheduleConflicts.length > 0 && (
-                  <div className="mb-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3">
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
-                      Warning: ditemukan konflik jadwal dengan ujian lain
-                    </p>
-                    <ul className="space-y-1 max-h-32 overflow-auto text-xs text-amber-900 dark:text-amber-200">
-                      {classScheduleConflicts.slice(0, 10).map((conflict, idx) => (
-                        <li key={`${conflict.class_id}-${conflict.exam_id}-${idx}`}>
-                          • {conflict.class_name} bentrok dengan "{conflict.exam_title}" ({formatDateTime(conflict.start_time)} - {formatDateTime(conflict.end_time)})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Waktu Mulai (untuk kelas terpilih)
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={classScheduleForm.start_time}
-                      onChange={(e) => setClassScheduleForm(prev => ({ ...prev, start_time: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Durasi (menit)
-                    </label>
-                    <input
-                      type="number"
-                      min={10}
-                      max={240}
-                      value={classScheduleForm.duration}
-                      onChange={(e) => setClassScheduleForm(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 mb-4">
-                  <input
-                    type="checkbox"
-                    checked={classScheduleForm.is_published}
-                    onChange={(e) => setClassScheduleForm(prev => ({ ...prev, is_published: e.target.checked }))}
-                  />
-                  Publish langsung untuk kelas yang dipilih
-                </label>
-
-                <div className="mb-4 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-900/20 p-2.5 text-xs text-indigo-800 dark:text-indigo-200">
-                  Jika ujian sudah memakai override per kelas, hanya kelas override yang berstatus publish yang terlihat oleh siswa.
-                </div>
-
-                <div className="mb-4 flex justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleSyncClassSchedulePublish}
-                    disabled={syncingClassSchedulePublish}
-                  >
-                    {syncingClassSchedulePublish ? (
-                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Sinkronkan...</>
-                    ) : (
-                      'Sinkronkan Publish Override'
-                    )}
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Daftar Kelas</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedScheduleClassIds(new Set(classScheduleRows.map(r => r.class_id)))}
-                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      Pilih semua
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedScheduleClassIds(new Set())}
-                      className="text-xs text-slate-500 dark:text-slate-400 hover:underline"
-                    >
-                      Kosongkan
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-900/50">
-                      <tr>
-                        <th className="text-left py-2 px-3 w-10" />
-                        <th className="text-left py-2 px-3">Kelas</th>
-                        <th className="text-left py-2 px-3">Jadwal Efektif</th>
-                        <th className="text-left py-2 px-3">Sumber</th>
-                        <th className="text-left py-2 px-3">Publish Kelas</th>
-                        <th className="text-right py-2 px-3">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                      {classScheduleRows.map((row) => {
-                        const isSelected = selectedScheduleClassIds.has(row.class_id);
-                        return (
-                          <tr key={row.class_id} className={isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}>
-                            <td className="py-2 px-3">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  const next = new Set(selectedScheduleClassIds);
-                                  if (e.target.checked) next.add(row.class_id);
-                                  else next.delete(row.class_id);
-                                  setSelectedScheduleClassIds(next);
-                                }}
-                              />
-                            </td>
-                            <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100">{row.class_name}</td>
-                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
-                              <div>{formatDateTime(row.start_time)}</div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">s.d. {formatDateTime(row.end_time)}</div>
-                            </td>
-                            <td className="py-2 px-3">
-                              {row.has_override ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                                  Override kelas
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                                  Jadwal umum
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3">
-                              {row.has_override ? (
-                                row.is_published ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                                    Published
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                                    Draft kelas
-                                  </span>
-                                )
-                              ) : (
-                                <span className="text-xs text-slate-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-right">
-                              {row.has_override ? (
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleToggleClassSchedulePublish(row.class_id, !row.is_published)}
-                                    disabled={publishingClassScheduleClassId === row.class_id}
-                                  >
-                                    {publishingClassScheduleClassId === row.class_id
-                                      ? 'Menyimpan...'
-                                      : (row.is_published ? 'Batalkan Publish' : 'Publish')}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleResetClassSchedule(row.class_id)}
-                                    disabled={deletingClassScheduleClassId === row.class_id}
-                                  >
-                                    {deletingClassScheduleClassId === row.class_id ? 'Menghapus...' : 'Reset'}
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-slate-400">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-
-            <div className="flex gap-3 mt-5 justify-end">
-              <Button variant="outline" onClick={() => setClassScheduleExam(null)}>
-                Tutup
-              </Button>
-              <Button
-                onClick={handleApplyClassSchedules}
-                disabled={
-                  loadingClassSchedules ||
-                  savingClassSchedules ||
-                  !classScheduleForm.start_time ||
-                  selectedScheduleClassIds.size === 0
-                }
-              >
-                {savingClassSchedules ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
-                ) : (
-                  `Terapkan ke ${selectedScheduleClassIds.size} kelas`
                 )}
               </Button>
             </div>
@@ -1840,15 +1306,6 @@ export default function AdminUjianPage() {
                   Kelas terpilih: {republishData.class_ids.length}
                 </p>
               </div>
-
-              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={republishData.keep_class_schedules}
-                  onChange={(e) => setRepublishData(prev => ({ ...prev, keep_class_schedules: e.target.checked }))}
-                />
-                Pertahankan override jadwal per kelas yang sudah ada
-              </label>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Alasan (opsional)</label>

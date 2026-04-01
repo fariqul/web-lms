@@ -96,15 +96,8 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Exam Publishing & Monitoring (admin only)
         Route::post('/exams/{exam}/publish', [ExamController::class, 'publish']);
         Route::post('/exams/{exam}/republish', [ExamController::class, 'republish']);
-        Route::post('/exams/{exam}/restore-legacy-results', [ExamController::class, 'restoreLatestLegacyResults']);
         Route::post('/exams/{exam}/unpublish', [ExamController::class, 'unpublish']);
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
-        Route::get('/exams/{exam}/class-schedules', [ExamController::class, 'classSchedules']);
-        Route::post('/exams/{exam}/class-schedules', [ExamController::class, 'upsertClassSchedule']);
-        Route::post('/exams/{exam}/class-schedules/bulk', [ExamController::class, 'upsertClassScheduleBulk']);
-        Route::post('/exams/{exam}/class-schedules/sync-publish', [ExamController::class, 'syncClassSchedulePublish']);
-        Route::patch('/exams/{exam}/class-schedules/{classId}/publish', [ExamController::class, 'setClassSchedulePublishStatus']);
-        Route::delete('/exams/{exam}/class-schedules/{classId}', [ExamController::class, 'deleteClassSchedule']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
         
         // Admin exam lock/unlock

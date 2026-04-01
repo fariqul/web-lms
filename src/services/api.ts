@@ -476,9 +476,6 @@ export const examAPI = {
       reason?: string;
     }
   ) => api.post(`/exams/${examId}/republish`, data),
-
-  restoreLegacyResults: (examId: number, targetExamId?: number) =>
-    api.post(`/exams/${examId}/restore-legacy-results`, targetExamId ? { target_exam_id: targetExamId } : {}),
 };
 
 // Monitoring API
