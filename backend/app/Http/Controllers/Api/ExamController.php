@@ -1485,42 +1485,78 @@ class ExamController extends Controller
             ->all();
 
         $archive = null;
-        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $request, $sessionNo, $oldStartTime, $oldEndTime, $resultsSnapshot, $answersSnapshot, $targetClassIds, $hasClassSelection, &$archive) {
+        $newExam = null;
+        $resetSummary = DB::transaction(function () use ($exam, $startTime, $endTime, $duration, $keepClassSchedules, $request, $sessionNo, $oldStartTime, $oldEndTime, $resultsSnapshot, $answersSnapshot, $targetClassIds, &$archive, &$newExam) {
             $resultCount = ExamResult::where('exam_id', $exam->id)->count();
-            $answerRows = Answer::where('exam_id', $exam->id)->get(['id', 'work_photo']);
-            $answerCount = $answerRows->count();
+            $answerCount = Answer::where('exam_id', $exam->id)->count();
             $violationCount = Violation::where('exam_id', $exam->id)->count();
+            $snapshotCount = MonitoringSnapshot::where('exam_id', $exam->id)->count();
 
-            $snapshotCount = 0;
-            MonitoringSnapshot::where('exam_id', $exam->id)->each(function ($snap) use (&$snapshotCount) {
-                if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
-                    Storage::disk('public')->delete($snap->image_path);
-                }
-                $snap->delete();
-                $snapshotCount++;
-            });
+            $newExam = Exam::create([
+                'type' => $exam->type,
+                'class_id' => $targetClassIds[0] ?? $exam->class_id,
+                'teacher_id' => $exam->teacher_id,
+                'title' => $exam->title . ' - Sesi Ulang ' . $sessionNo,
+                'description' => $exam->description,
+                'subject' => $exam->subject,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'duration' => $duration,
+                'total_questions' => 0,
+                'status' => 'scheduled',
+                'is_locked' => false,
+                'locked_by' => null,
+                'locked_at' => null,
+                'max_violations' => $exam->max_violations,
+                'shuffle_questions' => $exam->shuffle_questions,
+                'shuffle_options' => $exam->shuffle_options,
+                'show_result' => $exam->show_result,
+                'passing_score' => $exam->passing_score,
+                'seb_required' => $exam->seb_required,
+                'seb_config' => $exam->seb_config,
+            ]);
 
-            foreach ($answerRows as $answer) {
-                if ($answer->work_photo && Storage::disk('public')->exists($answer->work_photo)) {
-                    Storage::disk('public')->delete($answer->work_photo);
-                }
+            $newExam->classes()->sync($targetClassIds);
+
+            $sourceQuestions = $exam->questions()->orderBy('order')->get();
+            foreach ($sourceQuestions as $question) {
+                Question::create([
+                    'exam_id' => $newExam->id,
+                    'type' => $question->type,
+                    'passage' => $question->passage,
+                    'question_text' => $question->question_text,
+                    'image' => $question->image,
+                    'options' => $question->options,
+                    'correct_answer' => $question->correct_answer,
+                    'essay_keywords' => $question->essay_keywords,
+                    'points' => $question->points,
+                    'order' => $question->order,
+                ]);
             }
 
-            Answer::where('exam_id', $exam->id)->delete();
-            Violation::where('exam_id', $exam->id)->delete();
-            ExamResult::where('exam_id', $exam->id)->delete();
+            $newExam->total_questions = $sourceQuestions->count();
+            $newExam->save();
 
-            if (!$keepClassSchedules) {
-                ExamClassSchedule::where('exam_id', $exam->id)->delete();
-            } elseif ($hasClassSelection) {
-                ExamClassSchedule::where('exam_id', $exam->id)
-                    ->whereNotIn('class_id', $targetClassIds)
-                    ->delete();
-            }
+            if ($keepClassSchedules) {
+                $sourceSchedulesByClass = ExamClassSchedule::where('exam_id', $exam->id)
+                    ->whereIn('class_id', $targetClassIds)
+                    ->get()
+                    ->keyBy('class_id');
 
-            if ($hasClassSelection) {
-                $exam->classes()->sync($targetClassIds);
-                $exam->class_id = $targetClassIds[0] ?? $exam->class_id;
+                foreach ($targetClassIds as $classId) {
+                    $sourceSchedule = $sourceSchedulesByClass->get($classId);
+                    if (!$sourceSchedule) {
+                        continue;
+                    }
+
+                    ExamClassSchedule::create([
+                        'exam_id' => $newExam->id,
+                        'class_id' => $classId,
+                        'start_time' => $sourceSchedule->start_time,
+                        'end_time' => $sourceSchedule->end_time,
+                        'is_published' => (bool) $sourceSchedule->is_published,
+                    ]);
+                }
             }
 
             $archive = ExamRepublishArchive::create([
@@ -1534,12 +1570,13 @@ class ExamController extends Controller
                 'new_start_time' => $startTime,
                 'new_end_time' => $endTime,
                 'reset_summary' => [
+                    'mode' => 'clone',
                     'result_count' => $resultCount,
                     'answer_count' => $answerCount,
                     'violation_count' => $violationCount,
                     'snapshot_count' => $snapshotCount,
-                    'class_schedule_cleared' => !$keepClassSchedules,
                     'selected_class_ids' => $targetClassIds,
+                    'cloned_exam_id' => $newExam->id,
                 ],
                 'results_snapshot' => [
                     'result_rows' => $resultsSnapshot,
@@ -1548,40 +1585,39 @@ class ExamController extends Controller
                 'archived_at' => now(),
             ]);
 
-            $exam->status = 'scheduled';
-            $exam->start_time = $startTime;
-            $exam->end_time = $endTime;
-            $exam->duration = $duration;
-            $exam->save();
-
             return [
+                'mode' => 'clone',
                 'result_count' => $resultCount,
                 'answer_count' => $answerCount,
                 'violation_count' => $violationCount,
                 'snapshot_count' => $snapshotCount,
-                'class_schedule_cleared' => !$keepClassSchedules,
                 'selected_class_ids' => $targetClassIds,
+                'cloned_exam_id' => $newExam->id,
             ];
         });
 
         $this->forgetExamShowCache($exam->id);
+        if ($newExam) {
+            $this->forgetExamShowCache($newExam->id);
+        }
 
         try {
             AuditLog::create([
                 'user_id' => $user->id,
                 'action' => 'exam.republish',
-                'description' => 'Re-publish ujian selesai: ' . $exam->title . ($request->reason ? ' (Alasan: ' . $request->reason . ')' : ''),
+                'description' => 'Re-publish clone dibuat dari ujian: ' . $exam->title . ($request->reason ? ' (Alasan: ' . $request->reason . ')' : ''),
                 'target_type' => 'Exam',
                 'target_id' => $exam->id,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'new_values' => [
                     'status' => 'scheduled',
-                    'start_time' => $exam->start_time,
-                    'end_time' => $exam->end_time,
-                    'duration' => $exam->duration,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'duration' => $duration,
                     'keep_class_schedules' => $keepClassSchedules,
                     'class_ids' => $targetClassIds,
+                    'cloned_exam_id' => $newExam?->id,
                     'reset_summary' => $resetSummary,
                 ],
             ]);
@@ -1591,29 +1627,33 @@ class ExamController extends Controller
 
         try {
             $broadcast = app(\App\Services\SocketBroadcastService::class);
-            $broadcast->examUpdated($exam->id, [
-                'exam_id' => $exam->id,
-                'title' => $exam->title,
-                'status' => 'scheduled',
-                'start_time' => $exam->start_time,
-                'end_time' => $exam->end_time,
-                'duration' => $exam->duration,
-            ]);
+            if ($newExam) {
+                $broadcast->examUpdated($newExam->id, [
+                    'exam_id' => $newExam->id,
+                    'title' => $newExam->title,
+                    'status' => 'scheduled',
+                    'start_time' => $newExam->start_time,
+                    'end_time' => $newExam->end_time,
+                    'duration' => $newExam->duration,
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::warning('Broadcast examUpdated (republish) failed: ' . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Ujian berhasil di re-publish untuk sesi ulang',
+            'message' => 'Ujian berhasil di-clone untuk sesi ulang. Hasil ujian lama tetap tersimpan.',
             'data' => [
-                'exam_id' => $exam->id,
+                'exam_id' => $newExam?->id,
+                'source_exam_id' => $exam->id,
+                'new_exam_id' => $newExam?->id,
                 'archive_id' => $archive?->id,
                 'session_no' => $sessionNo,
                 'status' => 'scheduled',
-                'start_time' => $exam->start_time,
-                'end_time' => $exam->end_time,
-                'duration' => $exam->duration,
+                'start_time' => $newExam?->start_time,
+                'end_time' => $newExam?->end_time,
+                'duration' => $newExam?->duration,
                 'class_ids' => $targetClassIds,
                 'archive_snapshot' => [
                     'result_count' => count($resultsSnapshot),
@@ -3560,26 +3600,28 @@ class ExamController extends Controller
             }
         }
 
-        // Broadcast answer graded
+        // Broadcast answer graded + updated aggregate score
         try {
             $broadcast = app(\App\Services\SocketBroadcastService::class);
             $broadcast->answerGraded($exam->id, [
                 'answer_id' => $answer->id,
-                'question_id' => $answer->question_id,
                 'student_id' => $answer->student_id,
-                'score' => $score,
-                'feedback' => $request->feedback,
-                'graded_by' => $user->id,
-                'graded_by_name' => $user->name,
-                'exam_result' => $examResult ? [
-                    'id' => $examResult->id,
+                'question_id' => $answer->question_id,
+                'score' => $answer->score,
+                'is_correct' => $answer->is_correct,
+                'graded_at' => $answer->graded_at?->toISOString(),
+            ]);
+
+            if ($examResult) {
+                $broadcast->resultScoreUpdated($exam->id, [
+                    'student_id' => $answer->student_id,
                     'total_score' => $examResult->total_score,
                     'percentage' => $examResult->percentage,
                     'status' => $examResult->status,
-                ] : null,
-            ]);
+                ]);
+            }
         } catch (\Exception $e) {
-            Log::warning('Broadcast answerGraded failed: ' . $e->getMessage());
+            Log::warning('Broadcast answer graded failed: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -3589,8 +3631,8 @@ class ExamController extends Controller
                 'exam_result' => $examResult,
                 'auto_grade_overridden' => $wasAutoGraded,
             ],
-            'message' => $wasAutoGraded 
-                ? 'Nilai auto-grade berhasil diubah manual' 
+            'message' => $wasAutoGraded
+                ? 'Nilai auto-grade berhasil diubah manual'
                 : 'Nilai berhasil disimpan',
         ]);
     }

@@ -523,11 +523,11 @@ export default function AdminUjianPage() {
       const reset = response.data?.data?.reset_summary;
       const sessionNo = response.data?.data?.session_no;
       const resetText = reset
-        ? ` Reset: ${reset.result_count || 0} hasil, ${reset.answer_count || 0} jawaban, ${reset.violation_count || 0} pelanggaran.`
+        ? ` Arsip sumber: ${reset.result_count || 0} hasil, ${reset.answer_count || 0} jawaban, ${reset.violation_count || 0} pelanggaran.`
         : '';
       const sessionText = sessionNo ? ` Arsip sesi #${sessionNo} dibuat.` : '';
 
-      toast.success((response.data?.message || 'Ujian berhasil di re-publish') + sessionText + resetText);
+      toast.success((response.data?.message || 'Ujian clone sesi ulang berhasil dibuat') + sessionText + resetText);
       setShowRepublishModal(null);
       fetchData();
     } catch (error: unknown) {
@@ -2121,7 +2121,7 @@ export default function AdminUjianPage() {
               </div>
 
               <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-200">
-                Re-publish akan mereset hasil/jawaban/pelanggaran sesi sebelumnya agar siswa bisa ujian ulang.
+                Re-publish akan membuat clone ujian baru (terpisah). Hasil sesi lama tetap tersimpan dan tidak dihapus.
               </div>
             </div>
 
