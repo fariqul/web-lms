@@ -2008,11 +2008,35 @@ class ExamController extends Controller
 
         // Handle structured options format (from frontend edit modal)
         if ($request->has('options') && is_array($request->options)) {
-            // Delete old option images before replacing
+            $normalizeStoragePath = function (?string $path): ?string {
+                if (!$path) {
+                    return null;
+                }
+
+                $normalized = trim($path);
+                if ($normalized === '') {
+                    return null;
+                }
+
+                if (preg_match('/\/storage\/(.+)/', $normalized, $matches) && !empty($matches[1])) {
+                    $normalized = $matches[1];
+                }
+
+                $normalized = str_replace('\\', '/', $normalized);
+                $normalized = ltrim($normalized, '/');
+                $normalized = preg_replace('/^storage\//', '', $normalized);
+
+                return $normalized ?: null;
+            };
+
+            $oldOptionImages = [];
             if (is_array($question->options)) {
                 foreach ($question->options as $oldOpt) {
                     if (is_array($oldOpt) && !empty($oldOpt['image'])) {
-                        Storage::disk('public')->delete($oldOpt['image']);
+                        $normalizedOldImage = $normalizeStoragePath((string) $oldOpt['image']);
+                        if ($normalizedOldImage) {
+                            $oldOptionImages[] = $normalizedOldImage;
+                        }
                     }
                 }
             }
@@ -2031,7 +2055,7 @@ class ExamController extends Controller
                     $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
                 } elseif (!empty($opt['existing_image']) && $opt['existing_image'] !== 'null') {
                     // Keep existing image if not replaced
-                    $optImage = $opt['existing_image'];
+                    $optImage = $normalizeStoragePath((string) $opt['existing_image']);
                 }
                 // Handle remove_image flag per option
                 if (!empty($opt['remove_image']) && ($opt['remove_image'] === '1' || $opt['remove_image'] === true)) {
@@ -2050,6 +2074,21 @@ class ExamController extends Controller
                 if (!empty($opt['is_correct']) && ($opt['is_correct'] === true || $opt['is_correct'] === '1' || $opt['is_correct'] === 1)) {
                     $correctAnswers[] = $optText;
                     $correctAnswer = $optText;
+                }
+            }
+
+            $usedOptionImages = collect($optionsArray)
+                ->pluck('image')
+                ->filter(fn ($path) => is_string($path) && $path !== '')
+                ->map(fn ($path) => $normalizeStoragePath($path))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            foreach (array_unique($oldOptionImages) as $oldImagePath) {
+                if (!in_array($oldImagePath, $usedOptionImages, true) && Storage::disk('public')->exists($oldImagePath)) {
+                    Storage::disk('public')->delete($oldImagePath);
                 }
             }
             
@@ -3889,11 +3928,6 @@ class ExamController extends Controller
             $result->violation_count = 0;
             $result->save();
 
-            // Clear all answers to let student retry fresh
-            Answer::where('exam_id', $result->exam_id)
-                ->where('student_id', $result->student_id)
-                ->delete();
-
             // Log to audit trail
             AuditLog::create([
                 'user_id' => $user->id,
@@ -3911,6 +3945,7 @@ class ExamController extends Controller
                 'new_values' => [
                     'status' => 'in_progress',
                     'violation_count' => 0,
+                    'preserve_answers' => true,
                     'reason' => $request->reason,
                 ],
             ]);
@@ -3923,7 +3958,7 @@ class ExamController extends Controller
                 'exam_id' => $result->exam_id,
                 'student_id' => $result->student_id,
                 'student_name' => $result->student->name,
-                'message' => 'Ujian Anda telah diaktifkan kembali oleh admin. Silakan coba lagi.',
+                'message' => 'Ujian Anda telah diaktifkan kembali oleh admin. Lanjutkan dari jawaban terakhir Anda.',
                 'reason' => $request->reason,
             ]);
         } catch (\Exception $e) {
@@ -3932,7 +3967,7 @@ class ExamController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Hasil ujian siswa berhasil diaktifkan kembali. Siswa dapat mengerjakan ujian lagi.',
+            'message' => 'Hasil ujian siswa berhasil diaktifkan kembali. Jawaban sebelumnya tetap tersimpan.',
             'data' => [
                 'student_id' => $result->student_id,
                 'exam_id' => $result->exam_id,
