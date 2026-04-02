@@ -33,6 +33,7 @@ interface StudentResult {
   id: number;
   student_id: number;
   status: string;
+  reactivation_count?: number;
   total_score: number;
   max_score: number;
   percentage: number;
@@ -131,6 +132,7 @@ export default function ExamResultsPage() {
         setExamInfo(data.exam || null);
         setResults((data.results || []).map((r: StudentResult) => ({
           ...r,
+          reactivation_count: Number(r.reactivation_count) || 0,
           total_score: Number(r.total_score) || 0,
           max_score: Number(r.max_score) || 0,
           percentage: Number(r.percentage) || 0,
@@ -529,6 +531,19 @@ export default function ExamResultsPage() {
           </span>
         );
     }
+  };
+
+  const getReactivationBadge = (reactivationCount: number) => {
+    if (!reactivationCount || reactivationCount <= 0) return null;
+
+    return (
+      <span
+        className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-medium rounded-full"
+        title="Siswa pernah direaktivasi. Jawaban sebelumnya dihapus saat reaktivasi."
+      >
+        Reaktivasi x{reactivationCount}
+      </span>
+    );
   };
 
   if (loading) {
@@ -959,7 +974,10 @@ export default function ExamResultsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center">
-                        {getStatusBadge(result.status)}
+                        <div className="flex flex-col items-center gap-1">
+                          {getStatusBadge(result.status)}
+                          {getReactivationBadge(result.reactivation_count || 0)}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-slate-600 dark:text-slate-400">
                         {formatDate(result.finished_at || result.submitted_at)}

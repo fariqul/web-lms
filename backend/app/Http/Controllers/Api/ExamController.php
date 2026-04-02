@@ -3907,10 +3907,20 @@ class ExamController extends Controller
         }
 
         // Reactivate in transaction
-        DB::transaction(function () use ($result, $user, $request) {
+        $deletedAnswerCount = DB::transaction(function () use ($result, $user, $request) {
             // Reset result status to in_progress
             $oldStatus = $result->status;
             $oldViolationCount = $result->violation_count;
+
+            // Efek jera: hapus seluruh jawaban siswa saat reaktivasi.
+            // Timer tidak di-reset (started_at tetap) agar durasi tetap berjalan normal.
+            $deletedAnswers = Answer::where('exam_id', $result->exam_id)
+                ->where('student_id', $result->student_id)
+                ->count();
+
+            Answer::where('exam_id', $result->exam_id)
+                ->where('student_id', $result->student_id)
+                ->delete();
             
             $result->status = 'in_progress';
             $result->submitted_at = null;
@@ -3918,6 +3928,10 @@ class ExamController extends Controller
             $result->total_score = 0;
             $result->max_score = 0;
             $result->percentage = 0;
+            $result->score = 0;
+            $result->total_correct = 0;
+            $result->total_wrong = 0;
+            $result->total_answered = 0;
             $result->reactivation_count = ($result->reactivation_count ?? 0) + 1;
             $result->reactivated_by = $user->id;
             $result->reactivated_at = now();
@@ -3946,10 +3960,14 @@ class ExamController extends Controller
                 'new_values' => [
                     'status' => 'in_progress',
                     'violation_count' => 0,
-                    'preserve_answers' => true,
+                    'preserve_answers' => false,
+                    'answers_deleted_count' => $deletedAnswers,
+                    'timer_reset' => false,
                     'reason' => $request->reason,
                 ],
             ]);
+
+            return $deletedAnswers;
         });
 
         // Broadcast to student that they can retry exam
@@ -3959,7 +3977,7 @@ class ExamController extends Controller
                 'exam_id' => $result->exam_id,
                 'student_id' => $result->student_id,
                 'student_name' => $result->student->name,
-                'message' => 'Ujian Anda telah diaktifkan kembali oleh admin. Lanjutkan dari jawaban terakhir Anda.',
+                'message' => 'Ujian Anda telah diaktifkan kembali oleh admin. Semua jawaban sebelumnya dihapus dan waktu ujian tetap berjalan.',
                 'reason' => $request->reason,
             ]);
         } catch (\Exception $e) {
@@ -3968,11 +3986,12 @@ class ExamController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Hasil ujian siswa berhasil diaktifkan kembali. Jawaban sebelumnya tetap tersimpan.',
+            'message' => 'Hasil ujian siswa berhasil diaktifkan kembali. Semua jawaban sebelumnya dihapus dan waktu ujian tetap berjalan.',
             'data' => [
                 'student_id' => $result->student_id,
                 'exam_id' => $result->exam_id,
                 'reactivation_count' => $result->reactivation_count,
+                'answers_deleted_count' => $deletedAnswerCount,
             ],
         ]);
     }
