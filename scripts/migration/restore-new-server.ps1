@@ -11,6 +11,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# PowerShell 7+ dapat mengubah stderr native command menjadi error record.
+# Untuk tool CLI seperti docker/mysql, kita tangani kegagalan pakai exit code.
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
+
 function Write-Step {
     param([string]$Message)
     Write-Host "[STEP] $Message" -ForegroundColor Cyan
