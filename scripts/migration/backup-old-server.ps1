@@ -100,7 +100,13 @@ try {
     }
 
     Write-Step "Dump database MySQL"
-    docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF' > (Join-Path $backupDir 'database.sql')
+    $dbDumpPath = Join-Path $backupDir 'database.sql'
+    $dbDumpErrPath = Join-Path $backupDir 'database-dump.stderr.log'
+    docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces' 1> $dbDumpPath 2> $dbDumpErrPath
+    if ($LASTEXITCODE -ne 0) {
+        $dumpErrPreview = if (Test-Path $dbDumpErrPath) { (Get-Content $dbDumpErrPath -Tail 20) -join [Environment]::NewLine } else { 'Tidak ada detail error.' }
+        throw "mysqldump gagal (exit code $LASTEXITCODE). Detail: $dumpErrPreview"
+    }
 
     $dbFile = Get-Item (Join-Path $backupDir 'database.sql')
     if ($dbFile.Length -lt 1024) {

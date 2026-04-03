@@ -51,6 +51,25 @@ Selain langkah manual di dokumen ini, Anda bisa pakai script siap pakai:
 - Backup dari PC lama: `scripts/migration/backup-old-server.ps1`
 - Restore ke PC baru: `scripts/migration/restore-new-server.ps1`
 
+Jika path Anda berbeda antar mesin, gunakan parameter `-ProjectPath`.
+
+Contoh sesuai setup Anda:
+
+- PC lama: `C:\lms-server`
+- PC baru: `D:\lms-server`
+
+Command siap pakai:
+
+```powershell
+# Di PC lama
+Set-Location C:\lms-server
+powershell -ExecutionPolicy Bypass -File .\scripts\migration\backup-old-server.ps1 -ProjectPath "C:\lms-server" -BackupRoot "C:\lms-migration-backup"
+
+# Di PC baru
+Set-Location D:\lms-server
+powershell -ExecutionPolicy Bypass -File .\scripts\migration\restore-new-server.ps1 -ProjectPath "D:\lms-server" -BackupDir "D:\lms-migration-backup\backup-YYYYMMDD-HHMMSS"
+```
+
 Contoh pemakaian:
 
 ### Di PC lama (backup)
@@ -145,7 +164,7 @@ docker exec lms-backend sh -lc 'grep ^APP_KEY= /var/www/html/.env' > "$BackupDir
 ### 1.6 Backup database MySQL (logical dump)
 
 ```powershell
-docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF' > "$BackupDir\database.sql"
+docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces' > "$BackupDir\database.sql"
 ```
 
 Validasi cepat file dump tidak kosong:
@@ -351,7 +370,7 @@ docker compose up -d
 Tambahkan opsi saat dump (di server lama):
 
 ```powershell
-docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --default-character-set=utf8mb4 --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF' > "$BackupDir\database.sql"
+docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --default-character-set=utf8mb4 --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces' > "$BackupDir\database.sql"
 ```
 
 ### B. Container backend sering regenerate APP_KEY
