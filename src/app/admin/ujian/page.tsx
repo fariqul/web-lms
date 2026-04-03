@@ -7,7 +7,7 @@ import { Card, CardHeader, Button, ConfirmDialog } from '@/components/ui';
 import {
   GraduationCap, FileEdit, Clock, Calendar, CheckCircle, PlayCircle,
   AlertCircle, Loader2, Users, Shield, Download, Send,
-  Search, Monitor, BarChart3, StopCircle, Lock, Unlock, RotateCcw,
+  Search, Monitor, BarChart3, StopCircle, Lock, Unlock, RotateCcw, Trash2,
 } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI, examAPI } from '@/services/api';
@@ -56,6 +56,7 @@ interface Exam {
 interface ClassOption {
   value: string;
   label: string;
+  grade_level?: string;
 }
 
 export default function AdminUjianPage() {
@@ -75,6 +76,8 @@ export default function AdminUjianPage() {
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState<{ id: number; title: string; activeCount?: number } | null>(null);
   const [endingExamId, setEndingExamId] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ id: number; title: string; resultsCount: number } | null>(null);
+  const [deletingExamId, setDeletingExamId] = useState<number | null>(null);
   const [checkingActive, setCheckingActive] = useState(false);
   const [lockingExamId, setLockingExamId] = useState<number | null>(null);
   const [showRepublishModal, setShowRepublishModal] = useState<Exam | null>(null);
@@ -94,7 +97,7 @@ export default function AdminUjianPage() {
 
   // Schedule edit
   const [editingSchedule, setEditingSchedule] = useState<Exam | null>(null);
-  const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60, class_id: '' });
+  const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60, class_ids: [] as string[] });
   const [savingSchedule, setSavingSchedule] = useState(false);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
@@ -178,9 +181,10 @@ export default function AdminUjianPage() {
 
       const classesData = classesRes.data?.data || [];
       setClasses(
-        classesData.map((c: { id: number; name: string }) => ({
+        classesData.map((c: { id: number; name: string; grade_level?: string }) => ({
           value: c.id.toString(),
           label: c.name,
+          grade_level: c.grade_level,
         }))
       );
 
@@ -294,7 +298,7 @@ export default function AdminUjianPage() {
 
   const handleSaveSchedule = async () => {
     if (!editingSchedule || !scheduleData.start_time) return;
-    if (!scheduleData.class_id) {
+    if (scheduleData.class_ids.length === 0) {
       toast.warning('Pilih kelas terlebih dahulu');
       return;
     }
@@ -316,9 +320,12 @@ export default function AdminUjianPage() {
         duration_minutes: scheduleData.duration,
       };
 
-      const selectedClassId = Number(scheduleData.class_id);
-      payload.class_id = selectedClassId;
-      payload.class_ids = [selectedClassId];
+      const selectedClassIds = scheduleData.class_ids
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0);
+
+      payload.class_id = selectedClassIds[0];
+      payload.class_ids = selectedClassIds;
 
       await api.put(`/exams/${editingSchedule.id}`, {
         ...payload,
@@ -336,7 +343,7 @@ export default function AdminUjianPage() {
 
   const handleClearSchedule = async () => {
     if (!editingSchedule) return;
-    if (!scheduleData.class_id) {
+    if (scheduleData.class_ids.length === 0) {
       toast.warning('Pilih kelas terlebih dahulu');
       return;
     }
@@ -358,9 +365,12 @@ export default function AdminUjianPage() {
         duration_minutes: duration,
       };
 
-      const selectedClassId = Number(scheduleData.class_id);
-      payload.class_id = selectedClassId;
-      payload.class_ids = [selectedClassId];
+      const selectedClassIds = scheduleData.class_ids
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0);
+
+      payload.class_id = selectedClassIds[0];
+      payload.class_ids = selectedClassIds;
 
       await api.put(`/exams/${editingSchedule.id}`, {
         ...payload,
@@ -393,6 +403,21 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal mengubah status kunci');
     } finally {
       setLockingExamId(null);
+    }
+  };
+
+  const handleDeleteExam = async (examId: number) => {
+    setDeletingExamId(examId);
+    try {
+      await api.delete(`/exams/${examId}`);
+      toast.success('Ujian berhasil dihapus');
+      setShowDeleteConfirm(null);
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal menghapus ujian');
+    } finally {
+      setDeletingExamId(null);
     }
   };
 
@@ -498,6 +523,13 @@ export default function AdminUjianPage() {
     return exam.status;
   };
 
+  const getRepublishSessionNo = (title: string) => {
+    const match = title.match(/\s-\sSesi Ulang\s+(\d+)$/i);
+    if (!match) return null;
+    const no = Number(match[1]);
+    return Number.isFinite(no) ? no : null;
+  };
+
   // Apply filters
   const filteredExams = exams.filter((exam) => {
     if (searchQuery) {
@@ -577,6 +609,7 @@ export default function AdminUjianPage() {
     const status = getEffectiveStatus(exam);
     const isScheduled = status === 'scheduled';
     const isSelected = selectedExams.has(exam.id);
+    const republishSessionNo = getRepublishSessionNo(exam.title);
     
     return (
       <div className={`border rounded-xl p-4 transition-colors relative ${
@@ -616,7 +649,14 @@ export default function AdminUjianPage() {
               }`} />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-slate-800 dark:text-white truncate">{exam.title}</h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="font-semibold text-slate-800 dark:text-white truncate">{exam.title}</h3>
+                {republishSessionNo !== null && (
+                  <span className="shrink-0 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold rounded-full">
+                    Sesi Ulang #{republishSessionNo}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-500 dark:text-slate-400">{exam.subject}</p>
             </div>
           </div>
@@ -712,7 +752,9 @@ export default function AdminUjianPage() {
                   setScheduleData({
                     start_time: isFarFuture ? '' : toDateTimeLocalInputValue(exam.start_time),
                     duration: exam.duration || 60,
-                    class_id: String(exam.class_id || exam.classes?.[0]?.id || ''),
+                    class_ids: (exam.classes && exam.classes.length > 0)
+                      ? exam.classes.map((c) => String(c.id))
+                      : (exam.class_id ? [String(exam.class_id)] : []),
                   });
                 }}
               >
@@ -746,7 +788,9 @@ export default function AdminUjianPage() {
                   setScheduleData({
                     start_time: toDateTimeLocalInputValue(exam.start_time),
                     duration: exam.duration || 60,
-                    class_id: String(exam.class_id || exam.classes?.[0]?.id || ''),
+                    class_ids: (exam.classes && exam.classes.length > 0)
+                      ? exam.classes.map((c) => String(c.id))
+                      : (exam.class_id ? [String(exam.class_id)] : []),
                   });
                 }}
               >
@@ -862,6 +906,26 @@ export default function AdminUjianPage() {
               <Lock className="w-3.5 h-3.5 mr-1.5" />
             )}
             {exam.is_locked ? 'Buka Kunci' : 'Kunci Soal'}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowDeleteConfirm({
+              id: exam.id,
+              title: exam.title,
+              resultsCount: exam.results_count ?? 0,
+            })}
+            disabled={deletingExamId === exam.id}
+            className="text-red-600 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60"
+            title="Hapus ujian"
+          >
+            {deletingExamId === exam.id ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            Hapus Ujian
           </Button>
         </div>
       </div>
@@ -1146,6 +1210,18 @@ export default function AdminUjianPage() {
         variant="danger"
       />
 
+      <ConfirmDialog
+        isOpen={!!showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(null)}
+        onConfirm={() => showDeleteConfirm && handleDeleteExam(showDeleteConfirm.id)}
+        title="Hapus Ujian"
+        message={showDeleteConfirm && showDeleteConfirm.resultsCount > 0
+          ? `Apakah Anda yakin ingin menghapus ujian "${showDeleteConfirm.title}"? Ujian ini memiliki ${showDeleteConfirm.resultsCount} hasil siswa dan semua data hasil akan ikut terhapus permanen.`
+          : `Apakah Anda yakin ingin menghapus ujian "${showDeleteConfirm?.title}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText={deletingExamId ? 'Menghapus...' : 'Hapus'}
+        variant="danger"
+      />
+
       {/* Schedule Edit Modal */}
       {editingSchedule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1161,18 +1237,52 @@ export default function AdminUjianPage() {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Kelas
                 </label>
-                <select
-                  value={scheduleData.class_id}
-                  onChange={(e) => setScheduleData({ ...scheduleData, class_id: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                >
-                  <option value="">Pilih Kelas</option>
-                  {classes.map((cls) => (
-                    <option key={cls.value} value={cls.value}>{cls.label}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-3 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleData((prev) => ({
+                      ...prev,
+                      class_ids: prev.class_ids.length === classes.length ? [] : classes.map((cls) => cls.value),
+                    }))}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    {scheduleData.class_ids.length === classes.length ? 'Hapus Semua' : 'Pilih Semua'}
+                  </button>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {scheduleData.class_ids.length} kelas dipilih
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                  {classes.map((cls) => {
+                    const selected = scheduleData.class_ids.includes(cls.value);
+                    return (
+                      <label
+                        key={cls.value}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${
+                          selected
+                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
+                            : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={(e) => {
+                            setScheduleData((prev) => {
+                              const next = new Set(prev.class_ids);
+                              if (e.target.checked) next.add(cls.value);
+                              else next.delete(cls.value);
+                              return { ...prev, class_ids: Array.from(next) };
+                            });
+                          }}
+                        />
+                        <span className="truncate">{cls.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Admin bisa ganti kelas langsung dari menu Atur Jadwal.
+                  Admin bisa memilih satu atau beberapa kelas sekaligus.
                 </p>
               </div>
 
@@ -1216,7 +1326,7 @@ export default function AdminUjianPage() {
               </Button>
               <Button
                 onClick={handleSaveSchedule}
-                disabled={!scheduleData.start_time || savingSchedule || !scheduleData.class_id}
+                disabled={!scheduleData.start_time || savingSchedule || scheduleData.class_ids.length === 0}
                 className="flex-1"
               >
                 {savingSchedule ? (

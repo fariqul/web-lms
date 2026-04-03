@@ -358,8 +358,17 @@ export default function UjianPage() {
     return null;
   }, []);
 
+  const getRepublishSessionNo = useCallback((title: string) => {
+    const match = title.match(/\s-\sSesi Ulang\s+(\d+)$/i);
+    if (!match) return null;
+    const no = Number(match[1]);
+    return Number.isFinite(no) ? no : null;
+  }, []);
+
   const upcomingExamCards = useMemo(() => {
-    return visibleUpcomingExams.map((exam) => (
+    return visibleUpcomingExams.map((exam) => {
+      const sessionNo = getRepublishSessionNo(exam.title);
+      return (
       <div
         key={exam.id}
         className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-sky-300 transition-colors"
@@ -370,7 +379,14 @@ export default function UjianPage() {
               <FileEdit className="w-6 h-6 text-sky-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+                {sessionNo !== null && (
+                  <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold rounded-full">
+                    Sesi Ulang #{sessionNo}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
             </div>
           </div>
@@ -450,11 +466,14 @@ export default function UjianPage() {
           )}
         </div>
       </div>
-    ));
-  }, [visibleUpcomingExams, getStatusBadge, handleDeleteExam]);
+      );
+    });
+  }, [visibleUpcomingExams, getStatusBadge, handleDeleteExam, getRepublishSessionNo]);
 
   const completedExamCards = useMemo(() => {
-    return visibleCompletedExams.map((exam) => (
+    return visibleCompletedExams.map((exam) => {
+      const sessionNo = getRepublishSessionNo(exam.title);
+      return (
       <div
         key={exam.id}
         className="border border-slate-200 dark:border-slate-700 rounded-xl p-4"
@@ -465,7 +484,14 @@ export default function UjianPage() {
               <CheckCircle className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-slate-800 dark:text-white">{exam.title}</h3>
+                {sessionNo !== null && (
+                  <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold rounded-full">
+                    Sesi Ulang #{sessionNo}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-600 dark:text-slate-400">{exam.subject}</p>
             </div>
           </div>
@@ -477,8 +503,9 @@ export default function UjianPage() {
           </Button>
         </Link>
       </div>
-    ));
-  }, [visibleCompletedExams, getStatusBadge]);
+      );
+    });
+  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo]);
 
   if (loading) {
     return (

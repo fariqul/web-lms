@@ -1208,8 +1208,8 @@ class ExamController extends Controller
             ], 403);
         }
 
-        // Check if exam has results
-        if ($exam->results()->count() > 0) {
+        // Non-admin users are blocked from deleting exams that already have results.
+        if ($user->role !== 'admin' && $exam->results()->count() > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak dapat menghapus ujian yang sudah memiliki hasil',

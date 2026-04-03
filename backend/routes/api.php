@@ -99,6 +99,7 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         Route::post('/exams/{exam}/unpublish', [ExamController::class, 'unpublish']);
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
+        Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
         
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);
@@ -125,9 +126,8 @@ Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
         // Teacher attendance stats
         Route::get('/teacher-attendance-stats', [AttendanceController::class, 'teacherStats']);
         
-        // Exams Management (create, delete - guru only)
+        // Exams Management (create only for guru)
         Route::post('/exams', [ExamController::class, 'store']);
-        Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
         Route::get('/teacher-grades', [ExamController::class, 'teacherGrades']);
         
         // Materials Management
