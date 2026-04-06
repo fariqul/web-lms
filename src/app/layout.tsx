@@ -45,6 +45,11 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <script
+          data-goatcounter="https://ilham.goatcounter.com/count"
+          async
+          src="//gc.zgo.at/count.js"
+        ></script>
+        <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`
           }}
