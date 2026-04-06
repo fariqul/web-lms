@@ -100,12 +100,13 @@ services:
     restart: unless-stopped
     environment:
       CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    entrypoint: ["/bin/sh", "-c"]
     command: >
-      sh -c "if [ -n \"$$CLOUDFLARE_TUNNEL_TOKEN\" ]; then
-        cloudflared tunnel run --token \"$$CLOUDFLARE_TUNNEL_TOKEN\";
+      if [ -n "$$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+        exec cloudflared tunnel run --token "$$CLOUDFLARE_TUNNEL_TOKEN";
       else
-        cloudflared tunnel --protocol http2 --url http://nginx:80;
-      fi"
+        exec cloudflared tunnel --protocol http2 --url http://nginx:80;
+      fi
     depends_on:
       - nginx
     networks:
