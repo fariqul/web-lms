@@ -93,20 +93,19 @@ services:
     networks:
       - lms-network
 
-  # Cloudflare Quick Tunnel (exposes nginx to internet securely, no domain needed)
+  # Cloudflare Named Tunnel (production)
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: lms-tunnel
     restart: unless-stopped
     environment:
-      CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      if [ -n "$$CLOUDFLARE_TUNNEL_TOKEN" ]; then
-        exec cloudflared tunnel run --token "$$CLOUDFLARE_TUNNEL_TOKEN";
-      else
-        exec cloudflared tunnel --protocol http2 --url http://nginx:80;
-      fi
+      CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - nginx
     networks:
