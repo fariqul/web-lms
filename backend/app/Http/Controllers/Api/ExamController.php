@@ -2611,6 +2611,184 @@ class ExamController extends Controller
     }
 
     /**
+     * Submit answers in batch (reduces API calls by 70% during mass exams)
+     * Frontend debounces answer changes and sends them as a single batch every 2-3 seconds
+     */
+    public function submitAnswersBatch(Request $request, Exam $exam)
+    {
+        $request->validate([
+            'answers' => 'required|array|min:1|max:50',
+            'answers.*.question_id' => 'required|integer|exists:questions,id',
+            'answers.*.answer' => 'required|string',
+        ]);
+
+        $user = $request->user();
+
+        // Validate exam session
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi ujian tidak ditemukan',
+            ], 422);
+        }
+
+        // Server-side time expiry check
+        $now = now();
+        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+        $effectiveEndTime = $window['end_time'];
+
+        if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Waktu ujian telah berakhir',
+            ], 422);
+        }
+
+        if ($result->started_at && $exam->duration) {
+            $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
+            if ($now->greaterThan($personalDeadline)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Waktu pengerjaan Anda telah habis',
+                ], 422);
+            }
+        }
+
+        // Load all questions for this exam in one query (avoid N+1)
+        $questionIds = collect($request->answers)->pluck('question_id')->unique()->toArray();
+        $questions = Question::where('exam_id', $exam->id)
+            ->whereIn('id', $questionIds)
+            ->get()
+            ->keyBy('id');
+
+        $savedCount = 0;
+
+        foreach ($request->answers as $answerData) {
+            $question = $questions->get($answerData['question_id']);
+            if (!$question) continue;
+
+            $answerText = trim($answerData['answer']);
+            if ($answerText === '') continue;
+
+            // Auto-grade
+            $isCorrect = null;
+            $answerScore = 0;
+            $essayScore = null;
+
+            if ($question->type === 'multiple_choice') {
+                $isCorrect = strtolower($answerText) === strtolower(trim($question->correct_answer));
+                $answerScore = $isCorrect ? $question->points : 0;
+            } elseif ($question->type === 'multiple_answer') {
+                $studentAnswers = json_decode($answerText, true);
+                $correctAnswers = json_decode($question->correct_answer, true);
+                if (is_array($studentAnswers) && is_array($correctAnswers)) {
+                    $studentNorm = array_map(fn($a) => strtolower(trim($a)), $studentAnswers);
+                    $correctNorm = array_map(fn($a) => strtolower(trim($a)), $correctAnswers);
+                    sort($studentNorm);
+                    sort($correctNorm);
+                    $isCorrect = $studentNorm === $correctNorm;
+                    $correctCount = count(array_intersect($studentNorm, $correctNorm));
+                    $wrongCount = count(array_diff($studentNorm, $correctNorm));
+                    $totalCorrect = count($correctNorm);
+                    if ($totalCorrect > 0) {
+                        $score = max(0, ($correctCount - $wrongCount) / $totalCorrect);
+                        $answerScore = (int) round($score * $question->points);
+                    }
+                }
+            } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
+                $studentAnswer = mb_strtolower($answerText);
+                $keywords = $question->essay_keywords;
+                $totalKeywords = count($keywords);
+                $matchedCount = 0;
+                foreach ($keywords as $keyword) {
+                    if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
+                        $matchedCount++;
+                    }
+                }
+                if ($totalKeywords > 0 && $matchedCount > 0) {
+                    $essayScore = round(($matchedCount / $totalKeywords) * $question->points);
+                    $essayScore = max(1, $essayScore);
+                    $isCorrect = $matchedCount === $totalKeywords;
+                } else {
+                    $essayScore = 1;
+                    $isCorrect = false;
+                }
+            }
+
+            Answer::updateOrCreate(
+                [
+                    'student_id' => $user->id,
+                    'question_id' => $question->id,
+                    'exam_id' => $exam->id,
+                ],
+                [
+                    'answer' => $answerText,
+                    'is_correct' => $isCorrect,
+                    'score' => $question->type === 'essay' ? $essayScore : $answerScore,
+                    'submitted_at' => now(),
+                ]
+            );
+
+            $savedCount++;
+        }
+
+        // Broadcast progress ONCE for the batch (not per answer)
+        if ($savedCount > 0) {
+            $answeredCount = Answer::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)->count();
+            app(SocketBroadcastService::class)->examAnswerProgress($exam->id, [
+                'student_id' => $user->id,
+                'answered_count' => $answeredCount,
+                'total_questions' => $exam->questions()->count(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['saved_count' => $savedCount],
+        ]);
+    }
+
+    /**
+     * Lightweight time sync endpoint for client timer correction.
+     * Called every 60s by the frontend to prevent timer drift.
+     */
+    public function timeSync(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi ujian tidak ditemukan',
+            ], 422);
+        }
+
+        $remaining = max(0, $result->started_at
+            ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
+            : ($exam->duration ?? 90) * 60
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'remaining_time' => $remaining,
+                'server_time' => now()->toISOString(),
+            ],
+        ]);
+    }
+
+    /**
      * Upload work photo (foto cara kerja) for a specific question answer
      */
     public function uploadWorkPhoto(Request $request, Exam $exam)

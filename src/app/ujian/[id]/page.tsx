@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useExamMode } from '@/hooks/useExamMode';
 import { useProctoring, ProctoringDetection } from '@/hooks/useProctoring';
@@ -32,6 +32,7 @@ import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 import { useExamSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/context/AuthContext';
 import { MathText } from '@/components/ui/MathText';
+import { useAnswerQueue, AnswerSaveStatus } from '@/hooks/useAnswerQueue';
 
 interface QuestionOption {
   text: string;
@@ -112,6 +113,16 @@ export default function ExamTakingPage() {
   const hasNomorTes = authUser?.has_nomor_tes === true;
   const canManualSubmit = timeRemaining <= 600;
 
+  // === FIX 1: Reliable answer saving with retry queue ===
+  const answerQueue = useAnswerQueue({
+    examId,
+    debounceMs: 2000,
+    maxRetries: 5,
+    onPermanentFailure: (questionId) => {
+      toast.error(`Jawaban soal #${questions.findIndex(q => q.id === questionId) + 1} gagal tersimpan. Periksa koneksi internet.`);
+    },
+  });
+
   // Clear exam session flags (call before navigating away after submit)
   const clearExamSession = () => {
     sessionStorage.removeItem(`exam_active_${examId}`);
@@ -119,18 +130,32 @@ export default function ExamTakingPage() {
   };
 
   const flushAnswersBeforeFinish = React.useCallback(async () => {
+    // Flush the answer queue first (retry pending saves)
+    await answerQueue.flushAll();
+    
+    // Fallback: also send all answers directly in case queue missed some
     const entries = Object.entries(answers).filter(([, value]) => typeof value === 'string' && value.trim() !== '');
     if (entries.length === 0) return;
 
-    await Promise.allSettled(
-      entries.map(([questionId, value]) =>
-        api.post(`/exams/${examId}/answer`, {
+    try {
+      await api.post(`/exams/${examId}/answers/batch`, {
+        answers: entries.map(([questionId, value]) => ({
           question_id: Number(questionId),
           answer: value,
-        })
-      )
-    );
-  }, [answers, examId]);
+        })),
+      });
+    } catch {
+      // Fallback: try individual saves
+      await Promise.allSettled(
+        entries.map(([questionId, value]) =>
+          api.post(`/exams/${examId}/answer`, {
+            question_id: Number(questionId),
+            answer: value,
+          })
+        )
+      );
+    }
+  }, [answers, examId, answerQueue]);
 
   // Force submit handler
   const handleForceSubmit = async () => {
@@ -739,6 +764,41 @@ export default function ExamTakingPage() {
     return () => clearInterval(timer);
   }, [isStarted]);
 
+  // === FIX 2: Timer re-sync from server every 60 seconds ===
+  useEffect(() => {
+    if (!isStarted || submitting) return;
+
+    const syncTimer = async () => {
+      try {
+        const response = await api.get(`/exams/${examId}/time-sync`);
+        const serverRemaining = response.data?.data?.remaining_time;
+        if (serverRemaining !== undefined) {
+          setTimeRemaining(prev => {
+            const drift = Math.abs(prev - serverRemaining);
+            // Only correct if drift > 5 seconds (avoid micro-corrections)
+            if (drift > 5) {
+              console.log(`[TimeSync] Corrected timer: client=${prev}s, server=${serverRemaining}s, drift=${drift}s`);
+              return Math.max(0, Math.floor(serverRemaining));
+            }
+            return prev;
+          });
+        }
+      } catch {
+        // Ignore sync errors — client timer continues as fallback
+      }
+    };
+
+    // Sync every 60 seconds
+    const interval = setInterval(syncTimer, 60000);
+    // First sync after 30s (let exam settle first)
+    const firstSync = setTimeout(syncTimer, 30000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(firstSync);
+    };
+  }, [isStarted, submitting, examId]);
+
   // Force auto-submit (no confirm dialog, just submit)
   const autoSubmitExam = async () => {
     setSubmitting(true);
@@ -864,19 +924,12 @@ export default function ExamTakingPage() {
     }
   };
 
-  const handleAnswer = async (questionId: number, answer: string) => {
+  // === FIX 3: Debounced batch answer save via queue ===
+  const handleAnswer = useCallback((questionId: number, answer: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
-    
-    // Save answer to server
-    try {
-      await api.post(`/exams/${examId}/answer`, {
-        question_id: questionId,
-        answer,
-      });
-    } catch (error) {
-      console.error('Failed to save answer:', error);
-    }
-  };
+    // Queue for batch save (debounced 2s, with retry)
+    answerQueue.queueAnswer(questionId, answer);
+  }, [answerQueue]);
 
   // Work photo capture — suppress violations while camera app is open
   const handleWorkPhotoClick = (questionId: number) => {
@@ -1317,6 +1370,24 @@ export default function ExamTakingPage() {
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Soal {currentQuestion + 1}/{questions.length}</p>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+              {/* --- SAVE STATUS INDICATOR --- */}
+              {answerQueue.errorCount > 0 ? (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" title={`${answerQueue.errorCount} jawaban gagal disimpan`}>
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-xs sm:text-sm font-medium">Gagal Save ({answerQueue.errorCount})</span>
+                </div>
+              ) : answerQueue.isSaving || answerQueue.pendingCount > 0 ? (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-xs sm:text-sm font-medium">Menyimpan...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 opacity-60">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-xs sm:text-sm font-medium hidden sm:inline">Tersimpan</span>
+                </div>
+              )}
+
               <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm ${
                 timeRemaining < 300 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-muted text-slate-700 dark:text-slate-300'
               }`}>
@@ -1566,22 +1637,47 @@ export default function ExamTakingPage() {
           <div className="lg:col-span-1">
             <Card className="p-4 sticky top-20">
               <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Navigasi Soal</h3>
-              <div className="grid grid-cols-5 gap-2">
-                {questions.map((q, index) => (
-                  <button
-                    key={q.id}
-                    onClick={() => setCurrentQuestion(index)}
-                    className={`w-10 h-10 rounded-lg font-medium text-sm ${
-                      currentQuestion === index
-                        ? 'bg-teal-500 text-white'
-                        : answers[q.id]
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                        : 'bg-muted text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                    } ${flaggedQuestions.has(q.number) ? 'ring-2 ring-yellow-400' : ''}`}
-                  >
-                    {q.number || index + 1}
-                  </button>
-                ))}
+              <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar pb-2">
+                {questions.map((q, index) => {
+                  const hasAnswer = answers[q.id] && String(answers[q.id]).trim() !== '' && answers[q.id] !== '[]';
+                  const isFlagged = flaggedQuestions.has(q.number);
+                  const isCurrent = currentQuestion === index;
+                  const saveStatus = answerQueue.saveStatuses[q.id];
+
+                  // Base colors depending on answer status
+                  let btnColor = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700';
+                  
+                  if (saveStatus === 'error') {
+                    btnColor = 'bg-red-100/80 dark:bg-red-900/40 text-red-700 border border-red-300';
+                  } else if (hasAnswer) {
+                    btnColor = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50';
+                  }
+
+                  // If it's the current question, override styling
+                  if (isCurrent) {
+                    btnColor = 'bg-teal-500 text-white shadow-md ring-2 ring-teal-500/30';
+                  }
+
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => setCurrentQuestion(index)}
+                      className={`relative aspect-square w-full rounded-lg flex flex-col items-center justify-center font-medium transition-all duration-200 ${btnColor} ${isFlagged && !isCurrent ? 'ring-2 ring-yellow-400' : ''}`}
+                    >
+                      <span className="text-sm">{q.number || index + 1}</span>
+                      
+                      {/* Sub-indicators container */}
+                      <div className="flex gap-1 mt-0.5">
+                        {saveStatus === 'error' && (
+                          <AlertTriangle className={`w-2.5 h-2.5 ${isCurrent ? 'text-red-200' : 'text-red-600'}`} />
+                        )}
+                        {saveStatus === 'saving' && (
+                          <Loader2 className={`w-2 h-2 animate-spin ${isCurrent ? 'text-white/70' : 'text-amber-600'}`} />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
               <div className="mt-6 space-y-2 text-sm">
                 <div className="flex items-center gap-2">

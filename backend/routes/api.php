@@ -180,6 +180,8 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
         // Student Exam
         Route::post('/exams/{exam}/start', [ExamController::class, 'startExam']);
         Route::post('/exams/{exam}/answer', [ExamController::class, 'submitAnswer']);
+        Route::post('/exams/{exam}/answers/batch', [ExamController::class, 'submitAnswersBatch']);
+        Route::get('/exams/{exam}/time-sync', [ExamController::class, 'timeSync']);
         Route::post('/exams/{exam}/work-photo', [ExamController::class, 'uploadWorkPhoto']);
         Route::post('/exams/{exam}/finish', [ExamController::class, 'finishExam']);
         Route::post('/exams/{exam}/violation', [ExamController::class, 'reportViolation']);
