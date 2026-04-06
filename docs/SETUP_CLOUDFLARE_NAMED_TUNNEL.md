@@ -49,6 +49,12 @@ Contoh hasil endpoint API:
 https://api.domain-anda.com/api/health
 ```
 
+### Penting: Jangan pakai subdomain `www` untuk API (jika frontend di `www`)
+
+- Jika frontend Anda ada di `https://www.domain-anda.com`, maka API jangan dipasang di host yang sama.
+- Gunakan subdomain terpisah seperti `api.domain-anda.com` untuk backend tunnel.
+- Memakai `www` untuk frontend dan API sekaligus akan menimbulkan konflik routing (frontend vs backend).
+
 ## 3) Isi Token di Server
 
 Di server Windows (folder project, contoh `D:\lms-server`):
@@ -157,6 +163,70 @@ docker compose up -d --force-recreate cloudflared
 
 Semua hasil idealnya `200`.
 
+### A2. 502 intermiten karena connector ganda (paling sering)
+
+Gejala umum:
+- Test 20x menghasilkan campuran `200` dan `502`.
+- Log aplikasi lokal sehat, tetapi sebagian request tidak pernah masuk ke nginx/backend.
+
+Penyebab:
+- Tunnel token yang sama dipakai di lebih dari satu mesin/container.
+- Sebagian connector mengarah ke origin yang tidak sehat, sehingga request dibagi acak antara connector sehat vs tidak sehat.
+
+Recovery yang direkomendasikan:
+
+1. Di Cloudflare Zero Trust -> Networks -> Tunnels -> pilih tunnel.
+2. Cek tab Connectors, pastikan hanya connector dari server yang benar.
+3. Revoke/putuskan connector lama yang tidak dipakai.
+4. Regenerate token tunnel.
+5. Update `.env` server:
+
+```env
+CLOUDFLARE_TUNNEL_TOKEN=TOKEN_BARU
+```
+
+6. Recreate container tunnel:
+
+```powershell
+docker compose up -d --force-recreate cloudflared
+```
+
+7. Verifikasi command tunnel aktif sudah pakai protocol stabil:
+
+```powershell
+docker inspect lms-tunnel --format '{{json .Config.Cmd}}'
+```
+
+Harus terlihat parameter `--protocol` dan `http2`.
+
+### A3. Ingin ganti tunnel baru (safe migration)
+
+Jika Anda ingin ganti tunnel, lakukan urutan ini agar minim downtime:
+
+1. Buat tunnel baru di Cloudflare Zero Trust.
+2. Tambahkan Public Hostname `api.domain-anda.com` -> `http://nginx:80` pada tunnel baru.
+3. Ambil token tunnel baru.
+4. Update `.env` server:
+
+```env
+CLOUDFLARE_TUNNEL_TOKEN=TOKEN_TUNNEL_BARU
+```
+
+5. Recreate service cloudflared:
+
+```powershell
+docker compose up -d --force-recreate cloudflared
+```
+
+6. Revoke connector lama pada tunnel lama (hindari split traffic acak).
+7. Uji stabilitas:
+
+```powershell
+1..20 | % { curl.exe -s -o NUL -w "%{http_code}`n" https://api.domain-anda.com/api/health }
+```
+
+Semua hasil harus `200`.
+
 ### B. Domain tidak resolve
 
 - Pastikan DNS domain dikelola Cloudflare.
@@ -167,15 +237,15 @@ Semua hasil idealnya `200`.
 - Pastikan file `.env` yang dipakai container berisi origin benar.
 - Setelah ubah env, selalu restart backend.
 
-## Rollback Cepat ke Quick Tunnel
+## Rollback Cepat ke Tunnel Lama (Named)
 
-Jika named tunnel bermasalah sementara:
+Jika tunnel baru bermasalah sementara:
 
-1. Kosongkan `CLOUDFLARE_TUNNEL_TOKEN` di `.env`.
-2. Restart cloudflared:
+1. Isi kembali `.env` dengan token tunnel lama.
+2. Recreate cloudflared:
 
 ```powershell
-docker-compose up -d cloudflared
+docker compose up -d --force-recreate cloudflared
 ```
 
-Konfigurasi project ini akan fallback otomatis ke Quick Tunnel (`trycloudflare`).
+Catatan: konfigurasi compose saat ini memakai mode Named Tunnel wajib token (tanpa fallback quick tunnel otomatis).

@@ -93,7 +93,7 @@ const nextConfig: NextConfig = {
 
   // Proxy API requests to avoid mixed content (HTTPS -> HTTP)
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'https://sma15lms.duckdns.org';
+    const backendUrl = process.env.BACKEND_URL || 'https://api.libelslms.my.id';
     return [
       {
         source: '/backend-api/:path*',

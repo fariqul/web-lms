@@ -72,6 +72,13 @@ php artisan storage:link 2>/dev/null || true
 # Clear cache (after migration, so cache table exists)
 php artisan cache:clear 2>/dev/null || true
 
+# Cache config, routes, and views for production performance
+# This avoids re-parsing files on every request (critical for 300+ concurrent users)
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+echo "Production caches built successfully"
+
 # Start multiple queue workers in background for async jobs (AI proctoring, etc.)
 QUEUE_WORKERS_COUNT=${QUEUE_WORKERS:-10}
 case "$QUEUE_WORKERS_COUNT" in

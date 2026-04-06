@@ -32,10 +32,12 @@ tmp_table_size = 256M
 max_heap_table_size = 256M
 
 # Sort and join buffers (per connection)
-sort_buffer_size = 4M
-join_buffer_size = 4M
-read_buffer_size = 2M
-read_rnd_buffer_size = 2M
+# Reduced from 4M to save RAM under 300+ concurrent connections
+# 300 connections × 2M = 600MB vs 300 × 4M = 1.2GB
+sort_buffer_size = 2M
+join_buffer_size = 2M
+read_buffer_size = 1M
+read_rnd_buffer_size = 1M
 
 # Binary logging (for replication if needed)
 # binlog_expire_logs_seconds = 604800
