@@ -164,8 +164,13 @@ docker exec lms-backend sh -lc 'grep ^APP_KEY= /var/www/html/.env' > "$BackupDir
 ### 1.6 Backup database MySQL (logical dump)
 
 ```powershell
-docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces' > "$BackupDir\database.sql"
+docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --default-character-set=utf8mb4 --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces > /tmp/database.sql'
+docker cp lms-mysql:/tmp/database.sql "$BackupDir\database.sql"
+docker exec lms-mysql sh -lc 'rm -f /tmp/database.sql'
 ```
+
+Catatan penting:
+- Hindari redirection langsung `> "$BackupDir\\database.sql"` dari PowerShell 5.1 karena bisa menghasilkan file UTF-16 dan gagal saat import (error ASCII `\0`).
 
 Validasi cepat file dump tidak kosong:
 
@@ -275,7 +280,7 @@ Pastikan status mysql `healthy` sebelum import.
 
 ```powershell
 docker cp "D:\lms-migration-backup\backup-YYYYMMDD-HHMMSS\database.sql" lms-mysql:/tmp/database.sql
-docker exec lms-mysql sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /tmp/database.sql'
+docker exec lms-mysql sh -lc 'mysql --default-character-set=utf8mb4 --binary-mode=1 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /tmp/database.sql'
 ```
 
 ### 4.4 Start backend sementara
@@ -297,7 +302,7 @@ docker cp "D:\lms-migration-backup\backup-YYYYMMDD-HHMMSS\backend-storage.tar.gz
 docker exec lms-backend sh -lc 'rm -rf /var/www/html/storage/* && mkdir -p /var/www/html/storage && tar -xzf /tmp/backend-storage.tar.gz -C /var/www/html/storage && chown -R www-data:www-data /var/www/html/storage'
 ```
 
-### 4.6 Jalankan service sisanya
+### 4.6 Jalankan service sisanya    
 
 ```powershell
 docker compose up -d
@@ -370,7 +375,9 @@ docker compose up -d
 Tambahkan opsi saat dump (di server lama):
 
 ```powershell
-docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --default-character-set=utf8mb4 --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces' > "$BackupDir\database.sql"
+docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --default-character-set=utf8mb4 --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces > /tmp/database.sql'
+docker cp lms-mysql:/tmp/database.sql "$BackupDir\database.sql"
+docker exec lms-mysql sh -lc 'rm -f /tmp/database.sql'
 ```
 
 ### B. Container backend sering regenerate APP_KEY
@@ -395,6 +402,63 @@ docker compose restart backend socket cloudflared
 ### D. Proctoring error di PC baru tanpa GPU NVIDIA
 
 Sementara nonaktifkan reservasi GPU atau set CPU mode di env `DEVICE` untuk service proctoring.
+
+### E. Import DB error: ASCII '\0' appeared in the statement
+
+Penyebab paling umum:
+- File `database.sql` tersimpan dalam encoding UTF-16 (sering terjadi jika dump dibuat pakai redirection PowerShell 5.1).
+
+Solusi cepat (di host Windows):
+
+```powershell
+$src = "D:\lms-migration-backup\backup-YYYYMMDD-HHMMSS\database.sql"
+$dst = "D:\lms-migration-backup\backup-YYYYMMDD-HHMMSS\database.utf8.fixed.sql"
+
+Get-Content -Raw -Encoding Unicode $src | Set-Content -Encoding utf8 $dst
+docker cp $dst lms-mysql:/tmp/database.sql
+docker exec lms-mysql sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /tmp/database.sql'
+```
+
+Solusi terbaik untuk jangka panjang:
+- Jalankan ulang backup dengan script terbaru (yang dump di dalam container lalu `docker cp`), agar `database.sql` langsung valid UTF-8/plain text.
+
+### F. Health check menampilkan `503 Service Unavailable`
+
+Penyebab paling umum setelah restore:
+- Laravel masih dalam maintenance mode (`php artisan down`), biasanya karena file `storage/framework/down` ikut terbawa dari backup.
+
+Recovery cepat:
+
+```powershell
+docker exec lms-backend sh -lc 'rm -f /var/www/html/storage/framework/down; php artisan up || true'
+docker compose restart backend nginx
+docker logs lms-backend --tail 100
+```
+
+Jika masih 503, cek status container:
+
+```powershell
+docker compose ps
+docker logs lms-nginx --tail 100
+docker logs lms-backend --tail 200
+```
+
+### G. Teks berubah jadi simbol seperti `ΓÇ`, `â€™`, `â€“`
+
+Ini disebut mojibake (encoding mismatch): data UTF-8 dibaca/ditulis dengan charset yang salah saat dump/import.
+
+Langkah cek cepat:
+
+```powershell
+docker exec lms-mysql sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SHOW VARIABLES LIKE \"character_set_%\";"'
+```
+
+Perbaikan aman yang disarankan:
+- Ulangi backup dari server lama dengan script terbaru.
+- Pastikan dump pakai `--default-character-set=utf8mb4`.
+- Pastikan import pakai `mysql --default-character-set=utf8mb4 --binary-mode=1`.
+
+Jika hanya beberapa data yang rusak, ambil ulang row tersebut dari server lama (sumber yang masih benar), lalu update di server baru.
 
 ## Checklist Final (Wajib Centang)
 

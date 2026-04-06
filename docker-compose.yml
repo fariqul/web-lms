@@ -51,6 +51,13 @@ services:
       SOCKET_SERVER_URL: "http://socket:6001"
       SOCKET_INTERNAL_SECRET: ${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
       QUEUE_CONNECTION: database
+      LOGIN_THROTTLE: ${LOGIN_THROTTLE:-1800,1}
+      API_THROTTLE: ${API_THROTTLE:-1400,1}
+      GLOBAL_API_THROTTLE: ${GLOBAL_API_THROTTLE:-3500,1}
+      QUEUE_WORKERS: ${QUEUE_WORKERS:-10}
+      QUEUE_SLEEP: ${QUEUE_SLEEP:-1}
+      QUEUE_TRIES: ${QUEUE_TRIES:-3}
+      QUEUE_MAX_TIME: ${QUEUE_MAX_TIME:-300}
       PROCTORING_SERVICE_URL: "http://proctoring:8001"
     volumes:
       - backend_storage:/var/www/html/storage
@@ -91,7 +98,14 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: lms-tunnel
     restart: unless-stopped
-    command: tunnel --protocol http2 --url http://nginx:80
+    environment:
+      CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    command: >
+      sh -c "if [ -n \"$$CLOUDFLARE_TUNNEL_TOKEN\" ]; then
+        cloudflared tunnel run --token \"$$CLOUDFLARE_TUNNEL_TOKEN\";
+      else
+        cloudflared tunnel --protocol http2 --url http://nginx:80;
+      fi"
     depends_on:
       - nginx
     networks:

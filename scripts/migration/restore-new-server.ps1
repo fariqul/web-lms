@@ -29,6 +29,50 @@ function Assert-Command {
     }
 }
 
+function Get-FileSignature {
+    param(
+        [string]$Path,
+        [int]$Count = 4
+    )
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $buffer = New-Object byte[] $Count
+        $read = $stream.Read($buffer, 0, $Count)
+        if ($read -le 0) {
+            return @()
+        }
+        return $buffer[0..($read - 1)]
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+function Convert-Utf16FileToUtf8 {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [bool]$BigEndian = $false
+    )
+
+    $sourceEncoding = if ($BigEndian) { [System.Text.Encoding]::BigEndianUnicode } else { [System.Text.Encoding]::Unicode }
+    $targetEncoding = [System.Text.UTF8Encoding]::new($false)
+
+    $reader = [System.IO.StreamReader]::new($SourcePath, $sourceEncoding, $true)
+    $writer = [System.IO.StreamWriter]::new($DestinationPath, $false, $targetEncoding)
+
+    try {
+        while (($line = $reader.ReadLine()) -ne $null) {
+            $writer.WriteLine($line)
+        }
+    }
+    finally {
+        $writer.Dispose()
+        $reader.Dispose()
+    }
+}
+
 function Wait-ContainerRunning {
     param(
         [string]$ContainerName,
@@ -149,6 +193,20 @@ else {
 Write-Step "Salin .env dari backup"
 Copy-Item (Join-Path $BackupDir '.env') (Join-Path $ProjectPath '.env') -Force
 
+$dbSourcePath = Join-Path $BackupDir 'database.sql'
+$dbImportPath = $dbSourcePath
+$signature = Get-FileSignature -Path $dbSourcePath
+
+if ($signature.Count -ge 2 -and $signature[0] -eq 0x1F -and $signature[1] -eq 0x8B) {
+    throw 'database.sql terdeteksi sebagai file gzip. Ekstrak dulu ke .sql plain text sebelum restore.'
+}
+
+if ($signature.Count -ge 2 -and (($signature[0] -eq 0xFF -and $signature[1] -eq 0xFE) -or ($signature[0] -eq 0xFE -and $signature[1] -eq 0xFF))) {
+    $dbImportPath = Join-Path $BackupDir 'database.utf8.fixed.sql'
+    Write-Warning "database.sql terdeteksi UTF-16. Konversi otomatis ke UTF-8: $dbImportPath"
+    Convert-Utf16FileToUtf8 -SourcePath $dbSourcePath -DestinationPath $dbImportPath -BigEndian ($signature[0] -eq 0xFE)
+}
+
 $appKeyBackupPath = Join-Path $BackupDir 'app_key.txt'
 if (Test-Path $appKeyBackupPath) {
     $appKeyLine = (Get-Content $appKeyBackupPath -Raw).Trim()
@@ -212,8 +270,8 @@ if (-not $healthy) {
 }
 
 Write-Step "Import database"
-docker cp (Join-Path $BackupDir 'database.sql') 'lms-mysql:/tmp/database.sql'
-docker exec lms-mysql sh -lc 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /tmp/database.sql'
+docker cp $dbImportPath 'lms-mysql:/tmp/database.sql'
+docker exec lms-mysql sh -lc 'mysql --default-character-set=utf8mb4 --binary-mode=1 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /tmp/database.sql'
 docker exec lms-mysql sh -lc 'rm -f /tmp/database.sql' | Out-Null
 
 Write-Step "Start backend"
@@ -223,6 +281,9 @@ Wait-ContainerRunning -ContainerName 'lms-backend'
 Write-Step "Restore storage backend"
 docker cp (Join-Path $BackupDir 'backend-storage.tar.gz') 'lms-backend:/tmp/backend-storage.tar.gz'
 docker exec lms-backend sh -lc 'mkdir -p /var/www/html/storage && rm -rf /var/www/html/storage/* && tar -xzf /tmp/backend-storage.tar.gz -C /var/www/html/storage && chown -R www-data:www-data /var/www/html/storage && rm -f /tmp/backend-storage.tar.gz'
+
+Write-Step "Pastikan aplikasi keluar dari maintenance mode"
+docker exec lms-backend sh -lc 'rm -f /var/www/html/storage/framework/down; php artisan up || true' | Out-Null
 
 Write-Step "Start semua service"
 docker compose up -d

@@ -108,10 +108,23 @@ try {
     Write-Step "Dump database MySQL"
     $dbDumpPath = Join-Path $backupDir 'database.sql'
     $dbDumpErrPath = Join-Path $backupDir 'database-dump.stderr.log'
-    docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces' 1> $dbDumpPath 2> $dbDumpErrPath
+    docker exec lms-mysql sh -lc 'rm -f /tmp/database.sql /tmp/database-dump.stderr.log'
+    docker exec lms-mysql sh -lc 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" --default-character-set=utf8mb4 --databases "$MYSQL_DATABASE" --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces > /tmp/database.sql 2> /tmp/database-dump.stderr.log'
     if ($LASTEXITCODE -ne 0) {
+        docker cp lms-mysql:/tmp/database-dump.stderr.log $dbDumpErrPath 2>$null | Out-Null
         $dumpErrPreview = if (Test-Path $dbDumpErrPath) { (Get-Content $dbDumpErrPath -Tail 20) -join [Environment]::NewLine } else { 'Tidak ada detail error.' }
         throw "mysqldump gagal (exit code $LASTEXITCODE). Detail: $dumpErrPreview"
+    }
+
+    docker cp lms-mysql:/tmp/database.sql $dbDumpPath
+    docker cp lms-mysql:/tmp/database-dump.stderr.log $dbDumpErrPath 2>$null | Out-Null
+    docker exec lms-mysql sh -lc 'rm -f /tmp/database.sql /tmp/database-dump.stderr.log' | Out-Null
+
+    if (Test-Path $dbDumpErrPath) {
+        $dumpWarnings = (Get-Content $dbDumpErrPath | Where-Object { $_.Trim().Length -gt 0 })
+        if ($dumpWarnings.Count -gt 0) {
+            Write-Warning "mysqldump mengeluarkan warning. Cek file: $dbDumpErrPath"
+        }
     }
 
     $dbFile = Get-Item (Join-Path $backupDir 'database.sql')
@@ -120,7 +133,7 @@ try {
     }
 
     Write-Step "Arsip storage backend"
-    docker exec lms-backend sh -lc 'cd /var/www/html/storage && tar -czf /tmp/backend-storage.tar.gz .'
+    docker exec lms-backend sh -lc 'cd /var/www/html/storage && tar --exclude="./framework/down" -czf /tmp/backend-storage.tar.gz .'
     docker cp lms-backend:/tmp/backend-storage.tar.gz (Join-Path $backupDir 'backend-storage.tar.gz')
     docker exec lms-backend sh -lc 'rm -f /tmp/backend-storage.tar.gz' | Out-Null
 

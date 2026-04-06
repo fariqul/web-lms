@@ -30,6 +30,9 @@ use App\Http\Controllers\Api\SummativeScoreController;
 |--------------------------------------------------------------------------
 */
 
+$loginThrottle = (string) env('LOGIN_THROTTLE', '1800,1');
+$apiThrottle = (string) env('API_THROTTLE', '1400,1');
+
 // Health check endpoint for uptime monitoring (keep-alive)
 Route::get('/health', function () {
     return response()->json([
@@ -41,14 +44,14 @@ Route::get('/health', function () {
 
 // Public routes with rate limiting for login (prevent brute force)
 // High limit because school network shares single public IP — many users login simultaneously
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:200,1'); // 200 attempts per minute (shared IP)
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:' . $loginThrottle);
 
 // Password reset (public, rate limited)
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Protected routes
-Route::middleware(['auth:sanctum', 'throttle:200,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function () {
     // Auth - All authenticated users
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);

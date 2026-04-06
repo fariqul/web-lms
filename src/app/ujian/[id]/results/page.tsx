@@ -539,7 +539,7 @@ export default function ExamResultsPage() {
     return (
       <span
         className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-medium rounded-full"
-        title="Siswa pernah direaktivasi. Jawaban sebelumnya dihapus saat reaktivasi."
+        title="Siswa pernah direaktivasi. Jawaban sebelumnya tetap tersimpan saat reaktivasi."
       >
         Reaktivasi x{reactivationCount}
       </span>

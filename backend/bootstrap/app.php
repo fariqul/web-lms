@@ -37,8 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'audit' => \App\Http\Middleware\AuditLogMiddleware::class,
         ]);
         
-        // Enable API rate limiting
-        $middleware->throttleApi('200,1'); // 200 requests per minute
+        // Enable global API rate limiting (tunable from environment)
+        $middleware->throttleApi((string) env('GLOBAL_API_THROTTLE', '3500,1'));
         
         $middleware->validateCsrfTokens(except: [
             'api/*',
