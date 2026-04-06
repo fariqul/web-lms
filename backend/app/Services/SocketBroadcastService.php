@@ -22,6 +22,7 @@ class SocketBroadcastService
     public function broadcast(string $event, array $data = [], ?string $room = null): bool
     {
         try {
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::withToken($this->secret)
                 ->timeout(3)
                 ->post("{$this->url}/broadcast", [
@@ -30,7 +31,8 @@ class SocketBroadcastService
                     'data' => $data,
                 ]);
 
-            return $response->successful();
+            $status = $response->status();
+            return $status >= 200 && $status < 300;
         } catch (\Exception $e) {
             Log::warning("Socket broadcast failed: {$e->getMessage()}", [
                 'event' => $event,
@@ -331,6 +333,18 @@ class SocketBroadcastService
             'notification',
             $notificationData,
             "user.{$userId}"
+        );
+    }
+
+    /**
+     * Broadcast global snapshot monitor setting changes.
+     */
+    public function snapshotMonitorUpdated(array $data): bool
+    {
+        return $this->broadcast(
+            'system.snapshot-monitor.updated',
+            $data,
+            null
         );
     }
 }

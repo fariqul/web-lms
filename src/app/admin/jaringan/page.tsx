@@ -16,6 +16,10 @@ import {
   Globe,
   Shield,
   RefreshCw,
+  Video,
+  VideoOff,
+  Users,
+  Activity,
 } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -27,6 +31,81 @@ interface NetworkSetting {
   is_active: boolean;
   created_at: string;
 }
+
+interface LiveSyncStats {
+  socket_reachable: boolean;
+  connections: number;
+  rooms: number;
+  exam_connections: number;
+  exam_rooms: number;
+  uptime_seconds: number;
+}
+
+interface ExamLoadThresholds {
+  low_max: number;
+  medium_max: number;
+}
+
+type ExamLoadLevel = 'low' | 'medium' | 'high';
+
+interface ExamLoadMeta {
+  level: ExamLoadLevel;
+  label: string;
+  badgeClass: string;
+  connectionClass: string;
+}
+
+const DEFAULT_LIVE_SYNC_STATS: LiveSyncStats = {
+  socket_reachable: false,
+  connections: 0,
+  rooms: 0,
+  exam_connections: 0,
+  exam_rooms: 0,
+  uptime_seconds: 0,
+};
+
+const DEFAULT_EXAM_LOAD_THRESHOLDS: ExamLoadThresholds = {
+  low_max: 99,
+  medium_max: 300,
+};
+
+const normalizeExamLoadThresholds = (input: Partial<ExamLoadThresholds> | undefined): ExamLoadThresholds => {
+  const lowMax = Math.max(0, Number(input?.low_max ?? DEFAULT_EXAM_LOAD_THRESHOLDS.low_max));
+  const mediumMaxRaw = Number(input?.medium_max ?? DEFAULT_EXAM_LOAD_THRESHOLDS.medium_max);
+  const mediumMax = Math.max(lowMax + 1, mediumMaxRaw);
+
+  return {
+    low_max: lowMax,
+    medium_max: mediumMax,
+  };
+};
+
+const getExamLoadMeta = (examConnections: number, thresholds: ExamLoadThresholds): ExamLoadMeta => {
+  if (examConnections > thresholds.medium_max) {
+    return {
+      level: 'high',
+      label: 'Beban Tinggi',
+      badgeClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+      connectionClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+    };
+  }
+
+  if (examConnections >= thresholds.low_max) {
+    return {
+      level: 'medium',
+      label: 'Beban Sedang',
+      badgeClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      connectionClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+    };
+  }
+
+  return {
+    level: 'low',
+    label: 'Beban Rendah',
+    badgeClass: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    connectionClass: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+  };
+};
 
 export default function JaringanSekolahPage() {
   const toast = useToast();
@@ -44,6 +123,13 @@ export default function JaringanSekolahPage() {
     x_real_ip?: string;
   }>({});
   const [deleteNetworkId, setDeleteNetworkId] = useState<number | null>(null);
+  const [snapshotMonitorEnabled, setSnapshotMonitorEnabled] = useState(true);
+  const [snapshotMonitorLoading, setSnapshotMonitorLoading] = useState(true);
+  const [snapshotMonitorSaving, setSnapshotMonitorSaving] = useState(false);
+  const [liveSyncStats, setLiveSyncStats] = useState<LiveSyncStats>(DEFAULT_LIVE_SYNC_STATS);
+  const [examLoadThresholds, setExamLoadThresholds] = useState<ExamLoadThresholds>(DEFAULT_EXAM_LOAD_THRESHOLDS);
+  const [liveSyncLoading, setLiveSyncLoading] = useState(true);
+  const [liveSyncRefreshing, setLiveSyncRefreshing] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -54,6 +140,16 @@ export default function JaringanSekolahPage() {
   useEffect(() => {
     fetchNetworks();
     checkCurrentIp();
+    fetchSnapshotMonitorSetting();
+    fetchLiveSyncStats(false, true);
+
+    const intervalId = setInterval(() => {
+      fetchLiveSyncStats(true, false);
+    }, 10000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   const fetchNetworks = async () => {
@@ -86,6 +182,85 @@ export default function JaringanSekolahPage() {
       setCheckingIp(false);
     }
   };
+
+  const fetchSnapshotMonitorSetting = async () => {
+    setSnapshotMonitorLoading(true);
+    try {
+      const response = await api.get('/school-network-settings/snapshot-monitor');
+      const enabled = response.data?.data?.snapshot_monitor_enabled !== false;
+      setSnapshotMonitorEnabled(enabled);
+    } catch (error) {
+      console.error('Failed to fetch snapshot monitor setting:', error);
+      toast.error('Gagal memuat pengaturan monitoring snapshot');
+    } finally {
+      setSnapshotMonitorLoading(false);
+    }
+  };
+
+  const handleToggleSnapshotMonitor = async () => {
+    const nextValue = !snapshotMonitorEnabled;
+    setSnapshotMonitorSaving(true);
+    try {
+      await api.put('/school-network-settings/snapshot-monitor', {
+        snapshot_monitor_enabled: nextValue,
+      });
+      setSnapshotMonitorEnabled(nextValue);
+      toast.success(
+        nextValue
+          ? 'Monitoring snapshot diaktifkan untuk semua ujian'
+          : 'Monitoring snapshot dinonaktifkan untuk semua ujian'
+      );
+    } catch (error) {
+      console.error('Failed to update snapshot monitor setting:', error);
+      toast.error('Gagal menyimpan pengaturan monitoring snapshot');
+    } finally {
+      setSnapshotMonitorSaving(false);
+    }
+  };
+
+  const fetchLiveSyncStats = async (silent = false, initialLoad = false) => {
+    if (initialLoad) {
+      setLiveSyncLoading(true);
+    } else {
+      setLiveSyncRefreshing(true);
+    }
+
+    try {
+      const response = await api.get('/school-network-settings/live-sync-stats');
+      const data = response.data?.data;
+      const thresholds = normalizeExamLoadThresholds(data?.thresholds as Partial<ExamLoadThresholds> | undefined);
+      setExamLoadThresholds(thresholds);
+      setLiveSyncStats({
+        socket_reachable: data?.socket_reachable === true,
+        connections: Number(data?.connections ?? 0),
+        rooms: Number(data?.rooms ?? 0),
+        exam_connections: Number(data?.exam_connections ?? 0),
+        exam_rooms: Number(data?.exam_rooms ?? 0),
+        uptime_seconds: Number(data?.uptime_seconds ?? 0),
+      });
+    } catch (error) {
+      console.error('Failed to fetch live sync stats:', error);
+      if (!silent) {
+        toast.error('Gagal memuat statistik sinkronisasi live');
+      }
+    } finally {
+      if (initialLoad) {
+        setLiveSyncLoading(false);
+      } else {
+        setLiveSyncRefreshing(false);
+      }
+    }
+  };
+
+  const formatUptime = (seconds: number) => {
+    const safe = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(safe / 3600);
+    const minutes = Math.floor((safe % 3600) / 60);
+    const secs = safe % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const examLoad = getExamLoadMeta(liveSyncStats.exam_connections, examLoadThresholds);
 
   const handleSave = async () => {
     if (!formData.name || !formData.ip_range) {
@@ -241,6 +416,117 @@ export default function JaringanSekolahPage() {
               )}
             </div>
           )}
+        </Card>
+
+        {/* Global Snapshot Monitoring */}
+        <Card className={`p-4 border ${
+          snapshotMonitorEnabled
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                snapshotMonitorEnabled
+                  ? 'bg-green-500 text-white'
+                  : 'bg-red-500 text-white'
+              }`}>
+                {snapshotMonitorEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Monitoring Snapshot Kamera Ujian</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                  Kontrol global untuk upload snapshot kamera siswa pada semua ujian.
+                </p>
+                <p className={`text-xs font-medium mt-1.5 ${
+                  snapshotMonitorEnabled
+                    ? 'text-green-700 dark:text-green-400'
+                    : 'text-red-700 dark:text-red-400'
+                }`}>
+                  {snapshotMonitorEnabled
+                    ? 'Status: Aktif - snapshot dikirim ke server admin'
+                    : 'Status: Nonaktif - snapshot tidak dikirim ke server admin'}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleToggleSnapshotMonitor}
+              disabled={snapshotMonitorLoading || snapshotMonitorSaving}
+              className={snapshotMonitorEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {snapshotMonitorLoading || snapshotMonitorSaving ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {snapshotMonitorLoading ? 'Memuat...' : 'Menyimpan...'}
+                </span>
+              ) : snapshotMonitorEnabled ? 'Matikan Snapshot' : 'Aktifkan Snapshot'}
+            </Button>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-200/70 dark:border-slate-700/60">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Status Sinkronisasi Live Ujian</p>
+              <button
+                onClick={() => fetchLiveSyncStats(false, false)}
+                disabled={liveSyncRefreshing || liveSyncLoading}
+                className="inline-flex items-center gap-1 text-xs font-medium text-sky-600 hover:text-sky-700 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${liveSyncRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {liveSyncLoading ? (
+              <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Memuat statistik koneksi live...
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${
+                  liveSyncStats.socket_reachable
+                    ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300'
+                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                }`}>
+                  <Activity className="w-3 h-3" />
+                  {liveSyncStats.socket_reachable ? 'Socket Online' : 'Socket Offline'}
+                </span>
+
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${examLoad.badgeClass}`}>
+                  <Activity className="w-3 h-3" />
+                  {examLoad.label}
+                </span>
+
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${
+                  liveSyncStats.socket_reachable
+                    ? examLoad.connectionClass
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                }`}>
+                  <Users className="w-3 h-3" />
+                  Klien Ujian: {liveSyncStats.exam_connections}
+                </span>
+
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                  Ruang Ujian: {liveSyncStats.exam_rooms}
+                </span>
+
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  Total Koneksi: {liveSyncStats.connections}
+                </span>
+
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  Uptime: {formatUptime(liveSyncStats.uptime_seconds)}
+                </span>
+              </div>
+            )}
+
+            {!liveSyncLoading && (
+              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                Ambang beban klien ujian: Rendah &lt; {examLoadThresholds.low_max}, Sedang {examLoadThresholds.low_max}-{examLoadThresholds.medium_max}, Tinggi &gt; {examLoadThresholds.medium_max}.
+              </p>
+            )}
+          </div>
         </Card>
 
         {/* Add/Edit Form */}

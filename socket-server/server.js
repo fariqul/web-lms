@@ -14,10 +14,26 @@ const CONNECTION_TIMEOUT = 45000; // 45 seconds for slow connections
 const httpServer = createServer((req, res) => {
   // Health check endpoint with detailed stats
   if (req.url === '/health' && req.method === 'GET') {
+    const examSocketIds = new Set();
+    let examRooms = 0;
+    let examMembersTotal = 0;
+
+    for (const [room, members] of roomMembers) {
+      if (!room.startsWith('exam.')) continue;
+      examRooms += 1;
+      examMembersTotal += members.size;
+      for (const socketId of members) {
+        examSocketIds.add(socketId);
+      }
+    }
+
     const stats = {
       status: 'ok',
       connections: io.engine.clientsCount,
       rooms: roomMembers.size,
+      exam_connections: examSocketIds.size,
+      exam_rooms: examRooms,
+      exam_members_total: examMembersTotal,
       maxConnections: MAX_CONNECTIONS,
       uptime: process.uptime(),
       memory: process.memoryUsage(),

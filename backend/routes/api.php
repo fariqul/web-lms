@@ -91,6 +91,9 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
         
         // School Network Settings
         Route::get('/school-network-settings/test-ip', [SchoolNetworkController::class, 'testCurrentIp']);
+        Route::get('/school-network-settings/snapshot-monitor', [SchoolNetworkController::class, 'getSnapshotMonitorSetting']);
+        Route::put('/school-network-settings/snapshot-monitor', [SchoolNetworkController::class, 'updateSnapshotMonitorSetting']);
+        Route::get('/school-network-settings/live-sync-stats', [SchoolNetworkController::class, 'liveSyncStats']);
         Route::apiResource('school-network-settings', SchoolNetworkController::class);
         
         // Cache management
@@ -249,6 +252,9 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
     Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show']);
     Route::get('/announcements-latest', [AnnouncementController::class, 'latest']);
     Route::get('/announcements-unread-count', [AnnouncementController::class, 'unreadCount']);
+
+    // Global snapshot monitoring status (used by active student exam sessions)
+    Route::get('/snapshot-monitor/status', [SchoolNetworkController::class, 'getSnapshotMonitorSetting']);
     
     // Student can view exams and materials
     Route::get('/exams', [ExamController::class, 'index']);

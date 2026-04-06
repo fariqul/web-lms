@@ -24,7 +24,7 @@ interface UseExamModeReturn {
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   restartCamera: () => Promise<void>;
-  captureSnapshot: () => Promise<string | null>;
+  captureSnapshot: () => Promise<'captured' | 'disabled' | null>;
   activateMonitoring: () => void;
   suppressViolations: (durationMs: number) => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -407,7 +407,7 @@ export function useExamMode({
   }, [examId]);
 
   // Capture snapshot — single robust canvas-based method
-  const captureSnapshot = useCallback(async (): Promise<string | null> => {
+  const captureSnapshot = useCallback(async (): Promise<'captured' | 'disabled' | null> => {
     if (!videoRef.current || !isCameraActive) {
       console.warn('[Snapshot] Skipped: videoRef or camera not active');
       return null;
@@ -490,7 +490,17 @@ export function useExamMode({
 
       // Try to upload
       try {
-        await monitoringAPI.uploadSnapshotBlob(examId, blob);
+        const response = await monitoringAPI.uploadSnapshotBlob(examId, blob);
+        const snapshotMonitorEnabled = response?.data?.data?.snapshot_monitor_enabled;
+
+        if (snapshotMonitorEnabled === false) {
+          console.log('[Snapshot] Monitoring dinonaktifkan oleh admin');
+          retryQueueRef.current = [];
+          consecutiveFailsRef.current = 0;
+          setConsecutiveSnapshotFails(0);
+          return 'disabled';
+        }
+
         console.log(`[Snapshot] Upload success: ${Math.round(blob.size / 1024)}KB (${w}×${h})`);
         consecutiveFailsRef.current = 0;
         setConsecutiveSnapshotFails(0);

@@ -4,10 +4,25 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SchoolNetworkSetting;
+use App\Models\SystemSetting;
+use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SchoolNetworkController extends Controller
 {
+    private function getExamLoadThresholds(): array
+    {
+        $lowMax = max(0, (int) env('EXAM_SYNC_LOAD_LOW_MAX', 99));
+        $mediumMax = max($lowMax + 1, (int) env('EXAM_SYNC_LOAD_MEDIUM_MAX', 300));
+
+        return [
+            'low_max' => $lowMax,
+            'medium_max' => $mediumMax,
+        ];
+    }
+
     /**
      * Display a listing of school network settings
      */
@@ -160,6 +175,99 @@ class SchoolNetworkController extends Controller
                 'x_real_ip' => $request->header('X-Real-IP'),
             ],
         ]);
+    }
+
+    /**
+     * Get global snapshot monitor setting (for all exams)
+     */
+    public function getSnapshotMonitorSetting()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'snapshot_monitor_enabled' => SystemSetting::getSnapshotMonitorEnabled(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update global snapshot monitor setting (for all exams)
+     */
+    public function updateSnapshotMonitorSetting(Request $request)
+    {
+        $validated = $request->validate([
+            'snapshot_monitor_enabled' => 'required|boolean',
+        ]);
+
+        $enabled = (bool) $validated['snapshot_monitor_enabled'];
+        SystemSetting::setSnapshotMonitorEnabled($enabled);
+
+        app(SocketBroadcastService::class)->snapshotMonitorUpdated([
+            'snapshot_monitor_enabled' => $enabled,
+            'updated_by' => $request->user()?->id,
+            'updated_at' => now()->toISOString(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'snapshot_monitor_enabled' => $enabled,
+            ],
+            'message' => $enabled
+                ? 'Monitoring snapshot diaktifkan untuk semua ujian'
+                : 'Monitoring snapshot dinonaktifkan untuk semua ujian',
+        ]);
+    }
+
+    /**
+     * Get real-time socket sync statistics for admin monitoring.
+     */
+    public function liveSyncStats()
+    {
+        $socketServerUrl = rtrim((string) config('app.socket_server_url', 'http://socket:6001'), '/');
+        $thresholds = $this->getExamLoadThresholds();
+
+        try {
+            /** @var \Illuminate\Http\Client\Response $response */
+            $response = Http::timeout(3)->get($socketServerUrl . '/health');
+
+            if (!$response->successful()) {
+                throw new \RuntimeException('Socket health endpoint returned non-2xx status');
+            }
+
+            $health = $response->json();
+            if (!is_array($health)) {
+                throw new \RuntimeException('Socket health payload is invalid');
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'socket_reachable' => true,
+                    'connections' => (int) ($health['connections'] ?? 0),
+                    'rooms' => (int) ($health['rooms'] ?? 0),
+                    'exam_connections' => (int) ($health['exam_connections'] ?? ($health['connections'] ?? 0)),
+                    'exam_rooms' => (int) ($health['exam_rooms'] ?? 0),
+                    'uptime_seconds' => (int) ($health['uptime'] ?? 0),
+                    'thresholds' => $thresholds,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to fetch socket live sync stats: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'socket_reachable' => false,
+                    'connections' => 0,
+                    'rooms' => 0,
+                    'exam_connections' => 0,
+                    'exam_rooms' => 0,
+                    'uptime_seconds' => 0,
+                    'thresholds' => $thresholds,
+                ],
+            ]);
+        }
     }
 
     /**

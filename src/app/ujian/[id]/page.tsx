@@ -191,7 +191,28 @@ export default function ExamTakingPage() {
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [snapshotSuccessCount, setSnapshotSuccessCount] = useState(0);
   const [snapshotFailCount, setSnapshotFailCount] = useState(0);
+  const [snapshotMonitoringEnabled, setSnapshotMonitoringEnabled] = useState(true);
+  const snapshotMonitoringRef = React.useRef(true);
+  const snapshotDisabledToastShownRef = React.useRef(false);
   const [proctoringWarning, setProctoringWarning] = useState<string | null>(null);
+
+  const syncSnapshotMonitoringState = React.useCallback((rawValue: unknown) => {
+    const enabled = rawValue !== false;
+    snapshotMonitoringRef.current = enabled;
+    setSnapshotMonitoringEnabled(enabled);
+
+    if (enabled) {
+      snapshotDisabledToastShownRef.current = false;
+      return enabled;
+    }
+
+    setSnapshotStatus('idle');
+    setSnapshotError(null);
+    setLastSnapshotTime(null);
+    snapshotDisabledToastShownRef.current = false;
+
+    return enabled;
+  }, []);
 
   // AI Proctoring — face detection, head pose, eye gaze, identity verification
   const proctoring = useProctoring({
@@ -412,6 +433,7 @@ export default function ExamTakingPage() {
               const remaining = Math.max(1, Math.floor(startData.remaining_time));
               setTimeRemaining(remaining);
             }
+            syncSnapshotMonitoringState(startData.snapshot_monitor_enabled);
             // Restore current question from sessionStorage
             const savedQ = sessionStorage.getItem(`exam_question_${examId}`);
             if (savedQ) setCurrentQuestion(Number(savedQ) || 0);
@@ -544,21 +566,73 @@ export default function ExamTakingPage() {
     setCameraPreviewActive(false);
   };
 
+  // Real-time sync snapshot monitor setting during active exam.
+  useEffect(() => {
+    if (!isStarted) return;
+
+    let cancelled = false;
+
+    const applySnapshotMonitorState = (enabledValue: unknown, showChangeToast: boolean) => {
+      const prevEnabled = snapshotMonitoringRef.current;
+      const enabled = syncSnapshotMonitoringState(enabledValue);
+
+      if (showChangeToast && prevEnabled !== enabled) {
+        if (enabled) {
+          snapshotDisabledToastShownRef.current = false;
+          toast.info('Monitoring snapshot diaktifkan admin. Upload snapshot dilanjutkan.');
+        } else {
+          snapshotDisabledToastShownRef.current = true;
+          toast.info('Monitoring snapshot dinonaktifkan admin. Kamera tetap wajib aktif selama ujian.');
+        }
+      }
+    };
+
+    const syncInitialSnapshotStatus = async () => {
+      try {
+        const response = await api.get('/snapshot-monitor/status');
+        if (cancelled) return;
+        applySnapshotMonitorState(response.data?.data?.snapshot_monitor_enabled, false);
+      } catch {
+        // Ignore transient errors; websocket + upload endpoint guard will handle consistency.
+      }
+    };
+
+    const handleSnapshotMonitorUpdated = (payload: unknown) => {
+      const data = payload as { snapshot_monitor_enabled?: boolean };
+      applySnapshotMonitorState(data?.snapshot_monitor_enabled, true);
+    };
+
+    void syncInitialSnapshotStatus();
+    examSocket.on('system.snapshot-monitor.updated', handleSnapshotMonitorUpdated);
+
+    return () => {
+      cancelled = true;
+      examSocket.off('system.snapshot-monitor.updated');
+    };
+  }, [isStarted, examSocket, syncSnapshotMonitoringState, toast]);
+
   // Track snapshot status for visual feedback
   useEffect(() => {
-    if (!isStarted || !isCameraActive) return;
+    if (!isStarted || !isCameraActive || !snapshotMonitoringEnabled) return;
 
     const doSnapshot = async (): Promise<boolean> => {
       try {
         setSnapshotStatus('capturing');
         setSnapshotError(null);
         const result = await captureSnapshot();
-        if (result) {
+        if (result === 'captured') {
           setSnapshotStatus('success');
           setLastSnapshotTime(new Date());
           setSnapshotSuccessCount(c => c + 1);
           setSnapshotError(null);
           return true;
+        } else if (result === 'disabled') {
+          syncSnapshotMonitoringState(false);
+          if (!snapshotDisabledToastShownRef.current) {
+            toast.info('Monitoring snapshot dinonaktifkan oleh admin. Kamera tetap wajib aktif selama ujian.');
+            snapshotDisabledToastShownRef.current = true;
+          }
+          return false;
         } else {
           setSnapshotStatus('error');
           setSnapshotError('Gagal ambil gambar dari kamera');
@@ -602,7 +676,7 @@ export default function ExamTakingPage() {
       clearInterval(snapshotCheck);
       clearTimeout(firstTimer);
     };
-  }, [isStarted, isCameraActive, captureSnapshot]);
+  }, [isStarted, isCameraActive, snapshotMonitoringEnabled, captureSnapshot, syncSnapshotMonitoringState, toast]);
 
   const fetchExam = async () => {
     try {
@@ -767,6 +841,8 @@ export default function ExamTakingPage() {
           const remaining = Math.max(1, Math.floor(startData.remaining_time));
           setTimeRemaining(remaining);
         }
+
+        syncSnapshotMonitoringState(startData.snapshot_monitor_enabled);
       }
 
       // Camera will auto-start via useEffect after isStarted becomes true
@@ -1524,18 +1600,30 @@ export default function ExamTakingPage() {
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-slate-600 dark:text-slate-400">Kamera Pengawas</p>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-col items-end gap-1">
                     {isCameraActive ? (
                       <span className="flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400">
                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                        Aktif
+                        Kamera Aktif
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[10px] text-red-500">
                         <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                        Mati
+                        Kamera Mati
                       </span>
                     )}
+                    <span className={`flex items-center gap-1 text-[10px] ${
+                      examSocket.isConnected
+                        ? 'text-cyan-600 dark:text-cyan-400'
+                        : 'text-amber-600 dark:text-amber-400'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        examSocket.isConnected
+                          ? 'bg-cyan-500 animate-pulse'
+                          : 'bg-amber-500'
+                      }`} />
+                      {examSocket.isConnected ? 'Sinkronisasi Live Aktif' : 'Sinkronisasi Live Terputus'}
+                    </span>
                   </div>
                 </div>
                 <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden relative">
@@ -1546,7 +1634,14 @@ export default function ExamTakingPage() {
                       <p className="text-[10px] text-center px-2 mb-1">Kamera tidak aktif</p>
                     </div>
                   )}
-                  {isCameraActive && snapshotStatus !== 'idle' && (
+                  {isCameraActive && !snapshotMonitoringEnabled && (
+                    <div className="absolute bottom-1 left-1 right-1">
+                      <span className="block text-[9px] px-1.5 py-0.5 rounded bg-slate-700/85 text-white text-center">
+                        Snapshot dimatikan admin
+                      </span>
+                    </div>
+                  )}
+                  {isCameraActive && snapshotMonitoringEnabled && snapshotStatus !== 'idle' && (
                     <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
                       <span className={`text-[9px] px-1.5 py-0.5 rounded max-w-[60%] truncate ${
                         snapshotStatus === 'success' ? 'bg-green-600/80 text-white' :
@@ -1565,13 +1660,13 @@ export default function ExamTakingPage() {
                     </div>
                   )}
                   {/* Snapshot stats overlay */}
-                  {isCameraActive && (snapshotSuccessCount > 0 || snapshotFailCount > 0) && (
+                  {isCameraActive && snapshotMonitoringEnabled && (snapshotSuccessCount > 0 || snapshotFailCount > 0) && (
                     <div className="absolute top-1 right-1 text-[8px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">
                       ✓{snapshotSuccessCount} ✗{snapshotFailCount}
                     </div>
                   )}
                   {/* Auto-restart indicator */}
-                  {consecutiveSnapshotFails >= 3 && (
+                  {snapshotMonitoringEnabled && consecutiveSnapshotFails >= 3 && (
                     <div className="absolute top-1 left-1 text-[8px] bg-amber-500/80 text-white px-1.5 py-0.5 rounded backdrop-blur-sm animate-pulse">
                       ⚠ Kamera bermasalah ({consecutiveSnapshotFails}x gagal)
                     </div>

@@ -12,6 +12,7 @@ use App\Models\MonitoringSnapshot;
 use App\Models\AuditLog;
 use App\Models\ExamClassSchedule;
 use App\Models\ClassRoom;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
@@ -25,6 +26,11 @@ use Carbon\Carbon;
 class ExamController extends Controller
 {
     private const EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT = 20;
+
+    private function isSnapshotMonitoringEnabled(): bool
+    {
+        return SystemSetting::getSnapshotMonitorEnabled();
+    }
 
     private function getExamShowCacheTtlSeconds(): int
     {
@@ -2438,6 +2444,7 @@ class ExamController extends Controller
                     ? now()->diffInSeconds(\Carbon\Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
                     : ($exam->duration ?? 90) * 60
                 ),
+                'snapshot_monitor_enabled' => $this->isSnapshotMonitoringEnabled(),
             ],
         ]);
 
@@ -3053,6 +3060,16 @@ class ExamController extends Controller
      */
     public function uploadSnapshot(Request $request, Exam $exam)
     {
+        if (!$this->isSnapshotMonitoringEnabled()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Monitoring snapshot sedang dinonaktifkan oleh admin',
+                'data' => [
+                    'snapshot_monitor_enabled' => false,
+                ],
+            ]);
+        }
+
         // Use mimetypes (checks actual content) instead of mimes (checks extension mapping)
         // canvas.toBlob() produces valid JPEG content but File() constructor extension mapping
         // can confuse Laravel's mimes rule
