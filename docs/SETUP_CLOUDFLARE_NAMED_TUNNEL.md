@@ -58,15 +58,17 @@ Di server Windows (folder project, contoh `D:\lms-server`):
 ```env
 CLOUDFLARE_TUNNEL_TOKEN=ISI_TOKEN_DARI_CLOUDFLARE
 APP_URL=https://api.domain-anda.com
-FRONTEND_URL=https://web-lms-rowr.vercel.app
-CORS_ALLOWED_ORIGINS=https://web-lms-rowr.vercel.app
-SANCTUM_STATEFUL_DOMAINS=web-lms-rowr.vercel.app
+FRONTEND_URL=https://www.domain-anda.com
+CORS_ALLOWED_ORIGINS=https://domain-anda.com,https://www.domain-anda.com,https://web-lms-rowr.vercel.app
+SANCTUM_STATEFUL_DOMAINS=domain-anda.com,www.domain-anda.com,web-lms-rowr.vercel.app
 ```
 
 2. Simpan file.
 
 Catatan:
-- `CORS_ALLOWED_ORIGINS` bisa isi banyak origin dipisahkan koma jika perlu.
+- `CORS_ALLOWED_ORIGINS` bisa isi banyak origin dipisahkan koma.
+- Untuk custom domain, masukkan versi root dan www jika keduanya dipakai.
+- Jangan beri spasi setelah koma agar parsing env konsisten.
 
 ## 4) Restart Service Cloudflared + Backend
 
