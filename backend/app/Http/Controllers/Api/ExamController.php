@@ -173,6 +173,20 @@ class ExamController extends Controller
         return $exam->classSchedules()->exists();
     }
 
+    /**
+     * Force-finish exam flow from autosave endpoints (answer/batch) when session is over.
+     * Reuses finishExam logic to keep scoring + status transitions consistent.
+     */
+    private function forceFinishFromAutosave(Request $request, Exam $exam, array $answerMap = [])
+    {
+        $request->merge([
+            'force_submit' => true,
+            'answers' => $answerMap,
+        ]);
+
+        return $this->finishExam($request, $exam);
+    }
+
     private function canStudentSeeExamByClassSchedule(Exam $exam, ?int $classId): bool
     {
         if (!$classId) {
@@ -2468,6 +2482,9 @@ class ExamController extends Controller
         ]);
 
         $user = $request->user();
+        $answerMap = [
+            (int) $request->question_id => (string) $request->answer,
+        ];
 
         if (!$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
             return response()->json([
@@ -2483,10 +2500,7 @@ class ExamController extends Controller
             ->first();
 
         if (!$result) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian tidak ditemukan',
-            ], 422);
+            return $this->forceFinishFromAutosave($request, $exam, $answerMap);
         }
 
         // Server-side time expiry check
@@ -2496,20 +2510,14 @@ class ExamController extends Controller
         
         // Check exam end_time
         if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Waktu ujian telah berakhir',
-            ], 422);
+            return $this->forceFinishFromAutosave($request, $exam, $answerMap);
         }
         
         // Check student's personal duration (started_at + duration)
         if ($result->started_at && $exam->duration) {
             $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
             if ($now->greaterThan($personalDeadline)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Waktu pengerjaan Anda telah habis',
-                ], 422);
+                return $this->forceFinishFromAutosave($request, $exam, $answerMap);
             }
         }
 
@@ -2623,6 +2631,17 @@ class ExamController extends Controller
         ]);
 
         $user = $request->user();
+        $answerMap = collect($request->input('answers', []))
+            ->filter(fn($item) => is_array($item) && isset($item['question_id']))
+            ->mapWithKeys(function ($item) {
+                $questionId = (int) ($item['question_id'] ?? 0);
+                if ($questionId <= 0) {
+                    return [];
+                }
+
+                return [$questionId => (string) ($item['answer'] ?? '')];
+            })
+            ->all();
 
         // Validate exam session
         $result = ExamResult::where('exam_id', $exam->id)
@@ -2631,10 +2650,7 @@ class ExamController extends Controller
             ->first();
 
         if (!$result) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian tidak ditemukan',
-            ], 422);
+            return $this->forceFinishFromAutosave($request, $exam, $answerMap);
         }
 
         // Server-side time expiry check
@@ -2643,19 +2659,13 @@ class ExamController extends Controller
         $effectiveEndTime = $window['end_time'];
 
         if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Waktu ujian telah berakhir',
-            ], 422);
+            return $this->forceFinishFromAutosave($request, $exam, $answerMap);
         }
 
         if ($result->started_at && $exam->duration) {
             $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
             if ($now->greaterThan($personalDeadline)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Waktu pengerjaan Anda telah habis',
-                ], 422);
+                return $this->forceFinishFromAutosave($request, $exam, $answerMap);
             }
         }
 
