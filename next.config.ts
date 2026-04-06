@@ -18,14 +18,13 @@ const nextConfig: NextConfig = {
         pathname: '/storage/**',
       },
       {
-        protocol: 'http',
-        hostname: '52.63.72.178',
+        protocol: 'https',
+        hostname: 'api.libelslms.my.id',
         pathname: '/storage/**',
       },
       {
         protocol: 'https',
-        hostname: 'sma15lms.duckdns.org',
-        pathname: '/storage/**',
+        hostname: 'www.libelslms.my.id',
       },
       {
         protocol: 'https',

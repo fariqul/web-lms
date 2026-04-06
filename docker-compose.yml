@@ -17,6 +17,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 28G   # 24G buffer pool + 4G overhead
     networks:
       - lms-network
 
@@ -35,7 +39,7 @@ services:
       APP_ENV: production
       APP_KEY: ${APP_KEY:-}
       APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-https://lms-api.example.com}
+      APP_URL: ${APP_URL:-https://api.libelslms.my.id}
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
@@ -61,6 +65,10 @@ services:
       PROCTORING_SERVICE_URL: "http://proctoring:8001"
     volumes:
       - backend_storage:/var/www/html/storage
+    deploy:
+      resources:
+        limits:
+          memory: 24G   # Apache workers need room (800 workers × ~30MB)
     networks:
       - lms-network
 
@@ -75,10 +83,14 @@ services:
       SOCKET_PORT: 6001
       SOCKET_INTERNAL_SECRET: ${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
       CORS_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://www.libelslms.my.id,https://libelslms.my.id,https://web-lms-rowr.vercel.app}
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - lms-network
 
-  # Nginx Reverse Proxy
+  # Nginx Reverse Proxy (with custom global config)
   nginx:
     image: nginx:alpine
     container_name: lms-nginx
@@ -86,10 +98,15 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
       - socket
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     networks:
       - lms-network
 
@@ -110,6 +127,10 @@ services:
       - ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - nginx
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - lms-network
 
@@ -129,6 +150,8 @@ services:
       LOG_LEVEL: INFO
     deploy:
       resources:
+        limits:
+          memory: 4G
         reservations:
           devices:
             - driver: nvidia
