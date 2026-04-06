@@ -129,6 +129,8 @@ docker-compose restart backend nginx
 
 - Pastikan token benar dan tunnel status Healthy di dashboard Cloudflare.
 - Pastikan public hostname mengarah ke `nginx:80` (bukan localhost).
+- Pastikan **hanya ada satu** Public Hostname aktif untuk `api.domain-anda.com` (hindari route ganda di tunnel lain).
+- Pastikan di DNS Cloudflare juga tidak ada record `api` lain yang bentrok (A/AAAA/CNAME duplikat).
 - Cek container status:
 
 ```powershell
@@ -137,6 +139,23 @@ docker logs lms-tunnel --tail 200
 docker logs lms-nginx --tail 200
 docker logs lms-backend --tail 200
 ```
+
+### A1. 502 intermiten (kadang normal, kadang gagal)
+
+- Gunakan mode koneksi edge `http2` pada service `cloudflared` (lebih stabil untuk jaringan yang tidak konsisten di UDP/QUIC).
+- Setelah ubah compose, recreate tunnel:
+
+```powershell
+docker compose up -d --force-recreate cloudflared
+```
+
+- Uji 20 kali beruntun untuk memastikan stabil:
+
+```powershell
+1..20 | % { curl.exe -s -o NUL -w "%{http_code}`n" https://api.domain-anda.com/api/health }
+```
+
+Semua hasil idealnya `200`.
 
 ### B. Domain tidak resolve
 
