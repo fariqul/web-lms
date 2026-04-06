@@ -1,5 +1,5 @@
 # MySQL 8.0 Configuration
-# Optimized for Ryzen 5 5600 + 32GB RAM (allocate ~8GB to MySQL)
+# Optimized for Intel i5 Gen 13 + 64GB RAM (allocate ~16GB to MySQL)
 # Target: High concurrency for LMS with 600+ users
 
 [mysqld]
@@ -9,9 +9,9 @@ max_user_connections = 550
 wait_timeout = 300
 interactive_timeout = 300
 
-# Buffer pool (main memory allocation - 8GB for 32GB system)
-innodb_buffer_pool_size = 8G
-innodb_buffer_pool_instances = 8
+# Buffer pool (main memory allocation - 16GB for 64GB system)
+innodb_buffer_pool_size = 16G
+innodb_buffer_pool_instances = 16
 
 # Log and I/O
 innodb_log_file_size = 512M
