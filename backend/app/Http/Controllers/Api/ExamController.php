@@ -3610,6 +3610,7 @@ class ExamController extends Controller
 
         // Build combined list: results + students who haven't started
         $allEntries = [];
+        $includeCompletionReason = $user->role === 'admin';
 
         foreach ($results as $r) {
             $entry = $r->toArray();
@@ -3618,6 +3619,26 @@ class ExamController extends Controller
             $entry['total_essays'] = $studentEssay ? $studentEssay['total_essays'] : 0;
             $entry['graded_essays'] = $studentEssay ? $studentEssay['graded_essays'] : 0;
             $entry['ungraded_essays'] = $studentEssay ? $studentEssay['ungraded_essays'] : 0;
+
+            if ($includeCompletionReason) {
+                $completionReason = null;
+                if (in_array($r->status, ['completed', 'submitted', 'graded'], true)) {
+                    if ((int) ($r->violation_count ?? 0) > 0) {
+                        $completionReason = 'violation';
+                    } else {
+                        $finishedAt = $r->finished_at ? Carbon::parse($r->finished_at) : null;
+                        $examEndAt = $exam->end_time ? Carbon::parse($exam->end_time) : null;
+
+                        if ($finishedAt && $examEndAt && $finishedAt->greaterThanOrEqualTo($examEndAt)) {
+                            $completionReason = 'time_up';
+                        } else {
+                            $completionReason = 'manual';
+                        }
+                    }
+                }
+                $entry['completion_reason'] = $completionReason;
+            }
+
             $allEntries[] = $entry;
         }
 
@@ -3625,7 +3646,7 @@ class ExamController extends Controller
         $notStartedStatus = $examEnded ? 'missed' : 'not_started';
 
         foreach ($allStudents as $student) {
-            $allEntries[] = [
+            $studentEntry = [
                 'id' => null,
                 'student_id' => $student->id,
                 'exam_id' => $exam->id,
@@ -3653,6 +3674,12 @@ class ExamController extends Controller
                     'class_room' => $student->classRoom ? ['id' => $student->classRoom->id, 'name' => $student->classRoom->name] : null,
                 ],
             ];
+
+            if ($includeCompletionReason) {
+                $studentEntry['completion_reason'] = null;
+            }
+
+            $allEntries[] = $studentEntry;
         }
 
         $allEntries = collect($allEntries)

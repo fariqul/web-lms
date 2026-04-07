@@ -33,6 +33,7 @@ interface StudentResult {
   id: number;
   student_id: number;
   status: string;
+  completion_reason?: 'manual' | 'time_up' | 'violation' | null;
   reactivation_count?: number;
   total_score: number;
   max_score: number;
@@ -546,6 +547,32 @@ export default function ExamResultsPage() {
     );
   };
 
+  const getCompletionReasonBadge = (reason?: 'manual' | 'time_up' | 'violation' | null) => {
+    if (!reason) return null;
+
+    if (reason === 'violation') {
+      return (
+        <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-full" title="Ujian terkumpul otomatis karena batas pelanggaran tercapai">
+          Terkumpul: Pelanggaran
+        </span>
+      );
+    }
+
+    if (reason === 'time_up') {
+      return (
+        <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded-full" title="Ujian terkumpul karena waktu habis atau admin mengakhiri sesi">
+          Terkumpul: Waktu Habis
+        </span>
+      );
+    }
+
+    return (
+      <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium rounded-full" title="Ujian dikumpulkan manual oleh siswa">
+        Terkumpul: Manual
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -976,6 +1003,7 @@ export default function ExamResultsPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         <div className="flex flex-col items-center gap-1">
                           {getStatusBadge(result.status)}
+                          {user?.role === 'admin' && getCompletionReasonBadge(result.completion_reason)}
                           {getReactivationBadge(result.reactivation_count || 0)}
                         </div>
                       </td>
