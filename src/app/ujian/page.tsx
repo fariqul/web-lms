@@ -64,6 +64,7 @@ export default function UjianPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteExam, setDeleteExam] = useState<{id: number, title: string} | null>(null);
+  const [clearHistoryExam, setClearHistoryExam] = useState<{id: number, title: string} | null>(null);
   const [visibleUpcomingCount, setVisibleUpcomingCount] = useState(8);
   const [visibleCompletedCount, setVisibleCompletedCount] = useState(6);
   const [formData, setFormData] = useState({
@@ -303,6 +304,26 @@ export default function UjianPage() {
     }
   }, [deleteExam, fetchData, toast]);
 
+  const handleClearHistoryExam = useCallback((examId: number, examTitle: string) => {
+    setClearHistoryExam({ id: examId, title: examTitle });
+  }, []);
+
+  const confirmClearHistoryExam = useCallback(async () => {
+    if (!clearHistoryExam) return;
+
+    try {
+      const response = await api.post(`/exams/${clearHistoryExam.id}/clear-history`);
+      toast.success(response.data?.message || 'Riwayat ujian berhasil dihapus');
+      fetchData();
+    } catch (error: unknown) {
+      console.error('Failed to clear exam history:', error);
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal menghapus riwayat ujian');
+    } finally {
+      setClearHistoryExam(null);
+    }
+  }, [clearHistoryExam, fetchData, toast]);
+
   const getStatusBadge = useCallback((exam: Exam) => {
     const now = new Date();
     const endTime = exam.end_time ? new Date(exam.end_time) : null;
@@ -497,15 +518,25 @@ export default function UjianPage() {
           </div>
           {getStatusBadge(exam)}
         </div>
-        <Link href={`/ujian/${exam.id}/results`}>
-          <Button variant="outline" fullWidth>
-            Lihat Hasil
+        <div className="flex gap-2">
+          <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+            <Button variant="outline" fullWidth>
+              Lihat Hasil
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            onClick={() => handleClearHistoryExam(exam.id, exam.title)}
+            className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Hapus Riwayat
           </Button>
-        </Link>
+        </div>
       </div>
       );
     });
-  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo]);
+  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo, handleClearHistoryExam]);
 
   if (loading) {
     return (
@@ -773,6 +804,18 @@ export default function UjianPage() {
           title="Hapus Ujian"
           message={`Yakin ingin menghapus ujian "${deleteExam?.title}"? Tindakan ini tidak dapat dibatalkan.`}
           confirmText="Hapus"
+          variant="danger"
+        />
+      )}
+
+      {clearHistoryExam && (
+        <ConfirmDialog
+          isOpen={!!clearHistoryExam}
+          onClose={() => setClearHistoryExam(null)}
+          onConfirm={confirmClearHistoryExam}
+          title="Hapus Riwayat Ujian"
+          message={`Yakin ingin menghapus seluruh riwayat pengerjaan untuk ujian "${clearHistoryExam?.title}"? Soal ujian tetap ada dan ujian akan kembali ke status draft.`}
+          confirmText="Hapus Riwayat"
           variant="danger"
         />
       )}

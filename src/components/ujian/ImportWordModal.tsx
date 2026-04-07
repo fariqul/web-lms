@@ -578,6 +578,22 @@ export function ImportWordModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docImages, setDocImages] = useState<Map<string, Blob>>(new Map());
 
+  const normalizeImportedText = useCallback((value: string): string => {
+    if (!value) return '';
+
+    // Remove simple markdown emphasis markers often produced by copy/paste.
+    let normalized = value
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      // Remove leftover simple html emphasis tags if present.
+      .replace(/<\/?(strong|b|em|i)>/gi, '')
+      // Normalize non-breaking spaces.
+      .replace(/\u00A0/g, ' ')
+      .trim();
+
+    return normalized;
+  }, []);
+
   /** Resolve {{IMG:key}} markers from a line, return clean text + File objects */
   const resolveImages = useCallback((line: string, images: Map<string, Blob>): { cleanText: string; files: File[] } => {
     const files: File[] = [];
@@ -589,8 +605,8 @@ export function ImportWordModal({
       }
       return '';
     }).trim();
-    return { cleanText, files };
-  }, []);
+    return { cleanText: normalizeImportedText(cleanText), files };
+  }, [normalizeImportedText]);
 
   // Parsing logic with passage + image support
   const parseText = useCallback((text: string, images: Map<string, Blob>): ParsedQuestion[] => {
@@ -682,7 +698,7 @@ export function ImportWordModal({
       if (collectingPassage) {
         // Resolve images in passage lines (remove markers, ignore images in passage)
         const { cleanText } = resolveImages(line, images);
-        passageLines.push(cleanText || line);
+        passageLines.push(cleanText || normalizeImportedText(line));
         continue;
       }
 
@@ -718,7 +734,7 @@ export function ImportWordModal({
         // Extract inline images from question line
         const { cleanText, files } = resolveImages(qText, images);
         if (files.length > 0) currentQuestionImage = files[0];
-        qText = cleanText;
+        qText = normalizeImportedText(cleanText);
         // Check if explicitly marked as essay
         if (/\(essay\)\s*$/i.test(qText)) {
           isEssay = true;
@@ -738,17 +754,17 @@ export function ImportWordModal({
         let optText = optionMatch[4].trim();
         // Extract inline images from option line
         const { cleanText, files } = resolveImages(optText, images);
-        optText = cleanText;
+        optText = normalizeImportedText(cleanText);
         currentOptions.push({ text: optText, is_correct: isCorrect, image: files[0] || null });
       } else if (currentQuestion) {
         // Continuation of question text (may contain images)
-        currentQuestion += ' ' + line.trim();
+        currentQuestion += ' ' + normalizeImportedText(line.trim());
       }
     }
 
     flushQuestion();
     return results;
-  }, [defaultPoints, resolveImages]);
+  }, [defaultPoints, normalizeImportedText, resolveImages]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];

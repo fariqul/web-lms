@@ -224,6 +224,7 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
         // Exam results (guru grades, admin views)
         Route::get('/exams/{exam}/results', [ExamController::class, 'results']);
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
+        Route::post('/exams/{exam}/clear-history', [ExamController::class, 'clearHistory']);
         
         // Question management (shared — admin can edit even locked exams)
         Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);

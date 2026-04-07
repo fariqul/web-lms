@@ -9,6 +9,7 @@ use App\Models\Answer;
 use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
+use App\Models\ProctoringAlert;
 use App\Models\AuditLog;
 use App\Models\ExamClassSchedule;
 use App\Models\ClassRoom;
@@ -1328,6 +1329,98 @@ class ExamController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Ujian berhasil dihapus',
+        ]);
+    }
+
+    /**
+     * Clear exam attempt history without deleting exam/questions.
+     * This is used by guru/admin from "Riwayat Ujian" to recycle an exam.
+     */
+    public function clearHistory(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        // Ownership check
+        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus riwayat ujian ini',
+            ], 403);
+        }
+
+        // Prevent clearing while exam is still active
+        if ($exam->status === 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian masih berlangsung dan tidak dapat dihapus riwayatnya',
+            ], 422);
+        }
+
+        $examId = $exam->id;
+        $resultIds = ExamResult::where('exam_id', $examId)->pluck('id');
+
+        $summary = DB::transaction(function () use ($exam, $examId, $resultIds) {
+            $answersDeleted = Answer::where('exam_id', $examId)->delete();
+            $violationsDeleted = Violation::where('exam_id', $examId)->delete();
+            $alertsDeleted = ProctoringAlert::where('exam_id', $examId)->delete();
+
+            $snapshotsDeleted = 0;
+            MonitoringSnapshot::where('exam_id', $examId)
+                ->get()
+                ->each(function (MonitoringSnapshot $snap) use (&$snapshotsDeleted) {
+                    if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
+                        Storage::disk('public')->delete($snap->image_path);
+                    }
+                    $snap->delete();
+                    $snapshotsDeleted++;
+                });
+
+            $resultsDeleted = ExamResult::where('exam_id', $examId)->delete();
+
+            $auditLogsDeleted = 0;
+            if ($resultIds->isNotEmpty()) {
+                $auditLogsDeleted = AuditLog::where('target_type', 'exam_result')
+                    ->whereIn('target_id', $resultIds)
+                    ->delete();
+            }
+
+            // Return exam to draft so it disappears from "Riwayat Ujian" list.
+            $exam->status = 'draft';
+            $exam->save();
+
+            return [
+                'answers_deleted' => $answersDeleted,
+                'violations_deleted' => $violationsDeleted,
+                'alerts_deleted' => $alertsDeleted,
+                'snapshots_deleted' => $snapshotsDeleted,
+                'results_deleted' => $resultsDeleted,
+                'audit_logs_deleted' => $auditLogsDeleted,
+            ];
+        });
+
+        $this->forgetExamShowCache($examId);
+
+        try {
+            app(SocketBroadcastService::class)->examUpdated($examId, [
+                'exam_id' => $examId,
+                'status' => 'draft',
+                'title' => $exam->title,
+                'start_time' => $this->toSchoolIso8601($exam->start_time),
+                'end_time' => $this->toSchoolIso8601($exam->end_time),
+                'duration' => $exam->duration,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Broadcast examUpdated after clearHistory failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Riwayat ujian berhasil dihapus',
+            'data' => [
+                'exam_id' => $examId,
+                'status' => 'draft',
+                'summary' => $summary,
+            ],
         ]);
     }
 
