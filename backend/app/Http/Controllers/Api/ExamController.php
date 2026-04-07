@@ -1294,7 +1294,7 @@ class ExamController extends Controller
             // Delete violations for this exam
             Violation::where('exam_id', $exam->id)->delete();
             // Delete monitoring snapshots for this exam
-            MonitoringSnapshot::where('exam_id', $exam->id)->each(function ($snap) {
+            MonitoringSnapshot::where('exam_id', $exam->id)->each(function (MonitoringSnapshot $snap) {
                 if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
                     Storage::disk('public')->delete($snap->image_path);
                 }
@@ -1305,7 +1305,7 @@ class ExamController extends Controller
             // Detach multi-class pivot
             $exam->classes()->detach();
             // Delete questions (with their images)
-            $exam->questions()->each(function ($q) {
+            $exam->questions()->each(function (Question $q) {
                 if ($q->image && Storage::disk('public')->exists($q->image)) {
                     Storage::disk('public')->delete($q->image);
                 }
@@ -1333,8 +1333,7 @@ class ExamController extends Controller
     }
 
     /**
-     * Clear exam attempt history without deleting exam/questions.
-     * This is used by guru/admin from "Riwayat Ujian" to recycle an exam.
+     * Delete exam from history permanently (including attempts and related data).
      */
     public function clearHistory(Request $request, Exam $exam)
     {
@@ -1358,6 +1357,8 @@ class ExamController extends Controller
 
         $examId = $exam->id;
         $resultIds = ExamResult::where('exam_id', $examId)->pluck('id');
+
+        $classId = $exam->class_id;
 
         $summary = DB::transaction(function () use ($exam, $examId, $resultIds) {
             $answersDeleted = Answer::where('exam_id', $examId)->delete();
@@ -1384,9 +1385,16 @@ class ExamController extends Controller
                     ->delete();
             }
 
-            // Return exam to draft so it disappears from "Riwayat Ujian" list.
-            $exam->status = 'draft';
-            $exam->save();
+            // Detach classes and remove question assets before deleting exam.
+            $exam->classes()->detach();
+            $exam->questions()->each(function (Question $q) {
+                if ($q->image && Storage::disk('public')->exists($q->image)) {
+                    Storage::disk('public')->delete($q->image);
+                }
+                $q->delete();
+            });
+
+            $exam->delete();
 
             return [
                 'answers_deleted' => $answersDeleted,
@@ -1401,24 +1409,19 @@ class ExamController extends Controller
         $this->forgetExamShowCache($examId);
 
         try {
-            app(SocketBroadcastService::class)->examUpdated($examId, [
+            app(SocketBroadcastService::class)->examDeleted($examId, [
                 'exam_id' => $examId,
-                'status' => 'draft',
-                'title' => $exam->title,
-                'start_time' => $this->toSchoolIso8601($exam->start_time),
-                'end_time' => $this->toSchoolIso8601($exam->end_time),
-                'duration' => $exam->duration,
+                'class_id' => $classId,
             ]);
         } catch (\Throwable $e) {
-            Log::warning('Broadcast examUpdated after clearHistory failed: ' . $e->getMessage());
+            Log::warning('Broadcast examDeleted after clearHistory failed: ' . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Riwayat ujian berhasil dihapus',
+            'message' => 'Ujian pada riwayat berhasil dihapus permanen',
             'data' => [
                 'exam_id' => $examId,
-                'status' => 'draft',
                 'summary' => $summary,
             ],
         ]);

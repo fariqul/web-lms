@@ -814,7 +814,7 @@ export default function UjianPage() {
           onClose={() => setClearHistoryExam(null)}
           onConfirm={confirmClearHistoryExam}
           title="Hapus Riwayat Ujian"
-          message={`Yakin ingin menghapus seluruh riwayat pengerjaan untuk ujian "${clearHistoryExam?.title}"? Soal ujian tetap ada dan ujian akan kembali ke status draft.`}
+          message={`Yakin ingin menghapus ujian "${clearHistoryExam?.title}" dari riwayat secara permanen? Semua hasil, jawaban, pelanggaran, dan data monitoring akan ikut terhapus.`}
           confirmText="Hapus Riwayat"
           variant="danger"
         />

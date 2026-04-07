@@ -108,7 +108,6 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
         Route::post('/exams/{exam}/unpublish', [ExamController::class, 'unpublish']);
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
-        Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
         
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);
@@ -221,6 +220,7 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
 
         // Exam update (guru edits content, admin can edit schedule)
         Route::put('/exams/{exam}', [ExamController::class, 'update']);
+        Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
         // Exam results (guru grades, admin views)
         Route::get('/exams/{exam}/results', [ExamController::class, 'results']);
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
