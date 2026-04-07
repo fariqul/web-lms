@@ -67,6 +67,7 @@ export function NotificationDropdown() {
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
   const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const NOTIFICATION_POLL_MS = 30000;
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -89,11 +90,44 @@ export function NotificationDropdown() {
     }
   }, []);
 
-  // Poll unread count every 60 seconds
+  // Poll unread count every 30 seconds and pause when tab is hidden.
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (interval || document.hidden) return;
+      interval = setInterval(() => {
+        if (!document.hidden) {
+          void fetchUnreadCount();
+        }
+      }, NOTIFICATION_POLL_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+        return;
+      }
+
+      void fetchUnreadCount();
+      startPolling();
+    };
+
+    void fetchUnreadCount();
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchUnreadCount]);
 
   // Fetch notifications when dropdown opens

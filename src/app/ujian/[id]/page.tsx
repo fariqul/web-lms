@@ -286,11 +286,14 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, examId, examSocket, forceExitExamByAdmin]);
 
-  // Fallback: poll exam status periodically in case websocket event is missed
+  // Fallback: poll exam status periodically in case websocket event is missed.
+  // Poll every 30s and pause when tab is hidden.
   useEffect(() => {
     if (!isStarted || submitting) return;
 
     const checkEndedStatus = async () => {
+      if (document.hidden) return;
+
       try {
         const response = await api.get(`/exams/${examId}`);
         const examData = response.data?.data;
@@ -307,8 +310,40 @@ export default function ExamTakingPage() {
       }
     };
 
-    const interval = setInterval(checkEndedStatus, 5000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (interval || document.hidden) return;
+      interval = setInterval(() => {
+        void checkEndedStatus();
+      }, 30000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+        return;
+      }
+
+      void checkEndedStatus();
+      startPolling();
+    };
+
+    void checkEndedStatus();
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isStarted, submitting, examId, forceExitExamByAdmin]);
 
   // Socket: listen for real-time question changes (admin/guru editing during exam)
@@ -636,7 +671,8 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, examSocket, syncSnapshotMonitoringState, toast]);
 
-  // Track snapshot status for visual feedback
+  // Track snapshot status for visual feedback.
+  // Capture every 30s and pause when tab is hidden.
   useEffect(() => {
     if (!isStarted || !isCameraActive || !snapshotMonitoringEnabled) return;
 
@@ -691,15 +727,48 @@ export default function ExamTakingPage() {
       }
     };
 
-    // Snapshot every 5 seconds
-    const snapshotCheck = setInterval(doSnapshot, 5000);
+    let snapshotCheck: ReturnType<typeof setInterval> | null = null;
+    let firstTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // First snapshot after 3s — give camera time to initialize
-    const firstTimer = setTimeout(doSnapshot, 3000);
+    const stopSnapshotPolling = () => {
+      if (snapshotCheck) {
+        clearInterval(snapshotCheck);
+        snapshotCheck = null;
+      }
+      if (firstTimer) {
+        clearTimeout(firstTimer);
+        firstTimer = null;
+      }
+    };
+
+    const startSnapshotPolling = () => {
+      if (document.hidden || snapshotCheck) return;
+      snapshotCheck = setInterval(() => {
+        void doSnapshot();
+      }, 30000);
+
+      // First snapshot after 3s — give camera time to initialize
+      firstTimer = setTimeout(() => {
+        void doSnapshot();
+      }, 3000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopSnapshotPolling();
+        return;
+      }
+
+      void doSnapshot();
+      startSnapshotPolling();
+    };
+
+    startSnapshotPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(snapshotCheck);
-      clearTimeout(firstTimer);
+      stopSnapshotPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isStarted, isCameraActive, snapshotMonitoringEnabled, captureSnapshot, syncSnapshotMonitoringState, toast]);
 

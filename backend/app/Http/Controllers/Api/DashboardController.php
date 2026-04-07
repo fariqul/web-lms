@@ -16,14 +16,16 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    private const DASHBOARD_CACHE_TTL_SECONDS = 60;
+
     /**
      * Get admin dashboard stats - OPTIMIZED
      * Menggunakan single query dengan aggregates dan caching
      */
     public function adminStats()
     {
-        // Cache admin stats for 5 minutes
-        $data = Cache::remember('admin_dashboard_stats', 300, function () {
+        // Cache admin stats for 60 seconds to reduce repetitive dashboard load.
+        $data = Cache::remember('admin_dashboard_stats', self::DASHBOARD_CACHE_TTL_SECONDS, function () {
             // Single query untuk semua user counts by role
             $userCounts = User::query()
                 ->selectRaw("
@@ -333,7 +335,7 @@ class DashboardController extends Controller
         $cacheKey = "teacher_dashboard_{$user->id}";
         
         // Stats dengan single aggregated queries
-        $stats = Cache::remember($cacheKey . '_stats', 180, function () use ($user, $today, $now) {
+        $stats = Cache::remember($cacheKey . '_stats', self::DASHBOARD_CACHE_TTL_SECONDS, function () use ($user, $today, $now) {
             // Combined session counts - using valid_from instead of date
             $sessionCounts = AttendanceSession::where('teacher_id', $user->id)
                 ->selectRaw("
@@ -448,7 +450,7 @@ class DashboardController extends Controller
         $cacheKey = "student_dashboard_{$user->id}";
         
         // Attendance stats dengan single query
-        $attendanceData = Cache::remember($cacheKey . '_attendance', 120, function () use ($user) {
+        $attendanceData = Cache::remember($cacheKey . '_attendance', self::DASHBOARD_CACHE_TTL_SECONDS, function () use ($user) {
             return Attendance::where('student_id', $user->id)
                 ->selectRaw("
                     COUNT(*) as total,

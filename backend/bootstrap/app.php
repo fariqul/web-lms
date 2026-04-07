@@ -30,6 +30,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
         
         $middleware->statefulApi();
+
+        // API endpoints must not redirect to a web login route.
+        // Let authentication failures bubble into the JSON 401 renderer below.
+        $middleware->redirectGuestsTo(function (Request $request) {
+            return ($request->is('api/*') || $request->expectsJson()) ? null : '/login';
+        });
         
         // Register custom middleware aliases
         $middleware->alias([
@@ -37,8 +43,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'audit' => \App\Http\Middleware\AuditLogMiddleware::class,
         ]);
         
-        // Enable global API rate limiting (tunable from environment)
-        $middleware->throttleApi((string) env('GLOBAL_API_THROTTLE', '3500,1'));
+        // Optional global API throttling.
+        // Disabled by default to avoid IP-shared 429 spikes in school networks.
+        if ((bool) env('ENABLE_GLOBAL_API_THROTTLE', false)) {
+            $middleware->throttleApi((string) env('GLOBAL_API_THROTTLE', '3500,1'));
+        }
         
         $middleware->validateCsrfTokens(except: [
             'api/*',

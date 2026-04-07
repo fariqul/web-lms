@@ -26,6 +26,25 @@ use Carbon\Carbon;
 class ExamController extends Controller
 {
     private const EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT = 20;
+    private const SCHOOL_TIMEZONE = 'Asia/Makassar';
+
+    private function parseSchoolTimeToUtc(string $value): Carbon
+    {
+        return Carbon::parse($value, self::SCHOOL_TIMEZONE)->setTimezone('UTC');
+    }
+
+    private function toSchoolIso8601($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $carbon = $value instanceof Carbon
+            ? $value->copy()
+            : Carbon::parse($value, 'UTC');
+
+        return $carbon->setTimezone(self::SCHOOL_TIMEZONE)->toIso8601String();
+    }
 
     private function isSnapshotMonitoringEnabled(): bool
     {
@@ -77,7 +96,7 @@ class ExamController extends Controller
                     'violation_type' => $violationType,
                     'reason_code' => $reasonCode,
                     'message' => $message,
-                    'recorded_at' => now()->toISOString(),
+                    'recorded_at' => $this->toSchoolIso8601(now()),
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -252,8 +271,8 @@ class ExamController extends Controller
                     'exam_id' => $candidate->id,
                     'exam_title' => $candidate->title,
                     'status' => $candidate->status,
-                    'start_time' => $candidateStart->toISOString(),
-                    'end_time' => $candidateEnd->toISOString(),
+                    'start_time' => $this->toSchoolIso8601($candidateStart),
+                    'end_time' => $this->toSchoolIso8601($candidateEnd),
                     'has_class_override' => (bool) $candidateSchedule,
                 ];
             }
@@ -348,7 +367,7 @@ class ExamController extends Controller
                 'max_score' => $result->max_score ?? 0,
                 'percentage' => $result->percentage ?? 0,
                 'status' => $result->status,
-                'submitted_at' => $result->submitted_at?->toISOString() ?? '',
+                'submitted_at' => $this->toSchoolIso8601($result->submitted_at) ?? '',
             ];
         }
         
@@ -380,7 +399,7 @@ class ExamController extends Controller
                     ? round(($submission->score / $assignment->max_score) * 100, 1)
                     : null,
                 'status' => $submission->status,
-                'submitted_at' => $submission->submitted_at?->toISOString() ?? '',
+                'submitted_at' => $this->toSchoolIso8601($submission->submitted_at) ?? '',
             ];
         }
         
@@ -595,8 +614,8 @@ class ExamController extends Controller
             'teacher_id' => $request->user()->id,
             'subject' => $request->subject,
             'duration' => $request->duration_minutes,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
+            'start_time' => $this->parseSchoolTimeToUtc((string) $request->start_time),
+            'end_time' => $this->parseSchoolTimeToUtc((string) $request->end_time),
             'status' => 'draft',
         ]);
 
@@ -837,12 +856,22 @@ class ExamController extends Controller
         }
 
         // Status is NOT allowed via fill to prevent manipulation
-        $exam->fill($request->only([
+        $updatePayload = $request->only([
             'title', 'description', 'class_id', 'subject', 
             'duration', 'start_time', 'end_time',
             'passing_score', 'shuffle_questions', 'shuffle_options',
             'show_result', 'max_violations'
-        ]));
+        ]);
+
+        if ($request->filled('start_time')) {
+            $updatePayload['start_time'] = $this->parseSchoolTimeToUtc((string) $request->input('start_time'));
+        }
+
+        if ($request->filled('end_time')) {
+            $updatePayload['end_time'] = $this->parseSchoolTimeToUtc((string) $request->input('end_time'));
+        }
+
+        $exam->fill($updatePayload);
 
         // Sync multi-class if class_ids provided
         if ($request->has('class_ids')) {
@@ -978,8 +1007,8 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $startTime = Carbon::parse($request->start_time);
-        $endTime = Carbon::parse($request->end_time);
+        $startTime = $this->parseSchoolTimeToUtc((string) $request->start_time);
+        $endTime = $this->parseSchoolTimeToUtc((string) $request->end_time);
 
         $defaultPublishForExamStatus = in_array($exam->status, ['scheduled', 'active'], true);
         $isPublished = $request->has('is_published')
@@ -1061,8 +1090,8 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $startTime = Carbon::parse($request->start_time);
-        $endTime = Carbon::parse($request->end_time);
+        $startTime = $this->parseSchoolTimeToUtc((string) $request->start_time);
+        $endTime = $this->parseSchoolTimeToUtc((string) $request->end_time);
 
         $defaultPublishForExamStatus = in_array($exam->status, ['scheduled', 'active'], true);
         $isPublished = $request->has('is_published')
@@ -1433,10 +1462,10 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $startTime = Carbon::parse($request->start_time);
+        $startTime = $this->parseSchoolTimeToUtc((string) $request->start_time);
         $duration = (int) ($request->duration_minutes ?? $exam->duration ?? 60);
         $endTime = $request->filled('end_time')
-            ? Carbon::parse($request->end_time)
+            ? $this->parseSchoolTimeToUtc((string) $request->end_time)
             : (clone $startTime)->addMinutes($duration);
 
         $keepClassSchedules = (bool) $request->boolean('keep_class_schedules', false);
@@ -2324,7 +2353,7 @@ class ExamController extends Controller
                 app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
                     'student_id' => $user->id,
                     'student_name' => $user->name,
-                    'started_at' => now()->toISOString(),
+                    'started_at' => $this->toSchoolIso8601(now()),
                 ]);
             }
 
@@ -2793,7 +2822,7 @@ class ExamController extends Controller
             'success' => true,
             'data' => [
                 'remaining_time' => $remaining,
-                'server_time' => now()->toISOString(),
+                'server_time' => $this->toSchoolIso8601(now()),
             ],
         ]);
     }
@@ -2898,7 +2927,7 @@ class ExamController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Tombol kumpulkan baru aktif 10 menit sebelum waktu ujian habis',
-                        'manual_submit_available_at' => $manualSubmitOpensAt->toISOString(),
+                        'manual_submit_available_at' => $this->toSchoolIso8601($manualSubmitOpensAt),
                     ], 422);
                 }
             }
@@ -3061,7 +3090,7 @@ class ExamController extends Controller
                 'student_id' => $user->id,
                 'student_name' => $user->name,
                 'score' => $result->score,
-                'finished_at' => $result->finished_at->toISOString(),
+                'finished_at' => $this->toSchoolIso8601($result->finished_at),
             ]);
 
             $response = [
@@ -3327,7 +3356,7 @@ class ExamController extends Controller
         app(SocketBroadcastService::class)->examSnapshot($exam->id, [
             'student_id' => $user->id,
             'image_path' => $imagePath,
-            'captured_at' => now()->toISOString(),
+            'captured_at' => $this->toSchoolIso8601(now()),
         ]);
 
         // Dispatch async AI analysis job (if queue is configured)
@@ -3734,7 +3763,7 @@ class ExamController extends Controller
                 'question_id' => $answer->question_id,
                 'score' => $answer->score,
                 'is_correct' => $answer->is_correct,
-                'graded_at' => $answer->graded_at?->toISOString(),
+                'graded_at' => $this->toSchoolIso8601($answer->graded_at),
             ]);
 
             if ($examResult) {

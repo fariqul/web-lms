@@ -32,6 +32,9 @@ use App\Http\Controllers\Api\SummativeScoreController;
 
 $loginThrottle = (string) env('LOGIN_THROTTLE', '1800,1');
 $apiThrottle = (string) env('API_THROTTLE', '1400,1');
+$dashboardThrottle = (string) env('DASHBOARD_THROTTLE', '120,1');
+$notificationThrottle = (string) env('NOTIFICATION_THROTTLE', '240,1');
+$examPollingThrottle = (string) env('EXAM_POLLING_THROTTLE', '240,1');
 
 // Health check endpoint for uptime monitoring (keep-alive)
 Route::get('/health', function () {
@@ -51,7 +54,7 @@ Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Protected routes
-Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function () use ($dashboardThrottle, $notificationThrottle, $examPollingThrottle) {
     // Auth - All authenticated users
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -60,9 +63,9 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 
     // Dashboard - Role based
-    Route::get('/dashboard/admin', [DashboardController::class, 'adminStats'])->middleware('role:admin');
-    Route::get('/dashboard/guru', [DashboardController::class, 'teacherStats'])->middleware('role:guru');
-    Route::get('/dashboard/siswa', [DashboardController::class, 'studentStats'])->middleware('role:siswa');
+    Route::get('/dashboard/admin', [DashboardController::class, 'adminStats'])->middleware(['role:admin', 'throttle:' . $dashboardThrottle]);
+    Route::get('/dashboard/guru', [DashboardController::class, 'teacherStats'])->middleware(['role:guru', 'throttle:' . $dashboardThrottle]);
+    Route::get('/dashboard/siswa', [DashboardController::class, 'studentStats'])->middleware(['role:siswa', 'throttle:' . $dashboardThrottle]);
 
     // ============================================
     // ADMIN ONLY ROUTES
@@ -170,7 +173,7 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
     // ============================================
     // STUDENT (SISWA) ROUTES
     // ============================================
-    Route::middleware('role:siswa')->group(function () {
+    Route::middleware('role:siswa')->group(function () use ($examPollingThrottle) {
         // Student Attendance
         Route::post('/attendance/submit', [AttendanceController::class, 'submitAttendance']);
         Route::get('/attendance/history', [AttendanceController::class, 'studentHistory']);
@@ -181,7 +184,7 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
         Route::post('/exams/{exam}/start', [ExamController::class, 'startExam']);
         Route::post('/exams/{exam}/answer', [ExamController::class, 'submitAnswer']);
         Route::post('/exams/{exam}/answers/batch', [ExamController::class, 'submitAnswersBatch']);
-        Route::get('/exams/{exam}/time-sync', [ExamController::class, 'timeSync']);
+        Route::get('/exams/{exam}/time-sync', [ExamController::class, 'timeSync'])->middleware('throttle:' . $examPollingThrottle);
         Route::post('/exams/{exam}/work-photo', [ExamController::class, 'uploadWorkPhoto']);
         Route::post('/exams/{exam}/finish', [ExamController::class, 'finishExam']);
         Route::post('/exams/{exam}/violation', [ExamController::class, 'reportViolation']);
@@ -259,8 +262,8 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
     Route::get('/snapshot-monitor/status', [SchoolNetworkController::class, 'getSnapshotMonitorSetting']);
     
     // Student can view exams and materials
-    Route::get('/exams', [ExamController::class, 'index']);
-    Route::get('/exams/{exam}', [ExamController::class, 'show']);
+    Route::get('/exams', [ExamController::class, 'index'])->middleware('throttle:' . $examPollingThrottle);
+    Route::get('/exams/{exam}', [ExamController::class, 'show'])->middleware('throttle:' . $examPollingThrottle);
     Route::get('/materials', [MaterialController::class, 'index']);
     Route::get('/materials/{material}', [MaterialController::class, 'show']);
     Route::get('/materials/{material}/download', [MaterialController::class, 'download']);
@@ -272,11 +275,11 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
     // ============================================
     // NOTIFICATIONS (All authenticated users)
     // ============================================
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:' . $notificationThrottle);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:' . $notificationThrottle);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->middleware('throttle:' . $notificationThrottle);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->middleware('throttle:' . $notificationThrottle);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->middleware('throttle:' . $notificationThrottle);
 
     // ============================================
     // PROGRESS REPORTS (All authenticated users)

@@ -20,7 +20,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 28G   # 24G buffer pool + 4G overhead
+          memory: 14G   # Reduced to fit within Windows Docker WSL limits
     networks:
       - lms-network
 
@@ -68,7 +68,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 24G   # Apache workers need room (800 workers × ~30MB)
+          memory: 8G    # Reduced for stability
     networks:
       - lms-network
 
