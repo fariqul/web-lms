@@ -82,7 +82,7 @@ export default function QuizResultsPage() {
       const response = await quizAPI.getResults(quizId);
       const data = response.data?.data;
       if (data) {
-        setQuizInfo(data.exam || null);
+        setQuizInfo(data.quiz || data.exam || null);
         setResults((data.results || []).map((r: StudentResult) => ({
           ...r,
           total_score: Number(r.total_score) || 0,
@@ -124,12 +124,6 @@ export default function QuizResultsPage() {
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
-
-  // Debug: log filter state
-  useEffect(() => {
-    console.log('[Quiz Filter Debug] filterClass:', filterClass, 'filterStatus:', filterStatus);
-    console.log('[Quiz Filter Debug] Total results:', results.length);
-  }, [filterClass, filterStatus, results]);
 
   const filteredResults = results
     .filter(r => {

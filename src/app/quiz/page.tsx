@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, Button, Modal, Input, Select, ConfirmDialog } from '@/components/ui';
+import { Card, Button, Modal, Input, Select } from '@/components/ui';
 import { Plus, Loader2, Trash2, FileEdit, PlayCircle, CheckCircle, Clock, Users, BarChart3, StopCircle, AlertCircle } from 'lucide-react';
 import { quizAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -20,7 +20,9 @@ export default function QuizPage() {
   const [classes, setClasses] = useState<{ value: string; label: string; grade_level?: string }[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [deleteQuiz, setDeleteQuiz] = useState<{ id: number; title: string } | null>(null);
+  const [deleteQuiz, setDeleteQuiz] = useState<{ id: number; title: string; status: Exam['status'] } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<'all' | 'draft' | 'active' | 'completed'>('all');
 
   const [form, setForm] = useState({
@@ -90,7 +92,14 @@ export default function QuizPage() {
   };
 
   const handleDelete = async () => {
-    if (!deleteQuiz) return;
+    if (!deleteQuiz || deleting) return;
+
+    if (deleteQuiz.status === 'completed' && deleteConfirmText.trim().toUpperCase() !== 'HAPUS') {
+      toast.warning('Ketik HAPUS untuk konfirmasi penghapusan permanen');
+      return;
+    }
+
+    setDeleting(true);
     try {
       await quizAPI.delete(deleteQuiz.id);
       toast.success('Quiz berhasil dihapus');
@@ -99,8 +108,15 @@ export default function QuizPage() {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e.response?.data?.message || 'Gagal menghapus quiz');
     } finally {
+      setDeleting(false);
+      setDeleteConfirmText('');
       setDeleteQuiz(null);
     }
+  };
+
+  const openDeleteQuizModal = (quiz: Exam) => {
+    setDeleteConfirmText('');
+    setDeleteQuiz({ id: quiz.id, title: quiz.title, status: quiz.status });
   };
 
   const handlePublish = async (quiz: Exam) => {
@@ -131,6 +147,9 @@ export default function QuizPage() {
     if (tab === 'completed') return q.status === 'completed';
     return true;
   });
+
+  const requiresPermanentConfirm = deleteQuiz?.status === 'completed';
+  const permanentConfirmMatched = deleteConfirmText.trim().toUpperCase() === 'HAPUS';
 
   const statusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; label: string }> = {
@@ -236,7 +255,7 @@ export default function QuizPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setDeleteQuiz({ id: quiz.id, title: quiz.title })}
+                          onClick={() => openDeleteQuizModal(quiz)}
                           className="gap-1.5 text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -279,13 +298,23 @@ export default function QuizPage() {
                       </>
                     )}
                     {quiz.status === 'completed' && (
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(`/quiz/${quiz.id}/hasil`)}
-                        className="gap-1.5"
-                      >
-                        <BarChart3 className="w-3.5 h-3.5" /> Lihat Hasil
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => router.push(`/quiz/${quiz.id}/hasil`)}
+                          className="gap-1.5"
+                        >
+                          <BarChart3 className="w-3.5 h-3.5" /> Lihat Hasil
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDeleteQuizModal(quiz)}
+                          className="gap-1.5 text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Hapus
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -435,15 +464,86 @@ export default function QuizPage() {
       </Modal>
 
       {/* Delete Confirm */}
-      <ConfirmDialog
+      <Modal
         isOpen={!!deleteQuiz}
-        onClose={() => setDeleteQuiz(null)}
-        onConfirm={handleDelete}
-        title="Hapus Quiz"
-        message={`Yakin ingin menghapus quiz "${deleteQuiz?.title}"?`}
-        confirmText="Hapus"
-        variant="danger"
-      />
+        onClose={() => {
+          if (!deleting) {
+            setDeleteConfirmText('');
+            setDeleteQuiz(null);
+          }
+        }}
+        title={deleteQuiz?.status === 'completed' ? 'Hapus Permanen Quiz Selesai' : 'Hapus Quiz'}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className={`rounded-lg border p-4 ${
+            deleteQuiz?.status === 'completed'
+              ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/50'
+              : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50'
+          }`}>
+            <div className="flex items-start gap-3">
+              <AlertCircle className={`w-5 h-5 mt-0.5 shrink-0 ${
+                deleteQuiz?.status === 'completed'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-amber-600 dark:text-amber-400'
+              }`} />
+              <div className="space-y-1.5">
+                <p className="text-sm text-slate-800 dark:text-slate-200">
+                  Yakin ingin menghapus quiz <span className="font-semibold">&quot;{deleteQuiz?.title}&quot;</span>?
+                </p>
+                {deleteQuiz?.status === 'completed' ? (
+                  <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                    Data nilai, hasil, dan jawaban siswa akan hilang permanen.
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Tindakan ini tidak bisa dibatalkan.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {requiresPermanentConfirm && (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                Untuk melanjutkan, ketik <span className="font-semibold tracking-wide">HAPUS</span> di bawah ini:
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Ketik HAPUS"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                disabled={deleting}
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeleteConfirmText('');
+                setDeleteQuiz(null);
+              }}
+              disabled={deleting}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDelete}
+              disabled={deleting || (requiresPermanentConfirm && !permanentConfirmMatched)}
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {deleteQuiz?.status === 'completed' ? 'Hapus Permanen' : 'Hapus'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

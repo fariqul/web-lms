@@ -244,10 +244,11 @@ export default function QuizTakingPage() {
         toast.success('Quiz berhasil dikumpulkan!');
       }
       router.push('/quiz-siswa');
-    } catch (error) {
-      console.error('Failed to submit quiz:', error);
-      clearQuizSession();
-      router.push('/quiz-siswa');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal mengumpulkan quiz. Periksa koneksi lalu coba lagi.');
+    } finally {
+      setSubmitting(false);
     }
   };
 

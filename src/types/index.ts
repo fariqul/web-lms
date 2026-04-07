@@ -123,9 +123,12 @@ export interface ExamResult {
   max_score: number;
   percentage: number;
   score?: number;
+  violation_count?: number;
   status: 'in_progress' | 'submitted' | 'graded' | 'completed';
   started_at: string;
   submitted_at?: string;
+  finished_at?: string;
+  completion_reason?: 'manual' | 'time_up' | 'violation';
   exam?: Exam;
   student?: User;
 }

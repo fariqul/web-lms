@@ -50,6 +50,58 @@ class QuizController extends Controller
         return $newPath;
     }
 
+    private function buildScoredAnswerPayload(Question $question, string $rawAnswer): array
+    {
+        $isCorrect = null;
+        $answerScore = 0;
+
+        if ($question->type === 'multiple_choice') {
+            $isCorrect = strtolower(trim($rawAnswer)) === strtolower(trim((string) $question->correct_answer));
+            $answerScore = $isCorrect ? (int) $question->points : 0;
+        } elseif ($question->type === 'multiple_answer') {
+            $studentAnswers = json_decode($rawAnswer, true);
+            $correctAnswers = json_decode((string) $question->correct_answer, true);
+            if (is_array($studentAnswers) && is_array($correctAnswers)) {
+                $studentNorm = array_map(fn($a) => strtolower(trim((string) $a)), $studentAnswers);
+                $correctNorm = array_map(fn($a) => strtolower(trim((string) $a)), $correctAnswers);
+                sort($studentNorm);
+                sort($correctNorm);
+                $isCorrect = $studentNorm === $correctNorm;
+                $correctCount = count(array_intersect($studentNorm, $correctNorm));
+                $wrongCount = count(array_diff($studentNorm, $correctNorm));
+                $totalCorrect = count($correctNorm);
+                if ($totalCorrect > 0) {
+                    $score = max(0, ($correctCount - $wrongCount) / $totalCorrect);
+                    $answerScore = (int) round($score * $question->points);
+                }
+            }
+        } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
+            $studentAnswer = mb_strtolower(trim($rawAnswer));
+            $keywords = $question->essay_keywords;
+            $totalKeywords = count($keywords);
+            $matchedCount = 0;
+            foreach ($keywords as $keyword) {
+                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
+                    $matchedCount++;
+                }
+            }
+            if ($totalKeywords > 0 && $matchedCount > 0) {
+                $answerScore = (int) round(($matchedCount / $totalKeywords) * $question->points);
+                $answerScore = max(1, $answerScore);
+                $isCorrect = $matchedCount === $totalKeywords;
+            } else {
+                $answerScore = 1;
+                $isCorrect = false;
+            }
+        }
+
+        return [
+            'answer' => $rawAnswer,
+            'is_correct' => $isCorrect,
+            'score' => $answerScore,
+        ];
+    }
+
     /**
      * List quizzes - teacher sees own, student sees class quizzes
      */
@@ -137,6 +189,14 @@ class QuizController extends Controller
 
         // Student: show without questions (must start first)
         $quiz->load('classes:id,name');
+        $quizClassIds = $quiz->classes->pluck('id')->toArray();
+        if (empty($quizClassIds)) {
+            $quizClassIds = [$quiz->class_id];
+        }
+        if (!in_array($user->class_id, $quizClassIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke quiz ini'], 403);
+        }
+
         $result = ExamResult::where('exam_id', $quiz->id)->where('student_id', $user->id)->first();
         $quiz->my_result = $result;
 
@@ -257,22 +317,20 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        // Check if quiz has results
-        if ($quiz->results()->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz yang sudah memiliki hasil tidak dapat dihapus',
-            ], 422);
-        }
+        DB::transaction(function () use ($quiz) {
+            // Explicit cleanup for clarity; remaining relations are also protected by FK cascade.
+            Answer::where('exam_id', $quiz->id)->delete();
+            ExamResult::where('exam_id', $quiz->id)->delete();
+            $quiz->questions()->delete();
+            $quiz->classes()->detach();
+            $quiz->delete();
+        });
 
-        $quiz->questions()->delete();
-        $quiz->classes()->detach();
         $this->forgetQuizShowCache($quiz->id);
-        $quiz->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Quiz berhasil dihapus',
+            'message' => 'Quiz beserta hasil dan jawaban siswa berhasil dihapus',
         ]);
     }
 
@@ -346,6 +404,7 @@ class QuizController extends Controller
 
         // Auto-submit in-progress results
         DB::transaction(function () use ($quiz) {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\ExamResult> $inProgress */
             $inProgress = ExamResult::where('exam_id', $quiz->id)
                 ->where('status', 'in_progress')
                 ->lockForUpdate()
@@ -382,6 +441,13 @@ class QuizController extends Controller
         $user = $request->user();
         if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if (!in_array($quiz->status, ['draft', 'scheduled', 'active'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak dapat diubah karena quiz sudah selesai',
+            ], 422);
         }
 
         $request->validate([
@@ -482,6 +548,13 @@ class QuizController extends Controller
         $user = $request->user();
         if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if ($quiz->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Duplikasi soal hanya dapat dilakukan saat quiz berstatus draft',
+            ], 422);
         }
 
         $request->validate([
@@ -624,6 +697,13 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
+        if ($quiz->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal hanya dapat diubah saat quiz berstatus draft',
+            ], 422);
+        }
+
         $request->validate([
             'question_text' => 'sometimes|string',
             'question_type' => 'sometimes|in:multiple_choice,multiple_answer,essay',
@@ -718,6 +798,13 @@ class QuizController extends Controller
         $user = request()->user();
         if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if ($quiz->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal hanya dapat diubah saat quiz berstatus draft',
+            ], 422);
         }
 
         if ($question->image) Storage::disk('public')->delete($question->image);
@@ -908,49 +995,7 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Soal tidak ditemukan'], 422);
         }
 
-        // Auto-grade
-        $isCorrect = null;
-        $answerScore = 0;
-
-        if ($question->type === 'multiple_choice') {
-            $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($question->correct_answer));
-            $answerScore = $isCorrect ? $question->points : 0;
-        } elseif ($question->type === 'multiple_answer') {
-            $studentAnswers = json_decode($request->answer, true);
-            $correctAnswers = json_decode($question->correct_answer, true);
-            if (is_array($studentAnswers) && is_array($correctAnswers)) {
-                $studentNorm = array_map(fn($a) => strtolower(trim($a)), $studentAnswers);
-                $correctNorm = array_map(fn($a) => strtolower(trim($a)), $correctAnswers);
-                sort($studentNorm);
-                sort($correctNorm);
-                $isCorrect = $studentNorm === $correctNorm;
-                $correctCount = count(array_intersect($studentNorm, $correctNorm));
-                $wrongCount = count(array_diff($studentNorm, $correctNorm));
-                $totalCorrect = count($correctNorm);
-                if ($totalCorrect > 0) {
-                    $score = max(0, ($correctCount - $wrongCount) / $totalCorrect);
-                    $answerScore = (int) round($score * $question->points);
-                }
-            }
-        } elseif ($question->type === 'essay' && !empty($question->essay_keywords)) {
-            $studentAnswer = mb_strtolower(trim($request->answer));
-            $keywords = $question->essay_keywords;
-            $totalKeywords = count($keywords);
-            $matchedCount = 0;
-            foreach ($keywords as $keyword) {
-                if (mb_stripos($studentAnswer, mb_strtolower(trim($keyword))) !== false) {
-                    $matchedCount++;
-                }
-            }
-            if ($totalKeywords > 0 && $matchedCount > 0) {
-                $answerScore = round(($matchedCount / $totalKeywords) * $question->points);
-                $answerScore = max(1, $answerScore);
-                $isCorrect = $matchedCount === $totalKeywords;
-            } else {
-                $answerScore = 1;
-                $isCorrect = false;
-            }
-        }
+        $scored = $this->buildScoredAnswerPayload($question, $request->answer);
 
         $answer = Answer::updateOrCreate(
             [
@@ -958,12 +1003,12 @@ class QuizController extends Controller
                 'question_id' => $question->id,
                 'exam_id' => $quiz->id,
             ],
-            [
-                'answer' => $request->answer,
-                'is_correct' => $isCorrect,
-                'score' => $answerScore,
+            array_merge(
+                $scored,
+                [
                 'submitted_at' => now(),
-            ]
+                ]
+            )
         );
 
         return response()->json([
@@ -981,9 +1026,15 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Bukan quiz'], 404);
         }
 
+        $request->validate([
+            'answers' => 'nullable|array',
+            'answers.*' => 'nullable|string',
+            'time_spent' => 'nullable|integer|min:0',
+        ]);
+
         $user = $request->user();
 
-        $responseData = DB::transaction(function () use ($quiz, $user) {
+        $responseData = DB::transaction(function () use ($quiz, $user, $request) {
             $result = ExamResult::where('exam_id', $quiz->id)
                 ->where('student_id', $user->id)
                 ->where('status', 'in_progress')
@@ -1010,6 +1061,30 @@ class QuizController extends Controller
                     return $resp;
                 }
                 return ['error' => true, 'message' => 'Sesi quiz tidak ditemukan'];
+            }
+
+            $fallbackAnswers = $request->input('answers', []);
+            if (is_array($fallbackAnswers) && !empty($fallbackAnswers)) {
+                $questionMap = Question::where('exam_id', $quiz->id)->get()->keyBy('id');
+                foreach ($fallbackAnswers as $questionId => $rawAnswer) {
+                    $qId = (int) $questionId;
+                    if (!$questionMap->has($qId) || !is_string($rawAnswer) || trim($rawAnswer) === '') {
+                        continue;
+                    }
+
+                    $scored = $this->buildScoredAnswerPayload($questionMap[$qId], $rawAnswer);
+                    Answer::updateOrCreate(
+                        [
+                            'student_id' => $user->id,
+                            'question_id' => $qId,
+                            'exam_id' => $quiz->id,
+                        ],
+                        array_merge(
+                            $scored,
+                            ['submitted_at' => now()]
+                        )
+                    );
+                }
             }
 
             $result->finished_at = now();
@@ -1061,6 +1136,7 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\ExamResult> $results */
         $results = ExamResult::with(['student:id,name,nisn,nis,nomor_tes,class_id', 'student.classRoom:id,name'])
             ->where('exam_id', $quiz->id)
             ->get();
@@ -1073,7 +1149,11 @@ class QuizController extends Controller
             if (!empty($studentIds)) {
                 $counts = Answer::where('exam_id', $quiz->id)
                     ->whereIn('student_id', $studentIds)
-                    ->whereHas('question', fn($q) => $q->where('type', 'essay'))
+                    ->whereHas('question', function ($q) {
+                        $q->where('type', 'essay')->where(function ($q2) {
+                            $q2->whereNull('essay_keywords')->orWhere('essay_keywords', '[]');
+                        });
+                    })
                     ->selectRaw('student_id, COUNT(*) as total_essays, SUM(CASE WHEN graded_at IS NOT NULL THEN 1 ELSE 0 END) as graded_essays')
                     ->groupBy('student_id')
                     ->get();
@@ -1093,6 +1173,7 @@ class QuizController extends Controller
         $quizClassIds = $quiz->classes()->pluck('classes.id')->toArray();
         if (empty($quizClassIds)) $quizClassIds = [$quiz->class_id];
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $notTaken */
         $notTaken = User::with('classRoom:id,name')
             ->whereIn('class_id', $quizClassIds)
             ->where('role', 'siswa')
@@ -1125,18 +1206,38 @@ class QuizController extends Controller
             ];
         }
 
+        $quizPayload = $quiz->load('classes:id,name');
+        $completedCount = collect($allEntries)->whereIn('status', ['completed', 'graded', 'submitted'])->count();
+        $inProgressCount = collect($allEntries)->where('status', 'in_progress')->count();
+        $notStartedCount = collect($allEntries)->where('status', 'not_started')->count();
+        $missedCount = collect($allEntries)->where('status', 'missed')->count();
+        $passedCount = $results
+            ->whereIn('status', ['completed', 'graded', 'submitted'])
+            ->filter(fn($r) => (float) ($r->percentage ?? 0) >= (float) ($quiz->passing_score ?? 0))
+            ->count();
+        $totalUngradedEssays = collect($allEntries)->sum(fn($e) => (int) ($e['ungraded_essays'] ?? 0));
+        $studentsWithUngraded = collect($allEntries)->filter(fn($e) => (int) ($e['ungraded_essays'] ?? 0) > 0)->count();
+
         return response()->json([
             'success' => true,
             'data' => [
-                'quiz' => $quiz->load('classes:id,name'),
+                'quiz' => $quizPayload,
+                'exam' => $quizPayload,
                 'results' => $allEntries,
                 'summary' => [
                     'total_students' => count($allEntries),
                     'taken' => $results->count(),
-                    'not_started' => $notTaken->count(),
+                    'completed' => $completedCount,
+                    'in_progress' => $inProgressCount,
+                    'not_started' => $notStartedCount,
+                    'missed' => $missedCount,
+                    'passed' => $passedCount,
                     'average_score' => $results->count() > 0 ? round($results->avg('percentage'), 1) : 0,
                     'highest_score' => $results->count() > 0 ? round($results->max('percentage'), 1) : 0,
                     'lowest_score' => $results->count() > 0 ? round($results->min('percentage'), 1) : 0,
+                    'total_essay_questions' => $totalEssayQuestions,
+                    'total_ungraded_essays' => $totalUngradedEssays,
+                    'students_with_ungraded' => $studentsWithUngraded,
                 ],
             ],
         ]);
@@ -1230,7 +1331,9 @@ class QuizController extends Controller
             $ungradedEssays = Answer::where('exam_id', $quiz->id)
                 ->where('student_id', $answer->student_id)
                 ->whereHas('question', function ($q) {
-                    $q->where('type', 'essay');
+                    $q->where('type', 'essay')->where(function ($q2) {
+                        $q2->whereNull('essay_keywords')->orWhere('essay_keywords', '[]');
+                    });
                 })
                 ->whereNull('graded_at')
                 ->count();

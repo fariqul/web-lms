@@ -76,6 +76,41 @@ export default function UjianSiswaPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const getCompletionInfo = (exam: Exam) => {
+    const reason = exam.my_result?.completion_reason;
+
+    if (reason === 'violation') {
+      return {
+        title: 'Terkumpul karena pelanggaran',
+        subtitle: 'Ujian dihentikan otomatis karena batas pelanggaran tercapai',
+        containerClass: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50',
+        titleClass: 'text-red-700 dark:text-red-400',
+        subtitleClass: 'text-red-600/80 dark:text-red-400/80',
+        iconClass: 'text-red-600 dark:text-red-400',
+      };
+    }
+
+    if (reason === 'time_up') {
+      return {
+        title: 'Terkumpul karena ujian telah selesai/waktu habis',
+        subtitle: 'Jawaban dikumpulkan otomatis oleh sistem',
+        containerClass: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50',
+        titleClass: 'text-amber-700 dark:text-amber-400',
+        subtitleClass: 'text-amber-700/80 dark:text-amber-400/80',
+        iconClass: 'text-amber-600 dark:text-amber-400',
+      };
+    }
+
+    return {
+      title: 'Telah selesai dikerjakan',
+      subtitle: 'Ujian telah berhasil diselesaikan',
+      containerClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50',
+      titleClass: 'text-green-700 dark:text-green-400',
+      subtitleClass: 'text-green-600/70 dark:text-green-400/70',
+      iconClass: 'text-green-600 dark:text-green-400',
+    };
+  };
+
   // Real-time updates via WebSocket
   const examIds = useMemo(() => exams.map(e => e.id), [exams]);
   const listSocket = useExamsListSocket(examIds);
@@ -191,6 +226,7 @@ export default function UjianSiswaPage() {
             {exams.map((exam) => {
               const status = getExamStatus(exam);
               const StatusIcon = status.icon;
+              const completionInfo = getCompletionInfo(exam);
               
               return (
                 <Card key={exam.id} className="p-6">
@@ -242,11 +278,11 @@ export default function UjianSiswaPage() {
                   </div>
 
                   {['completed', 'graded', 'submitted'].includes(exam.my_result?.status || '') ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-3 flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div className={`border rounded-lg p-3 flex items-center gap-3 ${completionInfo.containerClass}`}>
+                      <CheckCircle className={`w-5 h-5 flex-shrink-0 ${completionInfo.iconClass}`} />
                       <div>
-                        <p className="text-sm font-medium text-green-700 dark:text-green-400">Selesai Dikerjakan</p>
-                        <p className="text-xs text-green-600/70 dark:text-green-400/70">Ujian telah berhasil diselesaikan</p>
+                        <p className={`text-sm font-medium ${completionInfo.titleClass}`}>{completionInfo.title}</p>
+                        <p className={`text-xs ${completionInfo.subtitleClass}`}>{completionInfo.subtitle}</p>
                       </div>
                     </div>
                   ) : canStartExam(exam) ? (

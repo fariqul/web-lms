@@ -17,10 +17,10 @@ skip-name-resolve = ON
 # ============================================
 # INNODB BUFFER POOL (Most Critical Setting)
 # Rule: 70-80% of RAM for dedicated server
-# Adjusted to 10G for Docker limits
+# 64GB × 0.375 = 24GB (conservative, leaves room for Apache/PHP workers)
 # ============================================
-innodb_buffer_pool_size = 10G
-innodb_buffer_pool_instances = 8
+innodb_buffer_pool_size = 24G
+innodb_buffer_pool_instances = 16
 
 # ============================================
 # INNODB REDO LOG & I/O

@@ -543,13 +543,31 @@ class ExamController extends Controller
             $examIds = $exams->pluck('id');
             $myResults = ExamResult::where('student_id', $user->id)
                 ->whereIn('exam_id', $examIds)
-                ->get(['id', 'exam_id', 'status', 'submitted_at', 'finished_at'])
+                ->get(['id', 'exam_id', 'status', 'submitted_at', 'finished_at', 'violation_count'])
                 ->keyBy('exam_id');
 
             $exams->getCollection()->transform(function ($exam) use ($myResults, $user) {
-                $exam->my_result = $myResults[$exam->id] ?? null;
-
                 $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+                $result = $myResults[$exam->id] ?? null;
+
+                if ($result && in_array($result->status, ['completed', 'submitted', 'graded'], true)) {
+                    $completionReason = 'manual';
+
+                    if ((int) ($result->violation_count ?? 0) > 0) {
+                        $completionReason = 'violation';
+                    } else {
+                        $finishedAt = $result->finished_at ? Carbon::parse($result->finished_at) : null;
+                        $effectiveEndTime = $window['end_time'] ?? null;
+
+                        if ($finishedAt && $effectiveEndTime && $finishedAt->greaterThanOrEqualTo($effectiveEndTime)) {
+                            $completionReason = 'time_up';
+                        }
+                    }
+
+                    $result->completion_reason = $completionReason;
+                }
+
+                $exam->my_result = $result;
                 $exam->effective_start_time = $window['start_time'];
                 $exam->effective_end_time = $window['end_time'];
                 $exam->has_class_schedule_override = $window['is_override'];
@@ -2469,6 +2487,18 @@ class ExamController extends Controller
             ->get()
             ->keyBy('question_id');
 
+        // Samakan timer siswa dengan monitor admin:
+        // gunakan deadline paling cepat antara durasi personal dan end_time efektif ujian.
+        $personalRemaining = $result->started_at
+            ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
+            : ($exam->duration ?? 90) * 60;
+        $windowRemaining = $effectiveEndTime
+            ? now()->diffInSeconds($effectiveEndTime, false)
+            : null;
+        $remainingTime = $windowRemaining === null
+            ? max(0, $personalRemaining)
+            : max(0, min($personalRemaining, $windowRemaining));
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -2483,10 +2513,7 @@ class ExamController extends Controller
                 'result' => $result,
                 'questions' => $questions->values(),
                 'existing_answers' => $existingAnswers,
-                'remaining_time' => max(0, $result->started_at
-                    ? now()->diffInSeconds(\Carbon\Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
-                    : ($exam->duration ?? 90) * 60
-                ),
+                'remaining_time' => $remainingTime,
                 'snapshot_monitor_enabled' => $this->isSnapshotMonitoringEnabled(),
             ],
         ]);
@@ -2813,10 +2840,18 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $remaining = max(0, $result->started_at
+        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+        $effectiveEndTime = $window['end_time'];
+
+        $personalRemaining = $result->started_at
             ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
-            : ($exam->duration ?? 90) * 60
-        );
+            : ($exam->duration ?? 90) * 60;
+        $windowRemaining = $effectiveEndTime
+            ? now()->diffInSeconds($effectiveEndTime, false)
+            : null;
+        $remaining = $windowRemaining === null
+            ? max(0, $personalRemaining)
+            : max(0, min($personalRemaining, $windowRemaining));
 
         return response()->json([
             'success' => true,
@@ -2919,16 +2954,34 @@ class ExamController extends Controller
                 ->where('status', 'in_progress')
                 ->first();
 
-            if ($resultForTimeCheck && $resultForTimeCheck->started_at && $exam->duration) {
-                $personalDeadline = Carbon::parse($resultForTimeCheck->started_at)->addMinutes((int) $exam->duration);
-                $manualSubmitOpensAt = (clone $personalDeadline)->subMinutes(10);
+            if ($resultForTimeCheck) {
+                $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+                $effectiveEndTime = $window['end_time'] ? Carbon::parse($window['end_time']) : null;
+                $personalDeadline = ($resultForTimeCheck->started_at && $exam->duration)
+                    ? Carbon::parse($resultForTimeCheck->started_at)->addMinutes((int) $exam->duration)
+                    : null;
 
-                if (now()->lt($manualSubmitOpensAt)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Tombol kumpulkan baru aktif 10 menit sebelum waktu ujian habis',
-                        'manual_submit_available_at' => $this->toSchoolIso8601($manualSubmitOpensAt),
-                    ], 422);
+                $finalDeadline = null;
+                if ($personalDeadline && $effectiveEndTime) {
+                    $finalDeadline = $personalDeadline->lte($effectiveEndTime)
+                        ? $personalDeadline
+                        : $effectiveEndTime;
+                } elseif ($personalDeadline) {
+                    $finalDeadline = $personalDeadline;
+                } elseif ($effectiveEndTime) {
+                    $finalDeadline = $effectiveEndTime;
+                }
+
+                if ($finalDeadline) {
+                    $manualSubmitOpensAt = (clone $finalDeadline)->subMinutes(10);
+
+                    if (now()->lt($manualSubmitOpensAt)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Tombol kumpulkan baru aktif 10 menit sebelum waktu ujian habis',
+                            'manual_submit_available_at' => $this->toSchoolIso8601($manualSubmitOpensAt),
+                        ], 422);
+                    }
                 }
             }
         }
