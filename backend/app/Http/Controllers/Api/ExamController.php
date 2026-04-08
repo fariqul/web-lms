@@ -553,8 +553,10 @@ class ExamController extends Controller
 
                 if ($result && in_array($result->status, ['completed', 'submitted', 'graded'], true)) {
                     $completionReason = 'manual';
+                    $maxViolations = (int) ($exam->max_violations ?? 0);
+                    $violationCount = (int) ($result->violation_count ?? 0);
 
-                    if ((int) ($result->violation_count ?? 0) > 0) {
+                    if ($maxViolations > 0 && $violationCount >= $maxViolations) {
                         $completionReason = 'violation';
                     } else {
                         $finishedAt = $result->finished_at ? Carbon::parse($result->finished_at) : null;
@@ -3623,7 +3625,10 @@ class ExamController extends Controller
             if ($includeCompletionReason) {
                 $completionReason = null;
                 if (in_array($r->status, ['completed', 'submitted', 'graded'], true)) {
-                    if ((int) ($r->violation_count ?? 0) > 0) {
+                    $maxViolations = (int) ($exam->max_violations ?? 0);
+                    $violationCount = (int) ($r->violation_count ?? 0);
+
+                    if ($maxViolations > 0 && $violationCount >= $maxViolations) {
                         $completionReason = 'violation';
                     } else {
                         $finishedAt = $r->finished_at ? Carbon::parse($r->finished_at) : null;
