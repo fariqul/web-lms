@@ -5,12 +5,35 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ClassRoom;
+use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    private function broadcastBlockedForceLogout(User $student, ?string $message = null): void
+    {
+        if ($student->role !== 'siswa') {
+            return;
+        }
+
+        try {
+            app(SocketBroadcastService::class)->notifyUser($student->id, [
+                'type' => 'force_logout',
+                'reason' => 'blocked',
+                'message' => $message ?: ($student->block_reason ?: 'Akun Anda diblokir oleh admin.'),
+                'user_id' => $student->id,
+                'timestamp' => now()->toIso8601String(),
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast blocked force logout failed: ' . $e->getMessage(), [
+                'student_id' => $student->id,
+            ]);
+        }
+    }
+
     /**
      * Display a listing of users - OPTIMIZED
      */
@@ -386,6 +409,10 @@ class UserController extends Controller
         $user->save();
         $user->load('classRoom:id,name');
 
+        if ($request->is_blocked) {
+            $this->broadcastBlockedForceLogout($user, $user->block_reason);
+        }
+
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
 
         return response()->json([
@@ -465,6 +492,15 @@ class UserController extends Controller
 
         User::whereIn('id', $users->pluck('id'))->update($updateData);
 
+        if ($request->is_blocked) {
+            $reason = $request->reason ?: 'Diblokir oleh admin';
+            foreach ($users as $student) {
+                if ($student instanceof User) {
+                    $this->broadcastBlockedForceLogout($student, $reason);
+                }
+            }
+        }
+
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
 
         return response()->json([
@@ -506,6 +542,15 @@ class UserController extends Controller
         }
 
         User::where('role', 'siswa')->update($updateData);
+
+        if ($request->is_blocked) {
+            $reason = $request->reason ?: 'Diblokir massal oleh admin';
+            foreach ($users as $student) {
+                if ($student instanceof User) {
+                    $this->broadcastBlockedForceLogout($student, $reason);
+                }
+            }
+        }
 
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
 
@@ -553,6 +598,15 @@ class UserController extends Controller
         User::where('role', 'siswa')
             ->where('class_id', $request->class_id)
             ->update($updateData);
+
+        if ($request->is_blocked) {
+            $reason = $request->reason ?: 'Diblokir massal per kelas oleh admin';
+            foreach ($users as $student) {
+                if ($student instanceof User) {
+                    $this->broadcastBlockedForceLogout($student, $reason);
+                }
+            }
+        }
 
         $className = ClassRoom::find($request->class_id)?->name ?? 'Kelas';
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';

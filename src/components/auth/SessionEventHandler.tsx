@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { useSocket } from '@/hooks/useSocket';
 
 type ForceLogoutReason = 'blocked' | 'session_expired' | 'removed_by_admin';
 
@@ -12,9 +13,58 @@ interface ForceLogoutDetail {
 }
 
 export function SessionEventHandler() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const toast = useToast();
   const isHandlingRef = useRef(false);
+  const { isConnected, emit, on, off } = useSocket({
+    autoConnect: !!user?.id,
+  });
+
+  useEffect(() => {
+    if (!user?.id || !isConnected) return;
+
+    emit('join-user', { userId: user.id });
+  }, [user?.id, isConnected, emit]);
+
+  useEffect(() => {
+    if (!user?.id || !isConnected) return;
+
+    const handleRealtimeNotification = (payload: unknown) => {
+      const data = payload as {
+        type?: string;
+        reason?: string;
+        message?: string;
+      };
+
+      const isForceLogoutEvent =
+        data?.type === 'force_logout' ||
+        data?.reason === 'blocked' ||
+        data?.reason === 'session_expired' ||
+        data?.reason === 'removed_by_admin';
+
+      if (!isForceLogoutEvent) return;
+
+      const reason: ForceLogoutReason =
+        data?.reason === 'blocked' || data?.reason === 'removed_by_admin'
+          ? data.reason
+          : 'session_expired';
+
+      window.dispatchEvent(
+        new CustomEvent('lms:force-logout', {
+          detail: {
+            reason,
+            message: data?.message,
+          },
+        })
+      );
+    };
+
+    on('notification', handleRealtimeNotification);
+
+    return () => {
+      off('notification');
+    };
+  }, [user?.id, isConnected, on, off]);
 
   useEffect(() => {
     const handleForceLogout = async (event: Event) => {

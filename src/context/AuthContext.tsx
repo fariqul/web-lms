@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const BLOCK_CHECK_INTERVAL_MS = 10000;
 
   const checkAuth = useCallback(async () => {
     try {
@@ -65,12 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authAPI.me().catch(() => {
         // Handled globally by API interceptor.
       });
-    }, 30000);
+    }, BLOCK_CHECK_INTERVAL_MS);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [token, user]);
+  }, [token, user, BLOCK_CHECK_INTERVAL_MS]);
 
   const login = useCallback(async (loginStr: string, password: string, force?: boolean) => {
     setIsLoading(true);
