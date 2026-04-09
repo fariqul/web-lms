@@ -289,8 +289,6 @@ export default function ExamTakingPage() {
 
   // Socket: listen for admin kicking current student from exam session.
   useEffect(() => {
-    if (!isStarted) return;
-
     const handleStudentKicked = (payload: unknown) => {
       const data = payload as { student_id?: number; message?: string };
       if (!authUser?.id || data.student_id !== authUser.id) return;
@@ -317,7 +315,7 @@ export default function ExamTakingPage() {
     return () => {
       examSocket.off(`exam.${examId}.student-kicked`);
     };
-  }, [isStarted, examId, examSocket, authUser?.id, stopCamera]);
+  }, [examId, examSocket, authUser?.id, stopCamera]);
 
   // Fallback: poll exam status periodically in case websocket event is missed.
   // Poll every 30s and pause when tab is hidden.

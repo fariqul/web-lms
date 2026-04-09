@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const PORT = process.env.SOCKET_PORT || 6001;
 const INTERNAL_SECRET = process.env.SOCKET_INTERNAL_SECRET || 'lms-socket-secret-key-2026';
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'https://www.libelslms.my.id,https://libelslms.my.id,https://web-lms-rowr.vercel.app,http://localhost:3000').split(',');
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://backend:8000/api';
 
 // Performance tuning for 600-800 concurrent users (Intel i5 Gen 13 + 64GB RAM)
 const MAX_CONNECTIONS = 2000; // Higher headroom for 64GB server
@@ -136,9 +137,52 @@ function checkRateLimit(socketId) {
   return true;
 }
 
+async function resolveUserIdFromToken(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${BACKEND_API_URL}/me`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const userId = Number(data?.data?.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return null;
+    }
+
+    return userId;
+  } catch (err) {
+    console.error('[auth] Failed to verify socket token:', err?.message || err);
+    return null;
+  }
+}
+
 io.on('connection', (socket) => {
   const token = socket.handshake.auth?.token;
   console.log(`[connect] ${socket.id} (total: ${io.engine.clientsCount})`);
+  socket.data.authChecked = false;
+  socket.data.authUserId = null;
+
+  const resolveAuthenticatedUserId = async () => {
+    if (socket.data.authChecked) {
+      return socket.data.authUserId;
+    }
+
+    socket.data.authChecked = true;
+    socket.data.authUserId = await resolveUserIdFromToken(token);
+    return socket.data.authUserId;
+  };
 
   // Helper to join room with rate limiting
   const joinRoom = (room) => {
@@ -196,9 +240,18 @@ io.on('connection', (socket) => {
   });
 
   // Join notification room (per user)
-  socket.on('join-user', ({ userId }) => {
-    if (!userId) return;
-    const room = `user.${userId}`;
+  socket.on('join-user', async ({ userId }) => {
+    const requestedUserId = Number(userId);
+    if (!Number.isInteger(requestedUserId) || requestedUserId <= 0) return;
+
+    const authenticatedUserId = await resolveAuthenticatedUserId();
+    if (!authenticatedUserId || authenticatedUserId !== requestedUserId) {
+      socket.emit('error', { message: 'Unauthorized join-user request' });
+      console.warn(`[auth] join-user rejected for socket ${socket.id}: requested=${requestedUserId}, authenticated=${authenticatedUserId}`);
+      return;
+    }
+
+    const room = `user.${requestedUserId}`;
     if (joinRoom(room)) {
       console.log(`[room] ${socket.id} joined ${room}`);
     }

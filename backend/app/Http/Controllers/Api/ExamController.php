@@ -4269,19 +4269,38 @@ class ExamController extends Controller
             ]);
         });
 
+        $kickedAt = now()->toIso8601String();
+        $broadcastPayload = [
+            'exam_id' => $exam->id,
+            'student_id' => $student->id,
+            'student_name' => $student->name,
+            'message' => $message,
+            'kicked_by' => $admin->id,
+            'kicked_by_name' => $admin->name,
+            'kicked_at' => $kickedAt,
+        ];
+
+        $broadcast = app(SocketBroadcastService::class);
+
         try {
-            $broadcast = app(SocketBroadcastService::class);
-            $broadcast->examStudentKicked($exam->id, [
-                'exam_id' => $exam->id,
-                'student_id' => $student->id,
-                'student_name' => $student->name,
-                'message' => $message,
-                'kicked_by' => $admin->id,
-                'kicked_by_name' => $admin->name,
-                'kicked_at' => now()->toIso8601String(),
-            ]);
+            $broadcast->examStudentKicked($exam->id, $broadcastPayload);
         } catch (\Exception $e) {
             Log::warning('Broadcast examStudentKicked failed: ' . $e->getMessage());
+        }
+
+        try {
+            $broadcast->notifyUser($student->id, [
+                'type' => 'force_logout',
+                'reason' => 'removed_by_admin',
+                'message' => $message,
+                'exam_id' => $exam->id,
+                'student_id' => $student->id,
+                'kicked_by' => $admin->id,
+                'kicked_by_name' => $admin->name,
+                'timestamp' => $kickedAt,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast notifyUser removed_by_admin failed: ' . $e->getMessage());
         }
 
         return response()->json([

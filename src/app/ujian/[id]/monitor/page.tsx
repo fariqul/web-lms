@@ -568,7 +568,15 @@ export default function MonitorUjianPage() {
         throw new Error(response.data?.message || 'Gagal mengeluarkan siswa');
       }
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : 'Gagal mengeluarkan siswa';
+      const axiosError = error as {
+        message?: string;
+        response?: {
+          data?: {
+            message?: string;
+          };
+        };
+      };
+      const errMsg = axiosError?.response?.data?.message || axiosError?.message || 'Gagal mengeluarkan siswa';
       console.error('Kick participant error:', errMsg);
       setRealtimeEvents(prev => [{
         type: 'error',
