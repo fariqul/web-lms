@@ -4,16 +4,27 @@ import React, { createContext, useContext, useState, useCallback, useEffect, Rea
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
+type ToastPlacement = 'top-right' | 'center';
+
+interface ToastOptions {
+  duration?: number;
+  placement?: ToastPlacement;
+  prominent?: boolean;
+  dismissible?: boolean;
+}
 
 interface Toast {
   id: string;
   type: ToastType;
   message: string;
   duration?: number;
+  placement?: ToastPlacement;
+  prominent?: boolean;
+  dismissible?: boolean;
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, duration?: number) => void;
+  showToast: (message: string, type?: ToastType, duration?: number, options?: ToastOptions) => void;
   success: (message: string) => void;
   error: (message: string) => void;
   warning: (message: string) => void;
@@ -31,13 +42,16 @@ export function useToast() {
 }
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
+  const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
+    const enterRaf = requestAnimationFrame(() => setIsVisible(true));
     const duration = toast.duration || 4000;
-    const exitTimer = setTimeout(() => setIsExiting(true), duration - 300);
+    const exitTimer = setTimeout(() => setIsExiting(true), Math.max(0, duration - 300));
     const removeTimer = setTimeout(() => onRemove(toast.id), duration);
     return () => {
+      cancelAnimationFrame(enterRaf);
       clearTimeout(exitTimer);
       clearTimeout(removeTimer);
     };
@@ -57,25 +71,38 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     info: 'bg-card border-l-4 border-l-sky-500 border-border',
   };
 
+  const isCenterPopup = toast.placement === 'center';
+  const baseSizing = isCenterPopup || toast.prominent
+    ? 'w-[min(92vw,560px)] p-5 sm:p-6 rounded-2xl shadow-2xl'
+    : 'max-w-sm w-full p-4 rounded-xl shadow-lg';
+
+  const enterExitClass = isVisible && !isExiting
+    ? 'opacity-100 scale-100 translate-y-0'
+    : isExiting
+      ? 'opacity-0 scale-95 translate-y-2'
+      : 'opacity-0 scale-90 translate-y-3';
+
   return (
     <div
-      className={`flex items-start gap-3 p-4 border rounded-xl shadow-lg max-w-sm w-full animate-toastIn ${bgColors[toast.type]} ${
-        isExiting ? 'opacity-0 translate-x-4 transition-all duration-300' : 'opacity-100 translate-x-0 transition-all duration-300'
-      }`}
+      className={`flex items-start gap-3 border ${baseSizing} ${bgColors[toast.type]} ${enterExitClass} transition-all duration-300 ease-out`}
       role="alert"
     >
       {icons[toast.type]}
-      <p className="text-sm text-foreground flex-1 pt-0.5">{toast.message}</p>
-      <button
-        onClick={() => {
-          setIsExiting(true);
-          setTimeout(() => onRemove(toast.id), 300);
-        }}
-        className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer rounded-lg p-0.5 hover:bg-muted transition-colors"
-        aria-label="Tutup notifikasi"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      <p className={`${isCenterPopup || toast.prominent ? 'text-base sm:text-lg leading-relaxed' : 'text-sm'} text-foreground flex-1 pt-0.5`}>
+        {toast.message}
+      </p>
+      {toast.dismissible !== false && (
+        <button
+          onClick={() => {
+            setIsExiting(true);
+            setTimeout(() => onRemove(toast.id), 300);
+          }}
+          className="text-muted-foreground hover:text-foreground flex-shrink-0 cursor-pointer rounded-lg p-0.5 hover:bg-muted transition-colors"
+          aria-label="Tutup notifikasi"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -87,9 +114,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info', duration = 4000) => {
+  const showToast = useCallback((message: string, type: ToastType = 'info', duration = 4000, options: ToastOptions = {}) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    setToasts((prev) => [...prev.slice(-4), { id, type, message, duration }]);
+    const placement = options.placement || 'top-right';
+    const prominent = options.prominent ?? false;
+    const dismissible = options.dismissible ?? true;
+    setToasts((prev) => [...prev.slice(-4), { id, type, message, duration, placement, prominent, dismissible }]);
   }, []);
 
   const success = useCallback((message: string) => showToast(message, 'success'), [showToast]);
@@ -97,17 +127,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const warning = useCallback((message: string) => showToast(message, 'warning'), [showToast]);
   const info = useCallback((message: string) => showToast(message, 'info'), [showToast]);
 
+  const topRightToasts = toasts.filter((t) => (t.placement || 'top-right') === 'top-right');
+  const centerToasts = toasts.filter((t) => t.placement === 'center');
+  const latestCenterToast = centerToasts.length > 0 ? centerToasts[centerToasts.length - 1] : null;
+
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      {/* Toast Container */}
+
+      {/* Default toast (pojok kanan atas) */}
       <div className="fixed top-[72px] sm:top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none" aria-live="polite">
-        {toasts.map((toast) => (
+        {topRightToasts.map((toast) => (
           <div key={toast.id} className="pointer-events-auto">
             <ToastItem toast={toast} onRemove={removeToast} />
           </div>
         ))}
       </div>
+
+      {/* Popup tengah untuk notifikasi penting */}
+      {latestCenterToast && (
+        <div className="fixed inset-0 z-[200] pointer-events-none flex items-center justify-center p-4" aria-live="assertive">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
+          <div className="relative pointer-events-auto">
+            <ToastItem toast={latestCenterToast} onRemove={removeToast} />
+          </div>
+        </div>
+      )}
     </ToastContext.Provider>
   );
 }

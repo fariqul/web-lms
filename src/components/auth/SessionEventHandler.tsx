@@ -90,7 +90,11 @@ export function SessionEventHandler() {
         if (reason === 'removed_by_admin') {
           sessionStorage.setItem('force_logout_message', message);
         }
-        toast.error(message);
+        toast.showToast(message, 'error', 2000, {
+          placement: 'center',
+          prominent: true,
+          dismissible: false,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 1300));
 
