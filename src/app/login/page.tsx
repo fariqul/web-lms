@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
@@ -82,7 +82,6 @@ const LoginBrandPanel = React.memo(function LoginBrandPanel() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
@@ -94,7 +93,10 @@ export default function LoginPage() {
   const [forceLoading, setForceLoading] = useState(false);
 
   useEffect(() => {
-    const reason = searchParams.get('reason');
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get('reason');
     if (!reason) return;
 
     let recognizedReason = false;
@@ -117,11 +119,10 @@ export default function LoginPage() {
 
     if (!recognizedReason) return;
 
-    const params = new URLSearchParams(searchParams.toString());
     params.delete('reason');
     const cleanUrl = params.toString() ? `/login?${params.toString()}` : '/login';
     router.replace(cleanUrl);
-  }, [searchParams, router]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
