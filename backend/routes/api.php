@@ -54,7 +54,7 @@ Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Protected routes
-Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function () use ($dashboardThrottle, $notificationThrottle, $examPollingThrottle) {
+Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle])->group(function () use ($dashboardThrottle, $notificationThrottle, $examPollingThrottle) {
     // Auth - All authenticated users
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -108,6 +108,7 @@ Route::middleware(['auth:sanctum', 'throttle:' . $apiThrottle])->group(function 
         Route::post('/exams/{exam}/unpublish', [ExamController::class, 'unpublish']);
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
+        Route::post('/exams/{exam}/participants/{student}/kick', [ExamController::class, 'kickParticipant']);
         
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);

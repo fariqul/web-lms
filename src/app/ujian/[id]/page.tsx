@@ -105,6 +105,7 @@ export default function ExamTakingPage() {
   const previewStreamRef = React.useRef<MediaStream | null>(null);
   // Ref to track intentional navigation (submission) to bypass beforeunload
   const isNavigatingAwayRef = React.useRef(false);
+  const kickedByAdminRef = React.useRef(false);
 
   // Nomor Tes
   const { user: authUser } = useAuth();
@@ -285,6 +286,38 @@ export default function ExamTakingPage() {
       examSocket.off(`exam.${examId}.ended`);
     };
   }, [isStarted, examId, examSocket, forceExitExamByAdmin]);
+
+  // Socket: listen for admin kicking current student from exam session.
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const handleStudentKicked = (payload: unknown) => {
+      const data = payload as { student_id?: number; message?: string };
+      if (!authUser?.id || data.student_id !== authUser.id) return;
+      if (kickedByAdminRef.current) return;
+
+      kickedByAdminRef.current = true;
+      isNavigatingAwayRef.current = true;
+      sessionStorage.setItem('force_logout_bypass', '1');
+      sessionStorage.removeItem(`exam_active_${examId}`);
+      sessionStorage.removeItem(`exam_question_${examId}`);
+      stopCamera();
+
+      window.dispatchEvent(
+        new CustomEvent('lms:force-logout', {
+          detail: {
+            reason: 'removed_by_admin',
+            message: data.message || 'Anda dikeluarkan sementara dari ujian oleh admin. Silakan login kembali.',
+          },
+        })
+      );
+    };
+
+    examSocket.on(`exam.${examId}.student-kicked`, handleStudentKicked);
+    return () => {
+      examSocket.off(`exam.${examId}.student-kicked`);
+    };
+  }, [isStarted, examId, examSocket, authUser?.id, stopCamera]);
 
   // Fallback: poll exam status periodically in case websocket event is missed.
   // Poll every 30s and pause when tab is hidden.
@@ -539,6 +572,8 @@ export default function ExamTakingPage() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Allow navigation if intentionally submitting
       if (isNavigatingAwayRef.current) return;
+      // Allow navigation during forced logout flow (admin block/session revoke)
+      if (sessionStorage.getItem('force_logout_bypass') === '1') return;
       e.preventDefault();
       // Modern browsers show a generic message; setting returnValue is required
       e.returnValue = '';

@@ -105,6 +105,19 @@ const RETRY_DELAY = 1000; // 1 second
 // Helper function to delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+function emitForceLogoutEvent(reason: 'blocked' | 'session_expired' | 'removed_by_admin', message: string) {
+  if (typeof window === 'undefined') return;
+
+  window.dispatchEvent(
+    new CustomEvent('lms:force-logout', {
+      detail: {
+        reason,
+        message,
+      },
+    })
+  );
+}
+
 // Request interceptor - add auth token & fix FormData Content-Type
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -131,15 +144,27 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
+    const status = error.response?.status;
+    const responseData = error.response?.data as { message?: string; error_code?: string } | undefined;
+    const errorCode = responseData?.error_code;
+    const isBlockedAccount = status === 403 && errorCode === 'ACCOUNT_BLOCKED';
+    const isUnauthenticated = status === 401;
+    const requestUrl = config?.url || '';
+    const isAuthEndpointRequest =
+      requestUrl.includes('/login') ||
+      requestUrl.includes('/logout') ||
+      requestUrl.includes('/forgot-password') ||
+      requestUrl.includes('/reset-password');
     
     // Don't retry if no config or if it's a 401/403 error
-    if (!config || error.response?.status === 401 || error.response?.status === 403) {
-      if (error.response?.status === 401) {
-        // Unauthorized - clear token and redirect to login
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+    if (!config || isUnauthenticated || status === 403) {
+      if (typeof window !== 'undefined' && !isAuthEndpointRequest) {
+        const hasToken = !!localStorage.getItem('token');
+
+        if (isBlockedAccount && hasToken) {
+          emitForceLogoutEvent('blocked', responseData?.message || 'Akun Anda diblokir oleh admin.');
+        } else if (isUnauthenticated && hasToken) {
+          emitForceLogoutEvent('session_expired', 'Sesi Anda berakhir. Silakan login kembali.');
         }
       }
       return Promise.reject(error);

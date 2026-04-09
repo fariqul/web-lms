@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, Button } from '@/components/ui';
 import {
@@ -23,6 +24,7 @@ import {
   LayoutGrid,
   List,
   RotateCcw,
+  UserX,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
@@ -74,6 +76,22 @@ interface ExamInfo {
   end_time: string;
 }
 
+interface ExamDetail {
+  subject?: string;
+  class?: {
+    id: number;
+    name: string;
+  } | null;
+  classes?: Array<{
+    id: number;
+    name: string;
+  }>;
+  duration?: number;
+  max_violations?: number;
+  title?: string;
+  status?: string;
+}
+
 interface Summary {
   total_students: number;
   not_started: number;
@@ -87,10 +105,18 @@ export default function MonitorUjianPage() {
   const params = useParams();
   const examId = Number(params.id);
   const { user } = useAuth();
+  const defaultKickMessage = 'Jangan tidur saat ujian. Anda dikeluarkan sementara oleh admin. Silakan login kembali untuk melanjutkan.';
+  const kickConfirmKeyword = 'KELUARKAN';
+  const kickRecentWindowMs = 2 * 60 * 1000;
+  const kickPresetMessages = [
+    'Jangan tidur saat ujian. Anda dikeluarkan sementara oleh admin. Silakan login kembali untuk melanjutkan.',
+    'Fokus ujian, jangan berpindah aplikasi. Anda dikeluarkan sementara, silakan login kembali.',
+    'Aktivitas Anda terdeteksi tidak sesuai aturan ujian. Silakan login kembali dan ikuti ketentuan.',
+  ];
 
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<ExamInfo | null>(null);
-  const [examDetail, setExamDetail] = useState<any>(null);
+  const [examDetail, setExamDetail] = useState<ExamDetail | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [monitoringClasses, setMonitoringClasses] = useState<MonitoringClassOption[]>([]);
@@ -100,17 +126,66 @@ export default function MonitorUjianPage() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
   const [snapshotModal, setSnapshotModal] = useState<{ student: Student; snapshot: { image_path: string; captured_at: string } } | null>(null);
+  const [snapshotModalImageError, setSnapshotModalImageError] = useState(false);
+  const [snapshotImageErrors, setSnapshotImageErrors] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   
   // Reactivate exam result states
   const [reactivateModal, setReactivateModal] = useState<{ participantId: number; studentName: string; resultId: number } | null>(null);
   const [reactivateReason, setReactivateReason] = useState('');
   const [isReactivating, setIsReactivating] = useState(false);
+  const [kickModal, setKickModal] = useState<{ studentId: number; studentName: string } | null>(null);
+  const [kickMessage, setKickMessage] = useState(defaultKickMessage);
+  const [kickConfirmStep, setKickConfirmStep] = useState<1 | 2>(1);
+  const [kickConfirmText, setKickConfirmText] = useState('');
+  const [isKicking, setIsKicking] = useState(false);
+  const [recentKickedAt, setRecentKickedAt] = useState<Record<number, string>>({});
   const [violationModal, setViolationModal] = useState<{ studentName: string; violations: Participant['violation_details'] } | null>(null);
   const [violationFilter, setViolationFilter] = useState<'all' | 'ios_risky'>('all');
 
   // WebSocket for real-time updates
   const examSocket = useExamSocket(examId);
+
+  const resetKickModalState = useCallback(() => {
+    setKickModal(null);
+    setKickMessage(defaultKickMessage);
+    setKickConfirmStep(1);
+    setKickConfirmText('');
+  }, [defaultKickMessage]);
+
+  const openKickModal = useCallback((studentId: number, studentName: string) => {
+    setKickModal({ studentId, studentName });
+    setKickMessage(defaultKickMessage);
+    setKickConfirmStep(1);
+    setKickConfirmText('');
+  }, [defaultKickMessage]);
+
+  const isRecentlyKicked = useCallback((studentId: number) => {
+    const kickedAt = recentKickedAt[studentId];
+    if (!kickedAt) return false;
+    const diff = Date.now() - new Date(kickedAt).getTime();
+    return diff >= 0 && diff < kickRecentWindowMs;
+  }, [recentKickedAt, kickRecentWindowMs]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRecentKickedAt((prev) => {
+        const next: Record<number, string> = {};
+        const now = Date.now();
+
+        Object.entries(prev).forEach(([studentId, kickedAt]) => {
+          const diff = now - new Date(kickedAt).getTime();
+          if (diff >= 0 && diff < kickRecentWindowMs) {
+            next[Number(studentId)] = kickedAt;
+          }
+        });
+
+        return next;
+      });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [kickRecentWindowMs]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -165,6 +240,10 @@ export default function MonitorUjianPage() {
 
     return () => clearInterval(interval);
   }, [autoRefresh, fetchData]);
+
+  useEffect(() => {
+    setSnapshotModalImageError(false);
+  }, [snapshotModal?.snapshot.image_path, snapshotModal?.snapshot.captured_at]);
 
   // WebSocket event listeners
   useEffect(() => {
@@ -223,8 +302,7 @@ export default function MonitorUjianPage() {
     examSocket.onExamUpdated((data: unknown) => {
       const d = data as { exam_id: number; duration?: number; max_violations?: number; title?: string; status?: string };
       setExam(prev => prev ? { ...prev, ...d } : prev);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setExamDetail((prev: any) => prev ? { ...prev, ...d } : prev);
+      setExamDetail(prev => prev ? { ...prev, ...d } : prev);
       addEvent('settings', `Pengaturan ujian diperbarui`);
     });
 
@@ -262,6 +340,18 @@ export default function MonitorUjianPage() {
       });
     });
 
+    examSocket.on(`exam.${examId}.student-kicked`, (data: unknown) => {
+      const d = data as { student_id?: number; student_name?: string; message?: string; kicked_at?: string };
+      addEvent('kick', `⛔ ${d.student_name || 'Siswa'} dikeluarkan admin`);
+      if (d.student_id) {
+        setRecentKickedAt((prev) => ({
+          ...prev,
+          [d.student_id as number]: d.kicked_at || new Date().toISOString(),
+        }));
+      }
+      fetchData();
+    });
+
     return () => {
       examSocket.off(`exam.${examId}.student-joined`);
       examSocket.off(`exam.${examId}.student-submitted`);
@@ -270,8 +360,9 @@ export default function MonitorUjianPage() {
       examSocket.off(`exam.${examId}.snapshot`);
       examSocket.off(`exam.${examId}.updated`);
       examSocket.off(`exam.${examId}.proctor-alert`);
+      examSocket.off(`exam.${examId}.student-kicked`);
     };
-  }, [examSocket.isConnected, examId, fetchData]);
+  }, [examSocket, examSocket.isConnected, examId, fetchData]);
 
   const filteredParticipants = participants.filter((p) => {
     if (filter === 'all') return true;
@@ -439,6 +530,53 @@ export default function MonitorUjianPage() {
       }, ...prev].slice(0, 20));
     } finally {
       setIsReactivating(false);
+    }
+  };
+
+  const handleKickParticipant = async () => {
+    if (!kickModal) return;
+
+    const message = kickMessage.trim();
+    if (!message) {
+      setRealtimeEvents(prev => [{
+        type: 'error',
+        message: 'Pesan kick wajib diisi sebelum siswa dikeluarkan.',
+        time: new Date(),
+      }, ...prev].slice(0, 20));
+      return;
+    }
+
+    setIsKicking(true);
+    try {
+      const response = await api.post(`/exams/${examId}/participants/${kickModal.studentId}/kick`, {
+        message,
+      });
+
+      if (response.data?.success) {
+        await fetchData();
+        setRecentKickedAt((prev) => ({
+          ...prev,
+          [kickModal.studentId]: new Date().toISOString(),
+        }));
+        setRealtimeEvents(prev => [{
+          type: 'kick',
+          message: `${kickModal.studentName} dikeluarkan dari ujian`,
+          time: new Date(),
+        }, ...prev].slice(0, 20));
+        resetKickModalState();
+      } else {
+        throw new Error(response.data?.message || 'Gagal mengeluarkan siswa');
+      }
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Gagal mengeluarkan siswa';
+      console.error('Kick participant error:', errMsg);
+      setRealtimeEvents(prev => [{
+        type: 'error',
+        message: `Gagal kick siswa: ${errMsg}`,
+        time: new Date(),
+      }, ...prev].slice(0, 20));
+    } finally {
+      setIsKicking(false);
     }
   };
 
@@ -679,6 +817,7 @@ export default function MonitorUjianPage() {
                 <div key={i} className="flex items-center gap-2 text-xs">
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                     evt.type === 'violation' ? 'bg-red-500' :
+                    evt.type === 'kick' ? 'bg-red-600' :
                     evt.type === 'submit' ? 'bg-green-500' :
                     evt.type === 'join' ? 'bg-teal-500' : 'bg-slate-400'
                   }`} />
@@ -753,29 +892,57 @@ export default function MonitorUjianPage() {
                       <div className="aspect-video bg-slate-200 dark:bg-slate-700 relative">
                         {participant.latest_snapshot ? (
                           <>
-                            <img
-                              key={participant.latest_snapshot.image_path}
-                              src={resolveSnapshotUrl(participant.latest_snapshot.image_path)}
-                              alt={participant.student.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                              }}
-                            />
-                            {/* Live indicator */}
-                            <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                              LIVE
-                            </div>
-                            {/* Time overlay — relative time */}
-                            <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded" title={new Date(participant.latest_snapshot.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}>
-                              {getRelativeTime(participant.latest_snapshot.captured_at)}
-                            </div>
-                            {/* Hover overlay */}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                              <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
+                            {(() => {
+                              const snapshotKey = `${participant.student.id}:${participant.latest_snapshot?.image_path}:${participant.latest_snapshot?.captured_at}`;
+                              const hasLoadError = snapshotImageErrors[snapshotKey] === true;
+
+                              if (hasLoadError) {
+                                return (
+                                  <div className="flex items-center justify-center h-full">
+                                    <div className="text-center">
+                                      <AlertCircle className="w-6 h-6 mx-auto text-slate-400 dark:text-slate-500 mb-1" />
+                                      <p className="text-[10px] text-slate-400 dark:text-slate-500">Gagal memuat</p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <>
+                                  <Image
+                                    key={participant.latest_snapshot?.image_path}
+                                    src={resolveSnapshotUrl(participant.latest_snapshot?.image_path || '')}
+                                    alt={participant.student.name}
+                                    fill
+                                    unoptimized
+                                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                                    className="object-cover"
+                                    onError={() => {
+                                      setSnapshotImageErrors((prev) => ({
+                                        ...prev,
+                                        [snapshotKey]: true,
+                                      }));
+                                    }}
+                                  />
+
+                                  {/* Live indicator */}
+                                  <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                                    LIVE
+                                  </div>
+
+                                  {/* Time overlay — relative time */}
+                                  <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded" title={new Date(participant.latest_snapshot?.captured_at || '').toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}>
+                                    {getRelativeTime(participant.latest_snapshot?.captured_at || new Date().toISOString())}
+                                  </div>
+
+                                  {/* Hover overlay */}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                    <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </>
                         ) : (
                           <div className="flex items-center justify-center h-full">
@@ -790,6 +957,11 @@ export default function MonitorUjianPage() {
                       {/* Student info bar */}
                       <div className="px-2 py-1.5">
                         <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{participant.student.name}</p>
+                        {isRecentlyKicked(participant.student.id) && (
+                          <span className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                            Baru di-kick
+                          </span>
+                        )}
                         <div className="flex items-center justify-between mt-0.5">
                           <span className="text-[10px] text-slate-500 dark:text-slate-400">
                             {participant.answered_count}/{participant.total_questions} soal
@@ -846,7 +1018,14 @@ export default function MonitorUjianPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {getStatusBadge(participant.status)}
+                        <div className="flex flex-col items-center gap-1">
+                          {getStatusBadge(participant.status)}
+                          {participant.status === 'in_progress' && isRecentlyKicked(participant.student.id) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                              Baru di-kick
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -931,6 +1110,18 @@ export default function MonitorUjianPage() {
                               <Camera className="w-4 h-4" />
                             </button>
                           )}
+                          {user?.role === 'admin' && participant.status === 'in_progress' && (
+                            <button
+                              onClick={() => {
+                                openKickModal(participant.student.id, participant.student.name);
+                              }}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                              title="Keluarkan siswa"
+                              aria-label="Keluarkan siswa dari ujian"
+                            >
+                              <UserX className="w-4 h-4" />
+                            </button>
+                          )}
                           {user?.role === 'admin' && participant.status === 'completed' && participant.violation_count > 0 && participant.result_id && (
                             <button
                               onClick={() => setReactivateModal({
@@ -1006,16 +1197,21 @@ export default function MonitorUjianPage() {
             {/* Snapshot Image */}
             <div className="p-4">
               <div className="relative bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden">
-                <img
-                  src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
-                  alt={`Snapshot ${snapshotModal.student.name}`}
-                  className="w-full aspect-video object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.parentElement!.innerHTML = '<div class="flex items-center justify-center aspect-video text-slate-400"><p class="text-sm">Gagal memuat gambar</p></div>';
-                  }}
-                />
+                {snapshotModalImageError ? (
+                  <div className="flex items-center justify-center aspect-video text-slate-400">
+                    <p className="text-sm">Gagal memuat gambar</p>
+                  </div>
+                ) : (
+                  <Image
+                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
+                    alt={`Snapshot ${snapshotModal.student.name}`}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 1024px) 100vw, 800px"
+                    className="object-cover"
+                    onError={() => setSnapshotModalImageError(true)}
+                  />
+                )}
                 {/* Live indicator */}
                 <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -1121,6 +1317,100 @@ export default function MonitorUjianPage() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kick Participant Modal */}
+      {kickModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !isKicking && resetKickModalState()}>
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Keluarkan Siswa dari Ujian</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Siswa <span className="font-medium">{kickModal.studentName}</span> akan dipaksa keluar ke halaman login.
+              </p>
+            </div>
+
+            <div className="p-5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Pesan admin untuk siswa (wajib)
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {kickPresetMessages.map((template, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setKickMessage(template)}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    disabled={isKicking}
+                  >
+                    Template {index + 1}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={kickMessage}
+                onChange={(e) => setKickMessage(e.target.value)}
+                maxLength={500}
+                rows={4}
+                placeholder="Contoh: Jangan tidur saat ujian. Fokus kembali dan login ulang untuk melanjutkan."
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{kickMessage.length}/500</p>
+
+              {kickConfirmStep === 2 && (
+                <div className="mt-3 p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/70 dark:bg-red-900/20">
+                  <p className="text-xs text-red-700 dark:text-red-300 mb-2">
+                    Untuk konfirmasi, ketik <span className="font-semibold">{kickConfirmKeyword}</span> di kolom berikut.
+                  </p>
+                  <input
+                    value={kickConfirmText}
+                    onChange={(e) => setKickConfirmText(e.target.value)}
+                    placeholder={kickConfirmKeyword}
+                    className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (kickConfirmStep === 2) {
+                      setKickConfirmStep(1);
+                      setKickConfirmText('');
+                      return;
+                    }
+
+                    resetKickModalState();
+                  }}
+                  disabled={isKicking}
+                >
+                  {kickConfirmStep === 2 ? 'Kembali' : 'Batal'}
+                </Button>
+                {kickConfirmStep === 1 ? (
+                  <Button
+                    onClick={() => setKickConfirmStep(2)}
+                    disabled={isKicking || kickMessage.trim().length === 0}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    Lanjut Konfirmasi
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleKickParticipant}
+                    disabled={isKicking || kickConfirmText.trim().toUpperCase() !== kickConfirmKeyword}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {isKicking ? 'Mengeluarkan...' : 'Ya, Keluarkan Siswa'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -36,6 +36,27 @@ interface QuizData {
   show_result?: boolean;
 }
 
+const normalizeTextLike = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeTextLike(item))
+      .filter((item) => item.length > 0)
+      .join('\n');
+  }
+
+  if (typeof value === 'object') {
+    const candidate = value as { text?: unknown; content?: unknown; value?: unknown };
+    if (candidate.text != null) return normalizeTextLike(candidate.text);
+    if (candidate.content != null) return normalizeTextLike(candidate.content);
+    if (candidate.value != null) return normalizeTextLike(candidate.value);
+  }
+
+  return String(value);
+};
+
 export default function QuizTakingPage() {
   const params = useParams();
   const router = useRouter();
@@ -81,17 +102,32 @@ export default function QuizTakingPage() {
       if (data) {
         // Backend returns 'quiz' object (not 'exam') and 'text' field (not 'question_text')
         const quizData = data.quiz || data.exam;
-        const qs: Question[] = (data.questions || []).map((q: Record<string, unknown>, idx: number) => ({
-          id: q.id as number,
-          number: (q.number as number) || idx + 1,
-          type: (q.question_type || q.type) as Question['type'],
-          text: (q.text || q.question_text) as string,
-          passage: q.passage as string | null,
-          options: ((q.options || []) as (string | { text: string; image?: string | null })[]).map(
-            (opt) => typeof opt === 'string' ? { text: opt, image: null } : { text: opt.text || '', image: opt.image || null }
-          ),
-          image: q.image as string | null,
-        }));
+        const qs: Question[] = (data.questions || []).map((q: Record<string, unknown>, idx: number) => {
+          const questionText = normalizeTextLike(q.text ?? q.question_text);
+          const passageText = normalizeTextLike(
+            q.passage ?? q.passage_text ?? q.reading_text ?? q.reading ?? q.stimulus
+          ).trim();
+
+          const normalizedOptions = ((q.options || []) as (string | { text?: unknown; image?: string | null })[]).map((opt) => {
+            if (typeof opt === 'string') {
+              return { text: normalizeTextLike(opt), image: null };
+            }
+            return {
+              text: normalizeTextLike(opt?.text),
+              image: opt?.image || null,
+            };
+          });
+
+          return {
+            id: q.id as number,
+            number: (q.number as number) || idx + 1,
+            type: (q.question_type || q.type) as Question['type'],
+            text: questionText,
+            passage: passageText || null,
+            options: normalizedOptions,
+            image: q.image as string | null,
+          };
+        });
 
         setQuiz({
           id: quizData?.id || quizId,

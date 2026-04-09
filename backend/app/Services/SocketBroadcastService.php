@@ -272,6 +272,18 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * Student removed from exam by admin.
+     */
+    public function examStudentKicked(int $examId, array $kickData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.student-kicked",
+            $kickData,
+            "exam.{$examId}"
+        );
+    }
+
     // ─── Attendance Events ──────────────────────────────────────
 
     /**

@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
 import { Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+
+type LoginAlertKind = 'error' | 'blocked' | 'session' | 'device' | 'kicked';
 
 // Demo login only available in development mode
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -80,18 +82,51 @@ const LoginBrandPanel = React.memo(function LoginBrandPanel() {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [alertKind, setAlertKind] = useState<LoginAlertKind>('error');
   const [isLoading, setIsLoading] = useState(false);
   const [deviceLimited, setDeviceLimited] = useState(false);
   const [forceLoading, setForceLoading] = useState(false);
 
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (!reason) return;
+
+    let recognizedReason = false;
+
+    if (reason === 'blocked') {
+      recognizedReason = true;
+      setAlertKind('blocked');
+      setError('Akun Anda telah diblokir oleh admin. Silakan hubungi admin untuk informasi lebih lanjut.');
+    } else if (reason === 'session_expired') {
+      recognizedReason = true;
+      setAlertKind('session');
+      setError('Sesi Anda telah berakhir. Silakan login kembali.');
+    } else if (reason === 'removed_by_admin') {
+      recognizedReason = true;
+      setAlertKind('kicked');
+      const forceMessage = sessionStorage.getItem('force_logout_message');
+      setError(forceMessage || 'Anda dikeluarkan sementara dari ujian oleh admin. Silakan login kembali.');
+      sessionStorage.removeItem('force_logout_message');
+    }
+
+    if (!recognizedReason) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('reason');
+    const cleanUrl = params.toString() ? `/login?${params.toString()}` : '/login';
+    router.replace(cleanUrl);
+  }, [searchParams, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setAlertKind('error');
     setDeviceLimited(false);
     
     // Client-side validation
@@ -119,18 +154,25 @@ export default function LoginPage() {
 
       if (status === 409 && errorCode === 'DEVICE_LIMIT') {
         setDeviceLimited(true);
+        setAlertKind('device');
         setError(serverMessage || 'Akun sedang login di perangkat lain.');
       } else if (status === 403 && errorCode === 'ACCOUNT_BLOCKED') {
+        setAlertKind('blocked');
         setError(serverMessage || 'Akun Anda diblokir. Hubungi admin untuk informasi lebih lanjut.');
       } else if (status === 401 || status === 403) {
+        setAlertKind('error');
         setError('Email/NIS atau password salah. Silakan coba lagi.');
       } else if (status === 422) {
+        setAlertKind('error');
         setError(serverMessage || 'Data login tidak valid. Periksa kembali email/NIS dan password.');
       } else if (status === 429) {
+        setAlertKind('session');
         setError('Terlalu banyak percobaan login. Silakan tunggu beberapa menit.');
       } else if (!navigator.onLine) {
+        setAlertKind('session');
         setError('Tidak ada koneksi internet. Periksa jaringan Anda.');
       } else {
+        setAlertKind('error');
         setError('Gagal terhubung ke server. Silakan coba lagi nanti.');
       }
     } finally {
@@ -141,6 +183,7 @@ export default function LoginPage() {
   const handleForceLogin = async () => {
     setForceLoading(true);
     setError('');
+    setAlertKind('error');
     setDeviceLimited(false);
     try {
       await login(loginId.trim().toLowerCase(), password, true);
@@ -151,6 +194,24 @@ export default function LoginPage() {
       setForceLoading(false);
     }
   };
+
+  const alertToneClasses =
+    alertKind === 'blocked'
+      ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900 text-red-700 dark:text-red-400'
+      : (alertKind === 'session' || alertKind === 'device' || alertKind === 'kicked')
+        ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-400'
+        : 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900 text-red-600 dark:text-red-400';
+
+  const alertTitle =
+    alertKind === 'blocked'
+      ? 'Akun Diblokir'
+      : alertKind === 'session'
+        ? 'Sesi Berakhir'
+        : alertKind === 'kicked'
+          ? 'Dikeluarkan Admin'
+        : alertKind === 'device'
+          ? 'Perangkat Lain Terdeteksi'
+          : 'Gagal Masuk';
 
   // Demo login for testing - ONLY in development
   const handleDemoLogin = (role: 'admin' | 'guru' | 'siswa') => {
@@ -189,8 +250,9 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className={`mb-5 p-3.5 ${deviceLimited ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-400' : 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900 text-red-600 dark:text-red-400'} border rounded-xl text-sm font-medium`} role="alert">
-                <p>{error}</p>
+              <div className={`mb-5 p-3.5 border rounded-xl text-sm ${alertToneClasses}`} role="alert">
+                <p className="font-semibold mb-1">{alertTitle}</p>
+                <p className="font-medium">{error}</p>
                 {deviceLimited && (
                   <button
                     type="button"

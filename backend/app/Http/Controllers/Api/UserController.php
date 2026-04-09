@@ -378,8 +378,6 @@ class UserController extends Controller
         if ($request->is_blocked) {
             $user->block_reason = $request->reason ?: 'Diblokir oleh admin';
             $user->blocked_at = now();
-            // Force logout by deleting all tokens
-            $user->tokens()->delete();
         } else {
             $user->block_reason = null;
             $user->blocked_at = null;
@@ -467,14 +465,6 @@ class UserController extends Controller
 
         User::whereIn('id', $users->pluck('id'))->update($updateData);
 
-        // Force logout blocked users
-        if ($request->is_blocked) {
-            foreach ($users as $user) {
-                /** @var User $user */
-                $user->tokens()->delete();
-            }
-        }
-
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
 
         return response()->json([
@@ -516,14 +506,6 @@ class UserController extends Controller
         }
 
         User::where('role', 'siswa')->update($updateData);
-
-        // Force logout blocked users
-        if ($request->is_blocked) {
-            foreach ($users as $user) {
-                /** @var User $user */
-                $user->tokens()->delete();
-            }
-        }
 
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
 
@@ -571,13 +553,6 @@ class UserController extends Controller
         User::where('role', 'siswa')
             ->where('class_id', $request->class_id)
             ->update($updateData);
-
-        if ($request->is_blocked) {
-            foreach ($users as $user) {
-                /** @var User $user */
-                $user->tokens()->delete();
-            }
-        }
 
         $className = ClassRoom::find($request->class_id)?->name ?? 'Kelas';
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';

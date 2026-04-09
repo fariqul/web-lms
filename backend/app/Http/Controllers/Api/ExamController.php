@@ -11,6 +11,7 @@ use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\ProctoringAlert;
 use App\Models\AuditLog;
+use App\Models\Notification;
 use App\Models\ExamClassSchedule;
 use App\Models\ClassRoom;
 use App\Models\SystemSetting;
@@ -4171,6 +4172,124 @@ class ExamController extends Controller
                 'selected_class_id' => $selectedClassId,
                 'participants' => $monitoringData,
                 'summary' => $summary,
+            ],
+        ]);
+    }
+
+    /**
+     * Kick student from an active exam session (admin only).
+     */
+    public function kickParticipant(Request $request, Exam $exam, User $student)
+    {
+        $admin = $request->user();
+
+        if ($admin->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengeluarkan siswa dari ujian',
+            ], 403);
+        }
+
+        if ($student->role !== 'siswa') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Target yang dipilih bukan akun siswa',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'message' => 'required|string|max:500',
+        ]);
+
+        $message = trim((string) ($validated['message'] ?? ''));
+        if ($message === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pesan untuk siswa wajib diisi',
+            ], 422);
+        }
+
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+
+        if (!in_array((int) $student->class_id, array_map('intval', $examClassIds), true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Siswa tidak terdaftar pada kelas ujian ini',
+            ], 422);
+        }
+
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $student->id)
+            ->latest('id')
+            ->first();
+
+        if (!$result || $result->status !== 'in_progress') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Siswa tidak sedang mengerjakan ujian ini',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($student, $admin, $request, $exam, $result, $message) {
+            // Logout paksa sesi aktif siswa (akun tetap bisa login ulang).
+            $student->tokens()->delete();
+
+            Notification::send(
+                $student->id,
+                'system',
+                'Dikeluarkan dari Ujian',
+                $message,
+                [
+                    'exam_id' => $exam->id,
+                    'exam_title' => $exam->title,
+                    'kicked_by' => $admin->id,
+                    'kicked_by_name' => $admin->name,
+                ]
+            );
+
+            AuditLog::create([
+                'user_id' => $admin->id,
+                'action' => 'exam.participant.kicked',
+                'description' => 'Admin mengeluarkan siswa dari ujian: ' . $student->name . ' (Ujian: ' . $exam->title . ')',
+                'target_type' => 'ExamResult',
+                'target_id' => $result->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'old_values' => [
+                    'result_status' => $result->status,
+                ],
+                'new_values' => [
+                    'result_status' => $result->status,
+                    'forced_logout' => true,
+                    'message' => $message,
+                ],
+            ]);
+        });
+
+        try {
+            $broadcast = app(SocketBroadcastService::class);
+            $broadcast->examStudentKicked($exam->id, [
+                'exam_id' => $exam->id,
+                'student_id' => $student->id,
+                'student_name' => $student->name,
+                'message' => $message,
+                'kicked_by' => $admin->id,
+                'kicked_by_name' => $admin->name,
+                'kicked_at' => now()->toIso8601String(),
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast examStudentKicked failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Siswa berhasil dikeluarkan dari sesi ujian. Siswa dapat login ulang untuk masuk kembali.',
+            'data' => [
+                'exam_id' => $exam->id,
+                'student_id' => $student->id,
             ],
         ]);
     }

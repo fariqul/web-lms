@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'audit' => \App\Http\Middleware\AuditLogMiddleware::class,
+            'blocked.student' => \App\Http\Middleware\BlockedStudentMiddleware::class,
         ]);
         
         // Optional global API throttling.

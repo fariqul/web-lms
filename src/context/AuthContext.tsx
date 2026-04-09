@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const response = await authAPI.me();
           setUser(response.data.data);
           localStorage.setItem('user', JSON.stringify(response.data.data));
+          sessionStorage.removeItem('force_logout_bypass');
         } catch {
           // Token invalid, clear auth
           localStorage.removeItem('token');
@@ -56,6 +57,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
+  useEffect(() => {
+    if (!token || !user || user.role !== 'siswa') return;
+
+    // Keepalive check so blocked students can be detected while idle.
+    const interval = window.setInterval(() => {
+      authAPI.me().catch(() => {
+        // Handled globally by API interceptor.
+      });
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [token, user]);
+
   const login = useCallback(async (loginStr: string, password: string, force?: boolean) => {
     setIsLoading(true);
     try {
@@ -67,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       localStorage.setItem('token', authToken);
       localStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.removeItem('force_logout_bypass');
     } catch (error) {
       throw error;
     } finally {
