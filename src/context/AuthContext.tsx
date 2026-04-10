@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const BLOCK_CHECK_INTERVAL_MS = 10000;
+  const BLOCK_CHECK_INTERVAL_MS = 45000;
 
   const checkAuth = useCallback(async () => {
     try {
@@ -61,15 +61,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token || !user || user.role !== 'siswa') return;
 
-    // Keepalive check so blocked students can be detected while idle.
-    const interval = window.setInterval(() => {
+    const runKeepaliveCheck = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
       authAPI.me().catch(() => {
         // Handled globally by API interceptor.
       });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        runKeepaliveCheck();
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      runKeepaliveCheck();
     }, BLOCK_CHECK_INTERVAL_MS);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [token, user, BLOCK_CHECK_INTERVAL_MS]);
 

@@ -6,6 +6,7 @@ import { X, Loader2, CheckCircle, Download, FileText, Upload, AlertCircle, Eye }
 import { useToast } from '@/components/ui/Toast';
 import { pdfImportAPI } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 interface PdfImportModalProps {
   isOpen: boolean;
@@ -63,8 +64,8 @@ export function PdfImportModal({ isOpen, onClose, onImportSuccess }: PdfImportMo
       } else {
         toast.error(response.data?.message || 'Gagal memproses PDF');
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || 'Terjadi kesalahan saat memproses PDF');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Terjadi kesalahan saat memproses PDF'));
     } finally {
       setLoading(false);
     }

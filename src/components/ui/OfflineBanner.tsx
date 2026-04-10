@@ -4,7 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { WifiOff, Wifi, X } from 'lucide-react';
 
 export function OfflineBanner() {
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() => {
+    if (typeof navigator === 'undefined') return true;
+    return navigator.onLine;
+  });
   const [showReconnected, setShowReconnected] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -23,9 +26,6 @@ export function OfflineBanner() {
   }, []);
 
   useEffect(() => {
-    // Set initial state
-    setIsOnline(navigator.onLine);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {

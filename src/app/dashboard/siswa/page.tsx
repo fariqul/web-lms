@@ -110,57 +110,47 @@ export default function SiswaDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [scheduleRes, examsRes, attendanceRes, pendingRes, newCountRes, announcementsRes, announcementsCountRes] = await Promise.all([
+      const [dashboardRes, scheduleRes, pendingRes, newCountRes, announcementsRes, announcementsCountRes] = await Promise.all([
+        api.get('/dashboard/siswa').catch(() => ({ data: { data: null } })),
         api.get('/my-schedule').catch(() => ({ data: { data: {} } })),
-        api.get('/exams').catch(() => ({ data: { data: [] } })),
-        api.get('/my-attendance-stats').catch(() => ({ data: { data: null } })),
         assignmentAPI.getPending().catch(() => ({ data: { data: [] } })),
         assignmentAPI.getNewCount().catch(() => ({ data: { data: { count: 0 } } })),
         announcementAPI.getLatest(5).catch(() => ({ data: { data: [] } })),
         announcementAPI.getUnreadCount().catch(() => ({ data: { data: { count: 0 } } })),
       ]);
 
-      // Process announcements
       setAnnouncements(announcementsRes.data?.data || []);
       setNewAnnouncementsCount(announcementsCountRes.data?.data?.count || 0);
 
-      // Process pending assignments
       const pendingData = pendingRes.data?.data || [];
       setPendingAssignments(pendingData.slice(0, 5));
       setNewAssignmentsCount(newCountRes.data?.data?.count || 0);
 
-      // Process schedule - get today's schedule
       const today = new Date().getDay();
       const dayOfWeek = today === 0 ? 1 : today;
       const scheduleData = scheduleRes.data?.data || {};
       const todaySchedules = scheduleData[dayOfWeek] || [];
       setTodaySchedule(todaySchedules.slice(0, 6));
 
-      // Process exams
-      const examsRaw = examsRes.data?.data;
-      const examsData = Array.isArray(examsRaw) ? examsRaw : (examsRaw?.data || []);
+      const dashboardData = dashboardRes.data?.data;
+      const upcoming = Array.isArray(dashboardData?.upcoming_exams) ? dashboardData.upcoming_exams : [];
+      const recentResults = Array.isArray(dashboardData?.recent_results) ? dashboardData.recent_results : [];
+      const examStats = dashboardData?.exam_stats;
+      const attendanceStats = dashboardData?.attendance_stats;
+      const attendancePercentage = Number(dashboardData?.attendance_percentage) || 0;
 
-      const now = new Date();
-      // Upcoming = exams that haven't ended yet AND student hasn't completed them
-      const upcoming = examsData.filter((e: { start_time: string; end_time: string; my_result?: { status?: string } }) => {
-        const endTime = new Date(e.end_time);
-        const hasCompletedOrSubmitted = e.my_result && ['completed', 'graded', 'submitted'].includes(e.my_result?.status || '');
-        return endTime > now && !hasCompletedOrSubmitted;
-      });
-      const completed = examsData.filter((e: { my_result?: { status?: string; score?: number }; title: string; subject: string; max_score: number }) =>
-        e.my_result && ['completed', 'graded', 'submitted'].includes(e.my_result?.status || '')
-      );
-
-      // Set exam results
-      const results: ExamResult[] = completed.slice(0, 6).map((e: { id: number; title: string; subject: string; my_result?: { completed_at?: string } }) => ({
-        id: e.id,
-        title: e.title,
-        subject: e.subject,
-        completed_at: e.my_result?.completed_at,
+      const results: ExamResult[] = recentResults.slice(0, 6).map((result: {
+        id: number;
+        exam?: { title?: string; subject?: string };
+        submitted_at?: string;
+      }) => ({
+        id: result.id,
+        title: result.exam?.title || 'Ujian',
+        subject: result.exam?.subject || '-',
+        completed_at: result.submitted_at,
       }));
       setExamResults(results);
 
-      // Build upcoming events from exams and assignments
       const events: UpcomingEvent[] = [];
 
       upcoming.slice(0, 3).forEach((e: { id: number; title: string; subject: string; start_time: string }) => {
@@ -187,31 +177,16 @@ export default function SiswaDashboard() {
 
       setUpcomingEvents(events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 4));
 
-      // Process attendance stats
-      const attendanceStats = attendanceRes.data?.data;
-      if (attendanceStats) {
-        setStats({
-          attendance_percentage: attendanceStats.percentage || 0,
-          upcoming_exams_count: upcoming.length,
-          completed_exams_count: completed.length,
-          pending_assignments_count: pendingData.length,
-          total_present: attendanceStats.hadir || 0,
-          total_late: attendanceStats.izin || 0,
-          total_sick: attendanceStats.sakit || 0,
-          total_absent: attendanceStats.alpha || 0,
-        });
-      } else {
-        setStats({
-          attendance_percentage: 0,
-          upcoming_exams_count: upcoming.length,
-          completed_exams_count: completed.length,
-          pending_assignments_count: pendingData.length,
-          total_present: 0,
-          total_late: 0,
-          total_sick: 0,
-          total_absent: 0,
-        });
-      }
+      setStats({
+        attendance_percentage: attendancePercentage,
+        upcoming_exams_count: upcoming.length,
+        completed_exams_count: Number(examStats?.completed) || results.length,
+        pending_assignments_count: pendingData.length,
+        total_present: Number(attendanceStats?.hadir) || 0,
+        total_late: Number(attendanceStats?.izin) || 0,
+        total_sick: Number(attendanceStats?.sakit) || 0,
+        total_absent: Number(attendanceStats?.alpha) || 0,
+      });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {

@@ -10,7 +10,6 @@ interface UseSocketOptions {
 }
 
 interface UseSocketReturn {
-  socket: Socket | null;
   isConnected: boolean;
   emit: (event: string, data?: unknown) => void;
   on: (event: string, callback: (data: unknown) => void) => void;
@@ -93,7 +92,6 @@ export function useSocket({
   }, [autoConnect, connect, disconnect]);
 
   return useMemo(() => ({
-    socket: socketRef.current,
     isConnected,
     emit,
     on,

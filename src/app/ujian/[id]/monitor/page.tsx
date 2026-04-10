@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -101,6 +101,9 @@ interface Summary {
   total_ios_ignored: number;
 }
 
+const AUTO_REFRESH_INTERVAL_MS = 15000;
+const EVENT_REFRESH_DEBOUNCE_MS = 2500;
+
 export default function MonitorUjianPage() {
   const params = useParams();
   const examId = Number(params.id);
@@ -142,6 +145,7 @@ export default function MonitorUjianPage() {
   const [recentKickedAt, setRecentKickedAt] = useState<Record<number, string>>({});
   const [violationModal, setViolationModal] = useState<{ studentName: string; violations: Participant['violation_details'] } | null>(null);
   const [violationFilter, setViolationFilter] = useState<'all' | 'ios_risky'>('all');
+  const lastRealtimeRefreshAtRef = useRef(0);
 
   // WebSocket for real-time updates
   const examSocket = useExamSocket(examId);
@@ -189,15 +193,13 @@ export default function MonitorUjianPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      // Fetch exam detail for subject and class info
-      const examRes = await api.get(`/exams/${examId}`);
-      const examData = examRes.data?.data;
-      setExamDetail(examData);
-
-      // Fetch monitoring data
-      const monitorRes = await api.get(`/exams/${examId}/monitoring`, {
-        params: classFilter !== 'all' ? { class_id: Number(classFilter) } : undefined,
-      });
+      const [examRes, monitorRes] = await Promise.all([
+        api.get(`/exams/${examId}`),
+        api.get(`/exams/${examId}/monitoring`, {
+          params: classFilter !== 'all' ? { class_id: Number(classFilter) } : undefined,
+        }),
+      ]);
+      setExamDetail(examRes.data?.data);
       const monitorData = monitorRes.data?.data;
       
       if (monitorData) {
@@ -206,16 +208,6 @@ export default function MonitorUjianPage() {
         setMonitoringClasses(classes);
         setParticipants(monitorData.participants || []);
         setSummary(monitorData.summary);
-
-        // Debug: log snapshot paths from API response
-        const activeParticipants = (monitorData.participants || []).filter((p: Participant) => p.latest_snapshot);
-        if (activeParticipants.length > 0) {
-          console.log('[Monitor] Refresh snapshots:', activeParticipants.map((p: Participant) => ({
-            name: p.student.name,
-            image_path: p.latest_snapshot?.image_path,
-            captured_at: p.latest_snapshot?.captured_at,
-          })));
-        }
       }
 
       setLastRefresh(new Date());
@@ -227,19 +219,46 @@ export default function MonitorUjianPage() {
   }, [examId, classFilter]);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, [fetchData]);
 
-  // Auto refresh every 10 seconds for live monitoring
+  const requestMonitorRefresh = useCallback((force = false) => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      return;
+    }
+
+    const now = Date.now();
+    if (!force && now - lastRealtimeRefreshAtRef.current < EVENT_REFRESH_DEBOUNCE_MS) {
+      return;
+    }
+
+    lastRealtimeRefreshAtRef.current = now;
+    void fetchData();
+  }, [fetchData]);
+
+  // Auto refresh for live monitoring
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
-      fetchData();
-    }, 10000);
+      requestMonitorRefresh();
+    }, AUTO_REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, fetchData]);
+  }, [autoRefresh, requestMonitorRefresh]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestMonitorRefresh(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [requestMonitorRefresh]);
 
   useEffect(() => {
     setSnapshotModalImageError(false);
@@ -258,21 +277,21 @@ export default function MonitorUjianPage() {
       const d = data as { student_name?: string; student_id?: number };
       addEvent('join', `${d.student_name || 'Siswa'} mulai mengerjakan`);
       // Re-fetch to keep summary/participants accurate when class filter is active.
-      fetchData();
+      requestMonitorRefresh();
     });
 
     // Student submitted exam
     examSocket.onStudentSubmitted((data: unknown) => {
       const d = data as { student_name?: string; student_id?: number; score?: number };
       addEvent('submit', `${d.student_name || 'Siswa'} selesai (nilai: ${d.score ?? '-'})`);
-      fetchData();
+      requestMonitorRefresh();
     });
 
     // Violation reported
     examSocket.onViolationReported((data: unknown) => {
       const d = data as { student_name?: string; student_id?: number; type?: string; violation_count?: number };
       addEvent('violation', `⚠️ ${d.student_name || 'Siswa'}: ${d.type || 'pelanggaran'} (${d.violation_count}x)`);
-      fetchData();
+      requestMonitorRefresh();
     });
 
     // Answer progress
@@ -349,7 +368,7 @@ export default function MonitorUjianPage() {
           [d.student_id as number]: d.kicked_at || new Date().toISOString(),
         }));
       }
-      fetchData();
+      requestMonitorRefresh();
     });
 
     return () => {
@@ -362,7 +381,7 @@ export default function MonitorUjianPage() {
       examSocket.off(`exam.${examId}.proctor-alert`);
       examSocket.off(`exam.${examId}.student-kicked`);
     };
-  }, [examSocket, examSocket.isConnected, examId, fetchData]);
+  }, [examSocket, examSocket.isConnected, examId, requestMonitorRefresh]);
 
   const filteredParticipants = participants.filter((p) => {
     if (filter === 'all') return true;
@@ -472,11 +491,11 @@ export default function MonitorUjianPage() {
     return `${minutes}m ${seconds}d`;
   };
 
-  const resolveSnapshotUrl = (imagePath: string) => {
+  const resolveSnapshotUrl = (imagePath: string, capturedAt?: string | null) => {
     const baseUrl = getSecureFileUrl(imagePath);
-    // Add cache-busting timestamp to prevent browser from caching old snapshots
-    const cacheBust = `?t=${Date.now()}`;
-    return `${baseUrl}${cacheBust}`;
+    if (!capturedAt) return baseUrl;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}v=${encodeURIComponent(capturedAt)}`;
   };
 
   // Relative time display (e.g. "5 detik lalu", "2 menit lalu")
@@ -655,7 +674,7 @@ export default function MonitorUjianPage() {
             >
               {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => fetchData()}>
+            <Button variant="outline" size="sm" onClick={() => requestMonitorRefresh(true)}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
@@ -918,8 +937,11 @@ export default function MonitorUjianPage() {
                               return (
                                 <>
                                   <Image
-                                    key={participant.latest_snapshot?.image_path}
-                                    src={resolveSnapshotUrl(participant.latest_snapshot?.image_path || '')}
+                                    key={snapshotKey}
+                                    src={resolveSnapshotUrl(
+                                      participant.latest_snapshot?.image_path || '',
+                                      participant.latest_snapshot?.captured_at
+                                    )}
                                     alt={participant.student.name}
                                     fill
                                     unoptimized
@@ -1211,7 +1233,7 @@ export default function MonitorUjianPage() {
                   </div>
                 ) : (
                   <Image
-                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path)}
+                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path, snapshotModal.snapshot.captured_at)}
                     alt={`Snapshot ${snapshotModal.student.name}`}
                     fill
                     unoptimized

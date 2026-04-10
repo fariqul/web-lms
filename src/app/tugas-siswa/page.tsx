@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 interface Assignment {
   id: number;
@@ -161,9 +162,9 @@ export default function TugasSiswaPage() {
       fetchData();
       
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to submit:', error);
-      setError(error.response?.data?.message || 'Gagal mengumpulkan tugas');
+      setError(getApiErrorMessage(error, 'Gagal mengumpulkan tugas'));
     } finally {
       setSubmitting(false);
     }

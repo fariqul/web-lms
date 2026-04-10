@@ -25,6 +25,7 @@ import { classAPI, materialAPI, getSecureFileUrl } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 interface Material {
   id: number;
@@ -204,9 +205,9 @@ export default function MateriPage() {
       fetchData();
       
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create material:', error);
-      setError(error.response?.data?.message || 'Gagal menyimpan materi');
+      setError(getApiErrorMessage(error, 'Gagal menyimpan materi'));
     } finally {
       setSubmitting(false);
     }
@@ -243,9 +244,9 @@ export default function MateriPage() {
       fetchData();
       
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update material:', error);
-      setError(error.response?.data?.message || 'Gagal memperbarui materi');
+      setError(getApiErrorMessage(error, 'Gagal memperbarui materi'));
     } finally {
       setSubmitting(false);
     }
@@ -263,9 +264,9 @@ export default function MateriPage() {
       toast.success('Materi berhasil dihapus!');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete material:', error);
-      setError(error.response?.data?.message || 'Gagal menghapus materi');
+      setError(getApiErrorMessage(error, 'Gagal menghapus materi'));
     } finally {
       setDeleteId(null);
     }
@@ -641,7 +642,7 @@ export default function MateriPage() {
               <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada materi</p>
               {isTeacherOrAdmin && (
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol "Tambah Materi" untuk membuat materi baru</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol &quot;Tambah Materi&quot; untuk membuat materi baru</p>
               )}
             </Card>
           ) : (

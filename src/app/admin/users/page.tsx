@@ -7,6 +7,7 @@ import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRou
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { extractNomorTesNumber } from '@/utils/nomorTes';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 interface User {
   id: number;
@@ -263,8 +264,8 @@ export default function AdminUsersPage() {
         setIsResetPasswordOpen(false);
         setResetSuccess('');
       }, 2000);
-    } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gagal mereset password';
+    } catch (error: unknown) {
+      const msg = getApiErrorMessage(error, 'Gagal mereset password');
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -288,8 +289,8 @@ export default function AdminUsersPage() {
       toast.success(`Akun ${selectedUser.name} berhasil ${action}`);
       setIsBlockModalOpen(false);
       fetchData();
-    } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gagal mengubah status blokir';
+    } catch (error: unknown) {
+      const msg = getApiErrorMessage(error, 'Gagal mengubah status blokir');
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -329,8 +330,8 @@ export default function AdminUsersPage() {
       toast.success(message);
       setIsBulkBlockModalOpen(false);
       fetchData();
-    } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gagal mengubah status blokir semua siswa';
+    } catch (error: unknown) {
+      const msg = getApiErrorMessage(error, 'Gagal mengubah status blokir semua siswa');
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -408,14 +409,17 @@ export default function AdminUsersPage() {
       const res = await userAPI.normalizeNomorTes(classId);
       const msg = res.data?.message || 'Normalisasi nomor tes selesai';
       toast.success(msg);
-      const rawConflicts = Array.isArray(res.data?.conflicts) ? res.data.conflicts : [];
+      const rawConflicts: unknown[] = Array.isArray(res.data?.conflicts) ? res.data.conflicts : [];
       const parsedConflicts: NomorTesConflict[] = rawConflicts
-        .map((item: any) => ({
-          id: Number(item?.id) || 0,
-          name: String(item?.name || '-'),
-          from: String(item?.from || '-'),
-          to: String(item?.to || '-'),
-        }))
+        .map((item: unknown) => {
+          const conflict = item as Partial<NomorTesConflict> | null;
+          return {
+            id: Number(conflict?.id) || 0,
+            name: String(conflict?.name || '-'),
+            from: String(conflict?.from || '-'),
+            to: String(conflict?.to || '-'),
+          };
+        })
         .filter((item: NomorTesConflict) => item.id > 0);
 
       setNormalizeConflicts(parsedConflicts);

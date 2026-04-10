@@ -582,7 +582,7 @@ export function ImportWordModal({
     if (!value) return '';
 
     // Remove simple markdown emphasis markers often produced by copy/paste.
-    let normalized = value
+    const normalized = value
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/__([^_]+)__/g, '$1')
       // Remove leftover simple html emphasis tags if present.

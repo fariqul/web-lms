@@ -74,45 +74,43 @@ export default function GuruDashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch all data in parallel
-      const [examsRes, scheduleRes, sessionsRes, attendanceRes, announcementsRes, announcementsCountRes] = await Promise.all([
-        api.get('/exams').catch(() => ({ data: { data: [] } })),
+      const [dashboardRes, scheduleRes, announcementsRes, announcementsCountRes] = await Promise.all([
+        api.get('/dashboard/guru').catch(() => ({ data: { data: null } })),
         api.get('/teacher-schedule').catch(() => ({ data: { data: {} } })),
-        api.get('/attendance-sessions', { params: { status: 'active' } }).catch(() => ({ data: { data: { data: [] } } })),
-        api.get('/teacher-attendance-stats').catch(() => ({ data: { data: null } })),
         announcementAPI.getLatest(3).catch(() => ({ data: { data: [] } })),
         announcementAPI.getUnreadCount().catch(() => ({ data: { data: { count: 0 } } })),
       ]);
 
-      // Process announcements
       setAnnouncements(announcementsRes.data?.data || []);
       setNewAnnouncementsCount(announcementsCountRes.data?.data?.count || 0);
 
-      // Process exams
-      const examsRaw = examsRes.data?.data;
-      const exams = Array.isArray(examsRaw) ? examsRaw : (examsRaw?.data || []);
-
-      // Process schedule - get today's schedule
       const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, ...
       const dayOfWeek = today === 0 ? 7 : today; // Sunday = 7 for our system
       const scheduleData = scheduleRes.data?.data || {};
       const todaySchedules = scheduleData[dayOfWeek] || [];
       setSchedule(todaySchedules.slice(0, 5));
 
-      // Process active sessions
-      const sessionsRaw = sessionsRes.data?.data;
-      const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : (sessionsRaw?.data || []);
-      const activeCount = sessions.filter((s: { status: string }) => s.status === 'active').length;
+      const dashboardData = dashboardRes.data?.data;
+      const dashboardStats = dashboardData?.stats;
+      const attendanceChart = Array.isArray(dashboardData?.attendance_chart)
+        ? dashboardData.attendance_chart
+        : [];
 
-      // Process attendance stats
-      const attendanceStats = attendanceRes.data?.data;
-      if (attendanceStats?.weekly) {
-        setAttendanceData(attendanceStats.weekly);
+      if (attendanceChart.length > 0) {
+        setAttendanceData(
+          attendanceChart.map((item: { date?: string; hadir?: number; alpha?: number }) => ({
+            day: item.date || '-',
+            hadir: Number(item.hadir) || 0,
+            izin: 0,
+            sakit: 0,
+            alpha: Number(item.alpha) || 0,
+          }))
+        );
       }
 
       setStats({
-        totalExams: exams.length,
-        activeSessionCount: activeCount,
+        totalExams: Number(dashboardStats?.total_exams) || 0,
+        activeSessionCount: Number(dashboardStats?.active_sessions) || 0,
         todayScheduleCount: todaySchedules.length,
       });
     } catch (error) {

@@ -26,6 +26,7 @@ import { classAPI, assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 interface Assignment {
   id: number;
@@ -186,9 +187,9 @@ export default function TugasGuruPage() {
       fetchData();
       
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create assignment:', error);
-      setError(error.response?.data?.message || 'Gagal membuat tugas');
+      setError(getApiErrorMessage(error, 'Gagal membuat tugas'));
     } finally {
       setSubmitting(false);
     }
@@ -224,9 +225,9 @@ export default function TugasGuruPage() {
       fetchData();
       
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update assignment:', error);
-      setError(error.response?.data?.message || 'Gagal memperbarui tugas');
+      setError(getApiErrorMessage(error, 'Gagal memperbarui tugas'));
     } finally {
       setSubmitting(false);
     }
@@ -243,8 +244,8 @@ export default function TugasGuruPage() {
       setSuccess('Tugas berhasil dihapus!');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Gagal menghapus tugas');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Gagal menghapus tugas'));
     } finally {
       setDeleteId(null);
     }
@@ -305,8 +306,8 @@ export default function TugasGuruPage() {
       }
       
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Gagal menyimpan nilai');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, 'Gagal menyimpan nilai'));
     } finally {
       setSubmitting(false);
     }
@@ -429,7 +430,7 @@ export default function TugasGuruPage() {
             <Card className="p-8 text-center">
               <ClipboardList className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400">Belum ada tugas</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol "Buat Tugas" untuk membuat tugas baru</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Klik tombol &quot;Buat Tugas&quot; untuk membuat tugas baru</p>
             </Card>
           ) : (
             filteredAssignments.map((assignment) => (

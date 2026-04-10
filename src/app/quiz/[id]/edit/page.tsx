@@ -79,7 +79,7 @@ interface QuestionFormProps {
   optionImageFiles: (File | null)[];
   setOptionImageFiles: React.Dispatch<React.SetStateAction<(File | null)[]>>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
-  optionFileInputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
+  optionFileInputRefs: React.RefObject<HTMLInputElement | null>[];
 }
 
 function QuestionForm({
@@ -224,14 +224,14 @@ function QuestionForm({
                 />
                 <button
                   type="button"
-                  onClick={() => optionFileInputRefs.current[idx]?.click()}
+                  onClick={() => optionFileInputRefs[idx]?.current?.click()}
                   className="p-1.5 text-slate-400 hover:text-slate-600"
                   title="Tambah gambar opsi"
                 >
                   <ImagePlus className="w-4 h-4" />
                 </button>
                 <input
-                  ref={el => { optionFileInputRefs.current[idx] = el; }}
+                  ref={optionFileInputRefs[idx]}
                   type="file"
                   accept="image/*"
                   className="hidden"
@@ -339,7 +339,10 @@ export default function EditQuizPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [optionImageFiles, setOptionImageFiles] = useState<(File | null)[]>([null, null, null, null]);
   const [optionImagePreviews, setOptionImagePreviews] = useState<(string | null)[]>([null, null, null, null]);
-  const optionFileInputRefs = React.useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
+  const optionFileInputRefs = React.useMemo(
+    () => Array.from({ length: 6 }, () => React.createRef<HTMLInputElement>()),
+    []
+  );
 
   // Import modals
   const [showImportMenu, setShowImportMenu] = useState(false);
