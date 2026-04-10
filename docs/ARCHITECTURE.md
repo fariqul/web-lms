@@ -419,6 +419,12 @@ Suspicious Activity:
 └─ Screen switching detected
 └─ Camera access denied
 
+iPhone Anti-Exit (Exam Mode):
+└─ Event sumber: visibilitychange + blur + pagehide
+└─ Ambang deteksi: 3 detik keluar aplikasi/tab
+└─ Satu siklus keluar dihitung maksimal 1 pelanggaran (anti double-count)
+└─ Backend tidak mengabaikan tipe kritikal: tab_switch, window_blur, fullscreen_exit
+
 System:
 └─ Database connection failures
 └─ Cache misses

@@ -3302,11 +3302,11 @@ class ExamController extends Controller
         $userAgent = $request->userAgent() ?? '';
         $isIOSUa = preg_match('/iPhone|iPad|iPod/i', $userAgent) === 1;
 
-        // Guard iOS false positives: noisy events from Safari lifecycle are ignored unless repeated/persistent.
-        if ($isIOSUa) {
+        // Guard iOS false positives for selected noisy signals.
+        // Critical anti-exit signals must always be counted on iOS.
+        $strictIosTypes = ['tab_switch', 'window_blur', 'fullscreen_exit'];
+        if ($isIOSUa && !in_array($violationType, $strictIosTypes, true)) {
             $volatileTypes = [
-                'tab_switch',
-                'fullscreen_exit',
                 'split_screen',
                 'floating_app',
                 'pip_mode',

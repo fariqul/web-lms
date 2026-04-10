@@ -44,6 +44,9 @@ function detectIOS(): boolean {
   return /iPhone|iPad|iPod/i.test(ua);
 }
 
+const IOS_APP_LEAVE_THRESHOLD_MS = 3000;
+const DEFAULT_APP_LEAVE_THRESHOLD_MS = 1200;
+
 // Get initial window dimensions for split screen detection
 function getInitialDimensions() {
   if (typeof window === 'undefined') return { width: 0, height: 0, ratio: 0 };
@@ -107,7 +110,9 @@ export function useExamMode({
   // Track resize events for suspicious patterns
   const resizeCountRef = useRef(0);
   const lastResizeTimeRef = useRef(0);
-  const hiddenAtRef = useRef<number | null>(null);
+  const appLeaveStartedAtRef = useRef<number | null>(null);
+  const appLeaveReportedRef = useRef(false);
+  const appLeaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Capture a quick snapshot blob from camera (for violation reports)
   const captureViolationBlob = useCallback((): Blob | null => {
@@ -543,6 +548,57 @@ export function useExamMode({
 
   // Event listeners for anti-cheat
   useEffect(() => {
+    const appLeaveThresholdMs = isIOS ? IOS_APP_LEAVE_THRESHOLD_MS : DEFAULT_APP_LEAVE_THRESHOLD_MS;
+
+    const reportAppLeaveViolation = () => {
+      reportViolation(
+        'tab_switch',
+        isIOS ? 'Keluar dari aplikasi/browser ujian (iPhone)' : 'Pindah tab/aplikasi'
+      );
+    };
+
+    const clearAppLeaveTimer = () => {
+      if (appLeaveTimerRef.current) {
+        clearTimeout(appLeaveTimerRef.current);
+        appLeaveTimerRef.current = null;
+      }
+    };
+
+    const resetAppLeaveTracking = () => {
+      appLeaveStartedAtRef.current = null;
+      appLeaveReportedRef.current = false;
+      clearAppLeaveTimer();
+    };
+
+    const markAppLeaveStarted = () => {
+      if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
+      if (appLeaveStartedAtRef.current !== null) return;
+
+      appLeaveStartedAtRef.current = Date.now();
+      appLeaveReportedRef.current = false;
+      clearAppLeaveTimer();
+
+      appLeaveTimerRef.current = setTimeout(() => {
+        if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
+        if (appLeaveReportedRef.current) return;
+        appLeaveReportedRef.current = true;
+        reportAppLeaveViolation();
+      }, appLeaveThresholdMs);
+    };
+
+    const finalizeAppLeave = () => {
+      const startedAt = appLeaveStartedAtRef.current;
+      if (startedAt === null) return;
+
+      const elapsedMs = Date.now() - startedAt;
+      const alreadyReported = appLeaveReportedRef.current;
+      resetAppLeaveTracking();
+
+      if (!alreadyReported && elapsedMs >= appLeaveThresholdMs) {
+        reportAppLeaveViolation();
+      }
+    };
+
     // Fullscreen change detection — use ref to avoid dependency on isFullscreen state
     const handleFullscreenChange = () => {
       const isNowFullscreen = !!document.fullscreenElement;
@@ -561,33 +617,22 @@ export function useExamMode({
       if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
 
       if (document.hidden) {
-        hiddenAtRef.current = Date.now();
+        markAppLeaveStarted();
         return;
       }
 
-      // Only report after returning if hidden duration is meaningful.
-      if (hiddenAtRef.current) {
-        const hiddenDurationMs = Date.now() - hiddenAtRef.current;
-        hiddenAtRef.current = null;
-        const thresholdMs = isIOS ? 8000 : 1200;
-        if (hiddenDurationMs >= thresholdMs) {
-          reportViolation('tab_switch', 'Pindah tab/aplikasi');
-        }
-      }
+      finalizeAppLeave();
     };
 
-    // Window blur/focus — more reliable on mobile for app switching
+    // Window blur/focus — used for app switch detection across platforms.
     const handleWindowBlur = () => {
       windowFocusedRef.current = false;
-      // On iOS, blur is noisy and often duplicated with visibilitychange.
-      if (isIOS) return;
-      if (monitoringActiveRef.current && !fullscreenTransitionRef.current) {
-        reportViolation('tab_switch', 'Keluar dari halaman ujian');
-      }
+      markAppLeaveStarted();
     };
     
     const handleWindowFocus = () => {
       windowFocusedRef.current = true;
+      finalizeAppLeave();
     };
 
     // === MOBILE SPLIT SCREEN / FLOATING APP DETECTION ===
@@ -705,14 +750,18 @@ export function useExamMode({
 
     // pagehide — Safari mobile fallback (fires when user switches apps)
     const handlePageHide = (e: PageTransitionEvent) => {
-      if (isIOS) return;
-      if (!e.persisted && monitoringActiveRef.current) {
-        // Page is actually being unloaded, not just hidden
+      if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
+
+      if (!e.persisted) {
+        const alreadyReported = appLeaveReportedRef.current;
+        resetAppLeaveTracking();
+        if (!alreadyReported) {
+          reportAppLeaveViolation();
+        }
         return;
       }
-      if (monitoringActiveRef.current && !fullscreenTransitionRef.current) {
-        reportViolation('tab_switch', 'Meninggalkan halaman ujian');
-      }
+
+      markAppLeaveStarted();
     };
 
     // Copy/Paste prevention
@@ -798,6 +847,7 @@ export function useExamMode({
 
     // Cleanup
     return () => {
+      resetAppLeaveTracking();
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);

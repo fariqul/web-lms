@@ -77,11 +77,13 @@ export default function QuizTakingPage() {
   const [startingQuiz, setStartingQuiz] = useState(false);
   const autoSubmittedRef = React.useRef(false);
   const resumeAttemptedRef = React.useRef(false);
+  const countdownDeadlineRef = React.useRef<number | null>(null);
 
   // Clear quiz session
   const clearQuizSession = () => {
     sessionStorage.removeItem(`quiz_active_${quizId}`);
     sessionStorage.removeItem(`quiz_question_${quizId}`);
+    countdownDeadlineRef.current = null;
   };
 
   // Format time
@@ -102,6 +104,10 @@ export default function QuizTakingPage() {
       if (data) {
         // Backend returns 'quiz' object (not 'exam') and 'text' field (not 'question_text')
         const quizData = data.quiz || data.exam;
+        const durationMinutesRaw = Number(quizData?.duration);
+        const durationMinutes = Number.isFinite(durationMinutesRaw) && durationMinutesRaw > 0
+          ? durationMinutesRaw
+          : 60;
         const qs: Question[] = (data.questions || []).map((q: Record<string, unknown>, idx: number) => {
           const questionText = normalizeTextLike(q.text ?? q.question_text);
           const passageText = normalizeTextLike(
@@ -133,14 +139,21 @@ export default function QuizTakingPage() {
           id: quizData?.id || quizId,
           title: quizData?.title || '',
           subject: quizData?.subject || '',
-          duration: quizData?.duration || 60,
+          duration: durationMinutes,
           totalQuestions: quizData?.totalQuestions || qs.length,
           questions: qs,
           show_result: quizData?.show_result,
         });
         setQuestions(qs);
         // Backend returns 'remainingTime' (not 'remaining_time')
-        setTimeRemaining(data.remainingTime || data.remaining_time || (quizData?.duration || 60) * 60);
+        const remainingRaw = data.remainingTime ?? data.remaining_time;
+        const remainingSeconds = Number(remainingRaw);
+        const initialRemainingSeconds = Number.isFinite(remainingSeconds)
+          ? Math.max(0, Math.floor(remainingSeconds))
+          : durationMinutes * 60;
+        setTimeRemaining(initialRemainingSeconds);
+        countdownDeadlineRef.current = Date.now() + (initialRemainingSeconds * 1000);
+        autoSubmittedRef.current = false;
         setIsStarted(true);
         sessionStorage.setItem(`quiz_active_${quizId}`, '1');
 
@@ -186,20 +199,22 @@ export default function QuizTakingPage() {
 
   // Timer
   useEffect(() => {
-    if (!isStarted || timeRemaining <= 0) return;
+    if (!isStarted || countdownDeadlineRef.current === null) return;
+
+    const tick = () => {
+      if (countdownDeadlineRef.current === null) return;
+      const remaining = Math.max(0, Math.ceil((countdownDeadlineRef.current - Date.now()) / 1000));
+      setTimeRemaining(remaining);
+
+      if (remaining <= 0 && !autoSubmittedRef.current) {
+        autoSubmittedRef.current = true;
+        handleSubmit(true);
+      }
+    };
+
+    tick();
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          clearInterval(timer);
-          if (!autoSubmittedRef.current) {
-            autoSubmittedRef.current = true;
-            handleSubmit(true);
-          }
-          return 0;
-        }
-        return next;
-      });
+      tick();
     }, 1000);
     return () => clearInterval(timer);
   }, [isStarted]);
@@ -268,10 +283,17 @@ export default function QuizTakingPage() {
   const handleSubmit = async (auto = false) => {
     if (submitting) return;
     setSubmitting(true);
+    setShowSubmitConfirm(false);
     try {
+      const durationSeconds = Math.max(0, Math.floor((Number(quiz?.duration) || 60) * 60));
+      const remainingSeconds = countdownDeadlineRef.current !== null
+        ? Math.max(0, Math.ceil((countdownDeadlineRef.current - Date.now()) / 1000))
+        : Math.max(0, Math.floor(Number(timeRemaining) || 0));
+      const safeTimeSpent = Math.max(0, durationSeconds - remainingSeconds);
+
       await quizAPI.finish(quizId, {
         answers,
-        time_spent: (quiz?.duration || 60) * 60 - timeRemaining,
+        time_spent: safeTimeSpent,
       });
       clearQuizSession();
       if (auto) {
