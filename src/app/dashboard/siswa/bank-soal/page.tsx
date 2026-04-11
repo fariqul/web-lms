@@ -86,6 +86,7 @@ export default function SiswaBankSoalPage() {
   useEffect(() => {
     fetchSubjectStats();
     fetchPracticeStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGrade]);
 
   const fetchSubjectStats = async () => {

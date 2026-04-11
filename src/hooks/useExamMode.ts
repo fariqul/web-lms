@@ -8,7 +8,6 @@ interface UseExamModeOptions {
   onViolation?: (type: string) => void;
   onForceSubmit?: () => void;
   enableCamera?: boolean;
-  snapshotInterval?: number; // in seconds
 }
 
 interface UseExamModeReturn {
@@ -18,6 +17,8 @@ interface UseExamModeReturn {
   violations: string[];
   violationCount: number;
   maxViolations: number | null;
+  policyAction: 'none' | 'warning' | 'freeze' | 'auto_submit';
+  freezeUntil: number | null;
   consecutiveSnapshotFails: number;
   enterFullscreen: () => Promise<void>;
   exitFullscreen: () => void;
@@ -46,6 +47,12 @@ function detectIOS(): boolean {
 
 const IOS_APP_LEAVE_THRESHOLD_MS = 3000;
 const DEFAULT_APP_LEAVE_THRESHOLD_MS = 1200;
+const VIRTUAL_CAMERA_PATTERNS = [
+  'obs', 'virtual', 'droidcam', 'manycam', 'snap camera', 'xsplit',
+  'camtwist', 'e2esoft', 'splitcam', 'youcam', 'epoccam', 'iriun',
+  'camo', 'kinoni', 'ndi', 'newtek', 'mmhmm', 'streamlabs',
+  'virtual cam', 'vcam', 'fake', 'screen capture',
+];
 
 // Get initial window dimensions for split screen detection
 function getInitialDimensions() {
@@ -62,7 +69,6 @@ export function useExamMode({
   onViolation,
   onForceSubmit,
   enableCamera = true,
-  snapshotInterval = 30,
 }: UseExamModeOptions): UseExamModeReturn {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -71,10 +77,11 @@ export function useExamMode({
   const [violations, setViolations] = useState<string[]>([]);
   const [violationCount, setViolationCount] = useState(0);
   const [maxViolations, setMaxViolations] = useState<number | null>(null);
+  const [policyAction, setPolicyAction] = useState<'none' | 'warning' | 'freeze' | 'auto_submit'>('none');
+  const [freezeUntil, setFreezeUntil] = useState<number | null>(null);
   
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const snapshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Track whether anti-cheat monitoring is active
   const monitoringActiveRef = useRef(false);
@@ -113,6 +120,28 @@ export function useExamMode({
   const appLeaveStartedAtRef = useRef<number | null>(null);
   const appLeaveReportedRef = useRef(false);
   const appLeaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const freezeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const applyFreezeWindow = useCallback((freezeSeconds: number) => {
+    const durationMs = Math.max(0, freezeSeconds) * 1000;
+    if (durationMs <= 0) {
+      setFreezeUntil(null);
+      return;
+    }
+
+    if (freezeTimerRef.current) {
+      clearTimeout(freezeTimerRef.current);
+      freezeTimerRef.current = null;
+    }
+
+    const until = Date.now() + durationMs;
+    setFreezeUntil(until);
+
+    freezeTimerRef.current = setTimeout(() => {
+      setFreezeUntil(null);
+      freezeTimerRef.current = null;
+    }, durationMs);
+  }, []);
 
   // Capture a quick snapshot blob from camera (for violation reports)
   const captureViolationBlob = useCallback((): Blob | null => {
@@ -173,6 +202,15 @@ export function useExamMode({
       if (data) {
         setViolationCount(data.violation_count);
         setMaxViolations(data.max_violations);
+        const nextPolicyAction = (data.policy_action || 'none') as 'none' | 'warning' | 'freeze' | 'auto_submit';
+        setPolicyAction(nextPolicyAction);
+
+        if (nextPolicyAction === 'freeze') {
+          const freezeSeconds = Number(data.freeze_seconds || 0);
+          applyFreezeWindow(freezeSeconds);
+        } else {
+          setFreezeUntil(null);
+        }
         
         // Force submit if max violations exceeded
         if (data.force_submit) {
@@ -186,7 +224,7 @@ export function useExamMode({
     } catch (error) {
       console.error('Failed to report violation:', error);
     }
-  }, [examId, onViolation, onForceSubmit, captureViolationBlob]);
+  }, [examId, onViolation, onForceSubmit, captureViolationBlob, applyFreezeWindow]);
 
   // Activate monitoring — can be called independently of fullscreen
   const activateMonitoring = useCallback(() => {
@@ -230,7 +268,7 @@ export function useExamMode({
     }
     // Always activate monitoring regardless of fullscreen success
     activateMonitoring();
-  }, [isMobile, activateMonitoring]);
+  }, [activateMonitoring]);
 
   const exitFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
@@ -245,14 +283,6 @@ export function useExamMode({
   const cameraRestartAttemptsRef = useRef(0); // Track auto-restart attempts for ended tracks
   const MAX_CAMERA_RETRIES = 3;
   const MAX_AUTO_RESTART_ATTEMPTS = 3; // Max auto-restart before reporting violation
-
-  // Virtual camera detection patterns
-  const VIRTUAL_CAMERA_PATTERNS = [
-    'obs', 'virtual', 'droidcam', 'manycam', 'snap camera', 'xsplit',
-    'camtwist', 'e2esoft', 'splitcam', 'youcam', 'epoccam', 'iriun',
-    'camo', 'kinoni', 'ndi', 'newtek', 'mmhmm', 'streamlabs',
-    'virtual cam', 'vcam', 'fake', 'screen capture',
-  ];
 
   const isVirtualCamera = useCallback((label: string): boolean => {
     const lower = label.toLowerCase();
@@ -361,7 +391,7 @@ export function useExamMode({
         reportViolation('camera_off', 'Kamera tidak dapat diakses');
       }
     }
-  }, [reportViolation]);
+  }, [reportViolation, isVirtualCamera]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -809,18 +839,6 @@ export function useExamMode({
       }
     };
     
-    // === SCREEN CAPTURE / RECORDING DETECTION ===
-    // Detect if screen is being captured (works on some browsers)
-    const checkScreenCapture = () => {
-      if (!monitoringActiveRef.current || !isMobile) return;
-      
-      // Check if Display Capture API is active (desktop mainly, but check anyway)
-      if ('getDisplayMedia' in navigator.mediaDevices) {
-        // We can't directly detect if someone is recording, but we can check for
-        // active screen capture sessions in some cases
-      }
-    };
-
     // Add event listeners
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -864,6 +882,47 @@ export function useExamMode({
       document.removeEventListener('enterpictureinpicture', handlePiPEnter);
     };
   }, [reportViolation, isMobile, isIOS]);
+
+  // Session heartbeat: keep server-side anti-cheat policy synchronized.
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      if (!monitoringActiveRef.current) return;
+
+      try {
+        const response = await monitoringAPI.heartbeat(examId, {
+          page_visible: !document.hidden,
+          focused: document.hasFocus(),
+        });
+        const data = response.data?.data;
+        if (!data) return;
+
+        if (typeof data.violation_count === 'number') {
+          setViolationCount(data.violation_count);
+        }
+        if (typeof data.max_violations === 'number' || data.max_violations === null) {
+          setMaxViolations(data.max_violations);
+        }
+
+        const nextPolicyAction = (data.policy_action || 'none') as 'none' | 'warning' | 'freeze' | 'auto_submit';
+        setPolicyAction(nextPolicyAction);
+
+        if (nextPolicyAction === 'freeze') {
+          const freezeSeconds = Number(data.freeze_seconds || 0);
+          applyFreezeWindow(freezeSeconds);
+        } else {
+          setFreezeUntil(null);
+        }
+
+        if (data.force_submit) {
+          onForceSubmit?.();
+        }
+      } catch {
+        // Heartbeat failures are non-fatal; violation reporting remains active.
+      }
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [examId, onForceSubmit, applyFreezeWindow]);
 
   // Camera health check + auto-restart on consecutive snapshot failures
   // Also handle track ended gracefully on mobile (don't immediately report violation)
@@ -968,8 +1027,9 @@ export function useExamMode({
     return () => {
       monitoringActiveRef.current = false;
       stopCamera();
-      if (snapshotIntervalRef.current) {
-        clearInterval(snapshotIntervalRef.current);
+      if (freezeTimerRef.current) {
+        clearTimeout(freezeTimerRef.current);
+        freezeTimerRef.current = null;
       }
     };
   }, [stopCamera]);
@@ -981,6 +1041,8 @@ export function useExamMode({
     violations,
     violationCount,
     maxViolations,
+    policyAction,
+    freezeUntil,
     consecutiveSnapshotFails,
     enterFullscreen,
     exitFullscreen,

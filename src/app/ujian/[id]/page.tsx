@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useExamMode } from '@/hooks/useExamMode';
 import { useProctoring, ProctoringDetection } from '@/hooks/useProctoring';
 import { Button, Card, ConfirmDialog } from '@/components/ui';
@@ -32,7 +33,7 @@ import { isSEBBrowser, downloadSEBConfig } from '@/utils/seb';
 import { useExamSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/context/AuthContext';
 import { MathText } from '@/components/ui/MathText';
-import { useAnswerQueue, AnswerSaveStatus } from '@/hooks/useAnswerQueue';
+import { useAnswerQueue } from '@/hooks/useAnswerQueue';
 
 interface QuestionOption {
   text: string;
@@ -125,10 +126,10 @@ export default function ExamTakingPage() {
   });
 
   // Clear exam session flags (call before navigating away after submit)
-  const clearExamSession = () => {
+  const clearExamSession = React.useCallback(() => {
     sessionStorage.removeItem(`exam_active_${examId}`);
     sessionStorage.removeItem(`exam_question_${examId}`);
-  };
+  }, [examId]);
 
   const flushAnswersBeforeFinish = React.useCallback(async () => {
     // Flush the answer queue first (retry pending saves)
@@ -180,18 +181,18 @@ export default function ExamTakingPage() {
   };
 
   const {
-    isFullscreen,
     isCameraActive,
     isMobile,
     violationCount,
     maxViolations,
+    policyAction,
+    freezeUntil,
     consecutiveSnapshotFails,
     enterFullscreen,
     exitFullscreen,
     startCamera,
     stopCamera,
     restartCamera,
-    activateMonitoring,
     captureSnapshot,
     suppressViolations,
     videoRef,
@@ -200,6 +201,7 @@ export default function ExamTakingPage() {
     onViolation: () => {},
     onForceSubmit: handleForceSubmit,
   });
+  const isAnswerFrozen = freezeUntil !== null;
 
   const forceExitExamByAdmin = React.useCallback(() => {
     setSubmitting(true);
@@ -210,7 +212,7 @@ export default function ExamTakingPage() {
       isNavigatingAwayRef.current = true;
       router.push('/ujian-siswa?reason=admin_ended');
     }, 1500);
-  }, [stopCamera, toast, router]);
+  }, [stopCamera, clearExamSession, toast, router]);
 
   const [snapshotStatus, setSnapshotStatus] = useState<'idle' | 'capturing' | 'success' | 'error'>('idle');
   const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
@@ -268,7 +270,7 @@ export default function ExamTakingPage() {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isStarted, isCameraActive, proctoring.isModelLoaded]);
+  }, [isStarted, isCameraActive, proctoring.isModelLoaded, proctoring]);
 
   // Socket: listen for admin ending the exam
   const examSocket = useExamSocket(examId);
@@ -470,10 +472,6 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, examId, examSocket, exam, toast]);
 
-  useEffect(() => {
-    fetchExam();
-  }, [examId]);
-
   // Check SEB browser on mount
   useEffect(() => {
     setUsingSEB(isSEBBrowser());
@@ -540,7 +538,7 @@ export default function ExamTakingPage() {
         }
       })();
     }
-  }, [exam]);
+  }, [exam, examId, enterFullscreen, isStarted, syncSnapshotMonitoringState, toast]);
 
   // Persist exam-active flag and current question to sessionStorage
   useEffect(() => {
@@ -584,7 +582,7 @@ export default function ExamTakingPage() {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isStarted]);
+  }, [isStarted, isCameraActive]);
 
   // Auto-start camera after exam starts and video element is rendered
   useEffect(() => {
@@ -606,7 +604,7 @@ export default function ExamTakingPage() {
       }
     }, 5000);
     return () => clearTimeout(timer);
-  }, [isStarted]);
+  }, [isStarted, isCameraActive]);
 
   // Hide banner when camera becomes active
   useEffect(() => {
@@ -805,7 +803,7 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, isCameraActive, snapshotMonitoringEnabled, captureSnapshot, syncSnapshotMonitoringState, toast]);
 
-  const fetchExam = async () => {
+  const fetchExam = useCallback(async () => {
     try {
       const response = await api.get(`/exams/${examId}`);
       const examData = response.data?.data;
@@ -845,7 +843,33 @@ export default function ExamTakingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [examId]);
+
+  useEffect(() => {
+    void fetchExam();
+  }, [fetchExam]);
+
+  // Force auto-submit (no confirm dialog, just submit)
+  const autoSubmitExam = useCallback(async () => {
+    setSubmitting(true);
+    try {
+      await flushAnswersBeforeFinish();
+      await api.post(`/exams/${examId}/finish`, {
+        answers,
+        time_spent: (exam?.duration || 90) * 60 - timeRemaining,
+      });
+      clearExamSession();
+      toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
+      // Mark as intentionally navigating away to bypass beforeunload
+      isNavigatingAwayRef.current = true;
+      router.push('/ujian-siswa?submitted=true');
+    } catch (error) {
+      console.error('Failed to auto-submit exam:', error);
+      clearExamSession();
+      isNavigatingAwayRef.current = true;
+      router.push('/ujian-siswa?reason=time_up');
+    }
+  }, [answers, clearExamSession, exam?.duration, examId, flushAnswersBeforeFinish, router, timeRemaining, toast]);
 
   useEffect(() => {
     if (!isStarted) return;
@@ -864,7 +888,7 @@ export default function ExamTakingPage() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [isStarted]);
+  }, [isStarted, autoSubmitExam]);
 
   // === FIX 2: Timer re-sync from server every 60 seconds ===
   useEffect(() => {
@@ -900,28 +924,6 @@ export default function ExamTakingPage() {
       clearTimeout(firstSync);
     };
   }, [isStarted, submitting, examId]);
-
-  // Force auto-submit (no confirm dialog, just submit)
-  const autoSubmitExam = async () => {
-    setSubmitting(true);
-    try {
-      await flushAnswersBeforeFinish();
-      await api.post(`/exams/${examId}/finish`, {
-        answers,
-        time_spent: (exam?.duration || 90) * 60 - timeRemaining,
-      });
-      clearExamSession();
-      toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
-      // Mark as intentionally navigating away to bypass beforeunload
-      isNavigatingAwayRef.current = true;
-      router.push('/ujian-siswa?submitted=true');
-    } catch (error) {
-      console.error('Failed to auto-submit exam:', error);
-      clearExamSession();
-      isNavigatingAwayRef.current = true;
-      router.push('/ujian-siswa?reason=time_up');
-    }
-  };
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -1028,10 +1030,11 @@ export default function ExamTakingPage() {
 
   // === FIX 3: Debounced batch answer save via queue ===
   const handleAnswer = useCallback((questionId: number, answer: string) => {
+    if (isAnswerFrozen) return;
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
     // Queue for batch save (debounced 2s, with retry)
     answerQueue.queueAnswer(questionId, answer);
-  }, [answerQueue]);
+  }, [answerQueue, isAnswerFrozen]);
 
   // Work photo capture — suppress violations while camera app is open
   const handleWorkPhotoClick = (questionId: number) => {
@@ -1093,6 +1096,7 @@ export default function ExamTakingPage() {
   };
 
   const handleMultipleAnswerToggle = (questionId: number, optionText: string) => {
+    if (isAnswerFrozen) return;
     const current = answers[questionId];
     let selected: string[] = [];
     try { selected = current ? JSON.parse(current) : []; } catch { selected = []; }
@@ -1533,10 +1537,13 @@ export default function ExamTakingPage() {
                   <MathText text={question?.text || 'Soal tidak tersedia'} as="h2" className="text-lg font-semibold text-slate-900 dark:text-white mt-1 whitespace-pre-line" />
                   {question?.image && (
                     <div className="mt-3">
-                      <img
+                      <Image
                         src={getSecureFileUrl(question.image)}
                         alt="Gambar Soal"
-                        className="max-w-full max-h-80 rounded-lg border border-slate-200 dark:border-slate-700"
+                        width={1200}
+                        height={800}
+                        className="max-w-full h-auto max-h-80 rounded-lg border border-slate-200 dark:border-slate-700"
+                        unoptimized
                       />
                     </div>
                   )}
@@ -1553,6 +1560,11 @@ export default function ExamTakingPage() {
                   <Flag className="w-5 h-5" />
                 </button>
               </div>
+              {isAnswerFrozen && (
+                <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 p-3 text-sm text-amber-700 dark:text-amber-300">
+                  Aktivitas mencurigakan terdeteksi. Input jawaban dibekukan sementara ({policyAction}).
+                </div>
+              )}
               {question?.type === 'multiple_choice' && question.options && (
                 <div className="space-y-3">
                   {question.options.map((option, index) => (
@@ -1569,6 +1581,7 @@ export default function ExamTakingPage() {
                         name={`question-${question.id}`}
                         checked={answers[question.id] === option.text}
                         onChange={() => handleAnswer(question.id, option.text)}
+                        disabled={isAnswerFrozen}
                         className="w-4 h-4 text-teal-600 accent-teal-600 mt-0.5"
                       />
                       <span className={`ml-3 font-semibold mt-0.5 ${
@@ -1585,10 +1598,13 @@ export default function ExamTakingPage() {
                           }`} />
                         )}
                         {option.image && (
-                          <img
+                          <Image
                             src={getSecureFileUrl(option.image)}
                             alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
-                            className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                            width={800}
+                            height={480}
+                            className="mt-2 max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                            unoptimized
                           />
                         )}
                       </div>
@@ -1615,6 +1631,7 @@ export default function ExamTakingPage() {
                             type="checkbox"
                             checked={selected}
                             onChange={() => handleMultipleAnswerToggle(question.id, option.text)}
+                            disabled={isAnswerFrozen}
                             className="w-4 h-4 text-teal-600 accent-teal-600 mt-0.5 rounded"
                           />
                           <span className={`ml-3 font-semibold mt-0.5 ${
@@ -1631,10 +1648,13 @@ export default function ExamTakingPage() {
                               }`} />
                             )}
                             {option.image && (
-                              <img
+                              <Image
                                 src={getSecureFileUrl(option.image)}
                                 alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
-                                className="mt-2 max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                                width={800}
+                                height={480}
+                                className="mt-2 max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                                unoptimized
                               />
                             )}
                           </div>
@@ -1650,6 +1670,7 @@ export default function ExamTakingPage() {
                   onChange={(e) => handleAnswer(question.id, e.target.value)}
                   placeholder="Tulis jawaban Anda di sini…"
                   rows={6}
+                  disabled={isAnswerFrozen}
                   className="w-full p-4 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   name={`essay-${question.id}`}
                   aria-label="Jawaban essay"
@@ -1691,10 +1712,13 @@ export default function ExamTakingPage() {
                     </div>
                     {workPhotos[question.id] && (
                       <div className="mt-2">
-                        <img
+                        <Image
                           src={getSecureFileUrl(workPhotos[question.id])}
                           alt="Foto cara kerja"
-                          className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                          width={800}
+                          height={480}
+                          className="max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                          unoptimized
                         />
                       </div>
                     )}

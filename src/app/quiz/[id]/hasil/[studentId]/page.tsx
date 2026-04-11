@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button } from '@/components/ui';
 import {
@@ -92,7 +93,7 @@ export default function QuizStudentResultPage() {
     } finally {
       setLoading(false);
     }
-  }, [quizId, studentId]);
+  }, [quizId, studentId, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -221,10 +222,14 @@ export default function QuizStudentResultPage() {
             <span>Dijawab: <strong>{result.total_answered}</strong></span>
             <span>Status: <strong className={
               result.status === 'graded' ? 'text-green-600' :
-              result.status === 'completed' ? 'text-teal-600' : 'text-yellow-600'
+              result.status === 'completed' ? 'text-teal-600' :
+              result.status === 'submitted' ? 'text-amber-600' :
+              result.status === 'missed' ? 'text-red-600' : 'text-yellow-600'
             }>
               {result.status === 'graded' ? 'Sudah Dinilai' :
-               result.status === 'completed' ? 'Selesai' : 'Mengerjakan'}
+               result.status === 'completed' ? 'Selesai' :
+               result.status === 'submitted' ? 'Menunggu Penilaian Essay' :
+               result.status === 'missed' ? 'Tidak Mengerjakan' : 'Mengerjakan'}
             </strong></span>
           </div>
         </Card>
@@ -311,10 +316,13 @@ export default function QuizStudentResultPage() {
                               <div className="flex-1">
                                 {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && <MathText text={optText} />}
                                 {optImage && (
-                                  <img
+                                  <Image
                                     src={getSecureFileUrl(optImage)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
-                                    className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                    width={200}
+                                    height={128}
+                                    className="mt-1 w-auto max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                    unoptimized
                                   />
                                 )}
                               </div>
@@ -364,10 +372,13 @@ export default function QuizStudentResultPage() {
                                 <div className="flex-1">
                                   {optText && !/^\[Gambar [A-Z]\]$/.test(optText) && <MathText text={optText} />}
                                   {optImage && (
-                                    <img
+                                    <Image
                                       src={getSecureFileUrl(optImage)}
                                       alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
-                                      className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                      width={200}
+                                      height={128}
+                                      className="mt-1 w-auto max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                      unoptimized
                                     />
                                   )}
                                 </div>

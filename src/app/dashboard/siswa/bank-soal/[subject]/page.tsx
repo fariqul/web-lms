@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
@@ -203,7 +203,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     };
     
     savePracticeResult();
-  }, [isFinished]);
+  }, [isFinished, resultSaved, questions.length, answers, decodedSubject, grade, mode, startTime]);
 
   const handleBookmark = () => {
     setAnswers(prev => prev.map((a, i) => 

@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
 import {
   ArrowLeft, Users, TrendingUp, TrendingDown, Loader2, Search, Eye,
-  BarChart3, FileText, ClipboardList, MessageSquare, AlertCircle, Download, FileSpreadsheet,
+  BarChart3, FileText, MessageSquare, AlertCircle, Download, FileSpreadsheet,
 } from 'lucide-react';
 import { quizAPI, exportAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -45,6 +45,7 @@ interface ResultSummary {
   in_progress: number;
   not_started: number;
   missed: number;
+  failed?: number;
   average_score: number | null;
   highest_score: number | null;
   lowest_score: number | null;
@@ -104,6 +105,7 @@ export default function QuizResultsPage() {
             in_progress: Number(s.in_progress) || 0,
             not_started: Number(s.not_started) || 0,
             missed: Number(s.missed) || 0,
+            failed: s.failed != null ? Number(s.failed) : undefined,
             average_score: s.average_score != null ? Number(s.average_score) : null,
             highest_score: s.highest_score != null ? Number(s.highest_score) : null,
             lowest_score: s.lowest_score != null ? Number(s.lowest_score) : null,
@@ -238,7 +240,11 @@ export default function QuizResultsPage() {
 
   const avgScore = summary?.average_score ?? 0;
   const passedCount = summary?.passed ?? 0;
-  const failedCount = (summary?.completed ?? 0) - passedCount + (summary?.missed ?? 0);
+  const fallbackFailedCount = results.filter((r) => (
+    ['completed', 'graded'].includes(r.status) &&
+    Number(r.percentage ?? 0) < Number(quizInfo?.passing_score ?? 70)
+  )).length + results.filter((r) => r.status === 'missed').length;
+  const failedCount = summary?.failed ?? fallbackFailedCount;
 
   return (
     <DashboardLayout>

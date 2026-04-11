@@ -7,12 +7,19 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    private function supportsAlterModify(): bool
+    {
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+    }
+
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE bank_questions MODIFY COLUMN grade_level ENUM('10', '11', '12', 'semua') DEFAULT '10'");
+        if ($this->supportsAlterModify() && Schema::hasColumn('bank_questions', 'grade_level')) {
+            DB::statement("ALTER TABLE bank_questions MODIFY COLUMN grade_level ENUM('10', '11', '12', 'semua') DEFAULT '10'");
+        }
     }
 
     /**
@@ -20,6 +27,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE bank_questions MODIFY COLUMN grade_level ENUM('10', '11', '12') DEFAULT '10'");
+        if ($this->supportsAlterModify() && Schema::hasColumn('bank_questions', 'grade_level')) {
+            DB::statement("ALTER TABLE bank_questions MODIFY COLUMN grade_level ENUM('10', '11', '12') DEFAULT '10'");
+        }
     }
 };

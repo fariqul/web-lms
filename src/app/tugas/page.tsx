@@ -13,7 +13,6 @@ import {
   Clock,
   Trash2, 
   Edit, 
-  Eye,
   X,
   Loader2,
   Upload,
@@ -24,8 +23,6 @@ import {
 } from 'lucide-react';
 import { classAPI, assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
-import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-error';
 
 interface Assignment {
@@ -66,8 +63,6 @@ interface ClassOption {
 }
 
 export default function TugasGuruPage() {
-  const { user } = useAuth();
-  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -271,7 +266,7 @@ export default function TugasGuruPage() {
       const res = await assignmentAPI.getSubmissions(assignment.id);
       setSubmissions(res.data?.data || []);
       setShowSubmissionsModal(true);
-    } catch (error) {
+    } catch {
       setError('Gagal memuat data pengumpulan');
     }
   };

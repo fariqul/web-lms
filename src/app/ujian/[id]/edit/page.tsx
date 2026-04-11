@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, Button, Input, Modal, ConfirmDialog } from '@/components/ui';
+import { Card, CardHeader, Button, Modal, ConfirmDialog } from '@/components/ui';
 import {
   Plus,
   Trash2,
@@ -14,8 +15,6 @@ import {
   CheckCircle,
   Loader2,
   FileEdit,
-  Eye,
-  Send,
   ImagePlus,
   X,
   Shield,
@@ -132,7 +131,6 @@ export default function EditSoalPage() {
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(15);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -191,10 +189,6 @@ export default function EditSoalPage() {
 
     return trimmed.replace(/\\/g, '/').replace(/^\/+/, '').replace(/^storage\//, '');
   };
-
-  useEffect(() => {
-    fetchExamData();
-  }, [examId]);
 
   // Real-time WebSocket updates for lock/unlock and question changes
   const examSocket = useExamSocket(examId);
@@ -290,7 +284,7 @@ export default function EditSoalPage() {
     };
   }, [examSocket, examId, toast, router, backUrl]);
 
-  const fetchExamData = async () => {
+  const fetchExamData = useCallback(async () => {
     try {
       const response = await api.get(`/exams/${examId}`);
       const data = response.data?.data;
@@ -378,7 +372,11 @@ export default function EditSoalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [examId, toast]);
+
+  useEffect(() => {
+    void fetchExamData();
+  }, [fetchExamData]);
 
   const handleAddQuestion = async () => {
     if (!newQuestion.question_text.trim()) {
@@ -734,44 +732,6 @@ export default function EditSoalPage() {
       toast.error('Gagal menghapus soal');
     } finally {
       setDeleteQuestionId(null);
-    }
-  };
-
-  const handlePublish = () => {
-    if (questions.length === 0) {
-      toast.warning('Tambahkan minimal 1 soal sebelum publish');
-      return;
-    }
-    setShowPublishConfirm(true);
-  };
-
-  const confirmPublish = async () => {
-    try {
-      // If exam start_time is a far-future placeholder (immediate mode),
-      // update it to NOW before publishing
-      if (exam?.start_time) {
-        const startTime = new Date(exam.start_time);
-        const now = new Date();
-        // If start_time is more than 30 days from now, it was set as "immediate" placeholder
-        if (startTime.getTime() - now.getTime() > 30 * 24 * 60 * 60 * 1000) {
-          const newStart = now.toISOString();
-          const duration = exam.duration || 90;
-          const newEnd = new Date(now.getTime() + duration * 60 * 1000).toISOString();
-          await api.put(`/exams/${examId}`, {
-            start_time: newStart,
-            end_time: newEnd,
-          });
-        }
-      }
-
-      await api.post(`/exams/${examId}/publish`);
-      toast.success('Ujian berhasil dipublikasi');
-      router.push('/ujian');
-    } catch (error) {
-      console.error('Failed to publish:', error);
-      toast.error('Gagal mempublikasi ujian');
-    } finally {
-      setShowPublishConfirm(false);
     }
   };
 
@@ -1612,8 +1572,8 @@ export default function EditSoalPage() {
                         <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div className="text-left">
-                        <p className="text-sm font-medium text-slate-800 dark:text-white">Excel / CSV</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Upload file spreadsheet</p>
+                        <p className="text-sm font-medium text-slate-800 dark:text-white">CSV / TXT</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Upload file template CSV</p>
                       </div>
                     </button>
                   </div>
@@ -1706,12 +1666,13 @@ export default function EditSoalPage() {
                       
                       {question.image && (
                         <div className="mb-3">
-                          <img
+                          <Image
                             src={getSecureFileUrl(question.image)}
                             alt="Gambar Soal"
-                            loading="lazy"
-                            decoding="async"
-                            className="max-w-xs max-h-40 rounded-lg border border-slate-200 dark:border-slate-700"
+                            width={320}
+                            height={160}
+                            className="max-w-xs h-auto max-h-40 rounded-lg border border-slate-200 dark:border-slate-700"
+                            unoptimized
                           />
                         </div>
                       )}
@@ -1736,12 +1697,13 @@ export default function EditSoalPage() {
                                   <span className="italic text-slate-400">{opt.text}</span>
                                 )}
                                 {opt.image && (
-                                  <img
+                                  <Image
                                     src={getSecureFileUrl(opt.image)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="mt-1 max-w-[200px] max-h-24 rounded border border-slate-200 dark:border-slate-700"
+                                    width={200}
+                                    height={96}
+                                    className="mt-1 w-auto max-w-[200px] max-h-24 rounded border border-slate-200 dark:border-slate-700"
+                                    unoptimized
                                   />
                                 )}
                               </div>
@@ -1949,10 +1911,13 @@ export default function EditSoalPage() {
             </label>
             {imagePreview ? (
               <div className="relative inline-block">
-                <img
+                <Image
                   src={imagePreview}
                   alt="Preview"
-                  className="max-w-xs max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                  width={320}
+                  height={192}
+                  className="max-w-xs h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                  unoptimized
                 />
                 <button
                   type="button"
@@ -2141,10 +2106,13 @@ export default function EditSoalPage() {
                     </div>
                     {optionImagePreviews[index] && (
                       <div className="ml-14 relative inline-block">
-                        <img
+                        <Image
                           src={optionImagePreviews[index]!}
                           alt={`Preview opsi ${String.fromCharCode(65 + index)}`}
-                          className="max-w-[200px] max-h-32 rounded-lg border border-slate-200 dark:border-slate-700"
+                          width={200}
+                          height={128}
+                          className="max-w-[200px] h-auto max-h-32 rounded-lg border border-slate-200 dark:border-slate-700"
+                          unoptimized
                         />
                         <button
                           type="button"
@@ -2325,10 +2293,13 @@ export default function EditSoalPage() {
             </label>
             {imagePreview ? (
               <div className="relative inline-block">
-                <img
+                <Image
                   src={imagePreview}
                   alt="Preview"
-                  className="max-w-xs max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                  width={320}
+                  height={192}
+                  className="max-w-xs h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
+                  unoptimized
                 />
                 <button
                   type="button"
@@ -2517,10 +2488,13 @@ export default function EditSoalPage() {
                     </div>
                     {optionImagePreviews[index] && (
                       <div className="ml-14 relative inline-block">
-                        <img
+                        <Image
                           src={optionImagePreviews[index]!}
                           alt={`Preview opsi ${String.fromCharCode(65 + index)}`}
-                          className="max-w-[200px] max-h-32 rounded-lg border border-slate-200 dark:border-slate-700"
+                          width={200}
+                          height={128}
+                          className="max-w-[200px] h-auto max-h-32 rounded-lg border border-slate-200 dark:border-slate-700"
+                          unoptimized
                         />
                         <button
                           type="button"

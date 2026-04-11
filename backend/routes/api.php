@@ -182,6 +182,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         
         // Student Exam
         Route::post('/exams/{exam}/start', [ExamController::class, 'startExam']);
+        Route::post('/exams/{exam}/heartbeat', [ExamController::class, 'heartbeat']);
         Route::post('/exams/{exam}/answer', [ExamController::class, 'submitAnswer']);
         Route::post('/exams/{exam}/answers/batch', [ExamController::class, 'submitAnswersBatch']);
         Route::get('/exams/{exam}/time-sync', [ExamController::class, 'timeSync'])->middleware('throttle:' . $examPollingThrottle);
@@ -340,6 +341,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
 
     // Student quiz taking
     Route::middleware('role:siswa')->group(function () {
+        Route::get('/quizzes/{quiz}/sync-questions', [QuizController::class, 'syncQuestions']);
         Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startQuiz']);
         Route::post('/quizzes/{quiz}/answer', [QuizController::class, 'submitAnswer']);
         Route::post('/quizzes/{quiz}/finish', [QuizController::class, 'finishQuiz']);

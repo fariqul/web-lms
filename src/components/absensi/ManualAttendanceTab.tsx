@@ -60,6 +60,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
       setStudents([]);
       setStatuses({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass]);
 
   const fetchStudents = async (classId: string) => {

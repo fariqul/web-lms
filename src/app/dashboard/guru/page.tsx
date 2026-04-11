@@ -11,7 +11,6 @@ import {
   Clock,
   ChevronRight,
   AlertCircle,
-  Loader2,
   Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';

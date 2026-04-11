@@ -101,6 +101,7 @@ export function useAnswerQueue({
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
   // Persist queue to localStorage whenever it changes

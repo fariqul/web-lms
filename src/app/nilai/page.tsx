@@ -79,6 +79,7 @@ export default function NilaiPage() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.role]);
 
   useEffect(() => {

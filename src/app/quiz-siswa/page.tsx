@@ -31,20 +31,26 @@ export default function QuizSiswaPage() {
   const getQuizStatus = (quiz: Exam) => {
     const resultStatus = quiz.my_result?.status;
 
-    if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
+    if (resultStatus === 'completed' || resultStatus === 'graded') {
       return { label: 'Selesai', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: CheckCircle };
     }
-    if (quiz.status !== 'active') {
-      return { label: 'Tidak Tersedia', color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300', icon: AlertCircle };
+    if (resultStatus === 'submitted') {
+      return { label: 'Menunggu Penilaian', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300', icon: Clock };
     }
     if (resultStatus === 'in_progress') {
       return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', icon: PlayCircle };
+    }
+    if (quiz.status !== 'active') {
+      return { label: 'Tidak Tersedia', color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300', icon: AlertCircle };
     }
     return { label: 'Tersedia', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: PlayCircle };
   };
 
   const canStartQuiz = (quiz: Exam) => {
     const resultStatus = quiz.my_result?.status;
+    if (resultStatus === 'in_progress') {
+      return true;
+    }
     if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
       return false;
     }
@@ -101,7 +107,7 @@ export default function QuizSiswaPage() {
                     </div>
                   </div>
 
-                  {['completed', 'graded', 'submitted'].includes(quiz.my_result?.status || '') ? (
+                  {['completed', 'graded'].includes(quiz.my_result?.status || '') ? (
                     <div className="space-y-2">
                       {quiz.show_result && quiz.my_result?.percentage != null && (
                         <div className={`rounded-lg p-3 text-center ${
@@ -122,6 +128,14 @@ export default function QuizSiswaPage() {
                         <div>
                           <p className="text-sm font-medium text-green-700 dark:text-green-400">Selesai Dikerjakan</p>
                         </div>
+                      </div>
+                    </div>
+                  ) : quiz.my_result?.status === 'submitted' ? (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3 flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-blue-600 dark:text-blue-300 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Menunggu Penilaian</p>
+                        <p className="text-xs text-blue-600/80 dark:text-blue-300/80">Jawaban sudah dikumpulkan, nilai final belum tersedia.</p>
                       </div>
                     </div>
                   ) : canStartQuiz(quiz) ? (

@@ -12,7 +12,6 @@ import {
   Library,
   CheckSquare,
   Square,
-  AlertTriangle,
 } from 'lucide-react';
 import { bankQuestionAPI } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
@@ -47,7 +46,6 @@ export function ImportBankSoalModal({
   isOpen,
   onClose,
   onImport,
-  existingCount,
 }: ImportBankSoalModalProps) {
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);

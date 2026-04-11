@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button, Card, ConfirmDialog } from '@/components/ui';
 import {
   Clock, ChevronLeft, ChevronRight, Send, Flag, Loader2, ArrowLeft,
@@ -10,6 +11,7 @@ import {
 import { quizAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { MathText } from '@/components/ui/MathText';
+import { useExamSocket } from '@/hooks/useSocket';
 
 interface QuestionOption {
   text: string;
@@ -57,6 +59,39 @@ const normalizeTextLike = (value: unknown): string => {
   return String(value);
 };
 
+const normalizeQuestionType = (type: unknown): Question['type'] => {
+  if (type === 'multiple_answer') return 'multiple_answer';
+  if (type === 'essay') return 'essay';
+  return 'multiple_choice';
+};
+
+const mapQuizQuestionPayload = (q: Record<string, unknown>, idx: number): Question => {
+  const questionText = normalizeTextLike(q.text ?? q.question_text);
+  const passageText = normalizeTextLike(
+    q.passage ?? q.passage_text ?? q.reading_text ?? q.reading ?? q.stimulus
+  ).trim();
+
+  const normalizedOptions = ((q.options || []) as (string | { text?: unknown; image?: string | null })[]).map((opt) => {
+    if (typeof opt === 'string') {
+      return { text: normalizeTextLike(opt), image: null };
+    }
+    return {
+      text: normalizeTextLike(opt?.text),
+      image: opt?.image || null,
+    };
+  });
+
+  return {
+    id: Number(q.id),
+    number: Number(q.number ?? q.order ?? idx + 1),
+    type: normalizeQuestionType(q.question_type || q.type),
+    text: questionText,
+    passage: passageText || null,
+    options: normalizedOptions,
+    image: (q.image as string | null) || null,
+  };
+};
+
 export default function QuizTakingPage() {
   const params = useParams();
   const router = useRouter();
@@ -75,16 +110,21 @@ export default function QuizTakingPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [quizNotFound, setQuizNotFound] = useState(false);
   const [startingQuiz, setStartingQuiz] = useState(false);
+  const examSocket = useExamSocket(quizId);
   const autoSubmittedRef = React.useRef(false);
+  const autoSubmitRetryAtRef = React.useRef(0);
   const resumeAttemptedRef = React.useRef(false);
   const countdownDeadlineRef = React.useRef<number | null>(null);
+  const handleSubmitRef = React.useRef<(auto?: boolean) => Promise<void>>((async () => undefined));
+  const lastQuestionRevisionRef = React.useRef(0);
+  const lastQuestionUpdateToastAtRef = React.useRef(0);
 
   // Clear quiz session
-  const clearQuizSession = () => {
+  const clearQuizSession = useCallback(() => {
     sessionStorage.removeItem(`quiz_active_${quizId}`);
     sessionStorage.removeItem(`quiz_question_${quizId}`);
     countdownDeadlineRef.current = null;
-  };
+  }, [quizId]);
 
   // Format time
   const formatTime = (seconds: number) => {
@@ -95,7 +135,7 @@ export default function QuizTakingPage() {
   };
 
   // Start quiz
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     setStartingQuiz(true);
     try {
       const response = await quizAPI.start(quizId);
@@ -108,32 +148,9 @@ export default function QuizTakingPage() {
         const durationMinutes = Number.isFinite(durationMinutesRaw) && durationMinutesRaw > 0
           ? durationMinutesRaw
           : 60;
-        const qs: Question[] = (data.questions || []).map((q: Record<string, unknown>, idx: number) => {
-          const questionText = normalizeTextLike(q.text ?? q.question_text);
-          const passageText = normalizeTextLike(
-            q.passage ?? q.passage_text ?? q.reading_text ?? q.reading ?? q.stimulus
-          ).trim();
-
-          const normalizedOptions = ((q.options || []) as (string | { text?: unknown; image?: string | null })[]).map((opt) => {
-            if (typeof opt === 'string') {
-              return { text: normalizeTextLike(opt), image: null };
-            }
-            return {
-              text: normalizeTextLike(opt?.text),
-              image: opt?.image || null,
-            };
-          });
-
-          return {
-            id: q.id as number,
-            number: (q.number as number) || idx + 1,
-            type: (q.question_type || q.type) as Question['type'],
-            text: questionText,
-            passage: passageText || null,
-            options: normalizedOptions,
-            image: q.image as string | null,
-          };
-        });
+        const qs: Question[] = (data.questions || []).map((q: Record<string, unknown>, idx: number) =>
+          mapQuizQuestionPayload(q, idx)
+        );
 
         setQuiz({
           id: quizData?.id || quizId,
@@ -154,6 +171,7 @@ export default function QuizTakingPage() {
         setTimeRemaining(initialRemainingSeconds);
         countdownDeadlineRef.current = Date.now() + (initialRemainingSeconds * 1000);
         autoSubmittedRef.current = false;
+        autoSubmitRetryAtRef.current = 0;
         setIsStarted(true);
         sessionStorage.setItem(`quiz_active_${quizId}`, '1');
 
@@ -180,7 +198,7 @@ export default function QuizTakingPage() {
     } finally {
       setStartingQuiz(false);
     }
-  };
+  }, [quizId, router, toast]);
 
   // Try to resume on mount
   useEffect(() => {
@@ -195,7 +213,7 @@ export default function QuizTakingPage() {
       setLoading(false);
     };
     tryResume();
-  }, [quizId]);
+  }, [quizId, handleStart]);
 
   // Timer
   useEffect(() => {
@@ -206,9 +224,14 @@ export default function QuizTakingPage() {
       const remaining = Math.max(0, Math.ceil((countdownDeadlineRef.current - Date.now()) / 1000));
       setTimeRemaining(remaining);
 
-      if (remaining <= 0 && !autoSubmittedRef.current) {
+      if (
+        remaining <= 0 &&
+        !autoSubmittedRef.current &&
+        !submitting &&
+        Date.now() >= autoSubmitRetryAtRef.current
+      ) {
         autoSubmittedRef.current = true;
-        handleSubmit(true);
+        void handleSubmitRef.current(true);
       }
     };
 
@@ -217,7 +240,7 @@ export default function QuizTakingPage() {
       tick();
     }, 1000);
     return () => clearInterval(timer);
-  }, [isStarted]);
+  }, [isStarted, submitting]);
 
   // Save current question to session
   useEffect(() => {
@@ -233,6 +256,197 @@ export default function QuizTakingPage() {
       if (saved) setCurrentQuestion(Number(saved));
     }
   }, [isStarted, quizId]);
+
+  const applyQuestionUpdatesById = useCallback((incomingRows: Record<string, unknown>[]) => {
+    const optionRemapsByQuestionId = new Map<number, Array<{ from: string; to: string }>>();
+
+    setQuestions((prev) => {
+      if (prev.length === 0) {
+        return incomingRows.map((row, idx) => mapQuizQuestionPayload(row, idx));
+      }
+
+      const incomingMap = new Map<number, Question>();
+      incomingRows.forEach((row, idx) => {
+        const mapped = mapQuizQuestionPayload(row, idx);
+        if (Number.isFinite(mapped.id) && mapped.id > 0) {
+          incomingMap.set(mapped.id, mapped);
+        }
+      });
+
+      let hasChanges = false;
+      const next = prev.map((existing) => {
+        const incoming = incomingMap.get(existing.id);
+        if (!incoming) return existing;
+
+        const merged: Question = {
+          ...existing,
+          ...incoming,
+          number: existing.number,
+        };
+
+        const oldOptions = existing.options || [];
+        const newOptions = merged.options || [];
+        if (oldOptions.length === newOptions.length && oldOptions.length > 0) {
+          const remaps = oldOptions
+            .map((oldOpt, idx) => ({ from: oldOpt.text, to: newOptions[idx]?.text || oldOpt.text }))
+            .filter((entry) => entry.from !== entry.to);
+          if (remaps.length > 0) {
+            optionRemapsByQuestionId.set(existing.id, remaps);
+          }
+        }
+
+        const optionsChanged = JSON.stringify(merged.options || []) !== JSON.stringify(existing.options || []);
+        if (
+          merged.text !== existing.text ||
+          merged.passage !== existing.passage ||
+          merged.type !== existing.type ||
+          merged.image !== existing.image ||
+          optionsChanged
+        ) {
+          hasChanges = true;
+          return merged;
+        }
+        return existing;
+      });
+
+      return hasChanges ? next : prev;
+    });
+
+    if (optionRemapsByQuestionId.size > 0) {
+      setAnswers((prev) => {
+        let changed = false;
+        const next: Record<number, string> = { ...prev };
+
+        const remapSingleValue = (value: string, remaps: Array<{ from: string; to: string }>): string => {
+          const normalizedValue = value.trim().toLowerCase();
+          const match = remaps.find((entry) => (
+            entry.from === value || entry.from.trim().toLowerCase() === normalizedValue
+          ));
+          return match ? match.to : value;
+        };
+
+        Object.entries(prev).forEach(([questionIdRaw, rawAnswer]) => {
+          const questionId = Number(questionIdRaw);
+          const remaps = optionRemapsByQuestionId.get(questionId);
+          if (!remaps || typeof rawAnswer !== 'string' || rawAnswer.trim() === '') return;
+
+          try {
+            const parsed = JSON.parse(rawAnswer);
+            if (Array.isArray(parsed)) {
+              const remapped = parsed.map((entry) => (
+                typeof entry === 'string' ? remapSingleValue(entry, remaps) : entry
+              ));
+              const nextRaw = JSON.stringify(remapped);
+              if (nextRaw !== rawAnswer) {
+                next[questionId] = nextRaw;
+                changed = true;
+              }
+              return;
+            }
+          } catch {
+            // single-choice answers are plain strings
+          }
+
+          const remappedSingle = remapSingleValue(rawAnswer, remaps);
+          if (remappedSingle !== rawAnswer) {
+            next[questionId] = remappedSingle;
+            changed = true;
+          }
+        });
+
+        return changed ? next : prev;
+      });
+    }
+  }, []);
+
+  const notifyQuestionUpdated = useCallback(() => {
+    const now = Date.now();
+    if (now - lastQuestionUpdateToastAtRef.current < 3000) return;
+    lastQuestionUpdateToastAtRef.current = now;
+    toast.info('Soal diperbarui guru. Tampilan disinkronkan otomatis.');
+  }, [toast]);
+
+  // Socket live-update: apply teacher edits without requiring page refresh
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const handleQuestionUpdated = (payload: unknown) => {
+      const data = payload as { question?: Record<string, unknown> };
+      if (!data?.question) return;
+
+      applyQuestionUpdatesById([data.question]);
+
+      const updatedAt = data.question.updated_at;
+      if (typeof updatedAt === 'string') {
+        const revision = Math.floor(new Date(updatedAt).getTime() / 1000);
+        if (Number.isFinite(revision) && revision > lastQuestionRevisionRef.current) {
+          lastQuestionRevisionRef.current = revision;
+        }
+      }
+
+      notifyQuestionUpdated();
+    };
+
+    examSocket.onQuestionUpdated(handleQuestionUpdated);
+    return () => {
+      examSocket.off(`exam.${quizId}.question-updated`);
+    };
+  }, [isStarted, examSocket, quizId, applyQuestionUpdatesById, notifyQuestionUpdated]);
+
+  // Fallback polling every 10s when socket is disconnected
+  useEffect(() => {
+    if (!isStarted || submitting || examSocket.isConnected) return;
+
+    let stopped = false;
+
+    const syncOnce = async () => {
+      try {
+        const res = await quizAPI.syncQuestions(quizId);
+        const rows = (res.data?.data?.questions || []) as Record<string, unknown>[];
+        const nextRevision = Number(res.data?.data?.revision ?? 0);
+
+        if (rows.length > 0) {
+          applyQuestionUpdatesById(rows);
+        }
+
+        if (nextRevision > 0) {
+          if (lastQuestionRevisionRef.current === 0) {
+            lastQuestionRevisionRef.current = nextRevision;
+          } else if (nextRevision > lastQuestionRevisionRef.current) {
+            lastQuestionRevisionRef.current = nextRevision;
+            notifyQuestionUpdated();
+          }
+        }
+      } catch (err: unknown) {
+        const e = err as { response?: { status?: number } };
+        if (!stopped && (e.response?.status === 403 || e.response?.status === 422)) {
+          clearQuizSession();
+          toast.error('Sesi quiz tidak aktif. Anda diarahkan ke daftar quiz.');
+          router.push('/quiz-siswa');
+        }
+      }
+    };
+
+    void syncOnce();
+    const timer = setInterval(() => {
+      void syncOnce();
+    }, 10000);
+
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [
+    isStarted,
+    submitting,
+    examSocket.isConnected,
+    quizId,
+    applyQuestionUpdatesById,
+    notifyQuestionUpdated,
+    clearQuizSession,
+    toast,
+    router,
+  ]);
 
   // Submit answer to backend
   const submitAnswer = useCallback(async (questionId: number, answer: string) => {
@@ -280,7 +494,7 @@ export default function QuizTakingPage() {
   };
 
   // Submit quiz
-  const handleSubmit = async (auto = false) => {
+  const handleSubmit = useCallback(async (auto = false) => {
     if (submitting) return;
     setSubmitting(true);
     setShowSubmitConfirm(false);
@@ -304,11 +518,22 @@ export default function QuizTakingPage() {
       router.push('/quiz-siswa');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Gagal mengumpulkan quiz. Periksa koneksi lalu coba lagi.');
+      const message = e.response?.data?.message || 'Gagal mengumpulkan quiz. Periksa koneksi lalu coba lagi.';
+      if (auto) {
+        autoSubmittedRef.current = false;
+        autoSubmitRetryAtRef.current = Date.now() + 10000;
+        toast.error(`${message} Sistem akan mencoba lagi otomatis.`);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [answers, clearQuizSession, quiz?.duration, quizId, router, submitting, timeRemaining, toast]);
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
 
   // Loading state
   if (loading) {
@@ -449,10 +674,13 @@ export default function QuizTakingPage() {
               {/* Question image */}
               {q.image && (
                 <div className="mb-4">
-                  <img
+                  <Image
                     src={getSecureFileUrl(q.image)}
                     alt="Soal"
-                    className="max-w-full max-h-80 rounded-lg border"
+                    width={1200}
+                    height={800}
+                    className="max-w-full h-auto max-h-80 rounded-lg border"
+                    unoptimized
                   />
                 </div>
               )}
@@ -482,10 +710,13 @@ export default function QuizTakingPage() {
                           <MathText text={opt.text} />
                         )}
                         {opt.image && (
-                          <img
+                          <Image
                             src={getSecureFileUrl(opt.image)}
                             alt={`Opsi ${String.fromCharCode(65 + idx)}`}
-                            className="mt-2 max-w-[300px] max-h-48 rounded border"
+                            width={300}
+                            height={192}
+                            className="mt-2 w-auto max-w-[300px] max-h-48 rounded border"
+                            unoptimized
                           />
                         )}
                       </div>
@@ -525,10 +756,13 @@ export default function QuizTakingPage() {
                               <MathText text={opt.text} />
                             )}
                             {opt.image && (
-                              <img
+                              <Image
                                 src={getSecureFileUrl(opt.image)}
                                 alt={`Opsi ${String.fromCharCode(65 + idx)}`}
-                                className="mt-2 max-w-[300px] max-h-48 rounded border"
+                                width={300}
+                                height={192}
+                                className="mt-2 w-auto max-w-[300px] max-h-48 rounded border"
+                                unoptimized
                               />
                             )}
                           </div>

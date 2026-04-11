@@ -36,13 +36,33 @@ Apa ibu kota Indonesia?,Surabaya,Bandung,Jakarta,Medan,C,10,PG
 Siapa penemu telepon?,Graham Bell,Thomas Edison,Nikola Tesla,Albert Einstein,A,10,PG
 Jelaskan proses fotosintesis!,,,,,,,Essay`;
 
-// Template data for XLSX export
-const XLSX_TEMPLATE_DATA = [
-  ['Soal', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', 'Jawaban Benar', 'Poin', 'Tipe'],
-  ['Apa ibu kota Indonesia?', 'Surabaya', 'Bandung', 'Jakarta', 'Medan', 'C', 10, 'PG'],
-  ['Siapa penemu telepon?', 'Graham Bell', 'Thomas Edison', 'Nikola Tesla', 'Albert Einstein', 'A', 10, 'PG'],
-  ['Jelaskan proses fotosintesis!', '', '', '', '', '', 10, 'Essay'],
+const MAX_IMPORT_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const MAX_IMPORT_ROWS = 300;
+const MAX_CELL_LENGTH = 1000;
+const SUPPORTED_EXTENSIONS = new Set(['csv', 'txt']);
+const EXPECTED_HEADERS = [
+  'soal',
+  'opsi a',
+  'opsi b',
+  'opsi c',
+  'opsi d',
+  'jawaban',
+  'poin',
+  'tipe',
 ];
+
+const normalizeImportCell = (value: unknown): string => {
+  const normalized = String(value ?? '')
+    .replace(/\u0000/g, '')
+    .replace(/\r/g, '')
+    .trim();
+
+  return normalized.length > MAX_CELL_LENGTH
+    ? normalized.slice(0, MAX_CELL_LENGTH)
+    : normalized;
+};
+
+const formatFileSize = (sizeInBytes: number): string => `${(sizeInBytes / (1024 * 1024)).toFixed(1)}MB`;
 
 export function ImportExcelModal({
   isOpen,
@@ -59,11 +79,24 @@ export function ImportExcelModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseCSV = useCallback((text: string): ParsedQuestion[] => {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const normalizedText = text.replace(/^\uFEFF/, '');
+    const lines = normalizedText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
     if (lines.length < 2) return [];
+
+    const headerFields = parseCSVLine(lines[0]).map((field) => normalizeImportCell(field).toLowerCase());
+    const isHeaderValid = EXPECTED_HEADERS.every((expected, idx) => {
+      const actual = headerFields[idx] || '';
+      return actual.includes(expected);
+    });
+    if (!isHeaderValid) {
+      throw new Error('Header file tidak sesuai template. Gunakan template impor terbaru.');
+    }
 
     // Skip header
     const dataLines = lines.slice(1);
+    if (dataLines.length > MAX_IMPORT_ROWS) {
+      throw new Error(`Maksimal ${MAX_IMPORT_ROWS} soal per file impor.`);
+    }
     const results: ParsedQuestion[] = [];
 
     for (const line of dataLines) {
@@ -71,16 +104,17 @@ export function ImportExcelModal({
       const fields = parseCSVLine(line);
       if (fields.length < 1) continue;
 
-      const questionText = fields[0]?.trim();
+      const questionText = normalizeImportCell(fields[0]);
       if (!questionText) continue;
 
-      const optA = fields[1]?.trim() || '';
-      const optB = fields[2]?.trim() || '';
-      const optC = fields[3]?.trim() || '';
-      const optD = fields[4]?.trim() || '';
-      const correctAnswer = fields[5]?.trim().toUpperCase() || '';
-      const points = parseInt(fields[6]?.trim()) || 10;
-      const type = fields[7]?.trim().toLowerCase() || '';
+      const optA = normalizeImportCell(fields[1]);
+      const optB = normalizeImportCell(fields[2]);
+      const optC = normalizeImportCell(fields[3]);
+      const optD = normalizeImportCell(fields[4]);
+      const correctAnswer = normalizeImportCell(fields[5]).toUpperCase();
+      const parsedPoints = parseInt(normalizeImportCell(fields[6]), 10);
+      const points = Number.isFinite(parsedPoints) ? Math.min(1000, Math.max(1, parsedPoints)) : 10;
+      const type = normalizeImportCell(fields[7]).toLowerCase();
 
       const isEssay = type === 'essay' || (!optA && !optB && !optC && !optD);
 
@@ -121,6 +155,23 @@ export function ImportExcelModal({
     return results;
   }, []);
 
+  const validateInputFile = useCallback((selectedFile: File): string | null => {
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase() || '';
+    if (!SUPPORTED_EXTENSIONS.has(ext)) {
+      return 'Format file tidak didukung. Gunakan .csv atau .txt';
+    }
+
+    if (selectedFile.size <= 0) {
+      return 'File kosong dan tidak bisa diproses.';
+    }
+
+    if (selectedFile.size > MAX_IMPORT_FILE_SIZE_BYTES) {
+      return `Ukuran file maksimal ${formatFileSize(MAX_IMPORT_FILE_SIZE_BYTES)}.`;
+    }
+
+    return null;
+  }, []);
+
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
     let current = '';
@@ -149,6 +200,14 @@ export function ImportExcelModal({
   };
 
   const handleFileSelect = async (selectedFile: File) => {
+    const validationError = validateInputFile(selectedFile);
+    if (validationError) {
+      setFile(null);
+      setParseError(validationError);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setFile(selectedFile);
     setParseError('');
     setParsing(true);
@@ -166,32 +225,12 @@ export function ImportExcelModal({
         }
         setParsedQuestions(parsed);
         setStep('preview');
-      } else if (ext === 'xlsx' || ext === 'xls') {
-        // Try dynamic import of xlsx library
-        try {
-          const XLSX = await import('xlsx');
-          const data = await selectedFile.arrayBuffer();
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const csv = XLSX.utils.sheet_to_csv(firstSheet);
-          const parsed = parseCSV(csv);
-          if (parsed.length === 0) {
-            setParseError('Tidak ada soal terdeteksi di file Excel.');
-            setParsing(false);
-            return;
-          }
-          setParsedQuestions(parsed);
-          setStep('preview');
-        } catch {
-          setParseError(
-            'Gagal membaca file Excel. Pastikan library xlsx terinstall, atau gunakan format CSV.'
-          );
-        }
       } else {
-        setParseError('Format file tidak didukung. Gunakan .csv atau .xlsx');
+        setParseError('Format file tidak didukung. Gunakan .csv atau .txt');
       }
-    } catch {
-      setParseError('Gagal membaca file');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
+      setParseError(message || 'Gagal membaca file');
     } finally {
       setParsing(false);
     }
@@ -226,40 +265,14 @@ export function ImportExcelModal({
     }
   };
 
-  const handleDownloadTemplate = async () => {
-    try {
-      const XLSX = await import('xlsx');
-      
-      // Create workbook and worksheet
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.aoa_to_sheet(XLSX_TEMPLATE_DATA);
-      
-      // Set column widths for better readability
-      worksheet['!cols'] = [
-        { wch: 40 }, // Soal
-        { wch: 20 }, // Opsi A
-        { wch: 20 }, // Opsi B
-        { wch: 20 }, // Opsi C
-        { wch: 20 }, // Opsi D
-        { wch: 15 }, // Jawaban Benar
-        { wch: 8 },  // Poin
-        { wch: 10 }, // Tipe
-      ];
-      
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Soal Ujian');
-      
-      // Generate and download file
-      XLSX.writeFile(workbook, 'template_soal_ujian.xlsx');
-    } catch {
-      // Fallback to CSV if xlsx fails
-      const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'template_soal_ujian.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+  const handleDownloadTemplate = () => {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_soal_ujian.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleClose = () => {
@@ -285,10 +298,10 @@ export function ImportExcelModal({
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Import dari Excel/CSV
+              Import dari CSV
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Upload file spreadsheet berisi soal ujian
+              Upload file CSV berisi soal ujian
             </p>
           </div>
         </div>
@@ -339,7 +352,7 @@ export function ImportExcelModal({
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
             >
               <Download className="w-4 h-4" />
-              Download Template Excel (.xlsx)
+              Download Template CSV (.csv)
             </button>
 
             {/* Drop Zone */}
@@ -380,7 +393,7 @@ export function ImportExcelModal({
                       Drag & drop file atau klik untuk upload
                     </p>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                      Format: .csv, .xlsx (max 5MB)
+                      Format: .csv, .txt (max {formatFileSize(MAX_IMPORT_FILE_SIZE_BYTES)})
                     </p>
                   </div>
                 </div>
@@ -397,15 +410,11 @@ export function ImportExcelModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls,.txt"
+              accept=".csv,.txt"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
-                  if (f.size > 5 * 1024 * 1024) {
-                    setParseError('Ukuran file maksimal 5MB');
-                    return;
-                  }
                   handleFileSelect(f);
                 }
               }}

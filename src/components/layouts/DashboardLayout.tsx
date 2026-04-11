@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useMemo, useCallback, memo } from 'react';
+import React, { ReactNode, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';

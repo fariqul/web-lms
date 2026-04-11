@@ -116,6 +116,16 @@ class ExamController extends Controller
     ) {
         $this->logIosIgnoredViolation($request, $exam, $result, $violationType, $reasonCode, $message);
         $ignoredCount = $this->getIosIgnoredCount($result->id);
+        $policy = $this->getViolationPolicyData($exam, (int) ($result->violation_count ?? 0));
+
+        $this->logPolicyActionEvent('exam.violation.ignored', $exam, $result, [
+            'violation_type' => $violationType,
+            'reason_code' => $reasonCode,
+            'message' => $message,
+            'ios_ignored_count' => $ignoredCount,
+            'policy_action' => $policy['policy_action'] ?? 'none',
+            'source' => 'violation_report',
+        ]);
 
         return response()->json([
             'success' => true,
@@ -128,8 +138,63 @@ class ExamController extends Controller
                 'ios_ignored_reason' => $reasonCode,
                 'ios_ignored_count' => $ignoredCount,
                 'message' => $message,
+                ...$policy,
             ],
         ]);
+    }
+
+    private function getViolationPolicyData(Exam $exam, int $violationCount): array
+    {
+        $maxViolations = (int) ($exam->max_violations ?? 0);
+        $freezeSeconds = max(3, (int) env('EXAM_VIOLATION_FREEZE_SECONDS', 10));
+
+        if ($maxViolations <= 0) {
+            return [
+                'policy_action' => 'none',
+                'warning_threshold' => null,
+                'freeze_threshold' => null,
+                'auto_submit_threshold' => null,
+                'freeze_seconds' => $freezeSeconds,
+            ];
+        }
+
+        $warningThreshold = max(1, $maxViolations - 2);
+        $freezeThreshold = max(1, $maxViolations - 1);
+        $autoSubmitThreshold = max(1, $maxViolations);
+
+        $policyAction = 'none';
+        if ($violationCount >= $autoSubmitThreshold) {
+            $policyAction = 'auto_submit';
+        } elseif ($violationCount >= $freezeThreshold) {
+            $policyAction = 'freeze';
+        } elseif ($violationCount >= $warningThreshold) {
+            $policyAction = 'warning';
+        }
+
+        return [
+            'policy_action' => $policyAction,
+            'warning_threshold' => $warningThreshold,
+            'freeze_threshold' => $freezeThreshold,
+            'auto_submit_threshold' => $autoSubmitThreshold,
+            'freeze_seconds' => $freezeSeconds,
+        ];
+    }
+
+    private function logPolicyActionEvent(
+        string $event,
+        Exam $exam,
+        ExamResult $result,
+        array $context = []
+    ): void {
+        Log::info($event, array_merge([
+            'exam_id' => (int) $exam->id,
+            'exam_result_id' => (int) $result->id,
+            'student_id' => (int) $result->student_id,
+            'status' => (string) $result->status,
+            'violation_count' => (int) ($result->violation_count ?? 0),
+            'max_violations' => (int) ($exam->max_violations ?? 0),
+            'recorded_at' => $this->toSchoolIso8601(now()),
+        ], $context));
     }
 
     /**
@@ -3274,6 +3339,69 @@ class ExamController extends Controller
     }
 
     /**
+     * Keep active exam session alive and return graduated anti-cheat policy state.
+     */
+    public function heartbeat(Request $request, Exam $exam)
+    {
+        $request->validate([
+            'page_visible' => 'nullable|boolean',
+            'focused' => 'nullable|boolean',
+        ]);
+
+        $user = $request->user();
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$result) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi ujian tidak ditemukan',
+            ], 422);
+        }
+
+        try {
+            $user->forceFill(['last_activity' => time()])->save();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to update heartbeat activity: ' . $e->getMessage());
+        }
+
+        $policy = $this->getViolationPolicyData($exam, (int) ($result->violation_count ?? 0));
+        $forceSubmit = false;
+
+        if ($policy['policy_action'] === 'auto_submit') {
+            $forceSubmit = true;
+            $result->finished_at = now();
+            $result->submitted_at = now();
+            $result->status = 'completed';
+            $result->calculateScore();
+            $result->refresh();
+        }
+
+        if ($policy['policy_action'] !== 'none' || $forceSubmit) {
+            $this->logPolicyActionEvent('exam.heartbeat.policy', $exam, $result, [
+                'source' => 'heartbeat',
+                'policy_action' => $policy['policy_action'],
+                'force_submit' => $forceSubmit,
+                'page_visible' => $request->boolean('page_visible', true),
+                'focused' => $request->boolean('focused', true),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'heartbeat_at' => $this->toSchoolIso8601(now()),
+                'violation_count' => $result->violation_count,
+                'max_violations' => $exam->max_violations,
+                'force_submit' => $forceSubmit,
+                ...$policy,
+            ],
+        ]);
+    }
+
+    /**
      * Report violation
      */
     public function reportViolation(Request $request, Exam $exam)
@@ -3393,6 +3521,7 @@ class ExamController extends Controller
         // Update violation count
         $result->violation_count = $result->violations()->count();
         $result->save();
+        $policy = $this->getViolationPolicyData($exam, (int) ($result->violation_count ?? 0));
 
         // Broadcast: violation reported
         app(SocketBroadcastService::class)->examViolation($exam->id, [
@@ -3402,11 +3531,12 @@ class ExamController extends Controller
             'description' => $request->description,
             'violation_count' => $result->violation_count,
             'max_violations' => $exam->max_violations,
+            'policy_action' => $policy['policy_action'],
         ]);
 
-        // Check if max violations exceeded
+        // Apply graduated policy action.
         $forceSubmit = false;
-        if ($exam->max_violations && $result->violation_count >= $exam->max_violations) {
+        if ($policy['policy_action'] === 'auto_submit') {
             $forceSubmit = true;
             $result->finished_at = now();
             $result->submitted_at = now();
@@ -3414,12 +3544,20 @@ class ExamController extends Controller
             $result->calculateScore();
         }
 
+        $this->logPolicyActionEvent('exam.violation.recorded', $exam, $result, [
+            'source' => 'violation_report',
+            'violation_type' => $violationType,
+            'policy_action' => $policy['policy_action'],
+            'force_submit' => $forceSubmit,
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => [
                 'violation_count' => $result->violation_count,
                 'max_violations' => $exam->max_violations,
                 'force_submit' => $forceSubmit,
+                ...$policy,
             ],
         ]);
     }

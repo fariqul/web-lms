@@ -18,7 +18,6 @@ function useCountdown(targetDate: string) {
   });
 
   useEffect(() => {
-    if (timeLeft <= 0) return;
     const timer = setInterval(() => {
       const diff = new Date(targetDate).getTime() - Date.now();
       const seconds = Math.max(0, Math.floor(diff / 1000));
@@ -26,7 +25,7 @@ function useCountdown(targetDate: string) {
       if (seconds <= 0) clearInterval(timer);
     }, 1000);
     return () => clearInterval(timer);
-  }, [targetDate, timeLeft > 0]);
+  }, [targetDate]);
 
   const days = Math.floor(timeLeft / 86400);
   const hours = Math.floor((timeLeft % 86400) / 3600);

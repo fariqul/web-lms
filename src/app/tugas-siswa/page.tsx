@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
-import { 
+import {
   ClipboardList, 
   Search, 
   Calendar,
@@ -20,7 +20,6 @@ import {
   Eye
 } from 'lucide-react';
 import { assignmentAPI, getSecureFileUrl } from '@/services/api';
-import { useAuth } from '@/context/AuthContext';
 import { getApiErrorMessage } from '@/lib/api-error';
 
 interface Assignment {
@@ -52,7 +51,6 @@ interface Assignment {
 type TabType = 'pending' | 'submitted' | 'graded';
 
 export default function TugasSiswaPage() {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);

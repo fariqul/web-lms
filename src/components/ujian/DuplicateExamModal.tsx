@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui';
 import {
   Search,
-  CheckCircle,
   Loader2,
   Copy,
   FileText,
@@ -65,6 +64,7 @@ export function DuplicateExamModal({
     if (isOpen) {
       fetchExams();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const fetchExams = async () => {

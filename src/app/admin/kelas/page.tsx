@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, X, User } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, User } from 'lucide-react';
 import { classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 
@@ -112,7 +112,7 @@ export default function AdminKelasPage() {
       }
       setIsModalOpen(false);
       fetchClasses(); // Refresh data
-    } catch (error) {
+    } catch {
       toast.error('Gagal menyimpan data kelas');
     } finally {
       setSubmitting(false);
@@ -125,7 +125,7 @@ export default function AdminKelasPage() {
       await classAPI.delete(selectedClass.id);
       setIsDeleteDialogOpen(false);
       fetchClasses(); // Refresh data
-    } catch (error) {
+    } catch {
       toast.error('Gagal menghapus kelas');
     }
   };
@@ -137,7 +137,7 @@ export default function AdminKelasPage() {
     try {
       const response = await classAPI.getById(cls.id);
       setDetailClass(response.data?.data || null);
-    } catch (error) {
+    } catch {
       toast.error('Gagal memuat detail kelas');
       setDetailClass(null);
     } finally {

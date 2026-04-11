@@ -13,7 +13,6 @@ import {
   FolderOpen,
   FileEdit,
   UserPlus,
-  Loader2,
   CheckCircle,
   XCircle,
   Clock,
@@ -69,6 +68,30 @@ interface TeacherDailyRecap {
   teachers: TeacherRecap[];
 }
 
+interface RiskySession {
+  exam_id: number;
+  exam_title: string;
+  exam_type: string;
+  student_id: number;
+  student_name: string;
+  status: string;
+  violation_count: number;
+  max_violations: number | null;
+  started_at: string | null;
+}
+
+interface QuizObservabilitySummary {
+  generated_at: string;
+  active_exam_sessions: number;
+  active_quiz_sessions: number;
+  stale_sessions: number;
+  high_risk_sessions: number;
+  violation_events_last_24h: number;
+  auto_submitted_last_24h: number;
+  submitted_quiz_pending_grading: number;
+  top_risky_sessions: RiskySession[];
+}
+
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -81,9 +104,21 @@ export default function AdminDashboard() {
   const [attendanceChart, setAttendanceChart] = useState<AttendanceChartData[]>([]);
   const [teacherRecap, setTeacherRecap] = useState<TeacherDailyRecap | null>(null);
   const [expandedTeacher, setExpandedTeacher] = useState<number | null>(null);
+  const [quizObservability, setQuizObservability] = useState<QuizObservabilitySummary>({
+    generated_at: '',
+    active_exam_sessions: 0,
+    active_quiz_sessions: 0,
+    stale_sessions: 0,
+    high_risk_sessions: 0,
+    violation_events_last_24h: 0,
+    auto_submitted_last_24h: 0,
+    submitted_quiz_pending_grading: 0,
+    top_risky_sessions: [],
+  });
 
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchStats = async () => {
@@ -114,6 +149,22 @@ export default function AdminDashboard() {
         // Process teacher daily recap
         if (data.teacher_daily_recap) {
           setTeacherRecap(data.teacher_daily_recap);
+        }
+
+        if (data.quiz_observability) {
+          setQuizObservability({
+            generated_at: data.quiz_observability.generated_at || '',
+            active_exam_sessions: data.quiz_observability.active_exam_sessions || 0,
+            active_quiz_sessions: data.quiz_observability.active_quiz_sessions || 0,
+            stale_sessions: data.quiz_observability.stale_sessions || 0,
+            high_risk_sessions: data.quiz_observability.high_risk_sessions || 0,
+            violation_events_last_24h: data.quiz_observability.violation_events_last_24h || 0,
+            auto_submitted_last_24h: data.quiz_observability.auto_submitted_last_24h || 0,
+            submitted_quiz_pending_grading: data.quiz_observability.submitted_quiz_pending_grading || 0,
+            top_risky_sessions: Array.isArray(data.quiz_observability.top_risky_sessions)
+              ? data.quiz_observability.top_risky_sessions
+              : [],
+          });
         }
       }
     } catch (error) {
@@ -258,6 +309,76 @@ export default function AdminDashboard() {
             />
           </div>
         </div>
+
+        <Card>
+          <CardHeader
+            title="Monitoring Quiz & Ujian"
+            subtitle="Ringkasan anomali sesi dan anti-cheat"
+          />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div className={`rounded-lg border p-3 ${quizObservability.stale_sessions > 0 ? 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'}`}>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Sesi Stale</p>
+              <p className="text-xl font-semibold text-slate-900 dark:text-white">{quizObservability.stale_sessions}</p>
+            </div>
+            <div className={`rounded-lg border p-3 ${quizObservability.high_risk_sessions > 0 ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'}`}>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Sesi Risiko Tinggi</p>
+              <p className="text-xl font-semibold text-slate-900 dark:text-white">{quizObservability.high_risk_sessions}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 p-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Pelanggaran 24 Jam</p>
+              <p className="text-xl font-semibold text-slate-900 dark:text-white">{quizObservability.violation_events_last_24h}</p>
+            </div>
+            <div className={`rounded-lg border p-3 ${quizObservability.auto_submitted_last_24h > 0 ? 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60'}`}>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Auto Submit 24 Jam</p>
+              <p className="text-xl font-semibold text-slate-900 dark:text-white">{quizObservability.auto_submitted_last_24h}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 p-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Sesi Ujian Aktif</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white">{quizObservability.active_exam_sessions}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 p-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Sesi Quiz Aktif</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white">{quizObservability.active_quiz_sessions}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 p-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Quiz Menunggu Penilaian</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-white">{quizObservability.submitted_quiz_pending_grading}</p>
+            </div>
+          </div>
+
+          {quizObservability.top_risky_sessions.length > 0 ? (
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Sesi Risiko Tertinggi</p>
+              </div>
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                {quizObservability.top_risky_sessions.map((session) => (
+                  <div key={`${session.exam_id}-${session.student_id}`} className="px-4 py-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{session.student_name} · {session.exam_title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {session.exam_type === 'quiz' ? 'Quiz' : 'Ujian'} · Mulai {session.started_at ? formatRelativeTime(session.started_at) : '-'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                        {session.violation_count}/{session.max_violations ?? '-'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{session.status}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-3 text-sm text-slate-600 dark:text-slate-400">
+              Tidak ada sesi berisiko tinggi saat ini.
+            </div>
+          )}
+        </Card>
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Aktivitas Terbaru */}

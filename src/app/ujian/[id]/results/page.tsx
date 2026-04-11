@@ -8,10 +8,8 @@ import { Card, Button } from '@/components/ui';
 import {
   ArrowLeft,
   Users,
-  Award,
   TrendingUp,
   TrendingDown,
-  CheckCircle,
   Clock,
   Loader2,
   Search,
@@ -21,7 +19,6 @@ import {
   Download,
   Printer,
   MessageSquare,
-  AlertCircle,
   FileSpreadsheet,
 } from 'lucide-react';
 import api, { exportAPI } from '@/services/api';

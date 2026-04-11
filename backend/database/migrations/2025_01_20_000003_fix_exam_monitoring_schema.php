@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    private function supportsAlterModify(): bool
+    {
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+    }
+
     public function up(): void
     {
         // Fix exam_results table — add missing columns and fix status enum
@@ -32,8 +37,10 @@ return new class extends Migration
         });
 
         // Change status enum to include 'completed'
-        // MySQL doesn't allow easy ALTER ENUM, use raw SQL
-        DB::statement("ALTER TABLE exam_results MODIFY COLUMN status ENUM('in_progress', 'submitted', 'graded', 'completed') DEFAULT 'in_progress'");
+        // This statement is MySQL/MariaDB-specific and not portable to SQLite.
+        if ($this->supportsAlterModify() && Schema::hasColumn('exam_results', 'status')) {
+            DB::statement("ALTER TABLE exam_results MODIFY COLUMN status ENUM('in_progress', 'submitted', 'graded', 'completed') DEFAULT 'in_progress'");
+        }
 
         // Fix violations table — add missing columns
         Schema::table('violations', function (Blueprint $table) {
@@ -65,7 +72,9 @@ return new class extends Migration
         });
 
         // Widen violations type enum to accept new violation types
-        DB::statement("ALTER TABLE violations MODIFY COLUMN type VARCHAR(50) DEFAULT 'tab_switch'");
+        if ($this->supportsAlterModify() && Schema::hasColumn('violations', 'type')) {
+            DB::statement("ALTER TABLE violations MODIFY COLUMN type VARCHAR(50) DEFAULT 'tab_switch'");
+        }
     }
 
     public function down(): void

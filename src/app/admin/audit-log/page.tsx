@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardHeader, Button, Select, Pagination } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import {
-  Shield, Loader2, Search, Calendar, User, Clock,
+  Shield, Loader2, Search, User, Clock,
   UserPlus, UserMinus, Edit, Trash2, Key, FileText,
   Settings, Eye, Download, RefreshCw,
 } from 'lucide-react';
@@ -98,11 +98,12 @@ export default function AuditLogPage() {
     };
     init();
     fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     fetchLogs(1);
-  }, [filterAction, filterUser, dateFrom, dateTo]);
+  }, [filterAction, filterUser, dateFrom, dateTo, fetchLogs]);
 
   const getActionInfo = (action: string) => {
     return actionLabels[action] || { label: action, color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400', icon: Eye };

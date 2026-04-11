@@ -70,7 +70,7 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<{ value: string; label: string }[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState('');
+  const [, setSelectedStudent] = useState('');
   const [semester, setSemester] = useState('ganjil');
   const [academicYear, setAcademicYear] = useState('2025/2026');
   const [viewMode, setViewMode] = useState<'class' | 'student'>('class');
@@ -92,7 +92,7 @@ export default function ProgressPage() {
       }
     };
     init();
-  }, []);
+  }, [toast]);
 
   const fetchClassReport = useCallback(async () => {
     if (!selectedClass) return;

@@ -35,7 +35,7 @@ export default function ExportPage() {
       }
     };
     init();
-  }, []);
+  }, [toast]);
 
   const handleExport = async () => {
     if (!selectedClass && exportType !== 'grades') {

@@ -6,14 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint src"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@types/katex": "^0.16.8",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^2.0.0",
-    "axios": "^1.13.4",
+    "axios": "^1.15.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "docx": "^9.6.0",
@@ -24,13 +24,12 @@
     "katex": "^0.16.33",
     "lucide-react": "^0.563.0",
     "mammoth": "^1.11.0",
-    "next": "16.1.6",
+    "next": "^16.2.3",
     "qrcode.react": "^4.2.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "recharts": "^3.7.0",
-    "socket.io-client": "^4.8.3",
-    "xlsx": "^0.18.5"
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@csstools/postcss-cascade-layers": "^6.0.0",
@@ -41,10 +40,13 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.2.3",
     "postcss-lightningcss": "^1.0.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "node-fetch": "2.6.7"
   },
   "browserslist": [
     "Chrome >= 80",

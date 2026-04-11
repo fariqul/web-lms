@@ -384,6 +384,9 @@ export const quizAPI = {
   start: (quizId: number) =>
     api.post(`/quizzes/${quizId}/start`),
 
+  syncQuestions: (quizId: number) =>
+    api.get(`/quizzes/${quizId}/sync-questions`),
+
   submitAnswer: (quizId: number, data: { question_id: number; answer: string }) =>
     api.post(`/quizzes/${quizId}/answer`, data),
 
@@ -562,6 +565,14 @@ export const monitoringAPI = {
     }
     return api.post(`/exams/${data.exam_id}/violation`, data);
   },
+
+  heartbeat: (
+    examId: number,
+    data?: {
+      page_visible?: boolean;
+      focused?: boolean;
+    }
+  ) => api.post(`/exams/${examId}/heartbeat`, data ?? {}),
   
   getViolations: (examId: number, studentId?: number) =>
     api.get(`/exams/${examId}/results/${studentId}`),

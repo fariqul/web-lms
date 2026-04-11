@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, Button, Input, Modal, ConfirmDialog } from '@/components/ui';
 import {
   Plus, Trash2, Save, ArrowLeft, Loader2, FileEdit, ImagePlus, X,
   ChevronDown, ClipboardPaste, FileSpreadsheet, FileType, BookUp, Library,
-  CheckCircle, Eye,
+  CheckCircle,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { quizAPI } from '@/services/api';
@@ -80,6 +81,7 @@ interface QuestionFormProps {
   setOptionImageFiles: React.Dispatch<React.SetStateAction<(File | null)[]>>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   optionFileInputRefs: React.RefObject<HTMLInputElement | null>[];
+  lockStructureFields?: boolean;
 }
 
 function QuestionForm({
@@ -94,6 +96,7 @@ function QuestionForm({
   setOptionImageFiles,
   fileInputRef,
   optionFileInputRefs,
+  lockStructureFields = false,
 }: QuestionFormProps) {
   return (
     <div className="space-y-4">
@@ -102,6 +105,7 @@ function QuestionForm({
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipe Soal</label>
         <select
           value={newQuestion.question_type}
+          disabled={lockStructureFields}
           onChange={(e) => {
             const t = e.target.value as Question['question_type'];
             setNewQuestion(q => ({
@@ -162,7 +166,7 @@ function QuestionForm({
           }} />
           {imagePreview && (
             <div className="relative">
-              <img src={imagePreview} alt="" className="h-16 rounded border" />
+              <Image src={imagePreview} alt="" width={128} height={64} className="h-16 w-auto rounded border" unoptimized />
               <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">
                 <X className="w-3 h-3" />
               </button>
@@ -172,13 +176,14 @@ function QuestionForm({
       </div>
 
       {/* Points */}
-      <Input
-        label="Poin"
-        type="number"
-        min="1"
-        value={String(newQuestion.points)}
-        onChange={(e) => setNewQuestion(q => ({ ...q, points: parseInt(e.target.value) || 10 }))}
-      />
+        <Input
+          label="Poin"
+          type="number"
+          min="1"
+          value={String(newQuestion.points)}
+          disabled={lockStructureFields}
+          onChange={(e) => setNewQuestion(q => ({ ...q, points: parseInt(e.target.value) || 10 }))}
+        />
 
       {/* Options for MC / Multiple Answer */}
       {['multiple_choice', 'multiple_answer'].includes(newQuestion.question_type) && (
@@ -186,6 +191,11 @@ function QuestionForm({
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Opsi Jawaban {newQuestion.question_type === 'multiple_answer' && '(centang semua yang benar)'}
           </label>
+          {lockStructureFields && (
+            <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
+              Saat kuis aktif, kunci jawaban tidak dapat diubah.
+            </p>
+          )}
           <div className="space-y-2">
             {newQuestion.options.map((opt, idx) => (
               <div key={idx} className="flex items-center gap-2">
@@ -194,6 +204,7 @@ function QuestionForm({
                     type="radio"
                     name="correct"
                     checked={opt.is_correct}
+                    disabled={lockStructureFields}
                     onChange={() => setNewQuestion(q => ({
                       ...q,
                       options: q.options.map((o, i) => ({ ...o, is_correct: i === idx })),
@@ -204,6 +215,7 @@ function QuestionForm({
                   <input
                     type="checkbox"
                     checked={opt.is_correct}
+                    disabled={lockStructureFields}
                     onChange={() => setNewQuestion(q => ({
                       ...q,
                       options: q.options.map((o, i) => i === idx ? { ...o, is_correct: !o.is_correct } : o),
@@ -249,7 +261,7 @@ function QuestionForm({
                 />
                 {optionImagePreviews[idx] && (
                   <div className="relative">
-                    <img src={optionImagePreviews[idx]!} alt="" className="h-8 rounded border" />
+                    <Image src={optionImagePreviews[idx]!} alt="" width={64} height={32} className="h-8 w-auto rounded border" unoptimized />
                     <button onClick={() => {
                       const files = [...optionImageFiles]; files[idx] = null; setOptionImageFiles(files);
                       const previews = [...optionImagePreviews]; previews[idx] = null; setOptionImagePreviews(previews);
@@ -258,7 +270,7 @@ function QuestionForm({
                     </button>
                   </div>
                 )}
-                {newQuestion.options.length > 2 && (
+                {!lockStructureFields && newQuestion.options.length > 2 && (
                   <button onClick={() => setNewQuestion(q => ({
                     ...q,
                     options: q.options.filter((_, i) => i !== idx),
@@ -269,7 +281,7 @@ function QuestionForm({
               </div>
             ))}
           </div>
-          {newQuestion.options.length < 6 && (
+          {!lockStructureFields && newQuestion.options.length < 6 && (
             <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setNewQuestion(q => ({
               ...q,
               options: [...q.options, { text: '', is_correct: false }],
@@ -290,6 +302,7 @@ function QuestionForm({
                 <input
                   type="text"
                   value={kw}
+                  disabled={lockStructureFields}
                   onChange={(e) => {
                     const kws = [...(newQuestion.essay_keywords || [])];
                     kws[idx] = e.target.value;
@@ -298,21 +311,25 @@ function QuestionForm({
                   className="flex-1 px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                   placeholder="Kata kunci..."
                 />
-                <button onClick={() => setNewQuestion(q => ({
+                {!lockStructureFields && (
+                  <button onClick={() => setNewQuestion(q => ({
                   ...q,
                   essay_keywords: (q.essay_keywords || []).filter((_, i) => i !== idx),
                 }))} className="text-red-400 hover:text-red-600">
                   <Trash2 className="w-4 h-4" />
-                </button>
+                  </button>
+                )}
               </div>
             ))}
           </div>
-          <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setNewQuestion(q => ({
+          {!lockStructureFields && (
+            <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setNewQuestion(q => ({
             ...q,
             essay_keywords: [...(q.essay_keywords || []), ''],
           }))}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kata Kunci
-          </Button>
+            </Button>
+          )}
         </div>
       )}
     </div>
@@ -378,7 +395,10 @@ export default function EditQuizPage() {
     ],
   });
 
-  useEffect(() => { fetchData(); }, [quizId]);
+  const isDraftQuiz = quiz?.status === 'draft';
+  const isActiveQuiz = quiz?.status === 'active';
+  const canEditQuestionContent = Boolean(isDraftQuiz || isActiveQuiz);
+  const canManageQuestionCollection = Boolean(isDraftQuiz);
 
   // Close import menu on outside click
   useEffect(() => {
@@ -391,7 +411,17 @@ export default function EditQuizPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    if (canManageQuestionCollection) return;
+    setShowImportMenu(false);
+    setShowImportText(false);
+    setShowImportBankSoal(false);
+    setShowImportExcel(false);
+    setShowImportWord(false);
+    setShowDuplicateExamModal(false);
+  }, [canManageQuestionCollection]);
+
+  const fetchData = useCallback(async () => {
     try {
       const res = await quizAPI.getById(quizId);
       const data = res.data?.data;
@@ -410,25 +440,28 @@ export default function EditQuizPage() {
           shuffle_options: data.shuffle_options,
         });
 
-        const qs = (data.questions || []).map((q: Record<string, unknown>) => ({
-          id: q.id as number,
-          question_text: q.question_text as string,
-          question_type: (q.type || q.question_type || 'multiple_choice') as Question['question_type'],
-          points: (q.points as number) || 10,
-          order: (q.order as number) || 0,
-          passage: q.passage as string | null,
-          image: q.image as string | null,
-          options: ((q.options || []) as { text: string; is_correct?: boolean; image?: string | null }[]).map((o, i) => ({
-            text: o.text || '',
-            is_correct: q.type === 'multiple_choice'
-              ? o.text === q.correct_answer
-              : q.type === 'multiple_answer'
-              ? (() => { try { const ca = JSON.parse(q.correct_answer as string); return Array.isArray(ca) && ca.map((s: string) => s.toLowerCase()).includes(o.text.toLowerCase()); } catch { return false; } })()
-              : i === 0,
-            image: o.image || null,
-          })),
-          essay_keywords: (q.essay_keywords as string[]) || [],
-        }));
+        const qs = (data.questions || []).map((q: Record<string, unknown>) => {
+          const questionType = (q.type || q.question_type || 'multiple_choice') as Question['question_type'];
+          return {
+            id: q.id as number,
+            question_text: q.question_text as string,
+            question_type: questionType,
+            points: (q.points as number) || 10,
+            order: (q.order as number) || 0,
+            passage: q.passage as string | null,
+            image: q.image as string | null,
+            options: ((q.options || []) as { text: string; is_correct?: boolean; image?: string | null }[]).map((o, i) => ({
+              text: o.text || '',
+              is_correct: questionType === 'multiple_choice'
+                ? o.text === q.correct_answer
+                : questionType === 'multiple_answer'
+                ? (() => { try { const ca = JSON.parse(q.correct_answer as string); return Array.isArray(ca) && ca.map((s: string) => s.toLowerCase()).includes(o.text.toLowerCase()); } catch { return false; } })()
+                : i === 0,
+              image: o.image || null,
+            })),
+            essay_keywords: (q.essay_keywords as string[]) || [],
+          };
+        });
         setQuestions(qs);
       }
     } catch {
@@ -436,7 +469,9 @@ export default function EditQuizPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId, toast]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const resetQuestionForm = () => {
     setNewQuestion({
@@ -459,9 +494,45 @@ export default function EditQuizPage() {
     setOptionImagePreviews([null, null, null, null]);
   };
 
+  const hasPersistedOptionImage = (idx: number, opt: Option) => (
+    Boolean(optionImageFiles[idx]) ||
+    Boolean(optionImagePreviews[idx]) ||
+    Boolean(opt.image)
+  );
+
+  const appendOptionPayload = (formData: FormData, idx: number, opt: Option, isEdit: boolean) => {
+    const hasImage = hasPersistedOptionImage(idx, opt);
+    const optText = opt.text.trim() || (hasImage ? `[Gambar ${String.fromCharCode(65 + idx)}]` : '');
+    formData.append(`options[${idx}][option_text]`, optText);
+    formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
+    formData.append(`options[${idx}][order]`, String(idx + 1));
+
+    if (optionImageFiles[idx]) {
+      formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
+      return;
+    }
+
+    if (optionImagePreviews[idx] && opt.image) {
+      formData.append(`options[${idx}][image_path]`, opt.image);
+      return;
+    }
+
+    if (isEdit && !optionImagePreviews[idx] && !optionImageFiles[idx] && opt.image) {
+      formData.append(`options[${idx}][remove_image]`, '1');
+    }
+  };
+
   const handleSaveQuestion = async (isEdit = false) => {
     if (!newQuestion.question_text.trim()) {
       toast.warning('Teks soal wajib diisi');
+      return;
+    }
+    if (!canEditQuestionContent) {
+      toast.warning('Soal hanya dapat diedit saat kuis draft atau aktif');
+      return;
+    }
+    if (!isEdit && !canManageQuestionCollection) {
+      toast.warning('Menambah soal hanya tersedia saat kuis masih draft');
       return;
     }
 
@@ -469,7 +540,7 @@ export default function EditQuizPage() {
     if (needsOptions) {
       const hasCorrect = newQuestion.options.some(o => o.is_correct);
       if (!hasCorrect) { toast.warning('Pilih minimal 1 jawaban benar'); return; }
-      const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !opt.image && !optionImageFiles[idx] && !optionImagePreviews[idx]);
+      const hasEmptyOption = newQuestion.options.some((opt, idx) => !opt.text.trim() && !hasPersistedOptionImage(idx, opt));
       if (hasEmptyOption) {
         toast.warning('Semua opsi harus diisi teks atau gambar');
         return;
@@ -485,6 +556,7 @@ export default function EditQuizPage() {
 
     setSaving(true);
     try {
+      const isLiveEditMode = isEdit && isActiveQuiz;
       const formData = new FormData();
       formData.append('question_text', newQuestion.question_text);
       formData.append('question_type', newQuestion.question_type);
@@ -503,28 +575,15 @@ export default function EditQuizPage() {
 
       if (needsOptions) {
         newQuestion.options.forEach((opt, idx) => {
-          const hasImage = optionImageFiles[idx] || optionImagePreviews[idx] || opt.image;
-          const optText = opt.text.trim() || (hasImage ? `[Gambar ${String.fromCharCode(65 + idx)}]` : '');
-          formData.append(`options[${idx}][option_text]`, optText);
-          formData.append(`options[${idx}][is_correct]`, opt.is_correct ? '1' : '0');
-          formData.append(`options[${idx}][order]`, String(idx + 1));
-          if (optionImageFiles[idx]) {
-            formData.append(`options[${idx}][image]`, optionImageFiles[idx]!);
-          } else if (opt.image) {
-            formData.append(`options[${idx}][existing_image]`, opt.image);
-          }
-          // Handle option image removal
-          if (isEdit && !optionImagePreviews[idx] && !optionImageFiles[idx] && opt.image) {
-            formData.append(`options[${idx}][remove_image]`, '1');
-          }
+          appendOptionPayload(formData, idx, opt, isEdit);
         });
       }
 
-      if (newQuestion.question_type === 'essay' && newQuestion.essay_keywords?.length) {
+      if (!isLiveEditMode && newQuestion.question_type === 'essay' && newQuestion.essay_keywords?.length) {
         newQuestion.essay_keywords.forEach((kw, i) => {
           formData.append(`essay_keywords[${i}]`, kw);
         });
-      } else if (newQuestion.question_type === 'essay') {
+      } else if (!isLiveEditMode && newQuestion.question_type === 'essay') {
         formData.append('essay_keywords', '');
       }
 
@@ -575,6 +634,11 @@ export default function EditQuizPage() {
 
   const handleDeleteQuestion = async () => {
     if (deleteQuestionId === null) return;
+    if (!canManageQuestionCollection) {
+      toast.warning('Soal terkunci karena kuis sudah dipublikasikan');
+      setDeleteQuestionId(null);
+      return;
+    }
     try {
       await quizAPI.deleteQuestion(deleteQuestionId);
       // Optimistic update - remove from local state immediately
@@ -593,6 +657,10 @@ export default function EditQuizPage() {
   };
 
   const openEditQuestion = (q: Question) => {
+    if (!canEditQuestionContent) {
+      toast.warning('Soal hanya dapat diedit saat kuis draft atau aktif');
+      return;
+    }
     setEditingQuestion(q.id || null);
     setNewQuestion({ ...q });
     const existingImage = q.image ? `/storage/${q.image}` : null;
@@ -614,6 +682,10 @@ export default function EditQuizPage() {
     essay_keywords?: string[] | null;
     options: { text: string; is_correct: boolean; image?: string | File | null }[];
   }[]) => {
+    if (!canManageQuestionCollection) {
+      toast.warning('Impor soal hanya tersedia saat kuis masih draft');
+      return;
+    }
     let successCount = 0;
     let failCount = 0;
 
@@ -708,6 +780,10 @@ export default function EditQuizPage() {
   };
 
   const openDuplicateExamModal = async () => {
+    if (!canManageQuestionCollection) {
+      toast.warning('Impor soal hanya tersedia saat kuis masih draft');
+      return;
+    }
     setShowImportMenu(false);
     setShowDuplicateExamModal(true);
     setLoadingSourceExams(true);
@@ -733,6 +809,10 @@ export default function EditQuizPage() {
   };
 
   const handleDuplicateFromExam = async () => {
+    if (!canManageQuestionCollection) {
+      toast.warning('Impor soal hanya tersedia saat kuis masih draft');
+      return;
+    }
     if (!selectedSourceExamId) {
       toast.warning('Pilih ujian CBT sumber terlebih dahulu');
       return;
@@ -777,6 +857,7 @@ export default function EditQuizPage() {
     setOptionImageFiles,
     fileInputRef,
     optionFileInputRefs,
+    lockStructureFields: isActiveQuiz,
   };
 
   if (loading) {
@@ -833,13 +914,22 @@ export default function EditQuizPage() {
         {/* Actions bar */}
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => { resetQuestionForm(); setIsAddModalOpen(true); }} className="gap-1.5">
+            <Button
+              onClick={() => { resetQuestionForm(); setIsAddModalOpen(true); }}
+              className="gap-1.5"
+              disabled={!canManageQuestionCollection}
+            >
               <Plus className="w-4 h-4" /> Tambah Soal
             </Button>
 
             {/* Import dropdown */}
             <div className="relative" ref={importMenuRef}>
-              <Button variant="outline" onClick={() => setShowImportMenu(!showImportMenu)} className="gap-1.5">
+              <Button
+                variant="outline"
+                onClick={() => setShowImportMenu(!showImportMenu)}
+                className="gap-1.5"
+                disabled={!canManageQuestionCollection}
+              >
                 <ChevronDown className="w-4 h-4" /> Import Soal
               </Button>
               {showImportMenu && (
@@ -868,6 +958,20 @@ export default function EditQuizPage() {
             </span>
           </div>
         </Card>
+        {isActiveQuiz && (
+          <Card className="p-3 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              Mode edit live aktif: Anda dapat memperbaiki isi soal/opsi. Tambah, hapus, dan impor soal tetap terkunci.
+            </p>
+          </Card>
+        )}
+        {!isDraftQuiz && !isActiveQuiz && (
+          <Card className="p-3 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+            <p className="text-sm text-amber-800 dark:text-amber-300">
+              Soal terkunci. Ubah status kuis ke draft atau active untuk mengedit soal.
+            </p>
+          </Card>
+        )}
 
         {/* Questions list */}
         {questions.length === 0 ? (
@@ -904,7 +1008,14 @@ export default function EditQuizPage() {
                           <MathText text={q.question_text} />
                         </div>
                         {q.image && (
-                          <img src={getSecureFileUrl(q.image)} alt="" className="mt-1.5 h-16 rounded border" />
+                          <Image
+                            src={getSecureFileUrl(q.image)}
+                            alt=""
+                            width={320}
+                            height={128}
+                            className="mt-1.5 h-16 w-auto rounded border"
+                            unoptimized
+                          />
                         )}
                         {q.question_type !== 'essay' && q.options.length > 0 && (
                           <div className="mt-2 space-y-0.5">
@@ -931,10 +1042,20 @@ export default function EditQuizPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openEditQuestion(q)} className="p-1.5 text-slate-400 hover:text-indigo-500 transition-colors" title="Edit">
+                        <button
+                          onClick={() => openEditQuestion(q)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-500 transition-colors disabled:text-slate-300 disabled:cursor-not-allowed"
+                          title="Edit"
+                          disabled={!canEditQuestionContent}
+                        >
                           <FileEdit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setDeleteQuestionId(q.id || null)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors" title="Hapus">
+                        <button
+                          onClick={() => setDeleteQuestionId(q.id || null)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 transition-colors disabled:text-slate-300 disabled:cursor-not-allowed"
+                          title="Hapus"
+                          disabled={!canManageQuestionCollection}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -952,7 +1073,7 @@ export default function EditQuizPage() {
         <QuestionForm {...questionFormProps} />
         <div className="flex justify-end gap-3 mt-4 pt-3 border-t dark:border-slate-700">
           <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Batal</Button>
-          <Button onClick={() => handleSaveQuestion(false)} disabled={saving}>
+          <Button onClick={() => handleSaveQuestion(false)} disabled={saving || !canEditQuestionContent}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Simpan
           </Button>
@@ -964,7 +1085,7 @@ export default function EditQuizPage() {
         <QuestionForm {...questionFormProps} />
         <div className="flex justify-end gap-3 mt-4 pt-3 border-t dark:border-slate-700">
           <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Batal</Button>
-          <Button onClick={() => handleSaveQuestion(true)} disabled={saving}>
+          <Button onClick={() => handleSaveQuestion(true)} disabled={saving || !canEditQuestionContent}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Simpan
           </Button>

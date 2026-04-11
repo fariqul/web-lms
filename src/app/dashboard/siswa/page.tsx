@@ -11,7 +11,6 @@ import {
   Clock,
   ChevronRight,
   ChevronLeft,
-  Loader2,
   CheckCircle,
   ClipboardList,
   Bell,
@@ -26,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import api, { assignmentAPI, announcementAPI, getSecureFileUrl } from '@/services/api';
-import { getTimeGreeting, getConditionTextColor, getConditionHex } from '@/lib/dashboard-utils';
+import { getTimeGreeting, getConditionTextColor } from '@/lib/dashboard-utils';
 
 interface ScheduleItem {
   id: number;
@@ -106,6 +105,7 @@ export default function SiswaDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDashboardData = async () => {

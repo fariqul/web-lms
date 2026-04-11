@@ -9,6 +9,7 @@ use App\Models\Attendance;
 use App\Models\AttendanceSession;
 use App\Models\Exam;
 use App\Models\ExamResult;
+use App\Models\Violation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -95,6 +96,7 @@ class DashboardController extends Controller
                 'academic_performance' => $additionalStats['academic_performance'],
                 'weekly_attendance' => $additionalStats['weekly_attendance'],
                 'teacher_daily_recap' => $teacherDailyRecap,
+                'quiz_observability' => $this->getQuizObservabilitySummary(),
             ]),
         ]);
     }
@@ -287,6 +289,91 @@ class DashboardController extends Controller
                 'pass_rate' => $passRate,
             ],
             'weekly_attendance' => $weeklyAttendance,
+        ];
+    }
+
+    private function getQuizObservabilitySummary(): array
+    {
+        $now = now();
+        $last24Hours = $now->copy()->subDay();
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\ExamResult> $inProgress */
+        $inProgress = ExamResult::with([
+            'exam:id,title,type,duration,max_violations',
+            'student:id,name',
+        ])
+            ->where('status', 'in_progress')
+            ->whereNotNull('started_at')
+            ->get();
+
+        $staleSessions = $inProgress->filter(function (ExamResult $result) use ($now) {
+            $duration = (int) ($result->exam?->duration ?? 0);
+            if ($duration <= 0 || !$result->started_at) {
+                return false;
+            }
+
+            $elapsedMinutes = abs($now->diffInMinutes($result->started_at));
+            return $elapsedMinutes > ($duration + 10);
+        });
+
+        $highRiskSessions = $inProgress->filter(function (ExamResult $result) {
+            $maxViolations = (int) ($result->exam?->max_violations ?? 0);
+            if ($maxViolations <= 0) {
+                return false;
+            }
+
+            return (int) ($result->violation_count ?? 0) >= max(1, $maxViolations - 1);
+        });
+
+        $activeExamSessions = $inProgress->filter(fn (ExamResult $result) => ($result->exam?->type ?? '') !== 'quiz')->count();
+        $activeQuizSessions = $inProgress->filter(fn (ExamResult $result) => ($result->exam?->type ?? '') === 'quiz')->count();
+
+        $autoSubmittedLast24h = ExamResult::query()
+            ->where('submitted_at', '>=', $last24Hours)
+            ->where('status', 'completed')
+            ->where('violation_count', '>', 0)
+            ->count();
+
+        $submittedQuizPendingGrading = ExamResult::query()
+            ->where('status', 'submitted')
+            ->whereHas('exam', function ($query) {
+                $query->where('type', 'quiz');
+            })
+            ->count();
+
+        $topRiskySessions = $highRiskSessions
+            ->sortByDesc(fn (ExamResult $result) => (int) ($result->violation_count ?? 0))
+            ->take(5)
+            ->map(function (ExamResult $result) {
+                return [
+                    'exam_id' => (int) $result->exam_id,
+                    'exam_title' => (string) ($result->exam?->title ?? '-'),
+                    'exam_type' => (string) ($result->exam?->type ?? '-'),
+                    'student_id' => (int) $result->student_id,
+                    'student_name' => (string) ($result->student?->name ?? '-'),
+                    'status' => (string) $result->status,
+                    'violation_count' => (int) ($result->violation_count ?? 0),
+                    'max_violations' => $result->exam?->max_violations !== null
+                        ? (int) $result->exam?->max_violations
+                        : null,
+                    'started_at' => $result->started_at?->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'generated_at' => $now->toIso8601String(),
+            'active_exam_sessions' => $activeExamSessions,
+            'active_quiz_sessions' => $activeQuizSessions,
+            'stale_sessions' => $staleSessions->count(),
+            'high_risk_sessions' => $highRiskSessions->count(),
+            'violation_events_last_24h' => Violation::query()
+                ->where('recorded_at', '>=', $last24Hours)
+                ->count(),
+            'auto_submitted_last_24h' => $autoSubmittedLast24h,
+            'submitted_quiz_pending_grading' => $submittedQuizPendingGrading,
+            'top_risky_sessions' => $topRiskySessions,
         ];
     }
 

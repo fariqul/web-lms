@@ -12,7 +12,7 @@ import {
 import api from '@/services/api';
 import { classAPI, examAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
-import { downloadSEBConfig, type SEBExamSettings } from '@/utils/seb';
+import { downloadSEBConfig } from '@/utils/seb';
 import { useExamsListSocket } from '@/hooks/useSocket';
 
 interface ExamClass {
@@ -66,8 +66,6 @@ export default function AdminUjianPage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [publishingId, setPublishingId] = useState<number | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState<{ id: number; title: string } | null>(null);
-  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState<{ id: number; title: string } | null>(null);
-  const [unpublishingId, setUnpublishingId] = useState<number | null>(null);
   
   // Multi-select and bulk unpublish
   const [selectedExams, setSelectedExams] = useState<Set<number>>(new Set());

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Trash2, Loader2, Info, AlertTriangle, BookOpen, GraduationCap, ClipboardList, KeyRound, X, ArrowLeft, User, Mail, Phone, Shield, Copy } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, Loader2, Info, AlertTriangle, BookOpen, GraduationCap, ClipboardList, KeyRound, ArrowLeft, User, Mail, Phone, Shield, Copy } from 'lucide-react';
 import { notificationAPI } from '@/services/api';
 
 interface Notification {

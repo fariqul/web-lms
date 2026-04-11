@@ -102,7 +102,7 @@ export default function AkunPage() {
       setPreviewPhoto(null);
       setSelectedFile(null);
       toast.success('Foto profil berhasil diperbarui!');
-    } catch (error) {
+    } catch {
       toast.error('Gagal mengupload foto. Silakan coba lagi.');
     } finally {
       setUploadingPhoto(false);

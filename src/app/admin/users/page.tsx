@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { extractNomorTesNumber } from '@/utils/nomorTes';
@@ -372,7 +372,7 @@ export default function AdminUsersPage() {
 
       setIsModalOpen(false);
       fetchData(); // Refresh data
-    } catch (error) {
+    } catch {
       toast.error('Gagal menyimpan data pengguna');
     } finally {
       setSubmitting(false);
@@ -385,7 +385,7 @@ export default function AdminUsersPage() {
       await userAPI.delete(selectedUser.id);
       setIsDeleteDialogOpen(false);
       fetchData(); // Refresh data
-    } catch (error) {
+    } catch {
       toast.error('Gagal menghapus pengguna');
     }
   };
@@ -397,7 +397,7 @@ export default function AdminUsersPage() {
       toast.success(msg);
       setIsClearNomorTesOpen(false);
       fetchData();
-    } catch (error) {
+    } catch {
       toast.error('Gagal menghapus nomor tes');
     }
   };
@@ -429,7 +429,7 @@ export default function AdminUsersPage() {
       }
       setIsNormalizeNomorTesOpen(false);
       fetchData();
-    } catch (error) {
+    } catch {
       toast.error('Gagal menormalisasi nomor tes');
     }
   };

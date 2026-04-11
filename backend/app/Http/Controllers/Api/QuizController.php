@@ -50,6 +50,47 @@ class QuizController extends Controller
         return $newPath;
     }
 
+    private function normalizePublicDiskPath(?string $path): ?string
+    {
+        if ($path === null) {
+            return null;
+        }
+
+        $normalized = trim($path);
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace('\\', '/', $normalized);
+
+        if (preg_match('/^https?:\/\//i', $normalized) === 1) {
+            $parsedPath = parse_url($normalized, PHP_URL_PATH);
+            if (is_string($parsedPath) && $parsedPath !== '') {
+                $normalized = $parsedPath;
+            }
+        }
+
+        $storagePos = strpos($normalized, '/storage/');
+        if ($storagePos !== false) {
+            $normalized = substr($normalized, $storagePos + strlen('/storage/'));
+        }
+
+        $normalized = ltrim($normalized, '/');
+        $normalized = preg_replace('/^public\//', '', $normalized) ?? $normalized;
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private function copyFromPublicPath(?string $sourcePath, string $targetDir): ?string
+    {
+        $normalizedPath = $this->normalizePublicDiskPath($sourcePath);
+        if (!$normalizedPath || !Storage::disk('public')->exists($normalizedPath)) {
+            return null;
+        }
+
+        return $this->clonePublicFilePath($normalizedPath, $targetDir);
+    }
+
     private function buildScoredAnswerPayload(Question $question, string $rawAnswer): array
     {
         $isCorrect = null;
@@ -100,6 +141,129 @@ class QuizController extends Controller
             'is_correct' => $isCorrect,
             'score' => $answerScore,
         ];
+    }
+
+    private function deriveCorrectOptionFlags(Question $question, array $options): array
+    {
+        $flags = array_fill(0, count($options), false);
+
+        if ($question->type === 'multiple_choice') {
+            $target = mb_strtolower(trim((string) $question->correct_answer));
+            foreach ($options as $idx => $opt) {
+                $optText = is_array($opt) ? (string) ($opt['text'] ?? '') : '';
+                if (mb_strtolower(trim($optText)) === $target) {
+                    $flags[$idx] = true;
+                    break;
+                }
+            }
+        } elseif ($question->type === 'multiple_answer') {
+            $correctAnswers = json_decode((string) $question->correct_answer, true);
+            $normalizedCorrect = is_array($correctAnswers)
+                ? array_map(fn($item) => mb_strtolower(trim((string) $item)), $correctAnswers)
+                : [];
+
+            foreach ($options as $idx => $opt) {
+                $optText = is_array($opt) ? (string) ($opt['text'] ?? '') : '';
+                $flags[$idx] = in_array(mb_strtolower(trim($optText)), $normalizedCorrect, true);
+            }
+        }
+
+        return $flags;
+    }
+
+    private function remapSingleAnswerValue(string $answerValue, array $oldOptionTexts, array $newOptionTexts): string
+    {
+        $normalized = mb_strtolower(trim($answerValue));
+        foreach ($oldOptionTexts as $idx => $oldText) {
+            if (mb_strtolower(trim((string) $oldText)) === $normalized) {
+                return (string) ($newOptionTexts[$idx] ?? $answerValue);
+            }
+        }
+
+        return $answerValue;
+    }
+
+    private function remapLiveInProgressAnswers(Exam $quiz, Question $question, array $oldOptions, array $newOptions): void
+    {
+        if (!in_array($question->type, ['multiple_choice', 'multiple_answer'], true)) {
+            return;
+        }
+
+        if (count($oldOptions) !== count($newOptions) || count($oldOptions) === 0) {
+            return;
+        }
+
+        $oldOptionTexts = array_map(
+            fn($opt) => is_array($opt) ? (string) ($opt['text'] ?? '') : '',
+            $oldOptions
+        );
+        $newOptionTexts = array_map(
+            fn($opt) => is_array($opt) ? (string) ($opt['text'] ?? '') : '',
+            $newOptions
+        );
+
+        $hasTextChanges = false;
+        foreach ($oldOptionTexts as $idx => $oldText) {
+            if ($oldText !== ($newOptionTexts[$idx] ?? '')) {
+                $hasTextChanges = true;
+                break;
+            }
+        }
+        if (!$hasTextChanges) {
+            return;
+        }
+
+        $answers = Answer::query()
+            ->select('answers.*')
+            ->join('exam_results', function ($join) {
+                $join->on('answers.exam_id', '=', 'exam_results.exam_id')
+                    ->on('answers.student_id', '=', 'exam_results.student_id');
+            })
+            ->where('answers.exam_id', $quiz->id)
+            ->where('answers.question_id', $question->id)
+            ->where('exam_results.status', 'in_progress')
+            ->get();
+
+        foreach ($answers as $answer) {
+            $rawAnswer = (string) $answer->answer;
+            if (trim($rawAnswer) === '') {
+                continue;
+            }
+
+            $updatedAnswer = $rawAnswer;
+            if ($question->type === 'multiple_choice') {
+                $updatedAnswer = $this->remapSingleAnswerValue($rawAnswer, $oldOptionTexts, $newOptionTexts);
+            } else {
+                $decoded = json_decode($rawAnswer, true);
+                if (!is_array($decoded)) {
+                    continue;
+                }
+
+                $remapped = array_map(function ($item) use ($oldOptionTexts, $newOptionTexts) {
+                    if (!is_string($item)) {
+                        return $item;
+                    }
+                    return $this->remapSingleAnswerValue($item, $oldOptionTexts, $newOptionTexts);
+                }, $decoded);
+
+                $encoded = json_encode($remapped);
+                if ($encoded === false) {
+                    continue;
+                }
+                $updatedAnswer = $encoded;
+            }
+
+            if ($updatedAnswer === $rawAnswer) {
+                continue;
+            }
+
+            $scored = $this->buildScoredAnswerPayload($question, $updatedAnswer);
+            $answer->update([
+                'answer' => $updatedAnswer,
+                'is_correct' => $scored['is_correct'],
+                'score' => $scored['score'],
+            ]);
+        }
     }
 
     /**
@@ -196,11 +360,65 @@ class QuizController extends Controller
         if (!in_array($user->class_id, $quizClassIds, true)) {
             return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke quiz ini'], 403);
         }
+        if (!in_array($quiz->status, ['scheduled', 'active', 'completed'], true)) {
+            return response()->json(['success' => false, 'message' => 'Quiz tidak tersedia'], 403);
+        }
 
         $result = ExamResult::where('exam_id', $quiz->id)->where('student_id', $user->id)->first();
         $quiz->my_result = $result;
 
         return response()->json(['success' => true, 'data' => $quiz]);
+    }
+
+    /**
+     * Sync latest question content for in-progress student sessions.
+     */
+    public function syncQuestions(Request $request, Exam $quiz)
+    {
+        if ($quiz->type !== 'quiz') {
+            return response()->json(['success' => false, 'message' => 'Bukan quiz'], 404);
+        }
+
+        $user = $request->user();
+        $quizClassIds = $quiz->classes()->pluck('classes.id')->toArray();
+        if (empty($quizClassIds)) {
+            $quizClassIds = [$quiz->class_id];
+        }
+
+        if (!in_array($user->class_id, $quizClassIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke quiz ini'], 403);
+        }
+
+        $result = ExamResult::where('exam_id', $quiz->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$result) {
+            return response()->json(['success' => false, 'message' => 'Sesi quiz tidak aktif'], 422);
+        }
+
+        $questions = $quiz->questions()->orderBy('order')->get();
+        $latestUpdatedAt = $questions->max('updated_at');
+        $revision = $latestUpdatedAt ? Carbon::parse((string) $latestUpdatedAt)->getTimestamp() : 0;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'revision' => $revision,
+                'questions' => $questions->map(fn($q) => [
+                    'id' => $q->id,
+                    'order' => $q->order,
+                    'question_text' => $q->question_text,
+                    'type' => $q->type,
+                    'question_type' => $q->type,
+                    'passage' => $q->passage,
+                    'options' => $q->options ?? [],
+                    'image' => $q->image,
+                    'updated_at' => $q->updated_at ? $q->updated_at->toISOString() : null,
+                ])->values(),
+            ],
+        ]);
     }
 
     /**
@@ -371,6 +589,17 @@ class QuizController extends Controller
 
         // Toggle: active → draft (unpublish)
         if ($quiz->status === 'active' || $quiz->status === 'scheduled') {
+            $hasInProgressAttempts = ExamResult::where('exam_id', $quiz->id)
+                ->where('status', 'in_progress')
+                ->exists();
+
+            if ($hasInProgressAttempts) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quiz tidak dapat di-unpublish karena masih ada siswa yang sedang mengerjakan.',
+                ], 422);
+            }
+
             $quiz->status = 'draft';
             $quiz->save();
             $this->forgetQuizShowCache($quiz->id);
@@ -411,9 +640,19 @@ class QuizController extends Controller
                 ->get();
 
             foreach ($inProgress as $result) {
-                $result->status = 'completed';
                 $result->finished_at = now();
                 $result->submitted_at = now();
+
+                $hasUngradedEssays = Answer::where('exam_id', $quiz->id)
+                    ->where('student_id', $result->student_id)
+                    ->whereHas('question', function ($q) {
+                        $q->where('type', 'essay')->where(function ($q2) {
+                            $q2->whereNull('essay_keywords')->orWhere('essay_keywords', '[]');
+                        });
+                    })
+                    ->exists();
+
+                $result->status = $hasUngradedEssays ? 'submitted' : 'graded';
                 $result->calculateScore();
             }
         });
@@ -443,10 +682,10 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        if (!in_array($quiz->status, ['draft', 'scheduled', 'active'], true)) {
+        if ($quiz->status !== 'draft') {
             return response()->json([
                 'success' => false,
-                'message' => 'Soal tidak dapat diubah karena quiz sudah selesai',
+                'message' => 'Soal hanya dapat ditambahkan saat quiz berstatus draft',
             ], 422);
         }
 
@@ -459,6 +698,7 @@ class QuizController extends Controller
             'options.*.is_correct' => 'required_if:question_type,multiple_choice|required_if:question_type,multiple_answer|boolean',
             'options.*.image' => 'nullable|image|max:5120',
             'options.*.image_path' => 'nullable|string',
+            'options.*.existing_image' => 'nullable|string',
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120',
             'image_path' => 'nullable|string',
@@ -470,11 +710,8 @@ class QuizController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('question-images', 'public');
-        } elseif ($request->image_path && Storage::disk('public')->exists($request->image_path)) {
-            $ext = pathinfo($request->image_path, PATHINFO_EXTENSION);
-            $newPath = 'question-images/' . uniqid() . '.' . $ext;
-            Storage::disk('public')->copy($request->image_path, $newPath);
-            $imagePath = $newPath;
+        } elseif ($copiedImage = $this->copyFromPublicPath($request->image_path, 'question-images')) {
+            $imagePath = $copiedImage;
         }
 
         // Process options
@@ -487,11 +724,8 @@ class QuizController extends Controller
                 $optImage = null;
                 if ($request->hasFile("options.{$idx}.image")) {
                     $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
-                } elseif (!empty($opt['image_path']) && Storage::disk('public')->exists($opt['image_path'])) {
-                    $ext = pathinfo($opt['image_path'], PATHINFO_EXTENSION);
-                    $newOptPath = 'option-images/' . uniqid() . '.' . $ext;
-                    Storage::disk('public')->copy($opt['image_path'], $newOptPath);
-                    $optImage = $newOptPath;
+                } elseif ($copiedOptImage = $this->copyFromPublicPath($opt['image_path'] ?? ($opt['existing_image'] ?? null), 'option-images')) {
+                    $optImage = $copiedOptImage;
                 }
                 $optText = $opt['option_text'] ?? '';
                 if (empty(trim($optText)) && $optImage) {
@@ -697,12 +931,16 @@ class QuizController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        if ($quiz->status !== 'draft') {
+        if (!in_array($quiz->status, ['draft', 'active'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Soal hanya dapat diubah saat quiz berstatus draft',
+                'message' => 'Soal hanya dapat diubah saat quiz berstatus draft atau aktif',
             ], 422);
         }
+
+        $isLiveEdit = $quiz->status === 'active';
+        $existingOptions = is_array($question->options) ? array_values($question->options) : [];
+        $existingCorrectFlags = $this->deriveCorrectOptionFlags($question, $existingOptions);
 
         $request->validate([
             'question_text' => 'sometimes|string',
@@ -713,49 +951,145 @@ class QuizController extends Controller
             'options.*.is_correct' => 'sometimes|boolean',
             'options.*.image' => 'nullable|image|max:5120',
             'options.*.image_path' => 'nullable|string',
+            'options.*.existing_image' => 'nullable|string',
+            'options.*.remove_image' => 'nullable|boolean',
             'points' => 'nullable|integer|min:1',
             'image' => 'nullable|image|max:5120',
             'image_path' => 'nullable|string',
+            'remove_image' => 'nullable|boolean',
             'essay_keywords' => 'nullable|array',
             'essay_keywords.*' => 'string',
         ]);
 
-        $imagePath = $question->image;
-        if ($request->hasFile('image')) {
-            if ($question->image) Storage::disk('public')->delete($question->image);
-            $imagePath = $request->file('image')->store('question-images', 'public');
-        } elseif ($request->image_path && Storage::disk('public')->exists($request->image_path)) {
-            $ext = pathinfo($request->image_path, PATHINFO_EXTENSION);
-            $newPath = 'question-images/' . uniqid() . '.' . $ext;
-            Storage::disk('public')->copy($request->image_path, $newPath);
-            $imagePath = $newPath;
+        if ($isLiveEdit) {
+            if ($request->filled('question_type') && $request->input('question_type') !== $question->type) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Saat quiz aktif, tipe soal tidak dapat diubah',
+                ], 422);
+            }
+
+            if ($request->has('points') && (int) $request->input('points') !== (int) $question->points) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Saat quiz aktif, poin soal tidak dapat diubah',
+                ], 422);
+            }
+
+            if ($request->has('essay_keywords')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Saat quiz aktif, kata kunci essay tidak dapat diubah',
+                ], 422);
+            }
+
+            if ($request->has('options') && is_array($request->input('options'))) {
+                $incomingOptions = array_values($request->input('options', []));
+                if (count($incomingOptions) !== count($existingOptions)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Saat quiz aktif, jumlah opsi tidak dapat diubah',
+                    ], 422);
+                }
+
+                foreach ($incomingOptions as $idx => $opt) {
+                    if (!is_array($opt) || !array_key_exists('is_correct', $opt)) {
+                        continue;
+                    }
+
+                    $incomingIsCorrect = filter_var(
+                        $opt['is_correct'],
+                        FILTER_VALIDATE_BOOLEAN,
+                        FILTER_NULL_ON_FAILURE
+                    );
+                    $normalizedIncomingFlag = $incomingIsCorrect ?? (bool) $opt['is_correct'];
+
+                    if ($normalizedIncomingFlag !== ($existingCorrectFlags[$idx] ?? false)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Saat quiz aktif, kunci jawaban tidak dapat diubah',
+                        ], 422);
+                    }
+                }
+            }
         }
 
-        $type = $request->question_type ?? $question->type;
+        $imagePath = $question->image;
+        if ($request->boolean('remove_image')) {
+            if ($question->image) {
+                Storage::disk('public')->delete($question->image);
+            }
+            $imagePath = null;
+        } elseif ($request->hasFile('image')) {
+            if ($question->image) Storage::disk('public')->delete($question->image);
+            $imagePath = $request->file('image')->store('question-images', 'public');
+        } else {
+            $incomingImagePath = $this->normalizePublicDiskPath($request->input('image_path'));
+            if ($incomingImagePath) {
+                if ($incomingImagePath === $question->image) {
+                    $imagePath = $question->image;
+                } elseif ($copiedImage = $this->copyFromPublicPath($incomingImagePath, 'question-images')) {
+                    if ($question->image && $question->image !== $copiedImage) {
+                        Storage::disk('public')->delete($question->image);
+                    }
+                    $imagePath = $copiedImage;
+                }
+            }
+        }
+
+        $type = $isLiveEdit ? $question->type : ($request->question_type ?? $question->type);
         $optionsArray = $question->options;
         $correctAnswer = $question->correct_answer;
+        $optionsWereUpdated = false;
 
         if ($request->has('options') && in_array($type, ['multiple_choice', 'multiple_answer'])) {
+            $optionsWereUpdated = true;
             $optionsArray = [];
             $correctAnswers = [];
             $correctAnswer = '';
+            $submittedOptions = array_values((array) $request->input('options', []));
 
-            foreach ($request->options as $idx => $opt) {
-                $optImage = null;
-                if ($request->hasFile("options.{$idx}.image")) {
+            foreach ($submittedOptions as $idx => $opt) {
+                $existingImage = null;
+                if (isset($existingOptions[$idx]) && is_array($existingOptions[$idx])) {
+                    $existingImage = $this->normalizePublicDiskPath($existingOptions[$idx]['image'] ?? null);
+                }
+
+                $removeOptImage = ($opt['remove_image'] ?? false) || $request->boolean("options.{$idx}.remove_image");
+                $optImage = $existingImage;
+
+                if ($removeOptImage) {
+                    if ($existingImage && Storage::disk('public')->exists($existingImage)) {
+                        Storage::disk('public')->delete($existingImage);
+                    }
+                    $optImage = null;
+                } elseif ($request->hasFile("options.{$idx}.image")) {
+                    if ($existingImage && Storage::disk('public')->exists($existingImage)) {
+                        Storage::disk('public')->delete($existingImage);
+                    }
                     $optImage = $request->file("options.{$idx}.image")->store('option-images', 'public');
-                } elseif (!empty($opt['image_path']) && Storage::disk('public')->exists($opt['image_path'])) {
-                    $ext = pathinfo($opt['image_path'], PATHINFO_EXTENSION);
-                    $newOptPath = 'option-images/' . uniqid() . '.' . $ext;
-                    Storage::disk('public')->copy($opt['image_path'], $newOptPath);
-                    $optImage = $newOptPath;
+                } else {
+                    $incomingOptImagePath = $this->normalizePublicDiskPath($opt['image_path'] ?? ($opt['existing_image'] ?? null));
+                    if ($incomingOptImagePath) {
+                        if ($incomingOptImagePath === $existingImage) {
+                            $optImage = $existingImage;
+                        } elseif ($copiedOptImage = $this->copyFromPublicPath($incomingOptImagePath, 'option-images')) {
+                            if ($existingImage && Storage::disk('public')->exists($existingImage)) {
+                                Storage::disk('public')->delete($existingImage);
+                            }
+                            $optImage = $copiedOptImage;
+                        }
+                    }
                 }
                 $optText = $opt['option_text'] ?? '';
                 if (empty(trim($optText)) && $optImage) {
                     $optText = '[Gambar ' . chr(65 + $idx) . ']';
                 }
                 $optionsArray[] = ['text' => $optText, 'image' => $optImage];
-                if ($opt['is_correct'] ?? false) {
+                $isCorrectOption = $isLiveEdit
+                    ? ($existingCorrectFlags[$idx] ?? false)
+                    : (bool) ($opt['is_correct'] ?? false);
+                if ($isCorrectOption) {
                     $correctAnswers[] = $optText;
                     $correctAnswer = $optText;
                 }
@@ -764,6 +1098,9 @@ class QuizController extends Controller
             if ($type === 'multiple_answer') {
                 $correctAnswer = json_encode($correctAnswers);
             }
+        } elseif ($type === 'essay') {
+            $optionsArray = null;
+            $correctAnswer = null;
         }
 
         $question->update([
@@ -773,10 +1110,46 @@ class QuizController extends Controller
             'image' => $imagePath,
             'options' => $optionsArray,
             'correct_answer' => $correctAnswer,
-            'essay_keywords' => $type === 'essay' ? ($request->essay_keywords ?? $question->essay_keywords) : null,
-            'points' => $request->points ?? $question->points,
+            'essay_keywords' => $type === 'essay'
+                ? ($isLiveEdit ? $question->essay_keywords : ($request->essay_keywords ?? $question->essay_keywords))
+                : null,
+            'points' => $isLiveEdit ? $question->points : ($request->points ?? $question->points),
         ]);
         $this->forgetQuizShowCache($quiz->id);
+        $question->refresh();
+
+        if ($isLiveEdit && $optionsWereUpdated && in_array($type, ['multiple_choice', 'multiple_answer'], true)) {
+            $this->remapLiveInProgressAnswers(
+                $quiz,
+                $question,
+                $existingOptions,
+                is_array($question->options) ? array_values($question->options) : []
+            );
+        }
+
+        if ($isLiveEdit) {
+            try {
+                app(SocketBroadcastService::class)->examQuestionUpdated($quiz->id, [
+                    'quiz_id' => $quiz->id,
+                    'question' => [
+                        'id' => $question->id,
+                        'order' => $question->order,
+                        'question_text' => $question->question_text,
+                        'type' => $question->type,
+                        'question_type' => $question->type,
+                        'passage' => $question->passage,
+                        'options' => $question->options ?? [],
+                        'image' => $question->image,
+                        'updated_at' => $question->updated_at ? $question->updated_at->toISOString() : null,
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast quiz question-updated failed: ' . $e->getMessage(), [
+                    'quiz_id' => $quiz->id,
+                    'question_id' => $question->id,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -831,10 +1204,6 @@ class QuizController extends Controller
 
         $user = $request->user();
 
-        if (!in_array($quiz->status, ['scheduled', 'active'])) {
-            return response()->json(['success' => false, 'message' => 'Quiz tidak tersedia'], 422);
-        }
-
         // Check class membership
         $quizClassIds = $quiz->classes()->pluck('classes.id')->toArray();
         if (empty($quizClassIds)) $quizClassIds = [$quiz->class_id];
@@ -853,6 +1222,14 @@ class QuizController extends Controller
                 return 'completed';
             }
 
+            if ($result && $result->status === 'in_progress' && $quiz->status === 'completed') {
+                return 'closed';
+            }
+
+            if (!$result && !in_array($quiz->status, ['scheduled', 'active'], true)) {
+                return 'unavailable';
+            }
+
             if (!$result) {
                 $result = ExamResult::create([
                     'exam_id' => $quiz->id,
@@ -867,6 +1244,14 @@ class QuizController extends Controller
 
         if ($result === 'completed') {
             return response()->json(['success' => false, 'message' => 'Anda sudah menyelesaikan quiz ini'], 422);
+        }
+
+        if ($result === 'unavailable') {
+            return response()->json(['success' => false, 'message' => 'Quiz tidak tersedia'], 422);
+        }
+
+        if ($result === 'closed') {
+            return response()->json(['success' => false, 'message' => 'Quiz sudah berakhir'], 422);
         }
 
         // Get questions
@@ -933,7 +1318,8 @@ class QuizController extends Controller
             ->keyBy('question_id');
 
         // Calculate remaining time
-        $elapsed = now()->diffInSeconds(Carbon::parse($result->started_at));
+        // Carbon 3 can return signed values depending on call order; use abs to keep elapsed non-negative.
+        $elapsed = abs(now()->diffInSeconds(Carbon::parse($result->started_at)));
         $remainingSeconds = max(0, ($quiz->duration * 60) - $elapsed);
 
         return response()->json([
@@ -1063,7 +1449,15 @@ class QuizController extends Controller
                 return ['error' => true, 'message' => 'Sesi quiz tidak ditemukan'];
             }
 
-            $fallbackAnswers = $request->input('answers', []);
+            $isDeadlineExceeded = false;
+            if ($result->started_at && $quiz->duration) {
+                $personalDeadline = Carbon::parse($result->started_at)->addMinutes($quiz->duration)->addSeconds(30);
+                if (now()->greaterThan($personalDeadline)) {
+                    $isDeadlineExceeded = true;
+                }
+            }
+
+            $fallbackAnswers = $isDeadlineExceeded ? [] : $request->input('answers', []);
             if (is_array($fallbackAnswers) && !empty($fallbackAnswers)) {
                 $questionMap = Question::where('exam_id', $quiz->id)->get()->keyBy('id');
                 foreach ($fallbackAnswers as $questionId => $rawAnswer) {
@@ -1102,7 +1496,12 @@ class QuizController extends Controller
             $result->status = $hasUngradedEssays ? 'submitted' : 'graded';
             $result->calculateScore();
 
-            $resp = ['success' => true, 'message' => 'Quiz berhasil diselesaikan'];
+            $resp = [
+                'success' => true,
+                'message' => $isDeadlineExceeded
+                    ? 'Quiz berhasil diselesaikan (waktu habis, jawaban terlambat diabaikan)'
+                    : 'Quiz berhasil diselesaikan',
+            ];
             if ($quiz->show_result) {
                 $resp['data'] = [
                     'score' => $result->score,
@@ -1192,11 +1591,12 @@ class QuizController extends Controller
         }
 
         foreach ($notTaken as $student) {
+            $notTakenStatus = $quiz->status === 'completed' ? 'missed' : 'not_started';
             $allEntries[] = [
                 'id' => null,
                 'student_id' => $student->id,
                 'student' => $student->toArray(),
-                'status' => 'not_started',
+                'status' => $notTakenStatus,
                 'total_score' => null,
                 'max_score' => null,
                 'percentage' => null,
@@ -1211,10 +1611,13 @@ class QuizController extends Controller
         $inProgressCount = collect($allEntries)->where('status', 'in_progress')->count();
         $notStartedCount = collect($allEntries)->where('status', 'not_started')->count();
         $missedCount = collect($allEntries)->where('status', 'missed')->count();
-        $passedCount = $results
-            ->whereIn('status', ['completed', 'graded', 'submitted'])
+        $finalizedResults = $results->whereIn('status', ['completed', 'graded']);
+        $passedCount = $finalizedResults
             ->filter(fn($r) => (float) ($r->percentage ?? 0) >= (float) ($quiz->passing_score ?? 0))
             ->count();
+        $failedCount = $finalizedResults
+            ->filter(fn($r) => (float) ($r->percentage ?? 0) < (float) ($quiz->passing_score ?? 0))
+            ->count() + $missedCount;
         $totalUngradedEssays = collect($allEntries)->sum(fn($e) => (int) ($e['ungraded_essays'] ?? 0));
         $studentsWithUngraded = collect($allEntries)->filter(fn($e) => (int) ($e['ungraded_essays'] ?? 0) > 0)->count();
 
@@ -1232,9 +1635,10 @@ class QuizController extends Controller
                     'not_started' => $notStartedCount,
                     'missed' => $missedCount,
                     'passed' => $passedCount,
-                    'average_score' => $results->count() > 0 ? round($results->avg('percentage'), 1) : 0,
-                    'highest_score' => $results->count() > 0 ? round($results->max('percentage'), 1) : 0,
-                    'lowest_score' => $results->count() > 0 ? round($results->min('percentage'), 1) : 0,
+                    'failed' => $failedCount,
+                    'average_score' => $finalizedResults->count() > 0 ? round($finalizedResults->avg('percentage'), 1) : 0,
+                    'highest_score' => $finalizedResults->count() > 0 ? round($finalizedResults->max('percentage'), 1) : 0,
+                    'lowest_score' => $finalizedResults->count() > 0 ? round($finalizedResults->min('percentage'), 1) : 0,
                     'total_essay_questions' => $totalEssayQuestions,
                     'total_ungraded_essays' => $totalUngradedEssays,
                     'students_with_ungraded' => $studentsWithUngraded,

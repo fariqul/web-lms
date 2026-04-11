@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button } from '@/components/ui';
 import {
@@ -115,7 +115,7 @@ export default function HasilSiswaPage() {
     } finally {
       setLoading(false);
     }
-  }, [examId, studentId]);
+  }, [examId, studentId, toast]);
 
   useEffect(() => {
     fetchData();
@@ -297,10 +297,13 @@ export default function HasilSiswaPage() {
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
               {snapshots.map((snap) => (
                 <div key={snap.id} className="text-center">
-                  <img
+                  <Image
                     src={getSecureFileUrl(snap.image_path)}
                     alt="Monitoring"
+                    width={240}
+                    height={240}
                     className="w-full aspect-square object-cover rounded-lg border"
+                    unoptimized
                   />
                   <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     {new Date(snap.captured_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
@@ -395,10 +398,13 @@ export default function HasilSiswaPage() {
                                   <MathText text={optText} />
                                 )}
                                 {optImage && (
-                                  <img
+                                  <Image
                                     src={getSecureFileUrl(optImage)}
                                     alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
-                                    className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                    width={200}
+                                    height={128}
+                                    className="mt-1 w-auto max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                    unoptimized
                                   />
                                 )}
                               </div>
@@ -450,10 +456,13 @@ export default function HasilSiswaPage() {
                                     <MathText text={optText} />
                                   )}
                                   {optImage && (
-                                    <img
+                                    <Image
                                       src={getSecureFileUrl(optImage)}
                                       alt={`Gambar opsi ${String.fromCharCode(65 + optIdx)}`}
-                                      className="mt-1 max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                      width={200}
+                                      height={128}
+                                      className="mt-1 w-auto max-w-[200px] max-h-32 rounded border border-slate-200 dark:border-slate-700"
+                                      unoptimized
                                     />
                                   )}
                                 </div>
@@ -611,11 +620,14 @@ export default function HasilSiswaPage() {
                             <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
                               📸 Foto Cara Kerja
                             </p>
-                            <img
+                            <Image
                               src={getSecureFileUrl(answer.work_photo)}
                               alt="Foto cara kerja siswa"
-                              className="max-w-full max-h-96 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+                              width={1200}
+                              height={800}
+                              className="max-w-full h-auto max-h-96 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
                               onClick={() => window.open(getSecureFileUrl(answer.work_photo), '_blank')}
+                              unoptimized
                             />
                           </div>
                         )}

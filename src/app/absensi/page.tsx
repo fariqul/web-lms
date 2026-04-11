@@ -87,6 +87,7 @@ export default function AbsensiPage() {
       setLoading(false);
     };
     initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadActiveSession = async () => {
@@ -138,15 +139,6 @@ export default function AbsensiPage() {
       console.error('Failed to parse saved session:', error);
       clearSessionFromStorage();
     }
-  };
-
-  const resetSessionState = () => {
-    setCurrentSessionId(null);
-    setSelectedClass('');
-    setSelectedSubject('');
-    setQrToken('');
-    setIsSessionActive(false);
-    setAttendanceRecords([]);
   };
 
   const saveSessionToStorage = (sessionId: number, classId: string, subject: string, totalStudents: number) => {

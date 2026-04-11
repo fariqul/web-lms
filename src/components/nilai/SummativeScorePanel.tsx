@@ -377,16 +377,19 @@ export function SummativeScorePanel() {
     return nilaiRapor >= kkm ? 'Lulus' : 'Remedial';
   }, [kkm]);
 
-  const handleExportExcel = async () => {
+  const toCsvCell = (value: string | number | null): string => {
+    const raw = value === null ? '' : String(value);
+    const escaped = raw.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+
+  const handleExportCsv = () => {
     if (rows.length === 0) {
       toast.warning('Belum ada data untuk diexport');
       return;
     }
 
     try {
-      const XLSX = await import('xlsx');
-      const fileSaver = await import('file-saver');
-
       const headers = [
         'No',
         'NIS',
@@ -401,22 +404,19 @@ export function SummativeScorePanel() {
         'Status',
       ];
 
-      const aoa: Array<Array<string | number>> = [];
-      aoa.push([
-        `Rekap Nilai Sumatif - ${className}`,
-        '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-      ]);
-      aoa.push([
+      const rowsForCsv: Array<Array<string | number>> = [];
+      rowsForCsv.push([`Rekap Nilai Sumatif - ${className}`]);
+      rowsForCsv.push([
         `Mapel: ${subject}`,
         `Semester: ${semester}`,
         `TP: ${academicYear}`,
         `KKM: ${kkm}`,
       ]);
-      aoa.push([]);
-      aoa.push(headers);
+      rowsForCsv.push([]);
+      rowsForCsv.push(headers);
 
       rows.forEach((row, idx) => {
-        aoa.push([
+        rowsForCsv.push([
           idx + 1,
           row.student_nis,
           row.student_name,
@@ -431,21 +431,23 @@ export function SummativeScorePanel() {
         ]);
       });
 
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Nilai Sumatif');
-
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
-      });
+      const csvContent = rowsForCsv
+        .map((row) => row.map((value) => toCsvCell(value as string | number | null)).join(','))
+        .join('\r\n');
 
       const safeSubject = subject.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const fileName = `nilai_sumatif_${className.replace(/\s+/g, '_')}_${safeSubject}_${semester}.xlsx`;
-      fileSaver.saveAs(blob, fileName);
-      toast.success('Export Excel berhasil');
+      const fileName = `nilai_sumatif_${className.replace(/\s+/g, '_')}_${safeSubject}_${semester}.csv`;
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      link.click();
+      URL.revokeObjectURL(url);
+
+      toast.success('Export CSV berhasil');
     } catch {
-      toast.error('Gagal export Excel');
+      toast.error('Gagal export CSV');
     }
   };
 
@@ -586,9 +588,9 @@ export function SummativeScorePanel() {
               </Button>
             )}
 
-            <Button onClick={handleExportExcel} disabled={rows.length === 0} className={`${actionButtonClass} bg-indigo-600 hover:bg-indigo-700`}>
+            <Button onClick={handleExportCsv} disabled={rows.length === 0} className={`${actionButtonClass} bg-indigo-600 hover:bg-indigo-700`}>
               <Download className="w-4 h-4 mr-2" />
-              Export Excel
+              Export CSV
             </Button>
           </div>
         </div>
