@@ -1,7 +1,7 @@
 # 🏠 Setup Home Server LMS - PC Sekolah
 
 Panduan lengkap setup backend LMS di PC sekolah yang nyala 24 jam.  
-**Arsitektur:** Frontend (Vercel gratis) ← internet → Cloudflare Quick Tunnel → PC Sekolah (Docker)  
+**Arsitektur:** Frontend (Vercel gratis) <- internet -> Cloudflare Named Tunnel -> PC Sekolah (Docker)  
 **Biaya: Rp 0 (100% gratis)**
 
 ---
@@ -12,9 +12,13 @@ Panduan lengkap setup backend LMS di PC sekolah yang nyala 24 jam.
 - Koneksi internet stabil
 - Docker Desktop terinstall
 - Git terinstall
+- Akun Cloudflare + Named Tunnel token (`CLOUDFLARE_TUNNEL_TOKEN`)
+- Untuk profil ujian serentak 600 siswa: minimal RAM host 64GB dan alokasi memory Docker Desktop minimal 56GB (Settings -> Resources)
 
-> **Tidak perlu** akun Cloudflare, domain, atau konfigurasi apapun di web Cloudflare.  
-> Quick Tunnel otomatis membuat URL HTTPS tanpa setup.
+> `docker-compose.yml` saat ini menjalankan service `cloudflared` dalam mode Named Tunnel (berbasis token).
+> Panduan setup token ada di `docs/SETUP_CLOUDFLARE_NAMED_TUNNEL.md`.
+>
+> Jika spesifikasi host di bawah itu, gunakan profil konservatif (300 siswa) dan jangan pakai angka tuning 600 siswa di dokumen ini.
 
 ---
 
@@ -58,7 +62,7 @@ cd C:\lms-server
 copy .env.homeserver .env
 ```
 
-Untuk sekarang biarkan `.env` apa adanya. Kita akan update `APP_URL` setelah tunnel jalan di Langkah 5.
+Isi variabel `CLOUDFLARE_TUNNEL_TOKEN` di `.env`, lalu update `APP_URL` setelah tunnel tersambung di Langkah 5.
 
 ---
 
@@ -95,20 +99,19 @@ docker compose restart backend
 
 ---
 
-## Langkah 5: Cek URL Quick Tunnel & Update ENV
+## Langkah 5: Verifikasi Named Tunnel & Update ENV
 
-### 5a. Dapatkan URL Tunnel
+### 5a. Verifikasi tunnel terkoneksi
 ```powershell
 docker logs lms-tunnel
 ```
 
-Cari baris seperti ini di output:
+Cari indikator koneksi sukses pada log (contoh):
 ```
-Your quick Tunnel has been created! Visit it at:
-https://random-kata-kata.trycloudflare.com
+Connected to ... cloudflare tunnel
 ```
 
-**Copy URL tersebut** (contoh: `https://apple-banana-charlie.trycloudflare.com`)
+Gunakan domain tunnel yang sudah dikonfigurasi di Cloudflare (contoh: `https://api.sma15lms.sch.id`).
 
 ### 5b. Update `.env`
 ```powershell
@@ -117,7 +120,7 @@ notepad C:\lms-server\.env
 
 Ganti baris `APP_URL`:
 ```env
-APP_URL=https://apple-banana-charlie.trycloudflare.com
+APP_URL=https://api.sma15lms.sch.id
 ```
 
 Save & close Notepad.
@@ -131,7 +134,7 @@ docker compose restart backend socket
 ### 5d. Verifikasi
 Buka browser, akses URL tunnel + `/api/health`:
 ```
-https://apple-banana-charlie.trycloudflare.com/api/health
+https://api.sma15lms.sch.id/api/health
 ```
 
 Jika muncul response JSON → backend berhasil diakses dari internet! ✅
@@ -145,8 +148,8 @@ Jika muncul response JSON → backend berhasil diakses dari internet! ✅
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_API_URL` | `https://apple-banana-charlie.trycloudflare.com/api` |
-| `NEXT_PUBLIC_SOCKET_URL` | `https://apple-banana-charlie.trycloudflare.com` |
+| `NEXT_PUBLIC_API_URL` | `https://api.sma15lms.sch.id/api` |
+| `NEXT_PUBLIC_SOCKET_URL` | `https://api.sma15lms.sch.id` |
 | `NEXT_PUBLIC_APP_NAME` | `SMA 15 Makassar LMS` |
 | `NEXT_PUBLIC_APP_URL` | `https://web-lms-rowr.vercel.app` |
 
@@ -174,24 +177,26 @@ Docker Desktop sudah diset auto-start, dan `docker-compose.yml` sudah pakai `res
 
 ---
 
-## ⚠️ Penting: URL Berubah saat Tunnel Restart
+## 👥 Profil Ujian Serentak 600 Siswa
 
-Quick Tunnel memberikan URL **random**. URL ini **tetap sama selama container `lms-tunnel` tidak restart**.
+- `QUEUE_WORKERS_DEFAULT=6`
+- `QUEUE_WORKERS_PROCTORING=12`
+- Apache `MaxRequestWorkers=384`
+- MySQL `max_connections=800` dan `max_user_connections=700` (100 koneksi disisihkan untuk admin/tooling)
 
-**Kapan URL berubah:**
-- PC mati/restart
-- `docker compose down` lalu `up`
-- Container `lms-tunnel` crash
+Jalankan `docker compose config` setelah update `.env` untuk memastikan semua nilai terbaca benar.
 
-**Kapan URL TIDAK berubah:**
-- PC nyala terus tanpa gangguan (bisa berminggu-minggu)
-- `docker compose restart backend` (tunnel tetap jalan)
+---
 
-**Jika URL berubah, lakukan:**
-1. Cek URL baru: `docker logs lms-tunnel`
-2. Update `.env` → `APP_URL=https://url-baru.trycloudflare.com`
-3. `docker compose restart backend socket`
-4. Update env di Vercel → Redeploy
+## ⚠️ Catatan URL Named Tunnel
+
+Named Tunnel memakai domain tetap (tidak random seperti Quick Tunnel), jadi URL tidak berubah saat restart service biasa.
+
+Jika tunnel gagal konek:
+1. Cek token di `.env` (`CLOUDFLARE_TUNNEL_TOKEN`).
+2. Cek log: `docker logs lms-tunnel`.
+3. Restart service tunnel: `docker compose restart cloudflared`.
+4. Verifikasi kembali endpoint health.
 
 ---
 
@@ -210,8 +215,8 @@ docker compose logs -f
 docker logs lms-backend -f
 docker logs lms-tunnel -f
 
-# Cek URL tunnel saat ini
-docker logs lms-tunnel 2>&1 | findstr "trycloudflare"
+# Cek status koneksi tunnel
+docker logs lms-tunnel 2>&1 | findstr "Connected"
 
 # Restart semua
 docker compose restart
@@ -257,7 +262,7 @@ docker exec lms-backend php artisan config:clear
 ```powershell
 docker compose logs mysql    # Cek error database
 docker compose logs backend  # Cek error Laravel
-docker compose logs tunnel   # Cek error Cloudflare
+docker compose logs cloudflared   # Cek error Cloudflare
 ```
 
 ### Database error "Table already exists"

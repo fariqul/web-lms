@@ -356,7 +356,7 @@ class SocketBroadcastService
         return $this->broadcast(
             'system.snapshot-monitor.updated',
             $data,
-            null
+            'system.snapshot-monitor'
         );
     }
 }

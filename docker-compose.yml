@@ -20,7 +20,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 14G   # Reduced to fit within Windows Docker WSL limits
+          memory: 24G
     networks:
       - lms-network
 
@@ -58,17 +58,19 @@ services:
       LOGIN_THROTTLE: ${LOGIN_THROTTLE:-1800,1}
       API_THROTTLE: ${API_THROTTLE:-1400,1}
       GLOBAL_API_THROTTLE: ${GLOBAL_API_THROTTLE:-3500,1}
-      QUEUE_WORKERS: ${QUEUE_WORKERS:-10}
+      QUEUE_WORKERS: ${QUEUE_WORKERS:-}
+      QUEUE_WORKERS_DEFAULT: ${QUEUE_WORKERS_DEFAULT:-}
+      QUEUE_WORKERS_PROCTORING: ${QUEUE_WORKERS_PROCTORING:-}
       QUEUE_SLEEP: ${QUEUE_SLEEP:-1}
       QUEUE_TRIES: ${QUEUE_TRIES:-3}
-      QUEUE_MAX_TIME: ${QUEUE_MAX_TIME:-300}
+      QUEUE_MAX_TIME: ${QUEUE_MAX_TIME:-600}
       PROCTORING_SERVICE_URL: "http://proctoring:8001"
     volumes:
       - backend_storage:/var/www/html/storage
     deploy:
       resources:
         limits:
-          memory: 8G    # Reduced for stability
+          memory: 16G
     networks:
       - lms-network
 
@@ -86,7 +88,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 3G
     networks:
       - lms-network
 
@@ -151,7 +153,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
         reservations:
           devices:
             - driver: nvidia

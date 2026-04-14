@@ -11,6 +11,7 @@ const MAX_CONNECTIONS = 2000; // Higher headroom for 64GB server
 const RATE_LIMIT_WINDOW = 1000; // 1 second window
 const RATE_LIMIT_MAX = 30; // max events per window per socket
 const CONNECTION_TIMEOUT = 45000; // 45 seconds for slow connections
+const ALLOWED_SYSTEM_ROOMS = new Set(['system.snapshot-monitor']);
 
 const httpServer = createServer((req, res) => {
   // Health check endpoint with detailed stats
@@ -235,6 +236,37 @@ io.on('connection', (socket) => {
   socket.on('leave-attendance', ({ sessionId }) => {
     if (!sessionId) return;
     const room = `attendance.${sessionId}`;
+    leaveRoom(room);
+    console.log(`[room] ${socket.id} left ${room}`);
+  });
+
+  socket.on('join-system', async (payload = {}) => {
+    const safePayload = payload && typeof payload === 'object' ? payload : {};
+    const { room } = safePayload;
+    if (!room || !ALLOWED_SYSTEM_ROOMS.has(room)) return;
+    const authenticatedUserId = await resolveAuthenticatedUserId();
+    if (!authenticatedUserId) {
+      socket.emit('error', { message: 'Unauthorized join-system request' });
+      console.warn(`[auth] join-system rejected for socket ${socket.id}: room=${room}`);
+      return;
+    }
+
+    if (joinRoom(room)) {
+      console.log(`[room] ${socket.id} joined ${room}`);
+    }
+  });
+
+  socket.on('leave-system', async (payload = {}) => {
+    const safePayload = payload && typeof payload === 'object' ? payload : {};
+    const { room } = safePayload;
+    if (!room || !ALLOWED_SYSTEM_ROOMS.has(room)) return;
+    const authenticatedUserId = await resolveAuthenticatedUserId();
+    if (!authenticatedUserId) {
+      socket.emit('error', { message: 'Unauthorized leave-system request' });
+      console.warn(`[auth] leave-system rejected for socket ${socket.id}: room=${room}`);
+      return;
+    }
+
     leaveRoom(room);
     console.log(`[room] ${socket.id} left ${room}`);
   });

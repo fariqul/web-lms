@@ -274,6 +274,17 @@ export default function ExamTakingPage() {
 
   // Socket: listen for admin ending the exam
   const examSocket = useExamSocket(examId);
+
+  useEffect(() => {
+    if (!isStarted || !examSocket.isConnected) return;
+
+    const room = 'system.snapshot-monitor';
+    examSocket.emit('join-system', { room });
+
+    return () => {
+      examSocket.emit('leave-system', { room });
+    };
+  }, [isStarted, examSocket]);
   
   useEffect(() => {
     if (!isStarted) return;

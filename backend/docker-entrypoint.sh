@@ -36,10 +36,12 @@ QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
 LOGIN_THROTTLE=${LOGIN_THROTTLE:-1800,1}
 API_THROTTLE=${API_THROTTLE:-1400,1}
 GLOBAL_API_THROTTLE=${GLOBAL_API_THROTTLE:-3500,1}
-QUEUE_WORKERS=${QUEUE_WORKERS:-10}
+QUEUE_WORKERS=${QUEUE_WORKERS:-}
+QUEUE_WORKERS_DEFAULT=${QUEUE_WORKERS_DEFAULT:-}
+QUEUE_WORKERS_PROCTORING=${QUEUE_WORKERS_PROCTORING:-}
 QUEUE_SLEEP=${QUEUE_SLEEP:-1}
 QUEUE_TRIES=${QUEUE_TRIES:-3}
-QUEUE_MAX_TIME=${QUEUE_MAX_TIME:-300}
+QUEUE_MAX_TIME=${QUEUE_MAX_TIME:-600}
 EXAM_SYNC_LOAD_LOW_MAX=${EXAM_SYNC_LOAD_LOW_MAX:-99}
 EXAM_SYNC_LOAD_MEDIUM_MAX=${EXAM_SYNC_LOAD_MEDIUM_MAX:-300}
 PROCTORING_SERVICE_URL=${PROCTORING_SERVICE_URL:-http://proctoring:8001}
@@ -79,24 +81,92 @@ php artisan route:cache
 php artisan view:cache
 echo "Production caches built successfully"
 
-# Start multiple queue workers in background for async jobs (AI proctoring, etc.)
-QUEUE_WORKERS_COUNT=${QUEUE_WORKERS:-10}
-case "$QUEUE_WORKERS_COUNT" in
-    ''|*[!0-9]*) QUEUE_WORKERS_COUNT=1 ;;
-esac
+# Start queue workers in separate pools to isolate proctoring load.
+# Backward compatibility:
+# - If only legacy QUEUE_WORKERS is set, split it into default/proctoring so proctoring jobs never stall.
+# - If new vars are provided, use split pools.
+# - If none are provided, use tuned defaults for 600-student profile.
+LEGACY_QUEUE_WORKERS=${QUEUE_WORKERS:-}
 
-if [ "$QUEUE_WORKERS_COUNT" -lt 1 ]; then
-    QUEUE_WORKERS_COUNT=1
+if [ -n "${QUEUE_WORKERS_DEFAULT:-}" ] || [ -n "${QUEUE_WORKERS_PROCTORING:-}" ]; then
+    QUEUE_WORKERS_DEFAULT_COUNT=${QUEUE_WORKERS_DEFAULT:-6}
+    QUEUE_WORKERS_PROCTORING_COUNT=${QUEUE_WORKERS_PROCTORING:-12}
+elif [ -n "${LEGACY_QUEUE_WORKERS}" ]; then
+    case "$LEGACY_QUEUE_WORKERS" in
+        ''|*[!0-9]*)
+            LEGACY_QUEUE_WORKERS=1
+            ;;
+    esac
+
+    if [ "${LEGACY_QUEUE_WORKERS}" -le 1 ]; then
+        QUEUE_WORKERS_DEFAULT_COUNT=1
+        QUEUE_WORKERS_PROCTORING_COUNT=1
+    else
+        QUEUE_WORKERS_PROCTORING_COUNT=$((LEGACY_QUEUE_WORKERS / 2))
+        QUEUE_WORKERS_DEFAULT_COUNT=$((LEGACY_QUEUE_WORKERS - QUEUE_WORKERS_PROCTORING_COUNT))
+    fi
+else
+    QUEUE_WORKERS_DEFAULT_COUNT=6
+    QUEUE_WORKERS_PROCTORING_COUNT=12
 fi
 
-i=1
-while [ "$i" -le "$QUEUE_WORKERS_COUNT" ]; do
-    php artisan queue:work database --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --max-time=${QUEUE_MAX_TIME:-300} --quiet &
-    echo "Queue worker #$i started"
-    i=$((i + 1))
-done
+sanitize_worker_count() {
+    local worker_count="$1"
+    local min_count="${2:-1}"
+    case "$worker_count" in
+        ''|*[!0-9]*)
+            echo "$min_count"
+            return
+            ;;
+    esac
 
-echo "Total queue workers started: $QUEUE_WORKERS_COUNT"
+    if [ "$worker_count" -lt "$min_count" ]; then
+        echo "$min_count"
+        return
+    fi
+
+    echo "$worker_count"
+}
+
+start_workers() {
+    local queue_name="$1"
+    local worker_count="$2"
+    local i=1
+    local worker_index
+
+    if [ "$worker_count" -lt 1 ]; then
+        echo "Queue worker ${queue_name} skipped (count=0)"
+        return
+    fi
+
+    while [ "$i" -le "$worker_count" ]; do
+        worker_index="$i"
+        (
+            while true; do
+                if [ "$QUEUE_MAX_TIME_EFFECTIVE" -gt 0 ]; then
+                    php artisan queue:work database --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --max-time=${QUEUE_MAX_TIME_EFFECTIVE} --quiet
+                else
+                    php artisan queue:work database --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --quiet
+                fi
+
+                exit_code=$?
+                echo "Queue worker ${queue_name} #${worker_index} exited (code=${exit_code}), restarting in 2s"
+                sleep 2
+            done
+        ) &
+        echo "Queue worker ${queue_name} #$i started"
+        i=$((i + 1))
+    done
+}
+
+QUEUE_WORKERS_DEFAULT_COUNT=$(sanitize_worker_count "$QUEUE_WORKERS_DEFAULT_COUNT" 1)
+QUEUE_WORKERS_PROCTORING_COUNT=$(sanitize_worker_count "$QUEUE_WORKERS_PROCTORING_COUNT" 1)
+QUEUE_MAX_TIME_EFFECTIVE=$(sanitize_worker_count "${QUEUE_MAX_TIME:-0}" 0)
+
+start_workers "default" "$QUEUE_WORKERS_DEFAULT_COUNT"
+start_workers "proctoring" "$QUEUE_WORKERS_PROCTORING_COUNT"
+
+echo "Total queue workers started: default=${QUEUE_WORKERS_DEFAULT_COUNT}, proctoring=${QUEUE_WORKERS_PROCTORING_COUNT}"
 
 # Start Apache
 apache2-foreground

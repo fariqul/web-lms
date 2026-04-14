@@ -27,7 +27,9 @@ class AnalyzeSnapshotJob implements ShouldQueue
         private int $examId,
         private int $studentId,
         private int $examResultId,
-    ) {}
+    ) {
+        $this->onQueue('proctoring');
+    }
 
     public function handle(): void
     {
@@ -61,7 +63,13 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 ->post("{$proctoringUrl}/analyze");
 
             if (!$response->successful()) {
-                Log::warning("[Proctoring] Service returned {$response->status()}");
+                $statusCode = $response->status();
+                Log::warning("[Proctoring] Service returned {$statusCode}");
+
+                if ($statusCode >= 500) {
+                    throw new \RuntimeException("Proctoring service temporary failure: {$statusCode}");
+                }
+
                 return;
             }
 
@@ -186,6 +194,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
 
         } catch (\Exception $e) {
             Log::error("[Proctoring] Analysis failed for snapshot {$this->snapshotId}: {$e->getMessage()}");
+            throw $e;
         }
     }
 
