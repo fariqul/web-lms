@@ -185,5 +185,40 @@ class ExamAdjustTimeTest extends TestCase
             'delta_minutes' => 10,
         ])->assertForbidden();
     }
+
+    public function test_admin_can_reduce_time_when_schedule_window_is_running_even_if_exam_status_is_scheduled(): void
+    {
+        $classId = $this->createClassRoom('X-Schedule-Active');
+        $teacher = $this->createUser('guru', $classId, 'teacher-adjust-schedule-active');
+        $admin = $this->createUser('admin', $classId, 'admin-adjust-schedule-active');
+
+        $exam = $this->createActiveExam($teacher->id, $classId, 120, 120);
+        $exam->update([
+            'status' => 'scheduled',
+            'start_time' => now()->addHour(),
+            'end_time' => now()->addHours(3),
+        ]);
+
+        ExamClassSchedule::query()->create([
+            'exam_id' => $exam->id,
+            'class_id' => $classId,
+            'start_time' => now()->subMinutes(10),
+            'end_time' => now()->addMinutes(60),
+            'is_published' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/exams/{$exam->id}/adjust-time", [
+            'delta_minutes' => -10,
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.applied_delta_minutes', -10);
+
+        $exam->refresh();
+        $this->assertSame(110, (int) $exam->duration);
+        $this->assertSame('active', $exam->status);
+    }
 }
 

@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   description: "Sistem Manajemen Pembelajaran SMA 15 Makassar dengan fitur Absensi QR, Ujian CBT, dan Monitoring",
   icons: {
     icon: "/logo_sma15.png",
+    shortcut: "/logo_sma15.png",
     apple: "/logo_sma15.png",
   },
 };

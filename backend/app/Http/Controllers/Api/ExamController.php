@@ -250,6 +250,39 @@ class ExamController extends Controller
         ];
     }
 
+    private function isExamCurrentlyRunning(Exam $exam, Carbon $now): bool
+    {
+        if (in_array($exam->status, ['draft', 'completed'], true)) {
+            return false;
+        }
+
+        $publishedSchedules = $exam->relationLoaded('classSchedules')
+            ? $exam->classSchedules->where('is_published', true)
+            : $exam->classSchedules()->where('is_published', true)->get();
+
+        if ($publishedSchedules->isNotEmpty()) {
+            foreach ($publishedSchedules as $schedule) {
+                $scheduleStart = Carbon::parse($schedule->start_time);
+                $scheduleEnd = Carbon::parse($schedule->end_time);
+
+                if ($now->greaterThanOrEqualTo($scheduleStart) && $now->lessThanOrEqualTo($scheduleEnd)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (!$exam->start_time || !$exam->end_time) {
+            return false;
+        }
+
+        $examStart = Carbon::parse($exam->start_time);
+        $examEnd = Carbon::parse($exam->end_time);
+
+        return $now->greaterThanOrEqualTo($examStart) && $now->lessThanOrEqualTo($examEnd);
+    }
+
     private function calculateRemainingSeconds(ExamResult $result, Exam $exam, ?Carbon $effectiveEndTime): int
     {
         $personalRemaining = $result->started_at
@@ -1036,17 +1069,17 @@ class ExamController extends Controller
             'delta_minutes' => 'required|integer|not_in:0',
         ]);
 
-        if ($exam->status !== 'active') {
+        $now = now();
+        $exam->loadMissing('classSchedules');
+
+        if (!$this->isExamCurrentlyRunning($exam, $now)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Perubahan waktu hanya bisa dilakukan saat ujian aktif',
+                'message' => 'Perubahan waktu hanya bisa dilakukan saat ujian sedang berlangsung',
             ], 422);
         }
 
         $requestedDeltaMinutes = (int) $request->input('delta_minutes');
-        $now = now();
-
-        $exam->loadMissing('classSchedules');
 
         $inProgressResults = ExamResult::with(['student:id,class_id'])
             ->where('exam_id', $exam->id)
@@ -1121,6 +1154,9 @@ class ExamController extends Controller
         DB::transaction(function () use ($exam, $now, $appliedDeltaMinutes, &$updatedScheduleCount) {
             $examDuration = (int) ($exam->duration ?? 0);
             $exam->duration = max(1, $examDuration + $appliedDeltaMinutes);
+            if ($exam->status !== 'active') {
+                $exam->status = 'active';
+            }
 
             $baseExamEnd = $exam->end_time ? Carbon::parse($exam->end_time) : $now->copy();
             if ($baseExamEnd->lessThan($now)) {
