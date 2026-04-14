@@ -109,6 +109,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
         Route::post('/exams/{exam}/participants/{student}/kick', [ExamController::class, 'kickParticipant']);
+        Route::post('/exams/{exam}/adjust-time', [ExamController::class, 'adjustActiveTime']);
         
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);

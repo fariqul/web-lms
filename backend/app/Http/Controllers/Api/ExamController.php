@@ -250,6 +250,21 @@ class ExamController extends Controller
         ];
     }
 
+    private function calculateRemainingSeconds(ExamResult $result, Exam $exam, ?Carbon $effectiveEndTime): int
+    {
+        $personalRemaining = $result->started_at
+            ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
+            : ($exam->duration ?? 90) * 60;
+
+        $windowRemaining = $effectiveEndTime
+            ? now()->diffInSeconds($effectiveEndTime, false)
+            : null;
+
+        return $windowRemaining === null
+            ? max(0, $personalRemaining)
+            : max(0, min($personalRemaining, $windowRemaining));
+    }
+
     private function shouldRestrictStudentVisibilityToOverrides(Exam $exam): bool
     {
         if ($exam->relationLoaded('classSchedules')) {
@@ -1000,6 +1015,197 @@ class ExamController extends Controller
             'success' => true,
             'data' => $exam,
             'message' => 'Ujian berhasil diupdate',
+        ]);
+    }
+
+    /**
+     * Adjust active exam time for all participant classes (admin only).
+     * Supports positive (add) and negative (reduce) minutes.
+     */
+    public function adjustActiveTime(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengubah waktu ujian aktif',
+            ], 403);
+        }
+
+        $request->validate([
+            'delta_minutes' => 'required|integer|not_in:0',
+        ]);
+
+        if ($exam->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Perubahan waktu hanya bisa dilakukan saat ujian aktif',
+            ], 422);
+        }
+
+        $requestedDeltaMinutes = (int) $request->input('delta_minutes');
+        $now = now();
+
+        $exam->loadMissing('classSchedules');
+
+        $inProgressResults = ExamResult::with(['student:id,class_id'])
+            ->where('exam_id', $exam->id)
+            ->where('status', 'in_progress')
+            ->get();
+
+        $maxDurationReductionMinutes = max(0, ((int) ($exam->duration ?? 0)) - 1);
+
+        $windowReductionCandidates = [];
+        if ($exam->end_time) {
+            $examRemainingSeconds = max(0, $now->diffInSeconds(Carbon::parse($exam->end_time), false));
+            $windowReductionCandidates[] = (int) floor(max(0, $examRemainingSeconds - 60) / 60);
+        }
+
+        foreach ($exam->classSchedules->where('is_published', true) as $schedule) {
+            $scheduleRemainingSeconds = max(0, $now->diffInSeconds(Carbon::parse($schedule->end_time), false));
+            $windowReductionCandidates[] = (int) floor(max(0, $scheduleRemainingSeconds - 60) / 60);
+        }
+
+        $maxWindowReductionMinutes = !empty($windowReductionCandidates)
+            ? min($windowReductionCandidates)
+            : null;
+
+        $participantReductionCandidates = [];
+        foreach ($inProgressResults as $result) {
+            $classId = (int) ($result->student?->class_id ?? 0);
+            $window = $this->getEffectiveExamWindow($exam, $classId > 0 ? $classId : null);
+            $remainingSeconds = $this->calculateRemainingSeconds($result, $exam, $window['end_time'] ?? null);
+            $participantReductionCandidates[] = (int) floor(max(0, $remainingSeconds - 60) / 60);
+        }
+
+        $maxParticipantReductionMinutes = !empty($participantReductionCandidates)
+            ? min($participantReductionCandidates)
+            : null;
+
+        $appliedDeltaMinutes = $requestedDeltaMinutes;
+        $wasClamped = false;
+
+        if ($requestedDeltaMinutes < 0) {
+            $allowedReductionMinutes = $maxDurationReductionMinutes;
+            if ($maxWindowReductionMinutes !== null) {
+                $allowedReductionMinutes = min($allowedReductionMinutes, $maxWindowReductionMinutes);
+            }
+            if ($maxParticipantReductionMinutes !== null) {
+                $allowedReductionMinutes = min($allowedReductionMinutes, $maxParticipantReductionMinutes);
+            }
+
+            $requestedReductionMinutes = abs($requestedDeltaMinutes);
+            if ($requestedReductionMinutes > $allowedReductionMinutes) {
+                $appliedDeltaMinutes = -$allowedReductionMinutes;
+                $wasClamped = true;
+            }
+        }
+
+        if ($appliedDeltaMinutes === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengurangan waktu tidak dapat diterapkan karena harus menyisakan minimal 1 menit untuk peserta aktif',
+                'data' => [
+                    'requested_delta_minutes' => $requestedDeltaMinutes,
+                    'applied_delta_minutes' => 0,
+                    'duration' => (int) ($exam->duration ?? 0),
+                    'end_time' => $exam->end_time,
+                    'updated_schedule_count' => 0,
+                    'active_participants' => $inProgressResults->count(),
+                    'was_clamped' => true,
+                ],
+            ]);
+        }
+
+        $updatedScheduleCount = 0;
+        DB::transaction(function () use ($exam, $now, $appliedDeltaMinutes, &$updatedScheduleCount) {
+            $examDuration = (int) ($exam->duration ?? 0);
+            $exam->duration = max(1, $examDuration + $appliedDeltaMinutes);
+
+            $baseExamEnd = $exam->end_time ? Carbon::parse($exam->end_time) : $now->copy();
+            if ($baseExamEnd->lessThan($now)) {
+                $baseExamEnd = $now->copy();
+            }
+
+            $newExamEnd = $baseExamEnd->copy()->addMinutes($appliedDeltaMinutes);
+            if ($newExamEnd->lessThanOrEqualTo($now)) {
+                $newExamEnd = $now->copy()->addMinute();
+            }
+
+            $exam->end_time = $newExamEnd;
+            $exam->save();
+
+            $publishedSchedules = ExamClassSchedule::query()
+                ->where('exam_id', $exam->id)
+                ->where('is_published', true)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($publishedSchedules as $schedule) {
+                $baseScheduleEnd = Carbon::parse($schedule->end_time);
+                if ($baseScheduleEnd->lessThan($now)) {
+                    $baseScheduleEnd = $now->copy();
+                }
+
+                $newScheduleEnd = $baseScheduleEnd->copy()->addMinutes($appliedDeltaMinutes);
+                if ($newScheduleEnd->lessThanOrEqualTo($now)) {
+                    $newScheduleEnd = $now->copy()->addMinute();
+                }
+
+                $schedule->end_time = $newScheduleEnd;
+                $schedule->save();
+                $updatedScheduleCount++;
+            }
+        });
+
+        $this->forgetExamShowCache($exam->id);
+        $exam->refresh();
+
+        try {
+            app(SocketBroadcastService::class)->examUpdated($exam->id, [
+                'exam_id' => $exam->id,
+                'duration' => (int) $exam->duration,
+                'end_time' => $exam->end_time,
+                'status' => $exam->status,
+                'time_adjustment' => true,
+                'requested_delta_minutes' => $requestedDeltaMinutes,
+                'applied_delta_minutes' => $appliedDeltaMinutes,
+                'updated_schedule_count' => $updatedScheduleCount,
+                'was_clamped' => $wasClamped,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Broadcast adjustActiveTime failed: ' . $e->getMessage());
+        }
+
+        Log::info('exam.time_adjusted', [
+            'exam_id' => (int) $exam->id,
+            'admin_id' => (int) $user->id,
+            'requested_delta_minutes' => $requestedDeltaMinutes,
+            'applied_delta_minutes' => $appliedDeltaMinutes,
+            'updated_schedule_count' => $updatedScheduleCount,
+            'active_participants' => $inProgressResults->count(),
+            'new_duration' => (int) $exam->duration,
+            'new_end_time' => $this->toSchoolIso8601($exam->end_time),
+            'was_clamped' => $wasClamped,
+        ]);
+
+        $actionLabel = $appliedDeltaMinutes > 0 ? 'ditambah' : 'dikurangi';
+        $message = $wasClamped
+            ? "Waktu ujian berhasil {$actionLabel} " . abs($appliedDeltaMinutes) . ' menit (dibatasi agar peserta aktif tetap memiliki minimal 1 menit)'
+            : "Waktu ujian berhasil {$actionLabel} " . abs($appliedDeltaMinutes) . ' menit';
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'requested_delta_minutes' => $requestedDeltaMinutes,
+                'applied_delta_minutes' => $appliedDeltaMinutes,
+                'duration' => (int) $exam->duration,
+                'end_time' => $exam->end_time,
+                'updated_schedule_count' => $updatedScheduleCount,
+                'active_participants' => $inProgressResults->count(),
+                'was_clamped' => $wasClamped,
+            ],
         ]);
     }
 
@@ -2653,15 +2859,7 @@ class ExamController extends Controller
 
         // Samakan timer siswa dengan monitor admin:
         // gunakan deadline paling cepat antara durasi personal dan end_time efektif ujian.
-        $personalRemaining = $result->started_at
-            ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
-            : ($exam->duration ?? 90) * 60;
-        $windowRemaining = $effectiveEndTime
-            ? now()->diffInSeconds($effectiveEndTime, false)
-            : null;
-        $remainingTime = $windowRemaining === null
-            ? max(0, $personalRemaining)
-            : max(0, min($personalRemaining, $windowRemaining));
+        $remainingTime = $this->calculateRemainingSeconds($result, $exam, $effectiveEndTime);
 
         return response()->json([
             'success' => true,
@@ -3007,15 +3205,7 @@ class ExamController extends Controller
         $window = $this->getEffectiveExamWindow($exam, $user->class_id);
         $effectiveEndTime = $window['end_time'];
 
-        $personalRemaining = $result->started_at
-            ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
-            : ($exam->duration ?? 90) * 60;
-        $windowRemaining = $effectiveEndTime
-            ? now()->diffInSeconds($effectiveEndTime, false)
-            : null;
-        $remaining = $windowRemaining === null
-            ? max(0, $personalRemaining)
-            : max(0, min($personalRemaining, $windowRemaining));
+        $remaining = $this->calculateRemainingSeconds($result, $exam, $effectiveEndTime);
 
         return response()->json([
             'success' => true,

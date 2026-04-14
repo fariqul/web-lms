@@ -97,6 +97,9 @@ export default function AdminUjianPage() {
   const [editingSchedule, setEditingSchedule] = useState<Exam | null>(null);
   const [scheduleData, setScheduleData] = useState({ start_time: '', duration: 60, class_ids: [] as string[] });
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [editingTimeAdjust, setEditingTimeAdjust] = useState<Exam | null>(null);
+  const [timeAdjustDelta, setTimeAdjustDelta] = useState<number>(10);
+  const [savingTimeAdjust, setSavingTimeAdjust] = useState(false);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -382,6 +385,46 @@ export default function AdminUjianPage() {
       toast.error(axiosError.response?.data?.message || 'Gagal membatalkan jadwal');
     } finally {
       setSavingSchedule(false);
+    }
+  };
+
+  const handleAdjustActiveTime = async () => {
+    if (!editingTimeAdjust) return;
+    if (!Number.isFinite(timeAdjustDelta) || Math.trunc(timeAdjustDelta) === 0) {
+      toast.warning('Masukkan menit perubahan, tidak boleh 0');
+      return;
+    }
+
+    setSavingTimeAdjust(true);
+    try {
+      const response = await api.post(`/exams/${editingTimeAdjust.id}/adjust-time`, {
+        delta_minutes: Math.trunc(timeAdjustDelta),
+      });
+
+      const data = response.data?.data as {
+        requested_delta_minutes?: number;
+        applied_delta_minutes?: number;
+        was_clamped?: boolean;
+      } | undefined;
+
+      const applied = Number(data?.applied_delta_minutes ?? 0);
+      const actionText = applied > 0 ? 'ditambah' : applied < 0 ? 'dikurangi' : 'tidak berubah';
+
+      if (applied === 0) {
+        toast.warning(response.data?.message || 'Waktu ujian tidak berubah');
+      } else {
+        const clampText = data?.was_clamped ? ' (dibatasi sistem)' : '';
+        toast.success(`Waktu ujian berhasil ${actionText} ${Math.abs(applied)} menit${clampText}`);
+      }
+
+      setEditingTimeAdjust(null);
+      setTimeAdjustDelta(10);
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mengubah waktu ujian aktif');
+    } finally {
+      setSavingTimeAdjust(false);
     }
   };
 
@@ -820,6 +863,18 @@ export default function AdminUjianPage() {
                   Monitor Ujian
                 </Button>
               </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingTimeAdjust(exam);
+                  setTimeAdjustDelta(10);
+                }}
+                className="text-indigo-700 border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+              >
+                <Clock className="w-3.5 h-3.5 mr-1.5" />
+                Ubah Waktu
+              </Button>
               <Button
                 size="sm"
                 onClick={() => handleEndExamClick({ id: exam.id, title: exam.title })}
@@ -1331,6 +1386,77 @@ export default function AdminUjianPage() {
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
                 ) : (
                   'Simpan Jadwal'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Time Adjust Modal */}
+      {editingTimeAdjust && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEditingTimeAdjust(null)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-1">
+              Ubah Waktu Ujian Aktif
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{editingTimeAdjust.title}</p>
+
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 p-3 text-xs text-indigo-700 dark:text-indigo-300 mb-4">
+              Perubahan berlaku untuk semua kelas peserta ujian dan langsung sinkron ke siswa tanpa refresh.
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Perubahan Menit (+ tambah, - kurangi)
+                </label>
+                <input
+                  type="number"
+                  value={timeAdjustDelta}
+                  onChange={(e) => setTimeAdjustDelta(parseInt(e.target.value, 10) || 0)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {[5, 10, 15, 30].map((val) => (
+                  <button
+                    key={`plus-${val}`}
+                    type="button"
+                    onClick={() => setTimeAdjustDelta(val)}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                  >
+                    +{val} menit
+                  </button>
+                ))}
+                {[5, 10, 15, 30].map((val) => (
+                  <button
+                    key={`minus-${val}`}
+                    type="button"
+                    onClick={() => setTimeAdjustDelta(-val)}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                  >
+                    -{val} menit
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 justify-end">
+              <Button variant="outline" onClick={() => setEditingTimeAdjust(null)} disabled={savingTimeAdjust}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleAdjustActiveTime}
+                disabled={savingTimeAdjust || !Number.isFinite(timeAdjustDelta) || Math.trunc(timeAdjustDelta) === 0}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {savingTimeAdjust ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyimpan...</>
+                ) : (
+                  'Simpan Perubahan Waktu'
                 )}
               </Button>
             </div>

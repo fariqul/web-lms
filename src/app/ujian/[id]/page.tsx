@@ -444,21 +444,65 @@ export default function ExamTakingPage() {
     };
   }, [isStarted, examId, examSocket, questions.length]);
 
+  const syncTimeFromServer = useCallback(async (force: boolean = false) => {
+    try {
+      const response = await api.get(`/exams/${examId}/time-sync`);
+      const serverRemaining = response.data?.data?.remaining_time;
+      if (serverRemaining !== undefined) {
+        const normalized = Math.max(0, Math.floor(serverRemaining));
+        setTimeRemaining(prev => {
+          if (force) {
+            return normalized;
+          }
+
+          const drift = Math.abs(prev - normalized);
+          // Only correct if drift > 5 seconds (avoid micro-corrections)
+          if (drift > 5) {
+            return normalized;
+          }
+          return prev;
+        });
+      }
+    } catch {
+      // Ignore sync errors — client timer continues as fallback
+    }
+  }, [examId]);
+
   // Socket: listen for exam settings changes during active exam (duration, max_violations, etc.)
   useEffect(() => {
     if (!isStarted) return;
 
     const handleExamUpdated = (data: unknown) => {
-      const d = data as { exam_id: number; duration?: number; max_violations?: number; title?: string };
+      const d = data as {
+        exam_id: number;
+        duration?: number;
+        max_violations?: number;
+        title?: string;
+        time_adjustment?: boolean;
+        requested_delta_minutes?: number;
+        applied_delta_minutes?: number;
+      };
+      const isTimeAdjustment = d.time_adjustment === true || typeof d.applied_delta_minutes === 'number';
+
       // If duration changed, recalculate remaining time
       if (d.duration && exam) {
         const newDurationSeconds = d.duration * 60;
         const oldDurationSeconds = exam.duration * 60;
         const diff = newDurationSeconds - oldDurationSeconds;
         if (diff !== 0) {
-          setTimeRemaining(prev => Math.max(1, prev + diff));
+          const minSeconds = isTimeAdjustment && diff < 0 ? 60 : 1;
+          setTimeRemaining(prev => Math.max(minSeconds, prev + diff));
           setExam(prev => prev ? { ...prev, duration: d.duration! } : prev);
-          toast.info(`Durasi ujian diubah menjadi ${d.duration} menit`);
+          if (isTimeAdjustment) {
+            if (diff > 0) {
+              toast.info(`Admin menambah waktu ujian ${Math.round(diff / 60)} menit`);
+            } else {
+              toast.info(`Admin mengurangi waktu ujian ${Math.round(Math.abs(diff) / 60)} menit`);
+            }
+          } else {
+            toast.info(`Durasi ujian diubah menjadi ${d.duration} menit`);
+          }
+          void syncTimeFromServer(true);
         }
       }
       if (d.title) {
@@ -470,7 +514,7 @@ export default function ExamTakingPage() {
     return () => {
       examSocket.off(`exam.${examId}.updated`);
     };
-  }, [isStarted, examId, examSocket, exam, toast]);
+  }, [isStarted, examId, examSocket, exam, toast, syncTimeFromServer]);
 
   // Check SEB browser on mount
   useEffect(() => {
@@ -894,36 +938,20 @@ export default function ExamTakingPage() {
   useEffect(() => {
     if (!isStarted || submitting) return;
 
-    const syncTimer = async () => {
-      try {
-        const response = await api.get(`/exams/${examId}/time-sync`);
-        const serverRemaining = response.data?.data?.remaining_time;
-        if (serverRemaining !== undefined) {
-          setTimeRemaining(prev => {
-            const drift = Math.abs(prev - serverRemaining);
-            // Only correct if drift > 5 seconds (avoid micro-corrections)
-            if (drift > 5) {
-              console.log(`[TimeSync] Corrected timer: client=${prev}s, server=${serverRemaining}s, drift=${drift}s`);
-              return Math.max(0, Math.floor(serverRemaining));
-            }
-            return prev;
-          });
-        }
-      } catch {
-        // Ignore sync errors — client timer continues as fallback
-      }
-    };
-
     // Sync every 60 seconds
-    const interval = setInterval(syncTimer, 60000);
+    const interval = setInterval(() => {
+      void syncTimeFromServer(false);
+    }, 60000);
     // First sync after 30s (let exam settle first)
-    const firstSync = setTimeout(syncTimer, 30000);
+    const firstSync = setTimeout(() => {
+      void syncTimeFromServer(false);
+    }, 30000);
 
     return () => {
       clearInterval(interval);
       clearTimeout(firstSync);
     };
-  }, [isStarted, submitting, examId]);
+  }, [isStarted, submitting, syncTimeFromServer]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
