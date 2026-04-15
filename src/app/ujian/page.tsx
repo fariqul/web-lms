@@ -11,6 +11,7 @@ import api from '@/services/api';
 import { classAPI } from '@/services/api';
 import { SUBJECT_OPTIONS } from '@/constants/subjects';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/context/AuthContext';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
 import { useExamsListSocket } from '@/hooks/useSocket';
 
@@ -58,6 +59,8 @@ const SEBSettingsFields = dynamic(
 export default function UjianPage() {
   const router = useRouter();
   const toast = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -250,6 +253,7 @@ export default function UjianPage() {
   );
 
   useEffect(() => {
+    if (!isAdmin) return;
     if (upcomingExams.length === 0) return;
 
     const targets = upcomingExams.slice(0, 6);
@@ -283,7 +287,7 @@ export default function UjianPage() {
         globalThis.clearTimeout(timeoutId);
       }
     };
-  }, [router, upcomingExams]);
+  }, [router, upcomingExams, isAdmin]);
 
   const handleDeleteExam = useCallback((examId: number, examTitle: string) => {
     setDeleteExam({ id: examId, title: examTitle });
@@ -459,7 +463,7 @@ export default function UjianPage() {
               Edit Soal
             </Button>
           </Link>
-          {exam.status === 'draft' && (
+          {isAdmin && exam.status === 'draft' && (
             <Link href={`/ujian/${exam.id}/results`} className="flex-1">
               <Button variant="outline" fullWidth>
                 <AlertCircle className="w-4 h-4 mr-2" />
@@ -467,7 +471,7 @@ export default function UjianPage() {
               </Button>
             </Link>
           )}
-          {(exam.status === 'scheduled' || exam.status === 'active') && (
+          {isAdmin && (exam.status === 'scheduled' || exam.status === 'active') && (
             <Link href={`/ujian/${exam.id}/results`} className="flex-1">
               <Button fullWidth>
                 <Users className="w-4 h-4 mr-2" />
@@ -489,7 +493,7 @@ export default function UjianPage() {
       </div>
       );
     });
-  }, [visibleUpcomingExams, getStatusBadge, handleDeleteExam, getRepublishSessionNo]);
+  }, [visibleUpcomingExams, getStatusBadge, handleDeleteExam, getRepublishSessionNo, isAdmin]);
 
   const completedExamCards = useMemo(() => {
     return visibleCompletedExams.map((exam) => {
@@ -519,11 +523,13 @@ export default function UjianPage() {
           {getStatusBadge(exam)}
         </div>
         <div className="flex gap-2">
-          <Link href={`/ujian/${exam.id}/results`} className="flex-1">
-            <Button variant="outline" fullWidth>
-              Lihat Hasil
-            </Button>
-          </Link>
+          {isAdmin && (
+            <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+              <Button variant="outline" fullWidth>
+                Lihat Hasil
+              </Button>
+            </Link>
+          )}
           <Button
             variant="outline"
             onClick={() => handleClearHistoryExam(exam.id, exam.title)}
@@ -536,7 +542,7 @@ export default function UjianPage() {
       </div>
       );
     });
-  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo, handleClearHistoryExam]);
+  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo, handleClearHistoryExam, isAdmin]);
 
   if (loading) {
     return (

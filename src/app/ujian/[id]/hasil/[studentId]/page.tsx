@@ -85,7 +85,8 @@ export default function HasilSiswaPage() {
   const examId = Number(params.id);
   const studentId = Number(params.studentId);
 
-  const isTeacherOrAdmin = user?.role === 'guru' || user?.role === 'admin';
+  const userRole = user?.role;
+  const isAdmin = userRole === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<ExamResultData | null>(null);
@@ -100,6 +101,11 @@ export default function HasilSiswaPage() {
   const [gradingSubmitting, setGradingSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await api.get(`/exams/${examId}/results/${studentId}`);
       const data = response.data?.data;
@@ -115,11 +121,18 @@ export default function HasilSiswaPage() {
     } finally {
       setLoading(false);
     }
-  }, [examId, studentId, toast]);
+  }, [examId, studentId, toast, isAdmin]);
 
   useEffect(() => {
+    if (!userRole) return;
+    if (!isAdmin) {
+      setLoading(false);
+      router.replace('/ujian');
+      return;
+    }
+
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, isAdmin, userRole, router]);
 
   const startGrading = (answer: AnswerData) => {
     setGradingId(answer.id);
@@ -181,6 +194,20 @@ export default function HasilSiswaPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (userRole && !isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Akses ditolak</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Detail hasil ujian siswa hanya dapat diakses admin.</p>
+          <Button className="mt-4" onClick={() => router.replace('/ujian')}>
+            Kembali
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -533,7 +560,7 @@ export default function HasilSiswaPage() {
                         )}
 
                         {/* Teacher manual grading section */}
-                        {isTeacherOrAdmin && (
+                        {isAdmin && (
                           <div className="mt-3">
                             {gradingId === answer.id ? (
                               <div className="rounded-lg border border-indigo-200 dark:border-indigo-700/50 bg-indigo-50 dark:bg-indigo-900/20 p-3 space-y-3">
@@ -608,7 +635,7 @@ export default function HasilSiswaPage() {
                         )}
 
                         {/* Show feedback to students (read-only) */}
-                        {!isTeacherOrAdmin && answer.feedback && (
+                        {!isAdmin && answer.feedback && (
                           <div className="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-xs text-amber-800 dark:text-amber-300">
                             <span className="font-semibold">Catatan Guru:</span> {answer.feedback}
                           </div>

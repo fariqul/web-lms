@@ -103,6 +103,8 @@ export default function ExamResultsPage() {
   const router = useRouter();
   const examId = Number(params.id);
   const { user } = useAuth();
+  const userRole = user?.role;
+  const isAdmin = userRole === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -120,6 +122,11 @@ export default function ExamResultsPage() {
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
 
   const fetchResults = useCallback(async () => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const scopedClassId = filterClass ? Number(filterClass) : undefined;
       const response = await api.get(`/exams/${examId}/results`, {
@@ -180,17 +187,24 @@ export default function ExamResultsPage() {
     } finally {
       setLoading(false);
     }
-  }, [examId, filterClass]);
+  }, [examId, filterClass, isAdmin]);
 
   useEffect(() => {
+    if (!userRole) return;
+    if (!isAdmin) {
+      setLoading(false);
+      router.replace('/ujian');
+      return;
+    }
+
     fetchResults();
-  }, [fetchResults]);
+  }, [fetchResults, isAdmin, userRole, router]);
 
   // Real-time updates via WebSocket
   const examSocket = useExamSocket(examId);
 
   useEffect(() => {
-    if (!examSocket.isConnected) return;
+    if (!isAdmin || !examSocket.isConnected) return;
 
     // New student submitted exam
     examSocket.onStudentSubmitted((data: unknown) => {
@@ -263,7 +277,7 @@ export default function ExamResultsPage() {
       examSocket.off(`exam.${examId}.answer-graded`);
       examSocket.off(`exam.${examId}.result-updated`);
     };
-  }, [examSocket, examId, fetchResults]);
+  }, [examSocket, examId, fetchResults, isAdmin]);
 
   const handleExport = async (format: 'xlsx' | 'pdf') => {
     setExporting(format);
@@ -575,6 +589,20 @@ export default function ExamResultsPage() {
       <DashboardLayout>
         <div className="flex justify-center items-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (userRole && !isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Akses ditolak</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">Halaman hasil ujian hanya dapat diakses admin.</p>
+          <Button className="mt-4" onClick={() => router.replace('/ujian')}>
+            Kembali
+          </Button>
         </div>
       </DashboardLayout>
     );

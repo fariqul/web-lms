@@ -33,6 +33,13 @@ class ExportController extends Controller
             'format' => 'required|in:xlsx,pdf',
         ]);
 
+        if ($request->user()?->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengekspor hasil ujian',
+            ], 403);
+        }
+
         try {
             $format = $request->input('format');
             $exam = Exam::with(['classRoom', 'classes:id,name'])->findOrFail($examId);

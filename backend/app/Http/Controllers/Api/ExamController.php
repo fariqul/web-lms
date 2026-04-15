@@ -3895,17 +3895,16 @@ class ExamController extends Controller
     }
 
     /**
-     * Get exam results (for teacher) - OPTIMIZED
+     * Get exam results (admin only) - OPTIMIZED
      */
     public function results(Request $request, Exam $exam)
     {
         $user = $request->user();
 
-        // Ownership check
-        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+        if ($user->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk melihat hasil ujian ini',
+                'message' => 'Hanya admin yang dapat melihat hasil ujian',
             ], 403);
         }
 
@@ -4180,17 +4179,16 @@ class ExamController extends Controller
     }
 
     /**
-     * Get student result detail (for teacher) - OPTIMIZED
+     * Get student result detail (admin only) - OPTIMIZED
      */
     public function studentResult(Request $request, Exam $exam, $studentId)
     {
         $user = $request->user();
 
-        // Ownership check
-        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+        if ($user->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk melihat hasil ujian ini',
+                'message' => 'Hanya admin yang dapat melihat hasil ujian',
             ], 403);
         }
 
