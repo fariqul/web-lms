@@ -18,6 +18,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\NomorTes;
 use App\Services\SocketBroadcastService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -121,7 +122,20 @@ class ExamController extends Controller
         };
 
         if (method_exists(Cache::getStore(), 'lock')) {
-            return Cache::lock($gateLockKey, 5)->block(2, $evaluate);
+            try {
+                return Cache::lock($gateLockKey, 5)->block(2, $evaluate);
+            } catch (LockTimeoutException $e) {
+                Log::warning('Violation gate lock timeout, using transient fallback', [
+                    'result_id' => $resultId,
+                    'violation_type' => $violationType,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return [
+                    'reason_code' => 'consensus_lock_timeout',
+                    'message' => 'Pelanggaran non-kritis ditahan sementara (sinkronisasi sistem)',
+                ];
+            }
         }
 
         return $evaluate();
