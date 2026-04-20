@@ -28,6 +28,8 @@ use Carbon\Carbon;
 class ExamController extends Controller
 {
     private const EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT = 20;
+    private const VIOLATION_CONSENSUS_WINDOW_SECONDS_DEFAULT = 20;
+    private const VIOLATION_COOLDOWN_SECONDS_DEFAULT = 8;
     private const SCHOOL_TIMEZONE = 'Asia/Makassar';
 
     private function parseSchoolTimeToUtc(string $value): Carbon
@@ -62,6 +64,31 @@ class ExamController extends Controller
     {
         $ttl = (int) env('EXAM_SHOW_CACHE_TTL_SECONDS', self::EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT);
         return max(5, $ttl);
+    }
+
+    private function getViolationConsensusWindowSeconds(): int
+    {
+        return max(5, (int) env('EXAM_VIOLATION_CONSENSUS_WINDOW_SECONDS', self::VIOLATION_CONSENSUS_WINDOW_SECONDS_DEFAULT));
+    }
+
+    private function getViolationCooldownSeconds(): int
+    {
+        return max(1, (int) env('EXAM_VIOLATION_COOLDOWN_SECONDS', self::VIOLATION_COOLDOWN_SECONDS_DEFAULT));
+    }
+
+    private function isCriticalViolationType(string $type): bool
+    {
+        return in_array($type, ['tab_switch', 'window_blur', 'fullscreen_exit'], true);
+    }
+
+    private function getViolationConsensusCacheKey(int $resultId, string $violationType): string
+    {
+        return "exam:violation:consensus:{$resultId}:{$violationType}";
+    }
+
+    private function getViolationCooldownCacheKey(int $resultId, string $violationType): string
+    {
+        return "exam:violation:cooldown:{$resultId}:{$violationType}";
     }
 
     private function forgetExamShowCache(int $examId): void
@@ -142,6 +169,40 @@ class ExamController extends Controller
                 'ios_ignored' => true,
                 'ios_ignored_reason' => $reasonCode,
                 'ios_ignored_count' => $ignoredCount,
+                'message' => $message,
+                ...$policy,
+            ],
+        ]);
+    }
+
+    private function buildTransientViolationResponse(
+        Request $request,
+        Exam $exam,
+        ExamResult $result,
+        string $violationType,
+        string $reasonCode,
+        string $message
+    ) {
+        $policy = $this->getViolationPolicyData($exam, (int) ($result->violation_count ?? 0));
+
+        $this->logPolicyActionEvent('exam.violation.transient', $exam, $result, [
+            'violation_type' => $violationType,
+            'reason_code' => $reasonCode,
+            'message' => $message,
+            'policy_action' => $policy['policy_action'] ?? 'none',
+            'source' => 'violation_report',
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'violation_count' => $result->violation_count,
+                'max_violations' => $exam->max_violations,
+                'force_submit' => false,
+                'ignored' => true,
+                'transient' => true,
+                'transient_reason' => $reasonCode,
                 'message' => $message,
                 ...$policy,
             ],
@@ -3665,13 +3726,13 @@ class ExamController extends Controller
         }
 
         $violationType = $request->type;
+        $criticalViolation = $this->isCriticalViolationType($violationType);
         $userAgent = $request->userAgent() ?? '';
         $isIOSUa = preg_match('/iPhone|iPad|iPod/i', $userAgent) === 1;
 
         // Guard iOS false positives for selected noisy signals.
         // Critical anti-exit signals must always be counted on iOS.
-        $strictIosTypes = ['tab_switch', 'window_blur', 'fullscreen_exit'];
-        if ($isIOSUa && !in_array($violationType, $strictIosTypes, true)) {
+        if ($isIOSUa && !$criticalViolation) {
             $volatileTypes = [
                 'split_screen',
                 'floating_app',
@@ -3705,24 +3766,41 @@ class ExamController extends Controller
                         'Violation iOS diabaikan sementara pasca reaktivasi'
                     );
                 }
-
-                // Require repeated same event in short window before counting on iOS.
-                $recentSame = Violation::where('exam_result_id', $result->id)
-                    ->where('type', $violationType)
-                    ->where('recorded_at', '>=', now()->subSeconds(20))
-                    ->count();
-
-                if ($recentSame === 0) {
-                    return $this->buildIgnoredViolationResponse(
-                        $request,
-                        $exam,
-                        $result,
-                        $violationType,
-                        'ios_first_occurrence',
-                        'Violation iOS pertama untuk tipe ini diabaikan (konfirmasi berulang diperlukan)'
-                    );
-                }
             }
+        }
+
+        if (!$criticalViolation) {
+            $consensusWindow = $this->getViolationConsensusWindowSeconds();
+            $cooldownSeconds = $this->getViolationCooldownSeconds();
+            $consensusKey = $this->getViolationConsensusCacheKey((int) $result->id, $violationType);
+            $cooldownKey = $this->getViolationCooldownCacheKey((int) $result->id, $violationType);
+
+            if (Cache::has($cooldownKey)) {
+                return $this->buildTransientViolationResponse(
+                    $request,
+                    $exam,
+                    $result,
+                    $violationType,
+                    'cooldown_active',
+                    'Pelanggaran non-kritis ditahan karena cooldown aktif'
+                );
+            }
+
+            if (!Cache::has($consensusKey)) {
+                Cache::put($consensusKey, true, now()->addSeconds($consensusWindow));
+
+                return $this->buildTransientViolationResponse(
+                    $request,
+                    $exam,
+                    $result,
+                    $violationType,
+                    'consensus_first_occurrence',
+                    'Pelanggaran non-kritis pertama ditahan untuk konfirmasi'
+                );
+            }
+
+            Cache::forget($consensusKey);
+            Cache::put($cooldownKey, true, now()->addSeconds($cooldownSeconds));
         }
 
         $screenshotPath = null;
