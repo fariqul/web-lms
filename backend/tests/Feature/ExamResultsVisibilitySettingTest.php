@@ -61,12 +61,17 @@ class ExamResultsVisibilitySettingTest extends TestCase
             ->assertJsonPath('data.teacher_exam_results_hidden', false);
     }
 
-    public function test_non_admin_cannot_update_exam_results_visibility_toggle(): void
+    public function test_non_admin_cannot_read_or_update_exam_results_visibility_toggle(): void
     {
         $classId = $this->createClassRoom('X-Exam-Results-Visibility-Teacher');
         $teacher = $this->createUser('guru', $classId, 'exam-results-visibility-teacher');
 
         Sanctum::actingAs($teacher);
+
+        $this->getJson('/api/exam-results-visibility')
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Anda tidak memiliki akses ke resource ini');
 
         $this->putJson('/api/exam-results-visibility', [
             'teacher_exam_results_hidden' => false,
