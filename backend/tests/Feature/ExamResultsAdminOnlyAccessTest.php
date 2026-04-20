@@ -158,4 +158,18 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
     }
+
+    public function test_admin_can_export_exam_results(): void
+    {
+        $classId = $this->createClassRoom('X-Results-Export-Admin');
+        $teacher = $this->createUser('guru', $classId, 'teacher-results-export-admin');
+        $admin = $this->createUser('admin', $classId, 'admin-results-export');
+        $student = $this->createUser('siswa', $classId, 'student-results-export-admin');
+        $exam = $this->createExamWithResult($teacher, $student, $classId);
+
+        Sanctum::actingAs($admin);
+
+        $this->get("/api/export/exam-results/{$exam->id}?format=xlsx")
+            ->assertOk();
+    }
 }
