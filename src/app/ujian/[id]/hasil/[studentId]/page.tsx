@@ -101,11 +101,6 @@ export default function HasilSiswaPage() {
   const [gradingSubmitting, setGradingSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!isAdmin) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await api.get(`/exams/${examId}/results/${studentId}`);
       const data = response.data?.data;
@@ -117,22 +112,22 @@ export default function HasilSiswaPage() {
       }
     } catch (error) {
       console.error('Failed to fetch result:', error);
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 403) {
+        toast.error('Anda tidak memiliki akses ke hasil ujian ini');
+        router.replace('/ujian');
+        return;
+      }
       toast.error('Gagal memuat data hasil ujian');
     } finally {
       setLoading(false);
     }
-  }, [examId, studentId, toast, isAdmin]);
+  }, [examId, studentId, toast, router]);
 
   useEffect(() => {
     if (!userRole) return;
-    if (!isAdmin) {
-      setLoading(false);
-      router.replace('/ujian');
-      return;
-    }
-
     fetchData();
-  }, [fetchData, isAdmin, userRole, router]);
+  }, [fetchData, userRole]);
 
   const startGrading = (answer: AnswerData) => {
     setGradingId(answer.id);
@@ -194,20 +189,6 @@ export default function HasilSiswaPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (userRole && !isAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Akses ditolak</h2>
-          <p className="text-slate-600 dark:text-slate-400 mt-2">Detail hasil ujian siswa hanya dapat diakses admin.</p>
-          <Button className="mt-4" onClick={() => router.replace('/ujian')}>
-            Kembali
-          </Button>
         </div>
       </DashboardLayout>
     );
@@ -304,7 +285,7 @@ export default function HasilSiswaPage() {
               {result.started_at && <span>Mulai: <strong>{formatDateTime(result.started_at)}</strong></span>}
               {result.finished_at && <span>Selesai: <strong>{formatDateTime(result.finished_at)}</strong></span>}
             </div>
-            {snapshots.length > 0 && (
+            {isAdmin && snapshots.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -318,7 +299,7 @@ export default function HasilSiswaPage() {
         </Card>
 
         {/* Snapshots */}
-        {showSnapshots && snapshots.length > 0 && (
+        {isAdmin && showSnapshots && snapshots.length > 0 && (
           <Card className="p-4">
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Foto Monitoring</h3>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
