@@ -91,6 +91,42 @@ class ExamController extends Controller
         return "exam:violation:cooldown:{$resultId}:{$violationType}";
     }
 
+    private function evaluateNonCriticalViolationGate(int $resultId, string $violationType): ?array
+    {
+        $consensusWindow = $this->getViolationConsensusWindowSeconds();
+        $cooldownSeconds = $this->getViolationCooldownSeconds();
+        $consensusKey = $this->getViolationConsensusCacheKey($resultId, $violationType);
+        $cooldownKey = $this->getViolationCooldownCacheKey($resultId, $violationType);
+        $gateLockKey = "exam:violation:gate:{$resultId}:{$violationType}";
+
+        $evaluate = function () use ($consensusKey, $consensusWindow, $cooldownKey, $cooldownSeconds): ?array {
+            if (Cache::has($cooldownKey)) {
+                return [
+                    'reason_code' => 'cooldown_active',
+                    'message' => 'Pelanggaran non-kritis ditahan karena cooldown aktif',
+                ];
+            }
+
+            if (Cache::add($consensusKey, true, now()->addSeconds($consensusWindow))) {
+                return [
+                    'reason_code' => 'consensus_first_occurrence',
+                    'message' => 'Pelanggaran non-kritis pertama ditahan untuk konfirmasi',
+                ];
+            }
+
+            Cache::forget($consensusKey);
+            Cache::put($cooldownKey, true, now()->addSeconds($cooldownSeconds));
+
+            return null;
+        };
+
+        if (method_exists(Cache::getStore(), 'lock')) {
+            return Cache::lock($gateLockKey, 5)->block(2, $evaluate);
+        }
+
+        return $evaluate();
+    }
+
     private function forgetExamShowCache(int $examId): void
     {
         Cache::forget("exam:show:{$examId}:role:guru");
@@ -3770,37 +3806,17 @@ class ExamController extends Controller
         }
 
         if (!$criticalViolation) {
-            $consensusWindow = $this->getViolationConsensusWindowSeconds();
-            $cooldownSeconds = $this->getViolationCooldownSeconds();
-            $consensusKey = $this->getViolationConsensusCacheKey((int) $result->id, $violationType);
-            $cooldownKey = $this->getViolationCooldownCacheKey((int) $result->id, $violationType);
-
-            if (Cache::has($cooldownKey)) {
+            $gateResult = $this->evaluateNonCriticalViolationGate((int) $result->id, $violationType);
+            if ($gateResult !== null) {
                 return $this->buildTransientViolationResponse(
                     $request,
                     $exam,
                     $result,
                     $violationType,
-                    'cooldown_active',
-                    'Pelanggaran non-kritis ditahan karena cooldown aktif'
+                    $gateResult['reason_code'],
+                    $gateResult['message']
                 );
             }
-
-            if (!Cache::has($consensusKey)) {
-                Cache::put($consensusKey, true, now()->addSeconds($consensusWindow));
-
-                return $this->buildTransientViolationResponse(
-                    $request,
-                    $exam,
-                    $result,
-                    $violationType,
-                    'consensus_first_occurrence',
-                    'Pelanggaran non-kritis pertama ditahan untuk konfirmasi'
-                );
-            }
-
-            Cache::forget($consensusKey);
-            Cache::put($cooldownKey, true, now()->addSeconds($cooldownSeconds));
         }
 
         $screenshotPath = null;
