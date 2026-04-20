@@ -80,4 +80,25 @@ class ExamResultsVisibilitySettingTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Anda tidak memiliki akses ke resource ini');
     }
+
+    public function test_admin_update_returns_error_when_teacher_exam_results_visibility_persistence_fails(): void
+    {
+        $classId = $this->createClassRoom('X-Exam-Results-Visibility-Persistence-Failure');
+        $admin = $this->createUser('admin', $classId, 'exam-results-visibility-persistence-failure');
+
+        Sanctum::actingAs($admin);
+
+        DB::statement('DROP TABLE system_settings');
+
+        $this->putJson('/api/exam-results-visibility', [
+            'teacher_exam_results_hidden' => false,
+        ])
+            ->assertStatus(500)
+            ->assertJsonPath('success', false);
+
+        $this->getJson('/api/exam-results-visibility')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.teacher_exam_results_hidden', true);
+    }
 }

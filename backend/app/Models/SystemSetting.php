@@ -88,7 +88,7 @@ class SystemSetting extends Model
         });
     }
 
-    public static function setTeacherExamResultsHidden(bool $hidden): void
+    public static function setTeacherExamResultsHidden(bool $hidden): bool
     {
         try {
             self::updateOrCreate(
@@ -96,9 +96,11 @@ class SystemSetting extends Model
                 ['setting_value' => $hidden ? '1' : '0']
             );
         } catch (\Throwable $e) {
-            Log::warning('SystemSetting write failed, cache only update applied: ' . $e->getMessage());
+            Log::warning('SystemSetting write failed for teacher exam results visibility: ' . $e->getMessage());
+            return false;
         }
 
         Cache::forever(self::cacheKey(self::TEACHER_EXAM_RESULTS_HIDDEN_KEY), $hidden);
+        return true;
     }
 }

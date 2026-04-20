@@ -26,7 +26,12 @@ class ExamResultVisibilityController extends Controller
         ]);
 
         $hidden = (bool) $validated['teacher_exam_results_hidden'];
-        SystemSetting::setTeacherExamResultsHidden($hidden);
+        if (! SystemSetting::setTeacherExamResultsHidden($hidden)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan pengaturan visibilitas hasil ujian guru',
+            ], 500);
+        }
 
         app(SocketBroadcastService::class)->examResultsVisibilityUpdated([
             'teacher_exam_results_hidden' => $hidden,
