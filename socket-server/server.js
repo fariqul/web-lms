@@ -11,7 +11,7 @@ const MAX_CONNECTIONS = 2000; // Higher headroom for 64GB server
 const RATE_LIMIT_WINDOW = 1000; // 1 second window
 const RATE_LIMIT_MAX = 30; // max events per window per socket
 const CONNECTION_TIMEOUT = 45000; // 45 seconds for slow connections
-const ALLOWED_SYSTEM_ROOMS = new Set(['system.snapshot-monitor']);
+const ALLOWED_SYSTEM_ROOMS = new Set(['system.snapshot-monitor', 'system.exam-results-visibility']);
 
 const httpServer = createServer((req, res) => {
   // Health check endpoint with detailed stats

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
@@ -22,6 +22,7 @@ import api, { getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { MathText } from '@/components/ui/MathText';
 import { useAuth } from '@/context/AuthContext';
+import { useExamSocket } from '@/hooks/useSocket';
 
 interface StudentInfo {
   id: number;
@@ -99,6 +100,8 @@ export default function HasilSiswaPage() {
   const [gradingScore, setGradingScore] = useState('');
   const [gradingFeedback, setGradingFeedback] = useState('');
   const [gradingSubmitting, setGradingSubmitting] = useState(false);
+  const lockoutToastShownRef = useRef(false);
+  const examSocket = useExamSocket(examId);
 
   const fetchData = useCallback(async () => {
     try {
@@ -128,6 +131,23 @@ export default function HasilSiswaPage() {
     if (!userRole) return;
     fetchData();
   }, [fetchData, userRole]);
+
+  useEffect(() => {
+    if (userRole !== 'guru' || !examSocket.isConnected) return;
+
+    const unsubscribe = examSocket.onExamResultsVisibilityUpdated((payload: unknown) => {
+      const data = payload as { teacher_exam_results_hidden?: boolean };
+      if (data.teacher_exam_results_hidden !== true || lockoutToastShownRef.current) return;
+
+      lockoutToastShownRef.current = true;
+      toast.error('Akses hasil ujian untuk guru telah dinonaktifkan. Anda akan dialihkan.');
+      router.replace('/ujian');
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [examSocket, userRole, router, toast]);
 
   const startGrading = (answer: AnswerData) => {
     setGradingId(answer.id);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -122,6 +122,7 @@ export default function ExamResultsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterClass, setFilterClass] = useState<string>('');
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
+  const lockoutToastShownRef = useRef(false);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -274,6 +275,23 @@ export default function ExamResultsPage() {
       examSocket.off(`exam.${examId}.result-updated`);
     };
   }, [examSocket, examId, fetchResults]);
+
+  useEffect(() => {
+    if (userRole !== 'guru' || !examSocket.isConnected) return;
+
+    const unsubscribe = examSocket.onExamResultsVisibilityUpdated((payload: unknown) => {
+      const data = payload as { teacher_exam_results_hidden?: boolean };
+      if (data.teacher_exam_results_hidden !== true || lockoutToastShownRef.current) return;
+
+      lockoutToastShownRef.current = true;
+      toast.error('Akses hasil ujian untuk guru telah dinonaktifkan. Anda akan dialihkan.');
+      router.replace('/ujian');
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [examSocket, userRole, router, toast]);
 
   const handleExport = async (format: 'xlsx' | 'pdf') => {
     setExporting(format);

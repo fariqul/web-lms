@@ -359,4 +359,16 @@ class SocketBroadcastService
             'system.snapshot-monitor'
         );
     }
+
+    /**
+     * Broadcast global exam results visibility setting changes.
+     */
+    public function examResultsVisibilityUpdated(array $data): bool
+    {
+        return $this->broadcast(
+            'system.exam-results-visibility.updated',
+            $data,
+            'system.exam-results-visibility'
+        );
+    }
 }

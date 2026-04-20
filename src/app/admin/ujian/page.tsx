@@ -10,7 +10,7 @@ import {
   Search, Monitor, BarChart3, StopCircle, Lock, Unlock, RotateCcw, Trash2,
 } from 'lucide-react';
 import api from '@/services/api';
-import { classAPI, examAPI } from '@/services/api';
+import { classAPI, examAPI, examSettingsAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { downloadSEBConfig } from '@/utils/seb';
 import { useExamsListSocket } from '@/hooks/useSocket';
@@ -100,6 +100,9 @@ export default function AdminUjianPage() {
   const [editingTimeAdjust, setEditingTimeAdjust] = useState<Exam | null>(null);
   const [timeAdjustDelta, setTimeAdjustDelta] = useState<number>(10);
   const [savingTimeAdjust, setSavingTimeAdjust] = useState(false);
+  const [resultsVisibilityLoading, setResultsVisibilityLoading] = useState(true);
+  const [resultsVisibilitySaving, setResultsVisibilitySaving] = useState(false);
+  const [teacherExamResultsHidden, setTeacherExamResultsHidden] = useState(true);
 
   const toDateTimeLocalInputValue = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -171,6 +174,19 @@ export default function AdminUjianPage() {
 
   useEffect(() => {
     fetchData();
+    const loadResultsVisibility = async () => {
+      try {
+        const response = await examSettingsAPI.getResultsVisibility();
+        const hidden = response.data?.data?.teacher_exam_results_hidden;
+        setTeacherExamResultsHidden(typeof hidden === 'boolean' ? hidden : true);
+      } catch (error) {
+        console.error('Failed to fetch exam results visibility setting:', error);
+      } finally {
+        setResultsVisibilityLoading(false);
+      }
+    };
+
+    loadResultsVisibility();
   }, []);
 
   const fetchData = async () => {
@@ -196,6 +212,24 @@ export default function AdminUjianPage() {
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateResultsVisibility = async (hidden: boolean) => {
+    setResultsVisibilitySaving(true);
+    try {
+      const response = await examSettingsAPI.updateResultsVisibility(hidden);
+      const updatedHidden = response.data?.data?.teacher_exam_results_hidden;
+      setTeacherExamResultsHidden(typeof updatedHidden === 'boolean' ? updatedHidden : hidden);
+      toast.success(
+        response.data?.message ||
+        (hidden ? 'Akses hasil ujian guru dinonaktifkan' : 'Akses hasil ujian guru diaktifkan')
+      );
+    } catch (error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal memperbarui pengaturan akses hasil ujian guru');
+    } finally {
+      setResultsVisibilitySaving(false);
     }
   };
 
@@ -1026,6 +1060,52 @@ export default function AdminUjianPage() {
             </div>
           </div>
         </div>
+
+        <Card>
+          <CardHeader
+            title="Akses Hasil Ujian Guru"
+            subtitle="Kontrol global untuk menampilkan atau menyembunyikan hasil ujian CBT dari guru"
+          />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {resultsVisibilityLoading
+                  ? 'Memuat status pengaturan...'
+                  : teacherExamResultsHidden
+                    ? 'Status ON: Hasil ujian disembunyikan dari guru.'
+                    : 'Status OFF: Guru dapat melihat hasil ujian miliknya.'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Perubahan berlaku langsung dan akan memengaruhi akses hasil ujian di sisi guru.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => handleUpdateResultsVisibility(true)}
+                disabled={resultsVisibilityLoading || resultsVisibilitySaving || teacherExamResultsHidden}
+                className={teacherExamResultsHidden ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
+              >
+                {resultsVisibilitySaving && teacherExamResultsHidden ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : null}
+                ON (Sembunyikan)
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleUpdateResultsVisibility(false)}
+                disabled={resultsVisibilityLoading || resultsVisibilitySaving || !teacherExamResultsHidden}
+                className={!teacherExamResultsHidden ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : ''}
+              >
+                {resultsVisibilitySaving && !teacherExamResultsHidden ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : null}
+                OFF (Tampilkan)
+              </Button>
+            </div>
+          </div>
+        </Card>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
