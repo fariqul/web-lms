@@ -177,6 +177,36 @@ export function useExamSocket(examId: number) {
     on(`exam.${examId}.result-updated`, callback);
   }, [on, examId]);
 
+  const joinSystemRoom = useCallback((room: string) => {
+    emit('join-system', { room });
+  }, [emit]);
+
+  const leaveSystemRoom = useCallback((room: string) => {
+    emit('leave-system', { room });
+  }, [emit]);
+
+  const subscribeSystemRoomEvent = useCallback((
+    room: string,
+    event: string,
+    callback: (data: unknown) => void
+  ) => {
+    joinSystemRoom(room);
+    on(event, callback);
+
+    return () => {
+      off(event);
+      leaveSystemRoom(room);
+    };
+  }, [joinSystemRoom, leaveSystemRoom, on, off]);
+
+  const onExamResultsVisibilityUpdated = useCallback((callback: (data: unknown) => void) => {
+    return subscribeSystemRoomEvent(
+      'system.exam-results-visibility',
+      'system.exam-results-visibility.updated',
+      callback
+    );
+  }, [subscribeSystemRoomEvent]);
+
   useEffect(() => {
     if (examId > 0 && isConnected) {
       joinExamRoom();
@@ -213,7 +243,11 @@ export function useExamSocket(examId: number) {
     onExamUnlocked,
     onAnswerGraded,
     onResultScoreUpdated,
-  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded, onQuestionAdded, onQuestionUpdated, onQuestionDeleted, onExamUpdated, onExamPublished, onExamDeleted, onExamLocked, onExamUnlocked, onAnswerGraded, onResultScoreUpdated]);
+    joinSystemRoom,
+    leaveSystemRoom,
+    subscribeSystemRoomEvent,
+    onExamResultsVisibilityUpdated,
+  }), [isConnected, emit, on, off, connect, disconnect, joinExamRoom, leaveExamRoom, onStudentJoined, onStudentSubmitted, onViolationReported, onAnswerProgress, onSnapshot, onExamEnded, onQuestionAdded, onQuestionUpdated, onQuestionDeleted, onExamUpdated, onExamPublished, onExamDeleted, onExamLocked, onExamUnlocked, onAnswerGraded, onResultScoreUpdated, joinSystemRoom, leaveSystemRoom, subscribeSystemRoomEvent, onExamResultsVisibilityUpdated]);
 }
 
 // Hook for exam list pages — join/leave multiple exam rooms for real-time updates
