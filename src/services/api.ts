@@ -506,6 +506,17 @@ export const examAPI = {
   ) => api.post(`/exams/${examId}/republish`, data),
 };
 
+// Exam Settings API
+export const examSettingsAPI = {
+  getResultsVisibility: () =>
+    api.get('/exam-results-visibility'),
+
+  updateResultsVisibility: (teacherExamResultsHidden: boolean) =>
+    api.put('/exam-results-visibility', {
+      teacher_exam_results_hidden: teacherExamResultsHidden,
+    }),
+};
+
 // Monitoring API
 export const monitoringAPI = {
   uploadSnapshot: (data: {
