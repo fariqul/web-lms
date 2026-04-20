@@ -88,12 +88,18 @@ export default function QuizStudentResultPage() {
         setResult(data.result);
         setAnswers(data.answers || []);
       }
-    } catch {
+    } catch (error) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 403) {
+        toast.error('Anda tidak memiliki akses ke hasil quiz siswa ini');
+        router.replace(`/quiz/${quizId}/hasil`);
+        return;
+      }
       toast.error('Gagal memuat data hasil quiz');
     } finally {
       setLoading(false);
     }
-  }, [quizId, studentId, toast]);
+  }, [quizId, studentId, toast, router]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

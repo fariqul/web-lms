@@ -82,7 +82,7 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
         return $exam;
     }
 
-    public function test_teacher_owner_cannot_access_exam_results_list(): void
+    public function test_teacher_owner_can_access_exam_results_list(): void
     {
         $classId = $this->createClassRoom('X-Results-List');
         $teacher = $this->createUser('guru', $classId, 'teacher-results-list');
@@ -92,10 +92,11 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
         Sanctum::actingAs($teacher);
 
         $this->getJson("/api/exams/{$exam->id}/results")
-            ->assertStatus(403);
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 
-    public function test_teacher_owner_cannot_access_exam_results_student_detail(): void
+    public function test_teacher_owner_can_access_exam_results_student_detail(): void
     {
         $classId = $this->createClassRoom('X-Results-Detail');
         $teacher = $this->createUser('guru', $classId, 'teacher-results-detail');
@@ -103,6 +104,24 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
         $exam = $this->createExamWithResult($teacher, $student, $classId);
 
         Sanctum::actingAs($teacher);
+
+        $this->getJson("/api/exams/{$exam->id}/results/{$student->id}")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    }
+
+    public function test_teacher_non_owner_cannot_access_exam_results_list_and_detail(): void
+    {
+        $classId = $this->createClassRoom('X-Results-NonOwner');
+        $ownerTeacher = $this->createUser('guru', $classId, 'teacher-results-owner');
+        $nonOwnerTeacher = $this->createUser('guru', $classId, 'teacher-results-non-owner');
+        $student = $this->createUser('siswa', $classId, 'student-results-non-owner');
+        $exam = $this->createExamWithResult($ownerTeacher, $student, $classId);
+
+        Sanctum::actingAs($nonOwnerTeacher);
+
+        $this->getJson("/api/exams/{$exam->id}/results")
+            ->assertStatus(403);
 
         $this->getJson("/api/exams/{$exam->id}/results/{$student->id}")
             ->assertStatus(403);
@@ -139,5 +158,18 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
     }
-}
 
+    public function test_admin_can_export_exam_results(): void
+    {
+        $classId = $this->createClassRoom('X-Results-Export-Admin');
+        $teacher = $this->createUser('guru', $classId, 'teacher-results-export-admin');
+        $admin = $this->createUser('admin', $classId, 'admin-results-export');
+        $student = $this->createUser('siswa', $classId, 'student-results-export-admin');
+        $exam = $this->createExamWithResult($teacher, $student, $classId);
+
+        Sanctum::actingAs($admin);
+
+        $this->get("/api/export/exam-results/{$exam->id}?format=xlsx")
+            ->assertOk();
+    }
+}

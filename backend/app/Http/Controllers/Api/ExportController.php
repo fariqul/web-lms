@@ -860,6 +860,13 @@ class ExportController extends Controller
     // =========================================
     public function quizResults(Request $request, int $quizId)
     {
+        if ($request->user()?->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengekspor hasil quiz',
+            ], 403);
+        }
+
         $request->validate([
             'format' => 'required|in:xlsx,pdf',
         ]);

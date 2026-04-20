@@ -471,7 +471,7 @@ export default function UjianPage() {
               </Button>
             </Link>
           )}
-          {isAdmin && (exam.status === 'scheduled' || exam.status === 'active') && (
+          {(exam.status === 'scheduled' || exam.status === 'active') && (
             <Link href={`/ujian/${exam.id}/results`} className="flex-1">
               <Button fullWidth>
                 <Users className="w-4 h-4 mr-2" />
@@ -523,13 +523,11 @@ export default function UjianPage() {
           {getStatusBadge(exam)}
         </div>
         <div className="flex gap-2">
-          {isAdmin && (
-            <Link href={`/ujian/${exam.id}/results`} className="flex-1">
-              <Button variant="outline" fullWidth>
-                Lihat Hasil
-              </Button>
-            </Link>
-          )}
+          <Link href={`/ujian/${exam.id}/results`} className="flex-1">
+            <Button variant="outline" fullWidth>
+              Lihat Hasil
+            </Button>
+          </Link>
           <Button
             variant="outline"
             onClick={() => handleClearHistoryExam(exam.id, exam.title)}
@@ -542,7 +540,7 @@ export default function UjianPage() {
       </div>
       );
     });
-  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo, handleClearHistoryExam, isAdmin]);
+  }, [visibleCompletedExams, getStatusBadge, getRepublishSessionNo, handleClearHistoryExam]);
 
   if (loading) {
     return (

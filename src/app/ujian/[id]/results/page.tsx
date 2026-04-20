@@ -25,6 +25,7 @@ import api, { exportAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useExamSocket } from '@/hooks/useSocket';
 import { extractNomorTesNumber, matchesNomorTesQuery } from '@/utils/nomorTes';
+import { useToast } from '@/components/ui/Toast';
 
 interface StudentResult {
   id: number;
@@ -103,8 +104,9 @@ export default function ExamResultsPage() {
   const router = useRouter();
   const examId = Number(params.id);
   const { user } = useAuth();
+  const toast = useToast();
   const userRole = user?.role;
-  const isAdmin = userRole === 'admin';
+  const isAdmin = user?.role === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -122,11 +124,6 @@ export default function ExamResultsPage() {
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
 
   const fetchResults = useCallback(async () => {
-    if (!isAdmin) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const scopedClassId = filterClass ? Number(filterClass) : undefined;
       const response = await api.get(`/exams/${examId}/results`, {
@@ -184,27 +181,26 @@ export default function ExamResultsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 403) {
+        toast.error('Anda tidak memiliki akses ke hasil ujian ini');
+        router.replace('/ujian');
+      }
     } finally {
       setLoading(false);
     }
-  }, [examId, filterClass, isAdmin]);
+  }, [examId, filterClass, router, toast]);
 
   useEffect(() => {
     if (!userRole) return;
-    if (!isAdmin) {
-      setLoading(false);
-      router.replace('/ujian');
-      return;
-    }
-
     fetchResults();
-  }, [fetchResults, isAdmin, userRole, router]);
+  }, [fetchResults, userRole]);
 
   // Real-time updates via WebSocket
   const examSocket = useExamSocket(examId);
 
   useEffect(() => {
-    if (!isAdmin || !examSocket.isConnected) return;
+    if (!examSocket.isConnected) return;
 
     // New student submitted exam
     examSocket.onStudentSubmitted((data: unknown) => {
@@ -277,7 +273,7 @@ export default function ExamResultsPage() {
       examSocket.off(`exam.${examId}.answer-graded`);
       examSocket.off(`exam.${examId}.result-updated`);
     };
-  }, [examSocket, examId, fetchResults, isAdmin]);
+  }, [examSocket, examId, fetchResults]);
 
   const handleExport = async (format: 'xlsx' | 'pdf') => {
     setExporting(format);
@@ -594,20 +590,6 @@ export default function ExamResultsPage() {
     );
   }
 
-  if (userRole && !isAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Akses ditolak</h2>
-          <p className="text-slate-600 dark:text-slate-400 mt-2">Halaman hasil ujian hanya dapat diakses admin.</p>
-          <Button className="mt-4" onClick={() => router.replace('/ujian')}>
-            Kembali
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   const avgScore = summary?.average_score ?? 0;
   const passedCount = summary?.passed ?? 0;
   const failedCount = (summary?.completed ?? 0) - passedCount + (summary?.missed ?? 0);
@@ -633,32 +615,36 @@ export default function ExamResultsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleExport('xlsx')}
-              disabled={exporting !== null}
-              className="print:hidden"
-            >
-              {exporting === 'xlsx' ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-              )}
-              Excel
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleExport('pdf')}
-              disabled={exporting !== null}
-              className="print:hidden"
-            >
-              {exporting === 'pdf' ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <FileText className="w-4 h-4 mr-2" />
-              )}
-              PDF
-            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleExport('xlsx')}
+                  disabled={exporting !== null}
+                  className="print:hidden"
+                >
+                  {exporting === 'xlsx' ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  )}
+                  Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleExport('pdf')}
+                  disabled={exporting !== null}
+                  className="print:hidden"
+                >
+                  {exporting === 'pdf' ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-2" />
+                  )}
+                  PDF
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={() => window.print()} className="print:hidden">
               <Printer className="w-5 h-5 mr-2" />
               Cetak

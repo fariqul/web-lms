@@ -224,9 +224,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Exam update (guru edits content, admin can edit schedule)
         Route::put('/exams/{exam}', [ExamController::class, 'update']);
         Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
-        // Exam results (admin only)
-        Route::get('/exams/{exam}/results', [ExamController::class, 'results'])->middleware('role:admin');
-        Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult'])->middleware('role:admin');
+        // Exam results (admin + exam owner guru)
+        Route::get('/exams/{exam}/results', [ExamController::class, 'results'])->middleware('role:admin,guru');
+        Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult'])->middleware('role:admin,guru');
         Route::post('/exams/{exam}/clear-history', [ExamController::class, 'clearHistory']);
         
         // Question management (shared — admin can edit even locked exams)
@@ -301,7 +301,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/export/attendance', [ExportController::class, 'attendance']);
         Route::get('/export/student/{studentId}', [ExportController::class, 'studentReport']);
         Route::get('/export/exam-results/{examId}', [ExportController::class, 'examResults'])->middleware('role:admin');
-        Route::get('/export/quiz-results/{quizId}', [ExportController::class, 'quizResults']);
+        Route::get('/export/quiz-results/{quizId}', [ExportController::class, 'quizResults'])->middleware('role:admin');
     });
 
     // ============================================

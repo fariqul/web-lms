@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { quizAPI, exportAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/context/AuthContext';
 
 interface StudentResult {
   id: number;
@@ -66,7 +67,11 @@ export default function QuizResultsPage() {
   const params = useParams();
   const router = useRouter();
   const toast = useToast();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const quizId = Number(params.id);
+  const userRole = user?.role;
+  const isAdmin = userRole === 'admin';
+  const canAccessResults = userRole === 'admin' || userRole === 'guru';
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -118,14 +123,33 @@ export default function QuizResultsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 403) {
+        toast.error('Anda tidak memiliki akses ke hasil quiz ini');
+        router.replace('/quiz');
+        return;
+      }
     } finally {
       setLoading(false);
     }
-  }, [quizId]);
+  }, [quizId, router, toast]);
 
   useEffect(() => {
+    if (isAuthLoading) return;
+
+    if (!userRole || !canAccessResults) {
+      toast.error('Akses ditolak');
+      setLoading(false);
+      router.replace('/quiz');
+      return;
+    }
+
     fetchResults();
-  }, [fetchResults]);
+  }, [canAccessResults, fetchResults, isAuthLoading, router, toast, userRole]);
+
+  if (!isAuthLoading && !canAccessResults) {
+    return null;
+  }
 
   const filteredResults = results
     .filter(r => {
@@ -266,65 +290,66 @@ export default function QuizResultsPage() {
               </p>
             </div>
           </div>
-          {/* Export Buttons */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                setExporting(true);
-                try {
-                  const res = await exportAPI.exportQuizResults(quizId, { format: 'xlsx' });
-                  const url = window.URL.createObjectURL(new Blob([res.data]));
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.setAttribute('download', `Hasil_Quiz_${quizInfo?.title || quizId}_${new Date().toISOString().split('T')[0]}.xlsx`);
-                  document.body.appendChild(link);
-                  link.click();
-                  link.remove();
-                  window.URL.revokeObjectURL(url);
-                  toast.success('Export Excel berhasil');
-                } catch {
-                  toast.error('Gagal export Excel');
-                } finally {
-                  setExporting(false);
-                }
-              }}
-              disabled={exporting || results.length === 0}
-              className="gap-1.5"
-            >
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-              Excel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                setExporting(true);
-                try {
-                  const res = await exportAPI.exportQuizResults(quizId, { format: 'pdf' });
-                  const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.setAttribute('download', `Hasil_Quiz_${quizInfo?.title || quizId}_${new Date().toISOString().split('T')[0]}.pdf`);
-                  document.body.appendChild(link);
-                  link.click();
-                  link.remove();
-                  window.URL.revokeObjectURL(url);
-                  toast.success('Export PDF berhasil');
-                } catch {
-                  toast.error('Gagal export PDF');
-                } finally {
-                  setExporting(false);
-                }
-              }}
-              disabled={exporting || results.length === 0}
-              className="gap-1.5"
-            >
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              PDF
-            </Button>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setExporting(true);
+                  try {
+                    const res = await exportAPI.exportQuizResults(quizId, { format: 'xlsx' });
+                    const url = window.URL.createObjectURL(new Blob([res.data]));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `Hasil_Quiz_${quizInfo?.title || quizId}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    toast.success('Export Excel berhasil');
+                  } catch {
+                    toast.error('Gagal export Excel');
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                disabled={exporting || results.length === 0}
+                className="gap-1.5"
+              >
+                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setExporting(true);
+                  try {
+                    const res = await exportAPI.exportQuizResults(quizId, { format: 'pdf' });
+                    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `Hasil_Quiz_${quizInfo?.title || quizId}_${new Date().toISOString().split('T')[0]}.pdf`);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    toast.success('Export PDF berhasil');
+                  } catch {
+                    toast.error('Gagal export PDF');
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                disabled={exporting || results.length === 0}
+                className="gap-1.5"
+              >
+                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                PDF
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Essay grading alert */}
