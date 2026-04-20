@@ -138,13 +138,14 @@ export default function QuizResultsPage() {
     if (isAuthLoading) return;
 
     if (!userRole || !canAccessResults) {
+      toast.error('Akses ditolak');
       setLoading(false);
       router.replace('/quiz');
       return;
     }
 
     fetchResults();
-  }, [canAccessResults, fetchResults, isAuthLoading, router, userRole]);
+  }, [canAccessResults, fetchResults, isAuthLoading, router, toast, userRole]);
 
   if (!isAuthLoading && !canAccessResults) {
     return null;
