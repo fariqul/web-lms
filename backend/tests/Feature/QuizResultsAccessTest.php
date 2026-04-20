@@ -119,6 +119,25 @@ class QuizResultsAccessTest extends TestCase
             ->assertJsonPath('message', 'Unauthorized');
     }
 
+    public function test_admin_can_access_quiz_results_list_and_detail(): void
+    {
+        $classId = $this->createClassRoom('X-Quiz-Results-Admin');
+        $teacher = $this->createUser('guru', $classId, 'teacher-quiz-results-admin');
+        $admin = $this->createUser('admin', $classId, 'admin-quiz-results-access');
+        $student = $this->createUser('siswa', $classId, 'student-quiz-results-admin');
+        $quiz = $this->createQuizWithResult($teacher, $student, $classId);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson("/api/quizzes/{$quiz->id}/results")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->getJson("/api/quizzes/{$quiz->id}/results/{$student->id}")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    }
+
     public function test_teacher_cannot_export_quiz_results(): void
     {
         $classId = $this->createClassRoom('X-Quiz-Results-Export-Teacher');
