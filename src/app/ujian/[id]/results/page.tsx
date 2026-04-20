@@ -106,6 +106,7 @@ export default function ExamResultsPage() {
   const { user } = useAuth();
   const toast = useToast();
   const userRole = user?.role;
+  const isAdmin = user?.role === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -614,32 +615,36 @@ export default function ExamResultsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleExport('xlsx')}
-              disabled={exporting !== null}
-              className="print:hidden"
-            >
-              {exporting === 'xlsx' ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-              )}
-              Excel
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleExport('pdf')}
-              disabled={exporting !== null}
-              className="print:hidden"
-            >
-              {exporting === 'pdf' ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <FileText className="w-4 h-4 mr-2" />
-              )}
-              PDF
-            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleExport('xlsx')}
+                  disabled={exporting !== null}
+                  className="print:hidden"
+                >
+                  {exporting === 'xlsx' ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  )}
+                  Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleExport('pdf')}
+                  disabled={exporting !== null}
+                  className="print:hidden"
+                >
+                  {exporting === 'pdf' ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-2" />
+                  )}
+                  PDF
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={() => window.print()} className="print:hidden">
               <Printer className="w-5 h-5 mr-2" />
               Cetak
