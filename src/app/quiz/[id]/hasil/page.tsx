@@ -67,10 +67,11 @@ export default function QuizResultsPage() {
   const params = useParams();
   const router = useRouter();
   const toast = useToast();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const quizId = Number(params.id);
   const userRole = user?.role;
   const isAdmin = userRole === 'admin';
+  const canAccessResults = userRole === 'admin' || userRole === 'guru';
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -134,9 +135,20 @@ export default function QuizResultsPage() {
   }, [quizId, router, toast]);
 
   useEffect(() => {
-    if (!userRole) return;
+    if (isAuthLoading) return;
+
+    if (!userRole || !canAccessResults) {
+      setLoading(false);
+      router.replace('/quiz');
+      return;
+    }
+
     fetchResults();
-  }, [fetchResults, userRole]);
+  }, [canAccessResults, fetchResults, isAuthLoading, router, userRole]);
+
+  if (!isAuthLoading && !canAccessResults) {
+    return null;
+  }
 
   const filteredResults = results
     .filter(r => {
