@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Exam;
 use App\Models\ExamResult;
+use App\Models\Answer;
+use App\Models\Question;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +82,29 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
         ]);
 
         return $exam;
+    }
+
+    private function createEssayAnswer(Exam $exam, User $student): Answer
+    {
+        $question = Question::query()->create([
+            'exam_id' => $exam->id,
+            'type' => 'essay',
+            'question_text' => 'Jelaskan jawaban Anda',
+            'points' => 10,
+            'order' => 1,
+        ]);
+
+        $exam->update(['total_questions' => 1]);
+
+        return Answer::query()->create([
+            'student_id' => $student->id,
+            'question_id' => $question->id,
+            'exam_id' => $exam->id,
+            'answer' => 'Jawaban essay siswa',
+            'score' => null,
+            'is_correct' => null,
+            'submitted_at' => now()->subMinutes(5),
+        ]);
     }
 
     private function setTeacherExamResultsHidden(bool $hidden): void
@@ -197,5 +222,80 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
 
         $this->get("/api/export/exam-results/{$exam->id}?format=xlsx")
             ->assertOk();
+    }
+
+    public function test_teacher_owner_cannot_grade_answer_when_visibility_toggle_on(): void
+    {
+        $this->setTeacherExamResultsHidden(true);
+
+        $classId = $this->createClassRoom('X-Results-Grade-Lockout-Teacher');
+        $teacher = $this->createUser('guru', $classId, 'teacher-results-grade-lockout');
+        $student = $this->createUser('siswa', $classId, 'student-results-grade-lockout');
+        $exam = $this->createExamWithResult($teacher, $student, $classId);
+        $answer = $this->createEssayAnswer($exam, $student);
+
+        Sanctum::actingAs($teacher);
+
+        $this->postJson("/api/exams/{$exam->id}/grade-answer/{$answer->id}", [
+            'score' => 8,
+            'feedback' => 'Nilai sementara',
+        ])
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Akses hasil ujian untuk guru sedang dinonaktifkan admin');
+    }
+
+    public function test_teacher_owner_cannot_update_result_score_when_visibility_toggle_on(): void
+    {
+        $this->setTeacherExamResultsHidden(true);
+
+        $classId = $this->createClassRoom('X-Results-Score-Lockout-Teacher');
+        $teacher = $this->createUser('guru', $classId, 'teacher-results-score-lockout');
+        $student = $this->createUser('siswa', $classId, 'student-results-score-lockout');
+        $exam = $this->createExamWithResult($teacher, $student, $classId);
+        $result = ExamResult::query()
+            ->where('exam_id', $exam->id)
+            ->where('student_id', $student->id)
+            ->firstOrFail();
+
+        Sanctum::actingAs($teacher);
+
+        $this->putJson("/api/exam-results/{$result->id}/score", [
+            'score' => 95,
+        ])
+            ->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Akses hasil ujian untuk guru sedang dinonaktifkan admin');
+    }
+
+    public function test_admin_can_grade_answer_and_update_result_score_when_visibility_toggle_on(): void
+    {
+        $this->setTeacherExamResultsHidden(true);
+
+        $classId = $this->createClassRoom('X-Results-Grade-Lockout-Admin');
+        $teacher = $this->createUser('guru', $classId, 'teacher-results-grade-lockout-admin');
+        $admin = $this->createUser('admin', $classId, 'admin-results-grade-lockout-admin');
+        $student = $this->createUser('siswa', $classId, 'student-results-grade-lockout-admin');
+        $exam = $this->createExamWithResult($teacher, $student, $classId);
+        $answer = $this->createEssayAnswer($exam, $student);
+        $result = ExamResult::query()
+            ->where('exam_id', $exam->id)
+            ->where('student_id', $student->id)
+            ->firstOrFail();
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/exams/{$exam->id}/grade-answer/{$answer->id}", [
+            'score' => 9,
+            'feedback' => 'Bagus',
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->putJson("/api/exam-results/{$result->id}/score", [
+            'score' => 97,
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 }

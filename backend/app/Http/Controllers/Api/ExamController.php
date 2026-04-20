@@ -569,6 +569,13 @@ class ExamController extends Controller
                 'message' => 'Unauthorized',
             ], 403);
         }
+
+        if ($user->role === 'guru' && $this->isTeacherExamResultsHidden()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
+            ], 403);
+        }
         
         $request->validate([
             'score' => 'required|numeric|min:0',
@@ -4266,6 +4273,13 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk menilai ujian ini',
+            ], 403);
+        }
+
+        if ($user->role === 'guru' && $this->isTeacherExamResultsHidden()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
             ], 403);
         }
 
