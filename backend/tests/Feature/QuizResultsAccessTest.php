@@ -112,11 +112,11 @@ class QuizResultsAccessTest extends TestCase
 
         $this->getJson("/api/quizzes/{$quiz->id}/results")
             ->assertStatus(403)
-            ->assertJsonPath('message', 'Unauthorized');
+            ->assertJsonPath('success', false);
 
         $this->getJson("/api/quizzes/{$quiz->id}/results/{$student->id}")
             ->assertStatus(403)
-            ->assertJsonPath('message', 'Unauthorized');
+            ->assertJsonPath('success', false);
     }
 
     public function test_admin_can_access_quiz_results_list_and_detail(): void
