@@ -3901,10 +3901,13 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'admin') {
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && (int) $exam->teacher_id === (int) $user->id;
+
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya admin yang dapat melihat hasil ujian',
+                'message' => 'Anda tidak memiliki akses ke hasil ujian ini',
             ], 403);
         }
 
@@ -4185,10 +4188,13 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'admin') {
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && (int) $exam->teacher_id === (int) $user->id;
+
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya admin yang dapat melihat hasil ujian',
+                'message' => 'Anda tidak memiliki akses ke hasil ujian ini',
             ], 403);
         }
 

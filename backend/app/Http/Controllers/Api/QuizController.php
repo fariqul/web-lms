@@ -1531,8 +1531,11 @@ class QuizController extends Controller
         }
 
         $user = $request->user();
-        if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && (int) $quiz->teacher_id === (int) $user->id;
+
+        if (!$isAdmin && !$isOwnerTeacher) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke hasil quiz ini'], 403);
         }
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\ExamResult> $results */
@@ -1657,8 +1660,11 @@ class QuizController extends Controller
         }
 
         $user = $request->user();
-        if ($user->role === 'guru' && $quiz->teacher_id !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && (int) $quiz->teacher_id === (int) $user->id;
+
+        if (!$isAdmin && !$isOwnerTeacher) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke hasil quiz ini'], 403);
         }
 
         $result = ExamResult::where('exam_id', $quiz->id)
