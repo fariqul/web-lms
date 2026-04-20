@@ -131,10 +131,7 @@ class ExamController extends Controller
                     'message' => $e->getMessage(),
                 ]);
 
-                return [
-                    'reason_code' => 'consensus_lock_timeout',
-                    'message' => 'Pelanggaran non-kritis ditahan sementara (sinkronisasi sistem)',
-                ];
+                return $evaluate();
             }
         }
 
