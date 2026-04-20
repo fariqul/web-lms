@@ -53,6 +53,11 @@ class ExamController extends Controller
         return SystemSetting::getSnapshotMonitorEnabled();
     }
 
+    private function isTeacherExamResultsHidden(): bool
+    {
+        return SystemSetting::getTeacherExamResultsHidden();
+    }
+
     private function getExamShowCacheTtlSeconds(): int
     {
         $ttl = (int) env('EXAM_SHOW_CACHE_TTL_SECONDS', self::EXAM_SHOW_CACHE_TTL_SECONDS_DEFAULT);
@@ -3911,6 +3916,13 @@ class ExamController extends Controller
             ], 403);
         }
 
+        if (!$isAdmin && $this->isTeacherExamResultsHidden()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
+            ], 403);
+        }
+
         $examEnded = $exam->end_time && now()->greaterThan($exam->end_time);
 
         // Auto-submit any in_progress results if exam time has ended
@@ -4195,6 +4207,13 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses ke hasil ujian ini',
+            ], 403);
+        }
+
+        if (!$isAdmin && $this->isTeacherExamResultsHidden()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
             ], 403);
         }
 

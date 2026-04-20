@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\SummativeScoreController;
+use App\Http\Controllers\Api\ExamResultVisibilityController;
 
 /*
 |--------------------------------------------------------------------------
@@ -96,6 +97,8 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/school-network-settings/test-ip', [SchoolNetworkController::class, 'testCurrentIp']);
         Route::get('/school-network-settings/snapshot-monitor', [SchoolNetworkController::class, 'getSnapshotMonitorSetting']);
         Route::put('/school-network-settings/snapshot-monitor', [SchoolNetworkController::class, 'updateSnapshotMonitorSetting']);
+        Route::get('/exam-results-visibility', [ExamResultVisibilityController::class, 'show']);
+        Route::put('/exam-results-visibility', [ExamResultVisibilityController::class, 'update']);
         Route::get('/school-network-settings/live-sync-stats', [SchoolNetworkController::class, 'liveSyncStats']);
         Route::apiResource('school-network-settings', SchoolNetworkController::class);
         
