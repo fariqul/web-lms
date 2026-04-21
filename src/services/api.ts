@@ -279,6 +279,9 @@ export const userAPI = {
   importConfirm: (previewToken: string) =>
     api.post('/users/import/confirm', { preview_token: previewToken }),
 
+  downloadImportTemplate: (format: 'xlsx' | 'csv') =>
+    api.get('/users/import-template', { params: { format }, responseType: 'blob', timeout: 120000 }),
+
   exportData: (params?: { format?: 'xlsx' | 'csv'; role?: string; class_id?: number | string }) =>
     api.get('/users/export', { params, responseType: 'blob', timeout: 120000 }),
 };
