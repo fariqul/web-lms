@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -88,6 +89,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
             // Create alerts for prohibited objects
             if (!empty($result['prohibited_objects'])) {
                 foreach ($result['prohibited_objects'] as $obj) {
+                    $objectClassName = (string) ($obj['class_name'] ?? 'unknown');
                     $this->createAlertIfNotDuplicate('object_detected', [
                         'exam_id' => $this->examId,
                         'student_id' => $this->studentId,
@@ -97,7 +99,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
                         'description' => "Objek terlarang terdeteksi: {$obj['class_name']}",
                         'confidence' => $obj['confidence'] ?? 0,
                         'details' => $obj,
-                    ]);
+                    ], $objectClassName);
                 }
             }
 
@@ -300,21 +302,18 @@ class AnalyzeSnapshotJob implements ShouldQueue
         return max(1, (int) env('ALERT_DEDUP_WINDOW_SECONDS', self::ALERT_DEDUP_WINDOW_SECONDS_DEFAULT));
     }
 
-    private function shouldEmitAlert(string $type, ?int $seconds = null): bool
+    private function shouldEmitAlert(string $type, ?int $seconds = null, string $fingerprint = 'default'): bool
     {
         $windowSeconds = max(1, (int) ($seconds ?? $this->getAlertDedupWindowSeconds()));
+        $fingerprintHash = md5($fingerprint);
+        $cacheKey = "proctoring:alert:dedup:{$this->examId}:{$this->studentId}:{$type}:{$fingerprintHash}";
 
-        return !ProctoringAlert::query()
-            ->where('exam_id', $this->examId)
-            ->where('student_id', $this->studentId)
-            ->where('type', $type)
-            ->where('created_at', '>=', now()->subSeconds($windowSeconds))
-            ->exists();
+        return Cache::add($cacheKey, true, now()->addSeconds($windowSeconds));
     }
 
-    private function createAlertIfNotDuplicate(string $type, array $payload): void
+    private function createAlertIfNotDuplicate(string $type, array $payload, string $fingerprint = 'default'): void
     {
-        if (!$this->shouldEmitAlert($type)) {
+        if (!$this->shouldEmitAlert($type, null, $fingerprint)) {
             return;
         }
 
