@@ -1279,8 +1279,11 @@ export default function AdminUsersPage() {
         <div className="space-y-4">
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-2">
             <p className="text-sm text-slate-700 dark:text-slate-300">
-              Upload file user dengan header seperti: <code>nama,email,role,jenis_kelamin,nisn,nis,nip,nomor_tes,class_name,class_id</code>.
+              Upload file user dengan header berikut:
             </p>
+            <code className="block w-full overflow-x-auto rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap">
+              nama,email,role,jenis_kelamin,nisn,nis,nip,nomor_tes,class_name,class_id
+            </code>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Mode import: upsert by email, user baru akan memakai password default <strong>Password123</strong>.
             </p>

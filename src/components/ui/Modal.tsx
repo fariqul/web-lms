@@ -125,13 +125,20 @@ export function Modal({
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              {title && <h3 id={titleId} className="text-lg font-bold text-foreground">{title}</h3>}
+            <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
+              {title && (
+                <h3
+                  id={titleId}
+                  className="min-w-0 flex-1 text-lg font-bold leading-snug text-foreground break-words"
+                >
+                  {title}
+                </h3>
+              )}
               {showCloseButton && (
                 <button
                   onClick={onClose}
                   aria-label="Tutup dialog"
-                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  className="shrink-0 p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
