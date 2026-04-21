@@ -30,16 +30,17 @@ from pydantic import BaseModel
 # ─── Config ──────────────────────────────────────────────────────────────
 
 MODEL_PATH = os.getenv("YOLO_MODEL", "yolov8n.pt")
-CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.4"))
+CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.45"))
 DEVICE = os.getenv("DEVICE", "0")  # "0" for GPU, "cpu" for CPU
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Head pose thresholds (degrees)
-HEAD_YAW_THRESHOLD = float(os.getenv("HEAD_YAW_THRESHOLD", "30"))    # left/right
-HEAD_PITCH_THRESHOLD = float(os.getenv("HEAD_PITCH_THRESHOLD", "25"))  # up/down
+HEAD_YAW_THRESHOLD = float(os.getenv("HEAD_YAW_THRESHOLD", "28"))    # left/right
+HEAD_PITCH_THRESHOLD = float(os.getenv("HEAD_PITCH_THRESHOLD", "24"))  # up/down
 
 # Eye gaze threshold (ratio deviation from center, 0-1)
 EYE_GAZE_THRESHOLD = float(os.getenv("EYE_GAZE_THRESHOLD", "0.35"))
+ALERT_DEDUP_WINDOW_SECONDS = int(os.getenv("ALERT_DEDUP_WINDOW_SECONDS", "15"))
 
 logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
