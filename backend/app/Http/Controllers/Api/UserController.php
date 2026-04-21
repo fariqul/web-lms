@@ -7,12 +7,24 @@ use App\Models\User;
 use App\Models\ClassRoom;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class UserController extends Controller
 {
+    private const USER_IMPORT_PREVIEW_TTL_SECONDS = 1800;
+    private const USER_DEFAULT_IMPORT_PASSWORD = 'Password123';
+
     private function broadcastBlockedForceLogout(User $student, ?string $message = null): void
     {
         if ($student->role !== 'siswa') {
@@ -260,6 +272,224 @@ class UserController extends Controller
     }
 
     /**
+     * Preview user import (upsert by email)
+     */
+    public function importPreview(Request $request)
+    {
+        $request->validate([
+            'import_file' => ['required', File::types(['xlsx', 'csv'])->max(10 * 1024)],
+        ]);
+
+        try {
+            $rows = $this->readSpreadsheetRows($request->file('import_file'));
+            if (count($rows) === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File import tidak berisi data yang dapat diproses',
+                ], 422);
+            }
+            $preview = $this->buildUserImportPreview($rows);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak dapat diproses. Pastikan format CSV/XLSX valid.',
+            ], 422);
+        }
+
+        $token = (string) Str::uuid();
+        Cache::put($this->userImportPreviewCacheKey($token), $preview, self::USER_IMPORT_PREVIEW_TTL_SECONDS);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Preview import berhasil dibuat',
+            'data' => [
+                'preview_token' => $token,
+                'summary' => [
+                    'total_rows' => count($rows),
+                    'to_create' => count($preview['to_create']),
+                    'to_update' => count($preview['to_update']),
+                    'to_skip' => count($preview['to_skip']),
+                ],
+                'preview_rows' => array_slice($preview['preview_rows'], 0, 30),
+                'errors' => $preview['to_skip'],
+            ],
+        ]);
+    }
+
+    /**
+     * Confirm user import from preview token
+     */
+    public function importConfirm(Request $request)
+    {
+        $request->validate([
+            'preview_token' => 'required|string',
+        ]);
+
+        $cacheKey = $this->userImportPreviewCacheKey((string) $request->preview_token);
+        $preview = Cache::get($cacheKey);
+
+        if (!is_array($preview)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Preview import tidak ditemukan atau sudah kedaluwarsa',
+            ], 422);
+        }
+
+        $created = 0;
+        $updated = 0;
+        $skipped = $preview['to_skip'] ?? [];
+
+        foreach ($preview['to_create'] ?? [] as $item) {
+            $payload = $item['payload'] ?? null;
+            if (!is_array($payload)) {
+                continue;
+            }
+
+            if (User::query()->where('email', $payload['email'])->exists()) {
+                $skipped[] = [
+                    'row' => $item['row'] ?? null,
+                    'message' => 'Email sudah terpakai saat proses konfirmasi',
+                ];
+                continue;
+            }
+
+            $validation = $this->validateImportedUserPayload($payload, null);
+            if ($validation['invalid']) {
+                $skipped[] = [
+                    'row' => $item['row'] ?? null,
+                    'message' => $validation['message'],
+                ];
+                continue;
+            }
+
+            $user = new User();
+            $user->fill(Arr::only($payload, ['name', 'email', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_id']));
+            $user->email = strtolower((string) $payload['email']);
+            $user->role = $payload['role'];
+            $user->password = Hash::make(self::USER_DEFAULT_IMPORT_PASSWORD);
+            $user->save();
+            $created++;
+        }
+
+        foreach ($preview['to_update'] ?? [] as $item) {
+            $userId = (int) ($item['user_id'] ?? 0);
+            $payload = $item['payload'] ?? null;
+            if ($userId <= 0 || !is_array($payload)) {
+                continue;
+            }
+
+            $user = User::query()->find($userId);
+            if (!$user instanceof User) {
+                $skipped[] = [
+                    'row' => $item['row'] ?? null,
+                    'message' => 'User tujuan tidak ditemukan saat konfirmasi',
+                ];
+                continue;
+            }
+
+            $validation = $this->validateImportedUserPayload($payload, $user);
+            if ($validation['invalid']) {
+                $skipped[] = [
+                    'row' => $item['row'] ?? null,
+                    'message' => $validation['message'],
+                ];
+                continue;
+            }
+
+            $user->fill(Arr::only($payload, ['name', 'email', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_id']));
+            $user->email = strtolower((string) $payload['email']);
+            $user->role = $payload['role'];
+            $user->save();
+            $updated++;
+        }
+
+        Cache::forget($cacheKey);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Import pengguna selesai: {$created} ditambahkan, {$updated} diupdate, " . count($skipped) . ' dilewati',
+            'data' => [
+                'created' => $created,
+                'updated' => $updated,
+                'skipped' => count($skipped),
+                'errors' => array_slice($skipped, 0, 100),
+            ],
+        ]);
+    }
+
+    /**
+     * Export users to XLSX/CSV
+     */
+    public function export(Request $request)
+    {
+        $request->validate([
+            'format' => 'nullable|in:xlsx,csv',
+            'role' => 'nullable|in:admin,guru,siswa',
+            'class_id' => 'nullable|exists:classes,id',
+        ]);
+
+        $format = (string) ($request->input('format') ?: 'xlsx');
+        $query = User::query()->with('classRoom:id,name')->orderBy('name');
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->input('role'));
+        }
+        if ($request->filled('class_id')) {
+            $query->where('class_id', $request->input('class_id'));
+        }
+
+        $users = $query->get();
+        $headers = ['nama', 'email', 'role', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_name', 'class_id'];
+        $rows = $users->map(function (User $user): array {
+            return [
+                $user->name,
+                $user->email,
+                $user->role,
+                $user->jenis_kelamin ?: '',
+                $user->nisn ?: '',
+                $user->nis ?: '',
+                $user->nip ?: '',
+                $user->nomor_tes ?: '',
+                $user->classRoom?->name ?: '',
+                $user->class_id ?: '',
+            ];
+        })->all();
+
+        if ($format === 'csv') {
+            return response()->streamDownload(function () use ($headers, $rows) {
+                $handle = fopen('php://output', 'wb');
+                fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+                fputcsv($handle, $headers);
+                foreach ($rows as $row) {
+                    fputcsv($handle, $row);
+                }
+                fclose($handle);
+            }, 'users_export_' . now()->format('Ymd_His') . '.csv', [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]);
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Users');
+        foreach ($headers as $index => $header) {
+            $sheet->setCellValue([$index + 1, 1], $header);
+        }
+        foreach ($rows as $rowIndex => $rowValues) {
+            foreach ($rowValues as $columnIndex => $value) {
+                $sheet->setCellValue([$columnIndex + 1, $rowIndex + 2], $value);
+            }
+        }
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 'users_export_' . now()->format('Ymd_His') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
      * Bulk clear nomor_tes for all students (admin only)
      * Used when exam period is over
      */
@@ -376,6 +606,271 @@ class UserController extends Controller
         $normalized = mb_strtoupper($normalized, 'UTF-8');
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    private function userImportPreviewCacheKey(string $token): string
+    {
+        return 'import_preview:users:' . $token;
+    }
+
+    /**
+     * @return array<int, array{row_number:int,data:array<string,mixed>}>
+     */
+    private function readSpreadsheetRows(UploadedFile $file): array
+    {
+        $spreadsheet = IOFactory::load($file->getRealPath());
+        $sheet = $spreadsheet->getActiveSheet();
+        $rawRows = $sheet->toArray(null, true, true, false);
+
+        if (count($rawRows) < 2) {
+            return [];
+        }
+
+        $headers = array_map(function ($header): string {
+            return strtolower(trim((string) $header));
+        }, $rawRows[0] ?? []);
+
+        $rows = [];
+        for ($i = 1; $i < count($rawRows); $i++) {
+            $raw = $rawRows[$i];
+            $normalized = [];
+            foreach ($headers as $idx => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $normalized[$header] = isset($raw[$idx]) ? trim((string) $raw[$idx]) : '';
+            }
+            if (count(array_filter($normalized, fn ($value) => $value !== '')) === 0) {
+                continue;
+            }
+            $rows[] = [
+                'row_number' => $i + 1,
+                'data' => $normalized,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<int, array{row_number:int,data:array<string,mixed>}> $rows
+     * @return array{to_create:array<int,mixed>,to_update:array<int,mixed>,to_skip:array<int,mixed>,preview_rows:array<int,mixed>}
+     */
+    private function buildUserImportPreview(array $rows): array
+    {
+        $classByName = ClassRoom::query()->get(['id', 'name'])
+            ->keyBy(fn (ClassRoom $classRoom) => mb_strtolower(trim($classRoom->name), 'UTF-8'));
+
+        $existingUsers = User::query()->get(['id', 'email', 'name', 'role', 'class_id', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes'])
+            ->keyBy(fn (User $user) => strtolower((string) $user->email));
+
+        $toCreate = [];
+        $toUpdate = [];
+        $toSkip = [];
+        $previewRows = [];
+        $seenEmails = [];
+
+        foreach ($rows as $row) {
+            $rowNumber = (int) $row['row_number'];
+            $data = $row['data'];
+
+            $email = strtolower((string) $this->pickRowValue($data, ['email']));
+            if ($email === '') {
+                $toSkip[] = ['row' => $rowNumber, 'message' => 'Email wajib diisi'];
+                continue;
+            }
+            if (isset($seenEmails[$email])) {
+                $toSkip[] = ['row' => $rowNumber, 'message' => 'Email duplikat dalam file import'];
+                continue;
+            }
+            $seenEmails[$email] = true;
+
+            $existing = $existingUsers->get($email);
+            $hasClassColumns = $this->rowHasAnyKey($data, ['class_id', 'class_name', 'kelas', 'nama_kelas', 'class']);
+            $classResolution = $this->resolveClassId(
+                $data,
+                $classByName,
+                $hasClassColumns,
+                $existing instanceof User && $existing->class_id ? (int) $existing->class_id : null
+            );
+            if (!$classResolution['valid']) {
+                $toSkip[] = ['row' => $rowNumber, 'message' => $classResolution['message']];
+                continue;
+            }
+
+            $roleRaw = strtolower((string) $this->pickRowValue($data, ['role']));
+            $role = $roleRaw !== '' ? $roleRaw : ($existing?->role ?: 'siswa');
+            $name = (string) $this->pickRowValue($data, ['nama', 'name']);
+            $hasGenderColumn = $this->rowHasAnyKey($data, ['jenis_kelamin', 'gender']);
+            $hasNisnColumn = $this->rowHasAnyKey($data, ['nisn']);
+            $hasNisColumn = $this->rowHasAnyKey($data, ['nis']);
+            $hasNipColumn = $this->rowHasAnyKey($data, ['nip']);
+            $hasNomorTesColumn = $this->rowHasAnyKey($data, ['nomor_tes', 'nomor tes', 'no_tes']);
+            $payload = [
+                'name' => $name !== '' ? $name : ($existing?->name ?: ''),
+                'email' => $email,
+                'role' => $role,
+                'jenis_kelamin' => $hasGenderColumn
+                    ? (strtoupper((string) $this->pickRowValue($data, ['jenis_kelamin', 'gender'])) ?: null)
+                    : ($existing?->jenis_kelamin ?: null),
+                'nisn' => $hasNisnColumn
+                    ? $this->nullableString($this->pickRowValue($data, ['nisn']))
+                    : ($existing?->nisn ?: null),
+                'nis' => $hasNisColumn
+                    ? $this->nullableString($this->pickRowValue($data, ['nis']))
+                    : ($existing?->nis ?: null),
+                'nip' => $hasNipColumn
+                    ? $this->nullableString($this->pickRowValue($data, ['nip']))
+                    : ($existing?->nip ?: null),
+                'nomor_tes' => $hasNomorTesColumn
+                    ? $this->nullableString($this->pickRowValue($data, ['nomor_tes', 'nomor tes', 'no_tes']))
+                    : ($existing?->nomor_tes ?: null),
+                'class_id' => $classResolution['class_id'],
+            ];
+
+            $validation = $this->validateImportedUserPayload($payload, $existing);
+            if ($validation['invalid']) {
+                $toSkip[] = ['row' => $rowNumber, 'message' => $validation['message']];
+                continue;
+            }
+
+            if ($existing instanceof User) {
+                $toUpdate[] = [
+                    'row' => $rowNumber,
+                    'user_id' => $existing->id,
+                    'payload' => $payload,
+                ];
+                $previewRows[] = [
+                    'row' => $rowNumber,
+                    'action' => 'update',
+                    'email' => $email,
+                    'name' => $payload['name'],
+                ];
+            } else {
+                $toCreate[] = [
+                    'row' => $rowNumber,
+                    'payload' => $payload,
+                ];
+                $previewRows[] = [
+                    'row' => $rowNumber,
+                    'action' => 'create',
+                    'email' => $email,
+                    'name' => $payload['name'],
+                ];
+            }
+        }
+
+        return [
+            'to_create' => $toCreate,
+            'to_update' => $toUpdate,
+            'to_skip' => $toSkip,
+            'preview_rows' => $previewRows,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array{invalid:bool,message:string}
+     */
+    private function validateImportedUserPayload(array $payload, ?User $existingUser): array
+    {
+        $validator = Validator::make($payload, [
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email'],
+            'role' => 'required|in:admin,guru,siswa',
+            'jenis_kelamin' => 'nullable|in:L,P',
+            'nisn' => 'nullable|string|max:255',
+            'nis' => 'nullable|string|max:255',
+            'nip' => 'nullable|string|max:255',
+            'nomor_tes' => 'nullable|string|max:50',
+            'class_id' => 'nullable|exists:classes,id',
+        ]);
+
+        if ($validator->fails()) {
+            return [
+                'invalid' => true,
+                'message' => $validator->errors()->first(),
+            ];
+        }
+
+        $userId = $existingUser?->id;
+        if ($payload['nisn'] && User::query()->where('nisn', $payload['nisn'])->when($userId, fn ($q) => $q->where('id', '!=', $userId))->exists()) {
+            return ['invalid' => true, 'message' => 'NISN sudah digunakan user lain'];
+        }
+        if ($payload['nip'] && User::query()->where('nip', $payload['nip'])->when($userId, fn ($q) => $q->where('id', '!=', $userId))->exists()) {
+            return ['invalid' => true, 'message' => 'NIP sudah digunakan user lain'];
+        }
+        if ($payload['nomor_tes'] && User::query()->where('nomor_tes', $payload['nomor_tes'])->when($userId, fn ($q) => $q->where('id', '!=', $userId))->exists()) {
+            return ['invalid' => true, 'message' => 'Nomor tes sudah digunakan user lain'];
+        }
+
+        return ['invalid' => false, 'message' => ''];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function pickRowValue(array $row, array $keys): string
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $row)) {
+                return trim((string) $row[$key]);
+            }
+        }
+        return '';
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function rowHasAnyKey(array $row, array $keys): bool
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $row)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function nullableString(?string $value): ?string
+    {
+        $normalized = trim((string) $value);
+        return $normalized === '' ? null : $normalized;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param \Illuminate\Support\Collection<string, ClassRoom> $classByName
+     * @return array{valid:bool,class_id:?int,message:string}
+     */
+    private function resolveClassId(array $row, $classByName, bool $hasClassColumns, ?int $existingClassId = null): array
+    {
+        if (!$hasClassColumns) {
+            return ['valid' => true, 'class_id' => $existingClassId, 'message' => ''];
+        }
+
+        $classIdRaw = $this->pickRowValue($row, ['class_id']);
+        if ($classIdRaw !== '') {
+            $classId = (int) $classIdRaw;
+            if (!ClassRoom::query()->where('id', $classId)->exists()) {
+                return ['valid' => false, 'class_id' => null, 'message' => 'Class ID tidak ditemukan'];
+            }
+            return ['valid' => true, 'class_id' => $classId, 'message' => ''];
+        }
+
+        $className = $this->pickRowValue($row, ['class_name', 'kelas', 'nama_kelas', 'class']);
+        if ($className === '') {
+            return ['valid' => true, 'class_id' => null, 'message' => ''];
+        }
+
+        $resolved = $classByName->get(mb_strtolower($className, 'UTF-8'));
+        if (!$resolved instanceof ClassRoom) {
+            return ['valid' => false, 'class_id' => null, 'message' => 'Nama kelas tidak ditemukan'];
+        }
+
+        return ['valid' => true, 'class_id' => (int) $resolved->id, 'message' => ''];
     }
 
     /**

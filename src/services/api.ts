@@ -266,6 +266,21 @@ export const userAPI = {
 
   toggleBlockStudentsByClass: (classId: number, isBlocked: boolean, reason?: string) =>
     api.post('/students/toggle-block-by-class', { class_id: classId, is_blocked: isBlocked, reason }),
+
+  importPreview: (file: File) => {
+    const formData = new FormData();
+    formData.append('import_file', file);
+    return api.post('/users/import/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+  },
+
+  importConfirm: (previewToken: string) =>
+    api.post('/users/import/confirm', { preview_token: previewToken }),
+
+  exportData: (params?: { format?: 'xlsx' | 'csv'; role?: string; class_id?: number | string }) =>
+    api.get('/users/export', { params, responseType: 'blob', timeout: 120000 }),
 };
 
 // Class API
@@ -287,6 +302,21 @@ export const classAPI = {
   
   getStudents: (id: number) =>
     api.get(`/classes/${id}/students`),
+
+  importPreview: (file: File) => {
+    const formData = new FormData();
+    formData.append('import_file', file);
+    return api.post('/classes/import/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+  },
+
+  importConfirm: (previewToken: string) =>
+    api.post('/classes/import/confirm', { preview_token: previewToken }),
+
+  exportData: (params?: { format?: 'xlsx' | 'csv'; grade_level?: string }) =>
+    api.get('/classes/export', { params, responseType: 'blob', timeout: 120000 }),
 };
 
 // Attendance API

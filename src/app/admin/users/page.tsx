@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck } from 'lucide-react';
+import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck, Upload } from 'lucide-react';
 import { userAPI, classAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { extractNomorTesNumber } from '@/utils/nomorTes';
@@ -38,6 +38,18 @@ interface NomorTesConflict {
   name: string;
   from: string;
   to: string;
+}
+
+interface ImportPreviewRow {
+  row: number;
+  action: 'create' | 'update';
+  email: string;
+  name: string;
+}
+
+interface ImportPreviewError {
+  row?: number;
+  message: string;
 }
 
 const roleOptions = [
@@ -75,6 +87,13 @@ export default function AdminUsersPage() {
   const [bulkBlockReason, setBulkBlockReason] = useState('');
   const [bulkBlockAction, setBulkBlockAction] = useState<'block' | 'unblock'>('block');
   const [bulkBlockScope, setBulkBlockScope] = useState<'all' | 'class' | 'filter'>('all');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreviewToken, setImportPreviewToken] = useState('');
+  const [importSummary, setImportSummary] = useState<{ total_rows: number; to_create: number; to_update: number; to_skip: number } | null>(null);
+  const [importPreviewRows, setImportPreviewRows] = useState<ImportPreviewRow[]>([]);
+  const [importPreviewErrors, setImportPreviewErrors] = useState<ImportPreviewError[]>([]);
+  const [isImportProcessing, setIsImportProcessing] = useState(false);
 
   // Sorting state
   const [sortKey, setSortKey] = useState<'name' | 'nomor_tes' | null>(null);
@@ -434,6 +453,77 @@ export default function AdminUsersPage() {
     }
   };
 
+  const resetImportState = () => {
+    setImportFile(null);
+    setImportPreviewToken('');
+    setImportSummary(null);
+    setImportPreviewRows([]);
+    setImportPreviewErrors([]);
+    setIsImportProcessing(false);
+  };
+
+  const handleExportUsers = async (format: 'xlsx' | 'csv') => {
+    try {
+      const res = await userAPI.exportData({
+        format,
+        role: roleFilter || undefined,
+        class_id: classFilter || undefined,
+      });
+      const blob = res.data as Blob;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `users_export_${new Date().toISOString().slice(0, 10)}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Export pengguna ${format.toUpperCase()} berhasil`);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal export pengguna'));
+    }
+  };
+
+  const handlePreviewImport = async () => {
+    if (!importFile) {
+      toast.warning('Pilih file import terlebih dahulu');
+      return;
+    }
+    try {
+      setIsImportProcessing(true);
+      const res = await userAPI.importPreview(importFile);
+      const data = res.data?.data;
+      setImportPreviewToken(data?.preview_token || '');
+      setImportSummary(data?.summary || null);
+      setImportPreviewRows(Array.isArray(data?.preview_rows) ? data.preview_rows : []);
+      setImportPreviewErrors(Array.isArray(data?.errors) ? data.errors : []);
+      toast.success('Preview import berhasil dibuat');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal membuat preview import'));
+    } finally {
+      setIsImportProcessing(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importPreviewToken) {
+      toast.warning('Silakan lakukan preview sebelum konfirmasi import');
+      return;
+    }
+    try {
+      setIsImportProcessing(true);
+      const res = await userAPI.importConfirm(importPreviewToken);
+      toast.success(res.data?.message || 'Import pengguna selesai');
+      setIsImportModalOpen(false);
+      resetImportState();
+      fetchData();
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal konfirmasi import pengguna'));
+    } finally {
+      setIsImportProcessing(false);
+    }
+  };
+
   // Sort icon component
   const SortIcon = ({ columnKey }: { columnKey: 'name' | 'nomor_tes' }) => {
     if (sortKey !== columnKey) {
@@ -639,9 +729,29 @@ export default function AdminUsersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  leftIcon={<Download className="w-4 h-4" />}
+                  leftIcon={<Upload className="w-4 h-4" />}
+                  onClick={() => {
+                    resetImportState();
+                    setIsImportModalOpen(true);
+                  }}
                 >
-                  Export
+                  Import
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Download className="w-4 h-4" />}
+                  onClick={() => handleExportUsers('xlsx')}
+                >
+                  Export XLSX
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Download className="w-4 h-4" />}
+                  onClick={() => handleExportUsers('csv')}
+                >
+                  Export CSV
                 </Button>
                 <Button
                   size="sm"
@@ -1128,6 +1238,100 @@ export default function AdminUsersPage() {
                   Aktifkan Kembali
                 </>
               )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Import Users Modal */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => {
+          setIsImportModalOpen(false);
+          resetImportState();
+        }}
+        title="Import Pengguna (XLSX/CSV)"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-2">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              Upload file user dengan header seperti: <code>nama,email,role,jenis_kelamin,nisn,nis,nip,nomor_tes,class_name,class_id</code>.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Mode import: upsert by email, user baru akan memakai password default <strong>Password123</strong>.
+            </p>
+            <input
+              type="file"
+              accept=".xlsx,.csv"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-sky-600 file:text-white hover:file:bg-sky-700"
+            />
+          </div>
+
+          {importSummary && (
+            <div className="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 p-4">
+              <p className="text-sm font-semibold text-sky-800 dark:text-sky-300 mb-2">Ringkasan Preview</p>
+              <p className="text-sm text-sky-700 dark:text-sky-300">
+                Total {importSummary.total_rows} baris • Buat baru {importSummary.to_create} • Update {importSummary.to_update} • Skip {importSummary.to_skip}
+              </p>
+              <p className="text-xs mt-1 text-sky-600 dark:text-sky-400">
+                {importSummary.to_update} data akan diupdate, lanjut?
+              </p>
+            </div>
+          )}
+
+          {importPreviewRows.length > 0 && (
+            <div className="max-h-52 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-100 dark:bg-slate-800">
+                  <tr>
+                    <th className="text-left px-3 py-2">Baris</th>
+                    <th className="text-left px-3 py-2">Aksi</th>
+                    <th className="text-left px-3 py-2">Email</th>
+                    <th className="text-left px-3 py-2">Nama</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreviewRows.map((item, idx) => (
+                    <tr key={`${item.row}-${idx}`} className="border-t border-slate-200 dark:border-slate-700">
+                      <td className="px-3 py-2">{item.row}</td>
+                      <td className="px-3 py-2">{item.action === 'update' ? 'Update' : 'Create'}</td>
+                      <td className="px-3 py-2">{item.email}</td>
+                      <td className="px-3 py-2">{item.name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {importPreviewErrors.length > 0 && (
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 max-h-40 overflow-auto">
+              <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Baris Dilewati</p>
+              <ul className="space-y-1 text-xs text-red-700 dark:text-red-300">
+                {importPreviewErrors.slice(0, 20).map((err, idx) => (
+                  <li key={`err-${idx}`}>Baris {err.row ?? '-'}: {err.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePreviewImport}
+              disabled={isImportProcessing}
+            >
+              {isImportProcessing ? 'Memproses…' : 'Preview Import'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmImport}
+              disabled={!importPreviewToken || isImportProcessing}
+            >
+              {isImportProcessing ? 'Mengimport…' : 'Konfirmasi Import'}
             </Button>
           </div>
         </div>

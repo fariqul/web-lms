@@ -73,6 +73,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
     // ============================================
     Route::middleware(['role:admin', 'audit'])->group(function () {
         // User Management
+        Route::post('/users/import/preview', [UserController::class, 'importPreview']);
+        Route::post('/users/import/confirm', [UserController::class, 'importConfirm']);
+        Route::get('/users/export', [UserController::class, 'export']);
         Route::apiResource('users', UserController::class);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::delete('/users/nomor-tes/clear', [UserController::class, 'clearNomorTes']);
@@ -88,6 +91,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/students/toggle-block-by-class', [UserController::class, 'toggleStudentsBlockByClass']);
         
         // Class Management
+        Route::post('/classes/import/preview', [ClassController::class, 'importPreview']);
+        Route::post('/classes/import/confirm', [ClassController::class, 'importConfirm']);
+        Route::get('/classes/export', [ClassController::class, 'export']);
         Route::apiResource('classes', ClassController::class)->except(['index', 'show']);
         
         // Schedule Management
