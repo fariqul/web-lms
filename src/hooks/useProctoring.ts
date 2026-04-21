@@ -61,6 +61,16 @@ const THRESHOLDS = {
   RISK_CRITICAL: 30,
 };
 
+const TEMPORAL_CONFIRMATION_WINDOW_MS = 6000;
+const TEMPORAL_CONFIRMATION_MIN_COUNT = 2;
+
+function detectMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || ('ontouchstart' in window && navigator.maxTouchPoints > 2)
+    || window.innerWidth <= 768;
+}
+
 // ─── Hook ───────────────────────────────────────────────────────────────
 
 export function useProctoring({
@@ -70,6 +80,9 @@ export function useProctoring({
   detectionInterval = 2000,
   onDetection,
 }: UseProctoringOptions): UseProctoringReturn {
+  const [isMobileDevice] = useState(() => detectMobileDevice());
+  const detectorInputSize = isMobileDevice ? 160 : 224;
+  const detectorScoreThreshold = isMobileDevice ? 0.45 : THRESHOLDS.FACE_DETECTION_SCORE;
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stats, setStats] = useState<ProctoringStats>({
@@ -88,6 +101,7 @@ export function useProctoring({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const analyzingRef = useRef(false);
   const statsRef = useRef(stats);
+  const temporalEventsRef = useRef<Record<string, number[]>>({});
   statsRef.current = stats;
 
   // ─── Load Models ────────────────────────────────────────────────────
@@ -151,6 +165,17 @@ export function useProctoring({
 
     onDetection?.(detection);
   }, [onDetection, calculateRiskLevel]);
+
+  const trackTemporalEvent = useCallback((type: string): { confirmed: boolean; count: number } => {
+    const now = Date.now();
+    const prev = temporalEventsRef.current[type] || [];
+    const next = [...prev.filter((ts) => now - ts <= TEMPORAL_CONFIRMATION_WINDOW_MS), now];
+    temporalEventsRef.current[type] = next;
+    return {
+      confirmed: next.length >= TEMPORAL_CONFIRMATION_MIN_COUNT,
+      count: next.length,
+    };
+  }, []);
 
   // ─── Head Pose Estimation from Landmarks ────────────────────────────
 
@@ -223,8 +248,8 @@ export function useProctoring({
       // Detect all faces with landmarks and descriptors
       const detections = await faceapi
         .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
-          inputSize: 224,
-          scoreThreshold: THRESHOLDS.FACE_DETECTION_SCORE,
+          inputSize: detectorInputSize,
+          scoreThreshold: detectorScoreThreshold,
         }))
         .withFaceLandmarks(true) // use tiny landmarks
         .withFaceDescriptors();
@@ -245,10 +270,18 @@ export function useProctoring({
 
         // Report to backend
         try {
+          const temporal = trackTemporalEvent('no_face');
+          if (!temporal.confirmed) return;
+
           await monitoringAPI.reportViolation({
             exam_id: examId,
             type: 'no_face',
             description: 'AI: Tidak ada wajah terdeteksi',
+            metadata: {
+              event_source: 'ai_proctoring',
+              device_class: isMobileDevice ? 'mobile' : 'desktop',
+              streak_count: temporal.count,
+            },
           });
         } catch { /* ignore */ }
         
@@ -266,10 +299,18 @@ export function useProctoring({
         });
 
         try {
+          const temporal = trackTemporalEvent('multiple_face');
+          if (!temporal.confirmed) return;
+
           await monitoringAPI.reportViolation({
             exam_id: examId,
             type: 'multiple_face',
             description: `AI: ${detections.length} wajah terdeteksi`,
+            metadata: {
+              event_source: 'ai_proctoring',
+              device_class: isMobileDevice ? 'mobile' : 'desktop',
+              streak_count: temporal.count,
+            },
           });
         } catch { /* ignore */ }
       }
@@ -289,6 +330,7 @@ export function useProctoring({
           description: `Kepala menoleh ke ${direction}`,
           timestamp: now,
         });
+
       }
 
       // Eye Gaze
@@ -300,6 +342,7 @@ export function useProctoring({
           description: 'Mata melihat ke arah lain',
           timestamp: now,
         });
+
       }
 
       // Identity Verification (if reference descriptor stored)
@@ -322,6 +365,10 @@ export function useProctoring({
               exam_id: examId,
               type: 'identity_mismatch',
               description: `AI: Wajah tidak cocok (distance: ${distance.toFixed(3)})`,
+              metadata: {
+                event_source: 'ai_proctoring',
+                device_class: isMobileDevice ? 'mobile' : 'desktop',
+              },
             });
           } catch { /* ignore */ }
         }
@@ -332,7 +379,7 @@ export function useProctoring({
       analyzingRef.current = false;
       setIsAnalyzing(false);
     }
-  }, [videoRef, isModelLoaded, examId, referenceDescriptor, addDetection, estimateHeadPose, estimateEyeGaze]);
+  }, [videoRef, isModelLoaded, examId, referenceDescriptor, addDetection, estimateHeadPose, estimateEyeGaze, isMobileDevice, trackTemporalEvent, detectorInputSize, detectorScoreThreshold]);
 
   // ─── Capture Reference Face ─────────────────────────────────────────
 
@@ -342,8 +389,8 @@ export function useProctoring({
     try {
       const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({
-          inputSize: 224,
-          scoreThreshold: 0.5,
+          inputSize: detectorInputSize,
+          scoreThreshold: detectorScoreThreshold,
         }))
         .withFaceLandmarks(true)
         .withFaceDescriptor();
@@ -360,7 +407,7 @@ export function useProctoring({
       console.error('[Proctoring] Failed to capture reference:', error);
       return false;
     }
-  }, [videoRef, isModelLoaded]);
+  }, [videoRef, isModelLoaded, detectorInputSize, detectorScoreThreshold]);
 
   // ─── Detection Loop ─────────────────────────────────────────────────
 

@@ -196,6 +196,10 @@ export function useExamMode({
         type,
         description,
         screenshot: screenshotBlob || undefined,
+        metadata: {
+          event_source: 'exam_mode',
+          device_class: isIOS ? 'ios' : isMobile ? 'mobile' : 'desktop',
+        },
       });
       
       const data = response.data?.data;
@@ -224,7 +228,7 @@ export function useExamMode({
     } catch (error) {
       console.error('Failed to report violation:', error);
     }
-  }, [examId, onViolation, onForceSubmit, captureViolationBlob, applyFreezeWindow]);
+  }, [examId, onViolation, onForceSubmit, captureViolationBlob, applyFreezeWindow, isIOS, isMobile]);
 
   // Activate monitoring — can be called independently of fullscreen
   const activateMonitoring = useCallback(() => {

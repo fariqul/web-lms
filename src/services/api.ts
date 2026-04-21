@@ -564,12 +564,14 @@ export const monitoringAPI = {
     type: string;
     description?: string;
     screenshot?: Blob;
+    metadata?: Record<string, string | number | boolean>;
   }) => {
     // If screenshot is included, send as FormData
     if (data.screenshot) {
       const formData = new FormData();
       formData.append('type', data.type);
       if (data.description) formData.append('description', data.description);
+      if (data.metadata) formData.append('metadata', JSON.stringify(data.metadata));
       const file = new File([data.screenshot], `violation_${Date.now()}.jpg`, { type: 'image/jpeg' });
       formData.append('screenshot', file);
       return api.post(`/exams/${data.exam_id}/violation`, formData, { timeout: 15000 });
