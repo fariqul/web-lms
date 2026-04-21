@@ -19,6 +19,8 @@ class AnalyzeSnapshotJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    private const ALERT_DEDUP_WINDOW_SECONDS_DEFAULT = 15;
+
     public int $tries = 2;
     public int $timeout = 30;
 
@@ -86,7 +88,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
             // Create alerts for prohibited objects
             if (!empty($result['prohibited_objects'])) {
                 foreach ($result['prohibited_objects'] as $obj) {
-                    ProctoringAlert::create([
+                    $this->createAlertIfNotDuplicate('object_detected', [
                         'exam_id' => $this->examId,
                         'student_id' => $this->studentId,
                         'snapshot_id' => $this->snapshotId,
@@ -101,7 +103,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
 
             // Alert for multiple persons
             if (($result['person_count'] ?? 0) > 1) {
-                ProctoringAlert::create([
+                $this->createAlertIfNotDuplicate('multi_face', [
                     'exam_id' => $this->examId,
                     'student_id' => $this->studentId,
                     'snapshot_id' => $this->snapshotId,
@@ -116,7 +118,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
             // Alert for no face (camera blocked/covered)
             $faceAnalysis = $result['face_analysis'] ?? null;
             if ($faceAnalysis && !($faceAnalysis['face_detected'] ?? true)) {
-                ProctoringAlert::create([
+                $this->createAlertIfNotDuplicate('no_face', [
                     'exam_id' => $this->examId,
                     'student_id' => $this->studentId,
                     'snapshot_id' => $this->snapshotId,
@@ -136,7 +138,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 $yaw = $faceAnalysis['head_yaw'] ?? 0;
                 $pitch = $faceAnalysis['head_pitch'] ?? 0;
 
-                ProctoringAlert::create([
+                $this->createAlertIfNotDuplicate('head_turn', [
                     'exam_id' => $this->examId,
                     'student_id' => $this->studentId,
                     'snapshot_id' => $this->snapshotId,
@@ -155,7 +157,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
             // Alert for eye gaze deviation
             if ($faceAnalysis && ($faceAnalysis['is_gaze_deviated'] ?? false)) {
                 $gazeRatio = $faceAnalysis['eye_gaze_ratio'] ?? 0;
-                ProctoringAlert::create([
+                $this->createAlertIfNotDuplicate('eye_gaze', [
                     'exam_id' => $this->examId,
                     'student_id' => $this->studentId,
                     'snapshot_id' => $this->snapshotId,
@@ -291,5 +293,31 @@ class AnalyzeSnapshotJob implements ShouldQueue
         if ($totalScore >= 50) return 'high';
         if ($totalScore >= 25) return 'medium';
         return 'low';
+    }
+
+    private function getAlertDedupWindowSeconds(): int
+    {
+        return max(1, (int) env('ALERT_DEDUP_WINDOW_SECONDS', self::ALERT_DEDUP_WINDOW_SECONDS_DEFAULT));
+    }
+
+    private function shouldEmitAlert(string $type, ?int $seconds = null): bool
+    {
+        $windowSeconds = max(1, (int) ($seconds ?? $this->getAlertDedupWindowSeconds()));
+
+        return !ProctoringAlert::query()
+            ->where('exam_id', $this->examId)
+            ->where('student_id', $this->studentId)
+            ->where('type', $type)
+            ->where('created_at', '>=', now()->subSeconds($windowSeconds))
+            ->exists();
+    }
+
+    private function createAlertIfNotDuplicate(string $type, array $payload): void
+    {
+        if (!$this->shouldEmitAlert($type)) {
+            return;
+        }
+
+        ProctoringAlert::create($payload);
     }
 }
