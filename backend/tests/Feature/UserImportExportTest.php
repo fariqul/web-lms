@@ -187,5 +187,53 @@ class UserImportExportTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
-}
 
+    public function test_admin_can_download_user_import_template_as_csv_with_utf8_bom_and_example_row(): void
+    {
+        $classId = $this->createClassRoom('X Template CSV');
+        $admin = $this->createAdmin($classId, 'import-template-csv');
+        Sanctum::actingAs($admin);
+
+        $response = $this->get('/api/users/import-template?format=csv');
+        $response->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        $content = $response->streamedContent();
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
+        $this->assertStringContainsString(
+            'nama,email,role,jenis_kelamin,nisn,nis,nip,nomor_tes,class_name,class_id',
+            $content
+        );
+
+        $lines = preg_split("/\r\n|\n|\r/", trim($content));
+        $exampleRow = str_getcsv((string) ($lines[1] ?? ''));
+        $this->assertSame(
+            ['Contoh Siswa', 'contoh.siswa@example.com', 'siswa', 'L', '1234567890', '12345', '', 'TES-001', 'X IPA 1', '1'],
+            $exampleRow
+        );
+    }
+
+    public function test_admin_can_download_user_import_template_as_xlsx_by_default(): void
+    {
+        $classId = $this->createClassRoom('X Template XLSX');
+        $admin = $this->createAdmin($classId, 'import-template-xlsx');
+        Sanctum::actingAs($admin);
+
+        $response = $this->get('/api/users/import-template');
+        $response->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->assertStringStartsWith('PK', $response->streamedContent());
+    }
+
+    public function test_user_import_template_rejects_invalid_format(): void
+    {
+        $classId = $this->createClassRoom('X Template Invalid');
+        $admin = $this->createAdmin($classId, 'import-template-invalid');
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/users/import-template?format=pdf')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['format']);
+    }
+}

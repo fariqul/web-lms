@@ -490,6 +490,53 @@ class UserController extends Controller
     }
 
     /**
+     * Download user import template (XLSX/CSV)
+     */
+    public function importTemplate(Request $request)
+    {
+        $request->validate([
+            'format' => 'nullable|in:xlsx,csv',
+        ], [
+            'format.in' => 'Format template harus xlsx atau csv.',
+        ]);
+
+        $format = (string) ($request->input('format') ?: 'xlsx');
+        $headers = ['nama', 'email', 'role', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_name', 'class_id'];
+        $exampleRow = ['Contoh Siswa', 'contoh.siswa@example.com', 'siswa', 'L', '1234567890', '12345', '', 'TES-001', 'X IPA 1', '1'];
+
+        if ($format === 'csv') {
+            return response()->streamDownload(function () use ($headers, $exampleRow) {
+                $handle = fopen('php://output', 'wb');
+                fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+                fputcsv($handle, $headers);
+                fputcsv($handle, $exampleRow);
+                fclose($handle);
+            }, 'users_import_template.csv', [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]);
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Import Users');
+
+        foreach ($headers as $index => $header) {
+            $sheet->setCellValue([$index + 1, 1], $header);
+        }
+
+        foreach ($exampleRow as $index => $value) {
+            $sheet->setCellValue([$index + 1, 2], $value);
+        }
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 'users_import_template.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
      * Bulk clear nomor_tes for all students (admin only)
      * Used when exam period is over
      */

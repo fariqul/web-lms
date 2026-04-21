@@ -484,6 +484,29 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDownloadImportTemplate = async (format: 'xlsx' | 'csv') => {
+    try {
+      const res = await userAPI.downloadImportTemplate(format);
+      const blob = res.data as Blob;
+      const disposition = res.headers?.['content-disposition'] as string | undefined;
+      const matchedFilename = disposition?.match(/filename="?([^"]+)"?/i)?.[1];
+      const filename = matchedFilename || `template_import_pengguna.${format}`;
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Template ${format.toUpperCase()} berhasil diunduh`);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengunduh template import'));
+    }
+  };
+
   const handlePreviewImport = async () => {
     if (!importFile) {
       toast.warning('Pilih file import terlebih dahulu');
@@ -677,7 +700,7 @@ export default function AdminUsersPage() {
             title="Kelola Pengguna"
             subtitle={`Total ${totalUsers} pengguna${roleFilter ? ` (${roleFilter})` : ''}${classFilter ? ` — ${classes.find(c => c.id.toString() === classFilter)?.name || 'Kelas'}` : ''}${studentBlockFilter !== 'all' ? ` — status ${studentBlockFilter === 'blocked' ? 'terblokir' : 'aktif'}` : ''}${searchQuery ? ` — hasil pencarian "${searchQuery}"` : ''}`}
             action={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1261,6 +1284,28 @@ export default function AdminUsersPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Mode import: upsert by email, user baru akan memakai password default <strong>Password123</strong>.
             </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                leftIcon={<Download className="w-4 h-4" />}
+                onClick={() => handleDownloadImportTemplate('xlsx')}
+                disabled={isImportProcessing}
+              >
+                Download Template XLSX
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                leftIcon={<Download className="w-4 h-4" />}
+                onClick={() => handleDownloadImportTemplate('csv')}
+                disabled={isImportProcessing}
+              >
+                Download Template CSV
+              </Button>
+            </div>
             <input
               type="file"
               accept=".xlsx,.csv"
