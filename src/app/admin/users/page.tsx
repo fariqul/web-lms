@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
 import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck, Upload } from 'lucide-react';
-import { userAPI, classAPI } from '@/services/api';
+import { userAPI, classAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { extractNomorTesNumber } from '@/utils/nomorTes';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -16,6 +17,8 @@ interface User {
   role: string;
   class_id?: number;
   class_room?: { id: number; name: string };
+  photo?: string | null;
+  avatar?: string | null;
   jenis_kelamin?: 'L' | 'P';
   nisn?: string;
   nis?: string;
@@ -94,6 +97,7 @@ export default function AdminUsersPage() {
   const [importPreviewRows, setImportPreviewRows] = useState<ImportPreviewRow[]>([]);
   const [importPreviewErrors, setImportPreviewErrors] = useState<ImportPreviewError[]>([]);
   const [isImportProcessing, setIsImportProcessing] = useState(false);
+  const [brokenProfilePhotoIds, setBrokenProfilePhotoIds] = useState<Record<number, boolean>>({});
 
   // Sorting state
   const [sortKey, setSortKey] = useState<'name' | 'nomor_tes' | null>(null);
@@ -571,6 +575,24 @@ export default function AdminUsersPage() {
       ),
       render: (item: User) => (
         <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-sky-600 to-cyan-500 flex items-center justify-center ring-1 ring-slate-200 dark:ring-slate-700 shrink-0">
+            {(item.photo || item.avatar) && !brokenProfilePhotoIds[item.id] ? (
+              <Image
+                src={getSecureFileUrl(item.photo || item.avatar)}
+                alt={`Foto profil ${item.name}`}
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+                onError={() => {
+                  setBrokenProfilePhotoIds((prev) => ({ ...prev, [item.id]: true }));
+                }}
+              />
+            ) : (
+              <span className="text-white text-xs font-semibold">
+                {item.name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            )}
+          </div>
           <span>{item.name}</span>
           {item.role === 'siswa' && item.is_blocked && (
             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">

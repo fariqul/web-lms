@@ -28,7 +28,7 @@ interface UseProctoringOptions {
   examId: number;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   enabled: boolean;
-  /** Detection interval in ms (default: 2000 = 2 seconds) */
+  /** Detection interval in ms (default: 1500 = 1.5 seconds) */
   detectionInterval?: number;
   /** Callback when a suspicious activity is detected */
   onDetection?: (detection: ProctoringDetection) => void;
@@ -48,21 +48,28 @@ interface UseProctoringReturn {
 const THRESHOLDS = {
   // Minimum face detection confidence
   FACE_DETECTION_SCORE: 0.5,
-  // Head turn: angle thresholds (radians, ~25 degrees)
-  HEAD_YAW_THRESHOLD: 0.43,
-  HEAD_PITCH_THRESHOLD: 0.35,
+  // Head turn: angle thresholds (radians) — tightened to be more sensitive.
+  HEAD_YAW_THRESHOLD: 0.35,
+  HEAD_PITCH_THRESHOLD: 0.28,
   // Eye gaze: landmark position ratio threshold
-  EYE_GAZE_THRESHOLD: 0.35,
+  EYE_GAZE_THRESHOLD: 0.38,
   // Identity: face descriptor distance threshold (lower = stricter)
-  IDENTITY_DISTANCE: 0.55,
+  IDENTITY_DISTANCE: 0.5,
   // Risk level thresholds (total detections)
   RISK_MEDIUM: 5,
   RISK_HIGH: 15,
   RISK_CRITICAL: 30,
 };
 
-const TEMPORAL_CONFIRMATION_WINDOW_MS = 6000;
-const TEMPORAL_CONFIRMATION_MIN_COUNT = 2;
+const TEMPORAL_CONFIRMATION_WINDOW_MS = 5000;
+
+const AI_EVENT_MIN_CONFIRMATIONS: Record<ProctoringDetection['type'], number> = {
+  no_face: 1,
+  multi_face: 1,
+  head_turn: 1,
+  eye_gaze: 1,
+  identity_mismatch: 1,
+};
 
 function detectMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
@@ -77,12 +84,14 @@ export function useProctoring({
   examId,
   videoRef,
   enabled,
-  detectionInterval = 2000,
+  detectionInterval = 1500,
   onDetection,
 }: UseProctoringOptions): UseProctoringReturn {
   const [isMobileDevice] = useState(() => detectMobileDevice());
-  const detectorInputSize = isMobileDevice ? 160 : 224;
-  const detectorScoreThreshold = isMobileDevice ? 0.45 : THRESHOLDS.FACE_DETECTION_SCORE;
+  // Context7 face-api.js guidance: larger inputSize improves precision for smaller faces.
+  const detectorInputSize = isMobileDevice ? 224 : 320;
+  const detectorScoreThreshold = THRESHOLDS.FACE_DETECTION_SCORE;
+  const referenceCaptureScoreThreshold = Math.max(detectorScoreThreshold, 0.6);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stats, setStats] = useState<ProctoringStats>({
@@ -166,13 +175,14 @@ export function useProctoring({
     onDetection?.(detection);
   }, [onDetection, calculateRiskLevel]);
 
-  const trackTemporalEvent = useCallback((type: string): { confirmed: boolean; count: number } => {
+  const trackTemporalEvent = useCallback((type: ProctoringDetection['type']): { confirmed: boolean; count: number } => {
     const now = Date.now();
     const prev = temporalEventsRef.current[type] || [];
     const next = [...prev.filter((ts) => now - ts <= TEMPORAL_CONFIRMATION_WINDOW_MS), now];
     temporalEventsRef.current[type] = next;
+    const requiredCount = AI_EVENT_MIN_CONFIRMATIONS[type] ?? 1;
     return {
-      confirmed: next.length >= TEMPORAL_CONFIRMATION_MIN_COUNT,
+      confirmed: next.length >= requiredCount,
       count: next.length,
     };
   }, []);
@@ -299,7 +309,7 @@ export function useProctoring({
         });
 
         try {
-          const temporal = trackTemporalEvent('multiple_face');
+          const temporal = trackTemporalEvent('multi_face');
           if (!temporal.confirmed) return;
 
           await monitoringAPI.reportViolation({
@@ -323,14 +333,36 @@ export function useProctoring({
       // Head Pose
       const { yaw, pitch } = estimateHeadPose(landmarks);
       if (Math.abs(yaw) > THRESHOLDS.HEAD_YAW_THRESHOLD || Math.abs(pitch) > THRESHOLDS.HEAD_PITCH_THRESHOLD) {
-        const direction = yaw > 0 ? 'kiri' : 'kanan';
+        const absYaw = Math.abs(yaw);
+        const absPitch = Math.abs(pitch);
+        const dominantIsYaw = absYaw >= absPitch;
+        const direction = dominantIsYaw
+          ? (yaw > 0 ? 'kiri' : 'kanan')
+          : (pitch > 0 ? 'bawah' : 'atas');
         addDetection({
           type: 'head_turn',
-          confidence: Math.min(1, Math.abs(yaw) / 0.8),
+          confidence: Math.min(1, Math.max(absYaw / THRESHOLDS.HEAD_YAW_THRESHOLD, absPitch / THRESHOLDS.HEAD_PITCH_THRESHOLD)),
           description: `Kepala menoleh ke ${direction}`,
           timestamp: now,
         });
 
+        try {
+          const temporal = trackTemporalEvent('head_turn');
+          if (!temporal.confirmed) return;
+
+          await monitoringAPI.reportViolation({
+            exam_id: examId,
+            type: 'head_turn',
+            description: `AI: Kepala menoleh ke ${direction} (yaw: ${yaw.toFixed(3)}, pitch: ${pitch.toFixed(3)})`,
+            metadata: {
+              event_source: 'ai_proctoring',
+              device_class: isMobileDevice ? 'mobile' : 'desktop',
+              streak_count: temporal.count,
+              yaw: Number(yaw.toFixed(3)),
+              pitch: Number(pitch.toFixed(3)),
+            },
+          });
+        } catch { /* ignore */ }
       }
 
       // Eye Gaze
@@ -343,6 +375,22 @@ export function useProctoring({
           timestamp: now,
         });
 
+        try {
+          const temporal = trackTemporalEvent('eye_gaze');
+          if (!temporal.confirmed) return;
+
+          await monitoringAPI.reportViolation({
+            exam_id: examId,
+            type: 'eye_gaze',
+            description: `AI: Mata menyimpang (rasio: ${gaze.direction.toFixed(3)})`,
+            metadata: {
+              event_source: 'ai_proctoring',
+              device_class: isMobileDevice ? 'mobile' : 'desktop',
+              streak_count: temporal.count,
+              gaze_ratio: Number(gaze.direction.toFixed(3)),
+            },
+          });
+        } catch { /* ignore */ }
       }
 
       // Identity Verification (if reference descriptor stored)
@@ -361,6 +409,9 @@ export function useProctoring({
           });
 
           try {
+            const temporal = trackTemporalEvent('identity_mismatch');
+            if (!temporal.confirmed) return;
+
             await monitoringAPI.reportViolation({
               exam_id: examId,
               type: 'identity_mismatch',
@@ -368,6 +419,8 @@ export function useProctoring({
               metadata: {
                 event_source: 'ai_proctoring',
                 device_class: isMobileDevice ? 'mobile' : 'desktop',
+                streak_count: temporal.count,
+                distance: Number(distance.toFixed(3)),
               },
             });
           } catch { /* ignore */ }
@@ -390,7 +443,7 @@ export function useProctoring({
       const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({
           inputSize: detectorInputSize,
-          scoreThreshold: detectorScoreThreshold,
+          scoreThreshold: referenceCaptureScoreThreshold,
         }))
         .withFaceLandmarks(true)
         .withFaceDescriptor();
@@ -407,7 +460,7 @@ export function useProctoring({
       console.error('[Proctoring] Failed to capture reference:', error);
       return false;
     }
-  }, [videoRef, isModelLoaded, detectorInputSize, detectorScoreThreshold]);
+  }, [videoRef, isModelLoaded, detectorInputSize, referenceCaptureScoreThreshold]);
 
   // ─── Detection Loop ─────────────────────────────────────────────────
 

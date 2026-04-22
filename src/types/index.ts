@@ -138,7 +138,26 @@ export interface Violation {
   id: number;
   exam_id: number;
   student_id: number;
-  type: 'tab_switch' | 'fullscreen_exit' | 'copy_paste' | 'camera_off' | 'screenshot';
+  type:
+    | 'tab_switch'
+    | 'window_blur'
+    | 'copy_paste'
+    | 'right_click'
+    | 'shortcut_key'
+    | 'screen_capture'
+    | 'multiple_face'
+    | 'no_face'
+    | 'head_turn'
+    | 'eye_gaze'
+    | 'identity_mismatch'
+    | 'split_screen'
+    | 'floating_app'
+    | 'pip_mode'
+    | 'suspicious_resize'
+    | 'screenshot_attempt'
+    | 'virtual_camera'
+    | 'camera_off'
+    | 'fullscreen_exit';
   description?: string;
   timestamp: string;
   student?: User;

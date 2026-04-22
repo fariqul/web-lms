@@ -247,7 +247,7 @@ export default function ExamTakingPage() {
     examId,
     videoRef,
     enabled: isStarted && isCameraActive,
-    detectionInterval: 2000,
+    detectionInterval: 1500,
     onDetection: (detection: ProctoringDetection) => {
       // Show brief warning overlay for critical detections
       if (detection.type === 'no_face' || detection.type === 'multi_face' || detection.type === 'identity_mismatch') {

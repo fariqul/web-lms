@@ -184,7 +184,8 @@ export function useExamMode({
     
     // Debounce rapid violations (mobile fires multiple events)
     const now = Date.now();
-    if (now - lastViolationTimeRef.current < VIOLATION_DEBOUNCE_MS) return;
+    const isCriticalViolation = type === 'tab_switch' || type === 'window_blur' || type === 'fullscreen_exit';
+    if (!isCriticalViolation && now - lastViolationTimeRef.current < VIOLATION_DEBOUNCE_MS) return;
     lastViolationTimeRef.current = now;
     
     // Capture a camera snapshot to attach with the violation
@@ -591,6 +592,12 @@ export function useExamMode({
       );
     };
 
+    const reportAppLeaveOnce = () => {
+      if (appLeaveReportedRef.current) return;
+      appLeaveReportedRef.current = true;
+      reportAppLeaveViolation();
+    };
+
     const clearAppLeaveTimer = () => {
       if (appLeaveTimerRef.current) {
         clearTimeout(appLeaveTimerRef.current);
@@ -651,6 +658,12 @@ export function useExamMode({
       if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
 
       if (document.hidden) {
+        // iOS frequently freezes background timers; record immediately when page is hidden.
+        if (isIOS) {
+          markAppLeaveStarted();
+          reportAppLeaveOnce();
+          return;
+        }
         markAppLeaveStarted();
         return;
       }
@@ -786,12 +799,16 @@ export function useExamMode({
     const handlePageHide = (e: PageTransitionEvent) => {
       if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
 
+      if (isIOS) {
+        markAppLeaveStarted();
+        reportAppLeaveOnce();
+        return;
+      }
+
       if (!e.persisted) {
         const alreadyReported = appLeaveReportedRef.current;
         resetAppLeaveTracking();
-        if (!alreadyReported) {
-          reportAppLeaveViolation();
-        }
+        if (!alreadyReported) reportAppLeaveViolation();
         return;
       }
 

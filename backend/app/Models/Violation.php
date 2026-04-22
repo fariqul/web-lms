@@ -34,6 +34,9 @@ class Violation extends Model
     const TYPE_SCREEN_CAPTURE = 'screen_capture';
     const TYPE_MULTIPLE_FACE = 'multiple_face';
     const TYPE_NO_FACE = 'no_face';
+    const TYPE_HEAD_TURN = 'head_turn';
+    const TYPE_EYE_GAZE = 'eye_gaze';
+    const TYPE_IDENTITY_MISMATCH = 'identity_mismatch';
     // Mobile-specific violation types
     const TYPE_SPLIT_SCREEN = 'split_screen';
     const TYPE_FLOATING_APP = 'floating_app';
@@ -70,6 +73,9 @@ class Violation extends Model
             self::TYPE_SCREEN_CAPTURE => 'Screen Capture',
             self::TYPE_MULTIPLE_FACE => 'Wajah Ganda',
             self::TYPE_NO_FACE => 'Tidak Ada Wajah',
+            self::TYPE_HEAD_TURN => 'Kepala Menoleh',
+            self::TYPE_EYE_GAZE => 'Mata Menyimpang',
+            self::TYPE_IDENTITY_MISMATCH => 'Identitas Wajah Tidak Cocok',
             self::TYPE_SPLIT_SCREEN => 'Split Screen',
             self::TYPE_FLOATING_APP => 'Aplikasi Mengambang',
             self::TYPE_PIP_MODE => 'Mode Picture-in-Picture',
