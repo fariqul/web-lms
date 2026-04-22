@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useExamMode } from '@/hooks/useExamMode';
 import { useProctoring, ProctoringDetection } from '@/hooks/useProctoring';
-import { Button, Card, ConfirmDialog } from '@/components/ui';
+import { Button, Card, ConfirmDialog, Modal } from '@/components/ui';
 import {
   Clock,
   AlertTriangle,
@@ -26,6 +26,9 @@ import {
   Download,
   CheckCircle2,
   XCircle,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -65,6 +68,16 @@ interface ExamData {
   sebShowTaskbar: boolean;
 }
 
+interface ExamImagePreview {
+  src: string;
+  alt: string;
+  title: string;
+}
+
+const MIN_IMAGE_PREVIEW_ZOOM = 1;
+const MAX_IMAGE_PREVIEW_ZOOM = 3;
+const IMAGE_PREVIEW_ZOOM_STEP = 0.25;
+
 const normalizeQuestionType = (type?: string): Question['type'] => {
   if (type === 'multiple_answer') return 'multiple_answer';
   if (type === 'essay') return 'essay';
@@ -102,6 +115,8 @@ export default function ExamTakingPage() {
   const [cameraPreviewActive, setCameraPreviewActive] = useState(false);
   const [cameraPreviewTested, setCameraPreviewTested] = useState(false);
   const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<ExamImagePreview | null>(null);
+  const [imagePreviewZoom, setImagePreviewZoom] = useState<number>(MIN_IMAGE_PREVIEW_ZOOM);
   const previewVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const previewStreamRef = React.useRef<MediaStream | null>(null);
   // Ref to track intentional navigation (submission) to bypass beforeunload
@@ -1174,6 +1189,33 @@ export default function ExamTakingPage() {
     });
   };
 
+  const openImagePreview = useCallback((imagePath: string | null | undefined, alt: string, title: string) => {
+    if (!imagePath) return;
+    setImagePreview({
+      src: getSecureFileUrl(imagePath),
+      alt,
+      title,
+    });
+    setImagePreviewZoom(MIN_IMAGE_PREVIEW_ZOOM);
+  }, []);
+
+  const closeImagePreview = useCallback(() => {
+    setImagePreviewZoom(MIN_IMAGE_PREVIEW_ZOOM);
+    setImagePreview(null);
+  }, []);
+
+  const zoomInImagePreview = useCallback(() => {
+    setImagePreviewZoom((prev) => Math.min(MAX_IMAGE_PREVIEW_ZOOM, Number((prev + IMAGE_PREVIEW_ZOOM_STEP).toFixed(2))));
+  }, []);
+
+  const zoomOutImagePreview = useCallback(() => {
+    setImagePreviewZoom((prev) => Math.max(MIN_IMAGE_PREVIEW_ZOOM, Number((prev - IMAGE_PREVIEW_ZOOM_STEP).toFixed(2))));
+  }, []);
+
+  const resetImagePreviewZoom = useCallback(() => {
+    setImagePreviewZoom(MIN_IMAGE_PREVIEW_ZOOM);
+  }, []);
+
   const handleSubmit = () => {
     if (!canManualSubmit) {
       const minutesLeft = Math.ceil((timeRemaining - 600) / 60);
@@ -1576,14 +1618,22 @@ export default function ExamTakingPage() {
                   <MathText text={question?.text || 'Soal tidak tersedia'} as="h2" className="text-lg font-semibold text-slate-900 dark:text-white mt-1 whitespace-pre-line" />
                   {question?.image && (
                     <div className="mt-3">
-                      <Image
-                        src={getSecureFileUrl(question.image)}
-                        alt="Gambar Soal"
-                        width={1200}
-                        height={800}
-                        className="max-w-full h-auto max-h-80 rounded-lg border border-slate-200 dark:border-slate-700"
-                        unoptimized
-                      />
+                      <button
+                        type="button"
+                        onClick={() => openImagePreview(question.image, 'Gambar soal', `Gambar Soal ${question?.number || currentQuestion + 1}`)}
+                        className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                        aria-label="Lihat gambar soal lebih besar"
+                      >
+                        <Image
+                          src={getSecureFileUrl(question.image)}
+                          alt="Gambar Soal"
+                          width={1200}
+                          height={800}
+                          className="max-w-full h-auto max-h-80 rounded-lg border border-slate-200 dark:border-slate-700 cursor-zoom-in transition-transform duration-200 hover:scale-[1.01]"
+                          unoptimized
+                        />
+                      </button>
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Klik gambar untuk melihat detail lebih besar.</p>
                     </div>
                   )}
                 </div>
@@ -1637,14 +1687,29 @@ export default function ExamTakingPage() {
                           }`} />
                         )}
                         {option.image && (
-                          <Image
-                            src={getSecureFileUrl(option.image)}
-                            alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
-                            width={800}
-                            height={480}
-                            className="mt-2 max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
-                            unoptimized
-                          />
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openImagePreview(
+                                option.image,
+                                `Gambar opsi ${String.fromCharCode(65 + index)}`,
+                                `Soal ${question?.number || currentQuestion + 1} - Opsi ${String.fromCharCode(65 + index)}`
+                              );
+                            }}
+                            className="mt-2 block rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                            aria-label={`Lihat gambar opsi ${String.fromCharCode(65 + index)} lebih besar`}
+                          >
+                            <Image
+                              src={getSecureFileUrl(option.image)}
+                              alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
+                              width={800}
+                              height={480}
+                              className="max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700 cursor-zoom-in transition-transform duration-200 hover:scale-[1.01]"
+                              unoptimized
+                            />
+                          </button>
                         )}
                       </div>
                     </label>
@@ -1687,14 +1752,29 @@ export default function ExamTakingPage() {
                               }`} />
                             )}
                             {option.image && (
-                              <Image
-                                src={getSecureFileUrl(option.image)}
-                                alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
-                                width={800}
-                                height={480}
-                                className="mt-2 max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700"
-                                unoptimized
-                              />
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openImagePreview(
+                                    option.image,
+                                    `Gambar opsi ${String.fromCharCode(65 + index)}`,
+                                    `Soal ${question?.number || currentQuestion + 1} - Opsi ${String.fromCharCode(65 + index)}`
+                                  );
+                                }}
+                                className="mt-2 block rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                                aria-label={`Lihat gambar opsi ${String.fromCharCode(65 + index)} lebih besar`}
+                              >
+                                <Image
+                                  src={getSecureFileUrl(option.image)}
+                                  alt={`Gambar opsi ${String.fromCharCode(65 + index)}`}
+                                  width={800}
+                                  height={480}
+                                  className="max-w-full h-auto max-h-48 rounded-lg border border-slate-200 dark:border-slate-700 cursor-zoom-in transition-transform duration-200 hover:scale-[1.01]"
+                                  unoptimized
+                                />
+                              </button>
                             )}
                           </div>
                         </label>
@@ -2018,6 +2098,65 @@ export default function ExamTakingPage() {
         variant="warning"
         isLoading={submitting}
       />
+
+      <Modal
+        isOpen={Boolean(imagePreview)}
+        onClose={closeImagePreview}
+        title={imagePreview?.title || 'Pratinjau Gambar'}
+        size="full"
+      >
+        {imagePreview && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Zoom: {Math.round(imagePreviewZoom * 100)}%</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={zoomOutImagePreview}
+                  disabled={imagePreviewZoom <= MIN_IMAGE_PREVIEW_ZOOM}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                  Kecilkan
+                </button>
+                <button
+                  type="button"
+                  onClick={resetImagePreviewZoom}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={zoomInImagePreview}
+                  disabled={imagePreviewZoom >= MAX_IMAGE_PREVIEW_ZOOM}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                  Besarkan
+                </button>
+              </div>
+            </div>
+            <div className="w-full max-h-[75vh] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-2 sm:p-3">
+              <div className="min-h-[220px] flex items-start justify-center">
+                <Image
+                  src={imagePreview.src}
+                  alt={imagePreview.alt}
+                  width={1800}
+                  height={1200}
+                  className="h-auto max-w-none rounded-lg transition-[width] duration-200"
+                  style={{ width: `${Math.round(imagePreviewZoom * 100)}%` }}
+                  unoptimized
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              Gunakan tombol zoom untuk melihat detail. Tekan ESC atau klik area luar untuk menutup pratinjau.
+            </p>
+          </div>
+        )}
+      </Modal>
 
       {/* AI Proctoring Warning Overlay */}
       {proctoringWarning && (

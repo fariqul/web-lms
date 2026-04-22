@@ -98,6 +98,10 @@ export default function AdminUsersPage() {
   const [importPreviewErrors, setImportPreviewErrors] = useState<ImportPreviewError[]>([]);
   const [isImportProcessing, setIsImportProcessing] = useState(false);
   const [brokenProfilePhotoIds, setBrokenProfilePhotoIds] = useState<Record<number, boolean>>({});
+  const [profilePreview, setProfilePreview] = useState<{ src: string; name: string } | null>(null);
+  const [isProfilePreviewBroken, setIsProfilePreviewBroken] = useState(false);
+  const [isProfilePreviewClosing, setIsProfilePreviewClosing] = useState(false);
+  const [profilePreviewFitMode, setProfilePreviewFitMode] = useState<'contain' | 'cover'>('contain');
 
   // Sorting state
   const [sortKey, setSortKey] = useState<'name' | 'nomor_tes' | null>(null);
@@ -119,6 +123,7 @@ export default function AdminUsersPage() {
 
   const [totalUsers, setTotalUsers] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const profilePreviewCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchUsers = useCallback(async (search?: string, role?: string, classId?: string) => {
     try {
@@ -156,7 +161,54 @@ export default function AdminUsersPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery, roleFilter, classFilter, fetchUsers]);
 
+  useEffect(() => {
+    return () => {
+      if (profilePreviewCloseTimerRef.current) {
+        clearTimeout(profilePreviewCloseTimerRef.current);
+        profilePreviewCloseTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const fetchData = () => fetchUsers(searchQuery, roleFilter, classFilter);
+
+  const openProfilePreview = (name: string, rawUrl?: string | null) => {
+    const safeUrl = getSecureFileUrl(rawUrl);
+    if (!safeUrl) return;
+
+    if (profilePreviewCloseTimerRef.current) {
+      clearTimeout(profilePreviewCloseTimerRef.current);
+      profilePreviewCloseTimerRef.current = null;
+    }
+
+    setIsProfilePreviewClosing(false);
+    setIsProfilePreviewBroken(false);
+    setProfilePreviewFitMode('contain');
+    setProfilePreview({ src: safeUrl, name });
+  };
+
+  const toggleProfilePreviewFitMode = () => {
+    if (isProfilePreviewBroken) return;
+    setProfilePreviewFitMode((prev) => (prev === 'contain' ? 'cover' : 'contain'));
+  };
+
+  const closeProfilePreview = () => {
+    if (!profilePreview || isProfilePreviewClosing) return;
+
+    setIsProfilePreviewClosing(true);
+
+    if (profilePreviewCloseTimerRef.current) {
+      clearTimeout(profilePreviewCloseTimerRef.current);
+    }
+
+    profilePreviewCloseTimerRef.current = setTimeout(() => {
+      setProfilePreview(null);
+      setIsProfilePreviewBroken(false);
+      setIsProfilePreviewClosing(false);
+      setProfilePreviewFitMode('contain');
+      profilePreviewCloseTimerRef.current = null;
+    }, 180);
+  };
 
   // Toggle sort function
   const handleSort = (key: 'name' | 'nomor_tes') => {
@@ -577,16 +629,23 @@ export default function AdminUsersPage() {
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-sky-600 to-cyan-500 flex items-center justify-center ring-1 ring-slate-200 dark:ring-slate-700 shrink-0">
             {(item.photo || item.avatar) && !brokenProfilePhotoIds[item.id] ? (
-              <Image
-                src={getSecureFileUrl(item.photo || item.avatar)}
-                alt={`Foto profil ${item.name}`}
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-                onError={() => {
-                  setBrokenProfilePhotoIds((prev) => ({ ...prev, [item.id]: true }));
-                }}
-              />
+              <button
+                type="button"
+                onClick={() => openProfilePreview(item.name, item.photo || item.avatar)}
+                title="Klik untuk perbesar foto profil"
+                className="w-full h-full cursor-zoom-in"
+              >
+                <Image
+                  src={getSecureFileUrl(item.photo || item.avatar)}
+                  alt={`Foto profil ${item.name}`}
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                  onError={() => {
+                    setBrokenProfilePhotoIds((prev) => ({ ...prev, [item.id]: true }));
+                  }}
+                />
+              </button>
             ) : (
               <span className="text-white text-xs font-semibold">
                 {item.name?.charAt(0)?.toUpperCase() || '?'}
@@ -1499,6 +1558,52 @@ export default function AdminUsersPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Profile Photo Preview Modal */}
+      <Modal
+        isOpen={!!profilePreview}
+        onClose={closeProfilePreview}
+        title={`Foto Profil${profilePreview?.name ? `: ${profilePreview.name}` : ''}`}
+        size="md"
+        overlayClassName={isProfilePreviewClosing ? 'animate-backdropFadeOut' : 'animate-backdropFadeIn'}
+      >
+        {profilePreview && (
+          <div className={`space-y-3 ${isProfilePreviewClosing ? 'animate-zoomOutSoft' : 'animate-zoomInSoft'}`}>
+            <div className="w-full max-w-md mx-auto aspect-square rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+              {isProfilePreviewBroken ? (
+                <div className="text-center text-slate-500 dark:text-slate-400 px-4">
+                  <p className="text-sm">Foto profil tidak dapat dimuat.</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleProfilePreviewFitMode}
+                  title="Klik untuk ubah mode tampilan foto"
+                  className="w-full h-full relative cursor-zoom-in"
+                >
+                  <Image
+                    src={profilePreview.src}
+                    alt={`Foto profil ${profilePreview.name}`}
+                    width={640}
+                    height={640}
+                    className={`w-full h-full transition-all duration-200 ${profilePreviewFitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
+                    onError={() => setIsProfilePreviewBroken(true)}
+                  />
+                  <span className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 text-white text-[10px] font-medium">
+                    {profilePreviewFitMode === 'contain' ? 'Mode: Fit' : 'Mode: Fill'}
+                  </span>
+                </button>
+              )}
+            </div>
+            <p className="text-center text-sm text-slate-600 dark:text-slate-300">{profilePreview.name}</p>
+            {!isProfilePreviewBroken && (
+              <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                Klik foto untuk ubah mode tampilan.
+              </p>
+            )}
+          </div>
+        )}
       </Modal>
     </DashboardLayout>
   );

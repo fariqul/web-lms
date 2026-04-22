@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, User, Upload } from 'lucide-react';
-import { classAPI } from '@/services/api';
+import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, Upload } from 'lucide-react';
+import { classAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-error';
 
@@ -13,6 +14,8 @@ interface Student {
   name: string;
   nisn: string;
   email: string;
+  photo?: string | null;
+  avatar?: string | null;
 }
 
 interface ClassRoom {
@@ -65,6 +68,12 @@ export default function AdminKelasPage() {
   const [importPreviewRows, setImportPreviewRows] = useState<ClassImportPreviewRow[]>([]);
   const [importPreviewErrors, setImportPreviewErrors] = useState<ClassImportPreviewError[]>([]);
   const [isImportProcessing, setIsImportProcessing] = useState(false);
+  const [brokenStudentPhotoIds, setBrokenStudentPhotoIds] = useState<Record<number, boolean>>({});
+  const [profilePreview, setProfilePreview] = useState<{ src: string; name: string } | null>(null);
+  const [isProfilePreviewBroken, setIsProfilePreviewBroken] = useState(false);
+  const [isProfilePreviewClosing, setIsProfilePreviewClosing] = useState(false);
+  const [profilePreviewFitMode, setProfilePreviewFitMode] = useState<'contain' | 'cover'>('contain');
+  const profilePreviewCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -74,6 +83,15 @@ export default function AdminKelasPage() {
 
   useEffect(() => {
     fetchClasses();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (profilePreviewCloseTimerRef.current) {
+        clearTimeout(profilePreviewCloseTimerRef.current);
+        profilePreviewCloseTimerRef.current = null;
+      }
+    };
   }, []);
 
   const fetchClasses = async () => {
@@ -169,6 +187,44 @@ export default function AdminKelasPage() {
     s.nisn?.toLowerCase().includes(studentSearch.toLowerCase()) ||
     s.email?.toLowerCase().includes(studentSearch.toLowerCase())
   ) || [];
+
+  const openProfilePreview = (name: string, rawUrl?: string | null) => {
+    const safeUrl = getSecureFileUrl(rawUrl);
+    if (!safeUrl) return;
+
+    if (profilePreviewCloseTimerRef.current) {
+      clearTimeout(profilePreviewCloseTimerRef.current);
+      profilePreviewCloseTimerRef.current = null;
+    }
+
+    setIsProfilePreviewClosing(false);
+    setIsProfilePreviewBroken(false);
+    setProfilePreviewFitMode('contain');
+    setProfilePreview({ src: safeUrl, name });
+  };
+
+  const toggleProfilePreviewFitMode = () => {
+    if (isProfilePreviewBroken) return;
+    setProfilePreviewFitMode((prev) => (prev === 'contain' ? 'cover' : 'contain'));
+  };
+
+  const closeProfilePreview = () => {
+    if (!profilePreview || isProfilePreviewClosing) return;
+
+    setIsProfilePreviewClosing(true);
+
+    if (profilePreviewCloseTimerRef.current) {
+      clearTimeout(profilePreviewCloseTimerRef.current);
+    }
+
+    profilePreviewCloseTimerRef.current = setTimeout(() => {
+      setProfilePreview(null);
+      setIsProfilePreviewBroken(false);
+      setIsProfilePreviewClosing(false);
+      setProfilePreviewFitMode('contain');
+      profilePreviewCloseTimerRef.current = null;
+    }, 180);
+  };
 
   const resetImportState = () => {
     setImportFile(null);
@@ -611,9 +667,31 @@ export default function AdminKelasPage() {
                           <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">{idx + 1}</td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
-                                <User className="w-3.5 h-3.5 text-white" />
-                              </div>
+                              {(student.photo || student.avatar) && !brokenStudentPhotoIds[student.id] ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openProfilePreview(student.name, student.photo || student.avatar)}
+                                  title="Klik untuk perbesar foto profil"
+                                  className="w-7 h-7 rounded-full overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 shrink-0 cursor-zoom-in"
+                                >
+                                  <Image
+                                    src={getSecureFileUrl(student.photo || student.avatar)}
+                                    alt={`Foto profil ${student.name}`}
+                                    width={28}
+                                    height={28}
+                                    className="w-full h-full object-cover"
+                                    onError={() => {
+                                      setBrokenStudentPhotoIds((prev) => ({ ...prev, [student.id]: true }));
+                                    }}
+                                  />
+                                </button>
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shrink-0">
+                                  <span className="text-white text-[11px] font-semibold">
+                                    {student.name?.charAt(0)?.toUpperCase() || '?'}
+                                  </span>
+                                </div>
+                              )}
                               <span className="font-medium text-slate-900 dark:text-white">{student.name}</span>
                             </div>
                           </td>
@@ -635,6 +713,52 @@ export default function AdminKelasPage() {
         ) : (
           <div className="text-center py-8 text-slate-500">
             <p>Gagal memuat data kelas</p>
+          </div>
+        )}
+      </Modal>
+
+      {/* Profile Photo Preview Modal */}
+      <Modal
+        isOpen={!!profilePreview}
+        onClose={closeProfilePreview}
+        title={`Foto Profil${profilePreview?.name ? `: ${profilePreview.name}` : ''}`}
+        size="md"
+        overlayClassName={isProfilePreviewClosing ? 'animate-backdropFadeOut' : 'animate-backdropFadeIn'}
+      >
+        {profilePreview && (
+          <div className={`space-y-3 ${isProfilePreviewClosing ? 'animate-zoomOutSoft' : 'animate-zoomInSoft'}`}>
+            <div className="w-full max-w-md mx-auto aspect-square rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+              {isProfilePreviewBroken ? (
+                <div className="text-center text-slate-500 dark:text-slate-400 px-4">
+                  <p className="text-sm">Foto profil tidak dapat dimuat.</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleProfilePreviewFitMode}
+                  title="Klik untuk ubah mode tampilan foto"
+                  className="w-full h-full relative cursor-zoom-in"
+                >
+                  <Image
+                    src={profilePreview.src}
+                    alt={`Foto profil ${profilePreview.name}`}
+                    width={640}
+                    height={640}
+                    className={`w-full h-full transition-all duration-200 ${profilePreviewFitMode === 'cover' ? 'object-cover' : 'object-contain'}`}
+                    onError={() => setIsProfilePreviewBroken(true)}
+                  />
+                  <span className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 text-white text-[10px] font-medium">
+                    {profilePreviewFitMode === 'contain' ? 'Mode: Fit' : 'Mode: Fill'}
+                  </span>
+                </button>
+              )}
+            </div>
+            <p className="text-center text-sm text-slate-600 dark:text-slate-300">{profilePreview.name}</p>
+            {!isProfilePreviewBroken && (
+              <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                Klik foto untuk ubah mode tampilan.
+              </p>
+            )}
           </div>
         )}
       </Modal>

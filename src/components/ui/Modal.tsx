@@ -12,6 +12,7 @@ interface ModalProps {
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   showCloseButton?: boolean;
+  overlayClassName?: string;
 }
 
 export function Modal({
@@ -21,6 +22,7 @@ export function Modal({
   children,
   size = 'md',
   showCloseButton = true,
+  overlayClassName,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -106,7 +108,10 @@ export function Modal({
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Overlay */}
         <div
-          className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer"
+          className={clsx(
+            'fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer',
+            overlayClassName
+          )}
           onClick={onClose}
           aria-hidden="true"
         />

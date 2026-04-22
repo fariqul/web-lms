@@ -261,6 +261,26 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes zoomInSoft {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes zoomOutSoft {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes backdropFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -296,6 +316,22 @@ body {
 
 .animate-scaleIn {
   animation: scaleIn 0.2s ease-out;
+}
+
+.animate-zoomInSoft {
+  animation: zoomInSoft 0.2s var(--ease-micro);
+}
+
+.animate-zoomOutSoft {
+  animation: zoomOutSoft 0.18s var(--ease-micro) forwards;
+}
+
+.animate-backdropFadeIn {
+  animation: backdropFadeIn 0.2s var(--ease-micro);
+}
+
+.animate-backdropFadeOut {
+  animation: backdropFadeOut 0.18s var(--ease-micro) forwards;
 }
 
 .animate-slideIn {
