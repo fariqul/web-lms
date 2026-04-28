@@ -230,8 +230,8 @@ export default function AdminGraduationPage() {
           </label>
           <Select
             value={selectedClass?.id.toString() || ''}
-            onChange={(value) => {
-              const cls = classes.find(c => c.id === Number(value));
+            onChange={(event) => {
+              const cls = classes.find(c => c.id === Number(event.target.value));
               setSelectedClass(cls || null);
             }}
             options={[
@@ -398,7 +398,7 @@ export default function AdminGraduationPage() {
             </label>
             <Select
               value={editFormData.status}
-              onChange={(value) => setEditFormData({ ...editFormData, status: value })}
+              onChange={(event) => setEditFormData({ ...editFormData, status: event.target.value })}
               options={[
                 { value: 'pending', label: 'Menunggu Keputusan' },
                 { value: 'lulus', label: 'Lulus' },
@@ -458,7 +458,7 @@ export default function AdminGraduationPage() {
             </label>
             <Select
               value={bulkFormData.status}
-              onChange={(value) => setBulkFormData({ ...bulkFormData, status: value as 'lulus' | 'tidak_lulus' })}
+              onChange={(event) => setBulkFormData({ ...bulkFormData, status: event.target.value as 'lulus' | 'tidak_lulus' })}
               options={[
                 { value: 'lulus', label: 'Lulus' },
                 { value: 'tidak_lulus', label: 'Tidak Lulus' },
