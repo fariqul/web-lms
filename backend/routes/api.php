@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\SummativeScoreController;
 use App\Http\Controllers\Api\ExamResultVisibilityController;
+use App\Http\Controllers\Api\GraduationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -124,6 +125,11 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);
         Route::post('/exams/{exam}/unlock', [ExamController::class, 'unlockExam']);
+        
+        // Graduation Management
+        Route::get('/graduations/class/{classId}', [GraduationController::class, 'getByClass']);
+        Route::post('/graduations/{studentId}/{classId}', [GraduationController::class, 'setGraduationStatus']);
+        Route::post('/graduations/bulk', [GraduationController::class, 'bulkSetGraduationStatus']);
     });
 
     // ============================================
@@ -206,6 +212,10 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/assignments/{assignment}/submit', [AssignmentController::class, 'submit']);
         Route::get('/assignments-new-count', [AssignmentController::class, 'newCount']);
         Route::get('/assignments-pending', [AssignmentController::class, 'pending']);
+        
+        // Student Graduation
+        Route::get('/graduation/my-status', [GraduationController::class, 'getMyGraduation']);
+        Route::get('/graduation/download-skl', [GraduationController::class, 'downloadSKL']);
         
         // Student Schedule
         Route::get('/my-schedule', [ScheduleController::class, 'mySchedule']);

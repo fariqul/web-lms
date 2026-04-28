@@ -62,12 +62,14 @@ const navigation: NavItem[] = [
   { name: 'Riwayat Absensi', href: '/riwayat-absensi', icon: ClipboardList, roles: ['siswa'] },
   { name: 'Materi Pelajaran', href: '/materi-siswa', icon: BookOpen, roles: ['siswa'] },
   { name: 'Riwayat Pengumpulan', href: '/nilai-siswa', icon: ClipboardList, roles: ['siswa'] },
+  { name: 'Pengumuman Kelulusan', href: '/pengumuman-kelulusan', icon: GraduationCap, roles: ['siswa'] },
   // Shared
   { name: 'Jadwal', href: '/jadwal', icon: Calendar, roles: ['guru', 'siswa'] },
   // Admin only
   { name: 'Kelola Pengguna', href: '/admin/users', icon: Users, roles: ['admin'] },
   { name: 'Kelola Kelas', href: '/admin/kelas', icon: GraduationCap, roles: ['admin'] },
   { name: 'Kelola Ujian', href: '/admin/ujian', icon: ClipboardList, roles: ['admin'] },
+  { name: 'Kelola Kelulusan', href: '/admin/kelulusan', icon: GraduationCap, roles: ['admin'] },
   { name: 'Manajemen Jadwal', href: '/admin/jadwal', icon: Calendar, roles: ['admin'] },
   { name: 'Jaringan Sekolah', href: '/admin/jaringan', icon: Wifi, roles: ['admin'] },
   { name: 'Statistik', href: '/admin/statistik', icon: BarChart3, roles: ['admin'] },

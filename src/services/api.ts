@@ -1027,3 +1027,31 @@ export const auditLogAPI = {
   getActions: () =>
     api.get('/audit-logs/actions'),
 };
+
+// Graduation API
+export const graduationAPI = {
+  // Student - get my graduation status
+  getMyGraduation: () =>
+    api.get('/graduation/my-status'),
+
+  // Student - download SKL
+  downloadSKL: () =>
+    api.get('/graduation/download-skl', { responseType: 'blob' }),
+
+  // Admin - get graduations by class
+  getByClass: (classId: number) =>
+    api.get(`/graduations/class/${classId}`),
+
+  // Admin - set graduation status for single student
+  setGraduationStatus: (studentId: number, classId: number, data: { status: 'lulus' | 'tidak_lulus'; notes?: string }) =>
+    api.post(`/graduations/${studentId}/${classId}`, data),
+
+  // Admin - bulk set graduation status
+  bulkSetGraduationStatus: (data: {
+    class_id: number;
+    student_ids: number[];
+    status: 'lulus' | 'tidak_lulus';
+    notes?: string;
+  }) =>
+    api.post('/graduations/bulk', data),
+};
