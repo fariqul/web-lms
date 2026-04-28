@@ -55,7 +55,8 @@ export default function GraduationAnnouncementPage() {
   const handleDownloadSKL = async () => {
     try {
       setDownloading(true);
-      const blob = await graduationAPI.downloadSKL();
+      const response = await graduationAPI.downloadSKL();
+      const blob = response.data as Blob;
       
       // Create download link
       const url = window.URL.createObjectURL(blob);
