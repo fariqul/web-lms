@@ -255,7 +255,7 @@ export default function AdminGraduationPage() {
                       placeholder="Cari siswa..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      icon={<Search className="w-4 h-4" />}
+                      leftIcon={<Search className="w-4 h-4" />}
                     />
                   </div>
                   {selectedStudents.size > 0 && (
