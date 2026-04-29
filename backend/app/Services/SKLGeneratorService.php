@@ -10,50 +10,43 @@ use Illuminate\Support\Facades\Log;
 class SKLGeneratorService
 {
     /**
-     * Generate SKL (Surat Keterangan Lulus) as PDF
-     * Returns the file path for storage
+     * Generate SKL (Surat Keterangan Lulus) as HTML file
+     * Returns the storage path (relative to public disk) for later download
      */
     public static function generateSKL(StudentGraduation $graduation): string
     {
-        $student = $graduation->student;
-        $class = $graduation->class;
+        // Explicitly load relations to avoid null errors
+        $graduation->loadMissing(['student', 'class', 'decidedBy']);
+
+        $student   = $graduation->student;
+        $class     = $graduation->class;
         $decidedBy = $graduation->decidedBy;
-        $schoolName = config('app.school_name', 'SMA 15 MAKASSAR');
+
+        if (!$student || !$class) {
+            throw new \Exception('Student or class data missing for SKL generation');
+        }
+
+        $schoolName    = config('app.school_name', 'SMA 15 MAKASSAR');
         $schoolAddress = config('app.school_address', 'Makassar');
 
-        // Sanitize filename untuk keamanan
-        $sanitizedName = preg_replace('/[^a-zA-Z0-9-_]/', '_', strtolower($student->name));
-        $filename = "SKL_{$student->id}_{$sanitizedName}_" . now()->format('YmdHis') . ".pdf";
+        // Sanitize filename
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9\-_]/', '_', strtolower($student->name));
+        // Use .html extension — content IS html (not pdf)
+        $filename = "SKL_{$student->id}_{$sanitizedName}_" . now()->format('YmdHis') . ".html";
 
-        // Generate HTML content untuk PDF
+        // Generate HTML content
         $htmlContent = self::generateHTMLContent($student, $class, $decidedBy, $schoolName, $schoolAddress);
 
-        // Store HTML ke temporary file untuk dikonversi ke PDF
-        $tempHtmlPath = storage_path("app/temp/{$filename}.html");
-        if (!is_dir(storage_path("app/temp"))) {
-            mkdir(storage_path("app/temp"), 0755, true);
-        }
-        file_put_contents($tempHtmlPath, $htmlContent);
-
-        // Path untuk output PDF
-        $pdfPath = "public/skl/{$filename}";
-        $pdfFullPath = storage_path("app/{$pdfPath}");
-        if (!is_dir(storage_path("app/public/skl"))) {
-            mkdir(storage_path("app/public/skl"), 0755, true);
+        // Ensure storage directory exists
+        $storagePath = "skl/{$filename}";
+        if (!Storage::disk('public')->exists('skl')) {
+            Storage::disk('public')->makeDirectory('skl');
         }
 
-        // Generate PDF menggunakan wkhtmltopdf atau alternatif
-        // Untuk environment tanpa wkhtmltopdf, generate HTML saja untuk dimuat browser
-        // Atau gunakan package TCPDF/DomPDF
+        // Store file using Storage facade (consistent path management)
+        Storage::disk('public')->put($storagePath, $htmlContent);
 
-        // Saat ini store path HTML, dan akan di-generate saat download
-        // Alternative: gunakan package seperti barryvdh/laravel-dompdf
-        
-        // Untuk now, kita store HTML path
-        $htmlPathForStorage = "skl/{$filename}.html";
-        Storage::disk('public')->put($htmlPathForStorage, $htmlContent);
-
-        return $htmlPathForStorage;
+        return $storagePath; // e.g. "skl/SKL_1_danesta_20260429120000.html"
     }
 
     /**

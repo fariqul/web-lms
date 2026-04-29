@@ -10,6 +10,7 @@ use App\Services\SKLGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class GraduationController extends Controller
@@ -39,24 +40,42 @@ class GraduationController extends Controller
             ]);
         }
 
+        $isLulus = $graduation->status === StudentGraduation::STATUS_LULUS;
+        $sklExists = $isLulus && $graduation->skl_path 
+            && Storage::disk('public')->exists($graduation->skl_path);
+
+        // Auto-regenerate SKL if lulus but file is missing
+        if ($isLulus && !$sklExists) {
+            try {
+                $graduation->loadMissing(['student', 'class', 'decidedBy']);
+                $sklPath = SKLGeneratorService::generateSKL($graduation);
+                $graduation->skl_path = $sklPath;
+                $graduation->save();
+                $sklExists = true;
+            } catch (\Exception $e) {
+                Log::error('SKL auto-regeneration failed: ' . $e->getMessage());
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
-                'id' => $graduation->id,
-                'status' => $graduation->status,
-                'status_label' => StudentGraduation::getStatusLabel($graduation->status),
-                'class' => $graduation->class->name ?? null,
-                'decided_at' => $graduation->decided_at,
-                'decided_by' => $graduation->decidedBy?->name,
-                'notes' => $graduation->notes,
-                'can_download_skl' => $graduation->status === StudentGraduation::STATUS_LULUS && $graduation->skl_path,
-                'skl_path' => $graduation->status === StudentGraduation::STATUS_LULUS ? $graduation->skl_path : null,
+                'id'              => $graduation->id,
+                'status'          => $graduation->status,
+                'status_label'    => StudentGraduation::getStatusLabel($graduation->status),
+                'class'           => $graduation->class->name ?? null,
+                'decided_at'      => $graduation->decided_at,
+                'decided_by'      => $graduation->decidedBy?->name,
+                'notes'           => $graduation->notes,
+                'can_download_skl' => $sklExists,
+                'skl_path'        => $isLulus ? $graduation->skl_path : null,
             ]
         ]);
     }
 
     /**
      * Get all graduations for a class (admin view)
+     * Returns ALL students in the class, with their graduation status (pending if no record)
      */
     public function getByClass(Request $request, $classId)
     {
@@ -64,33 +83,40 @@ class GraduationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $class = ClassRoom::findOrFail($classId);
-        
-        $graduations = StudentGraduation::where('class_id', $classId)
-            ->with(['student', 'decidedBy'])
-            ->orderBy('status', 'asc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $class = ClassRoom::with('students')->findOrFail($classId);
+
+        // Fetch all existing graduation records for this class, keyed by student_id
+        $graduationRecords = StudentGraduation::where('class_id', $classId)
+            ->with(['decidedBy'])
+            ->get()
+            ->keyBy('student_id');
+
+        // Get all students in this class (relation already filters by role=siswa)
+        $students = $class->students()->orderBy('name')->get();
+
+        $data = $students->map(function ($student) use ($graduationRecords, $classId) {
+            $graduation = $graduationRecords->get($student->id);
+
+            return [
+                'id'           => $graduation?->id ?? 0,
+                'student'      => [
+                    'id'    => $student->id,
+                    'name'  => $student->name,
+                    'nisn'  => $student->nisn ?? '-',
+                    'email' => $student->email,
+                ],
+                'status'       => $graduation?->status ?? 'pending',
+                'status_label' => StudentGraduation::getStatusLabel($graduation?->status ?? 'pending'),
+                'notes'        => $graduation?->notes,
+                'skl_path'     => $graduation?->skl_path,
+                'decided_at'   => $graduation?->decided_at,
+                'decided_by'   => $graduation?->decidedBy?->name,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $graduations->map(function ($g) {
-                return [
-                    'id' => $g->id,
-                    'student' => [
-                        'id' => $g->student->id,
-                        'name' => $g->student->name,
-                        'nisn' => $g->student->nisn,
-                        'email' => $g->student->email,
-                    ],
-                    'status' => $g->status,
-                    'status_label' => StudentGraduation::getStatusLabel($g->status),
-                    'notes' => $g->notes,
-                    'skl_path' => $g->skl_path,
-                    'decided_at' => $g->decided_at,
-                    'decided_by' => $g->decidedBy?->name,
-                ];
-            })
+            'data'    => $data,
         ]);
     }
 
@@ -170,21 +196,33 @@ class GraduationController extends Controller
         if (!$graduation || !$graduation->skl_path) {
             return response()->json([
                 'success' => false,
-                'message' => 'SKL tidak tersedia'
+                'message' => 'SKL tidak tersedia',
             ], 404);
         }
 
-        try {
-            return response()->download(
-                storage_path("app/public/{$graduation->skl_path}"),
-                "SKL_{$student->name}.html"
-            );
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to download SKL: ' . $e->getMessage()
-            ], 500);
+        // Check file exists on storage disk
+        if (!Storage::disk('public')->exists($graduation->skl_path)) {
+            // Try to regenerate
+            try {
+                $graduation->loadMissing(['student', 'class', 'decidedBy']);
+                $sklPath = SKLGeneratorService::generateSKL($graduation);
+                $graduation->skl_path = $sklPath;
+                $graduation->save();
+            } catch (\Exception $e) {
+                Log::error('SKL re-generation failed: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File SKL tidak ditemukan dan gagal di-generate ulang',
+                ], 404);
+            }
         }
+
+        $absolutePath = Storage::disk('public')->path($graduation->skl_path);
+        $downloadName = "SKL_{$student->name}.html";
+
+        return response()->download($absolutePath, $downloadName, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+        ]);
     }
 
     /**

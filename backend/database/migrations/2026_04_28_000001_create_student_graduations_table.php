@@ -24,7 +24,7 @@ return new class extends Migration
 
             // Foreign keys
             $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('class_id')->references('id')->on('class_rooms')->onDelete('cascade');
+            $table->foreign('class_id')->references('id')->on('classes')->onDelete('cascade');
             $table->foreign('decided_by')->references('id')->on('users')->onDelete('set null');
 
             // Indexes

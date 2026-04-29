@@ -55,6 +55,7 @@ export default function AdminGraduationPage() {
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<{ status: string; notes: string }>({
     status: '',
     notes: '',
@@ -116,6 +117,7 @@ export default function AdminGraduationPage() {
 
   const handleEditClick = (graduation: StudentGraduation) => {
     setEditingId(graduation.id);
+    setEditingStudentId(graduation.student.id);
     setEditFormData({
       status: graduation.status,
       notes: graduation.notes || '',
@@ -124,15 +126,12 @@ export default function AdminGraduationPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!selectedClass || editingId === null) return;
-
-    const graduation = graduations.find(g => g.id === editingId);
-    if (!graduation) return;
+    if (!selectedClass || editingStudentId === null) return;
 
     try {
       setIsSaving(true);
       await graduationAPI.setGraduationStatus(
-        graduation.student.id,
+        editingStudentId,
         selectedClass.id,
         {
           status: editFormData.status as 'lulus' | 'tidak_lulus',
@@ -142,6 +141,7 @@ export default function AdminGraduationPage() {
       toast.success('Status kelulusan berhasil diperbarui');
       setIsEditModalOpen(false);
       setEditingId(null);
+      setEditingStudentId(null);
       fetchGraduations();
     } catch (error) {
       console.error('Failed to save graduation:', error);
