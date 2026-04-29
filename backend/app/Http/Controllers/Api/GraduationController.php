@@ -143,16 +143,21 @@ class GraduationController extends Controller
             ['status' => 'pending']
         );
 
-        $graduation->status = $validated['status'];
-        $graduation->notes = $validated['notes'] ?? null;
+        $graduation->status     = $validated['status'];
+        $graduation->notes      = $validated['notes'] ?? null;
         $graduation->decided_at = now();
         $graduation->decided_by = $request->user()->id;
+
+        // Save FIRST so the record has an ID (needed by SKLGeneratorService)
+        $graduation->save();
 
         // Generate SKL jika lulus
         if ($validated['status'] === StudentGraduation::STATUS_LULUS) {
             try {
+                $graduation->loadMissing(['student', 'class', 'decidedBy']);
                 $sklPath = SKLGeneratorService::generateSKL($graduation);
                 $graduation->skl_path = $sklPath;
+                $graduation->save();
             } catch (\Exception $e) {
                 Log::error('SKL Generation Error: ' . $e->getMessage());
                 // Continue tanpa SKL
@@ -160,9 +165,8 @@ class GraduationController extends Controller
         } else {
             // Clear SKL path jika tidak lulus
             $graduation->skl_path = null;
+            $graduation->save();
         }
-
-        $graduation->save();
 
         // Send notification to student
         $this->sendGraduationNotification($student, $graduation);
@@ -235,11 +239,11 @@ class GraduationController extends Controller
         }
 
         $validated = $request->validate([
-            'class_id' => 'required|integer|exists:class_rooms,id',
-            'student_ids' => 'required|array|min:1',
+            'class_id'      => 'required|integer|exists:classes,id',
+            'student_ids'   => 'required|array|min:1',
             'student_ids.*' => 'integer|exists:users,id',
-            'status' => 'required|in:lulus,tidak_lulus',
-            'notes' => 'nullable|string|max:500',
+            'status'        => 'required|in:lulus,tidak_lulus',
+            'notes'         => 'nullable|string|max:500',
         ]);
 
         $successCount = 0;
@@ -253,23 +257,26 @@ class GraduationController extends Controller
                     ['status' => 'pending']
                 );
 
-                $graduation->status = $validated['status'];
-                $graduation->notes = $validated['notes'] ?? null;
+                $graduation->status     = $validated['status'];
+                $graduation->notes      = $validated['notes'] ?? null;
                 $graduation->decided_at = now();
                 $graduation->decided_by = $request->user()->id;
+                // Save first so model has an ID (needed by SKLGeneratorService)
+                $graduation->save();
 
                 if ($validated['status'] === StudentGraduation::STATUS_LULUS) {
                     try {
+                        $graduation->loadMissing(['student', 'class', 'decidedBy']);
                         $sklPath = SKLGeneratorService::generateSKL($graduation);
                         $graduation->skl_path = $sklPath;
+                        $graduation->save();
                     } catch (\Exception $e) {
                         Log::error('SKL Generation Error: ' . $e->getMessage());
                     }
                 } else {
                     $graduation->skl_path = null;
+                    $graduation->save();
                 }
-
-                $graduation->save();
                 $this->sendGraduationNotification($student, $graduation);
                 $successCount++;
             } catch (\Exception $e) {
