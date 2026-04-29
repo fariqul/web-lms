@@ -77,7 +77,10 @@ class GraduationController extends Controller
         }
 
         // --- Verified — return graduation data ---
+        // IMPORTANT: filter by student's CURRENT class_id
+        // so transferred students see their new class status, not old
         $graduation = StudentGraduation::where('student_id', $student->id)
+            ->where('class_id', $student->class_id)
             ->with(['class', 'decidedBy'])
             ->first();
 
