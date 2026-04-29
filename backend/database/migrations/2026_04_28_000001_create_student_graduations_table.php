@@ -11,28 +11,31 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('student_graduations', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('student_id');
-            $table->unsignedBigInteger('class_id');
-            $table->enum('status', ['pending', 'lulus', 'tidak_lulus'])->default('pending');
-            $table->text('notes')->nullable();
-            $table->string('skl_path')->nullable(); // Path ke file SKL yang di-generate
-            $table->timestamp('decided_at')->nullable(); // Kapan admin menentukan kelulusan
-            $table->unsignedBigInteger('decided_by')->nullable(); // Admin yang menentukan
-            $table->timestamps();
+        // Guard: tabel mungkin sudah ada jika dibuat manual sebelumnya
+        if (!Schema::hasTable('student_graduations')) {
+            Schema::create('student_graduations', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('student_id');
+                $table->unsignedBigInteger('class_id');
+                $table->enum('status', ['pending', 'lulus', 'tidak_lulus'])->default('pending');
+                $table->text('notes')->nullable();
+                $table->string('skl_path')->nullable();
+                $table->timestamp('decided_at')->nullable();
+                $table->unsignedBigInteger('decided_by')->nullable();
+                $table->timestamps();
 
-            // Foreign keys
-            $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('class_id')->references('id')->on('classes')->onDelete('cascade');
-            $table->foreign('decided_by')->references('id')->on('users')->onDelete('set null');
+                // Foreign keys
+                $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
+                $table->foreign('class_id')->references('id')->on('classes')->onDelete('cascade');
+                $table->foreign('decided_by')->references('id')->on('users')->onDelete('set null');
 
-            // Indexes
-            $table->index('student_id');
-            $table->index('class_id');
-            $table->index('status');
-            $table->unique(['student_id', 'class_id']); // Satu siswa per kelas
-        });
+                // Indexes
+                $table->index('student_id');
+                $table->index('class_id');
+                $table->index('status');
+                $table->unique(['student_id', 'class_id']);
+            });
+        }
     }
 
     /**
