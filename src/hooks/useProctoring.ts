@@ -7,7 +7,7 @@ import { monitoringAPI } from '@/services/api';
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export interface ProctoringDetection {
-  type: 'no_face' | 'multi_face' | 'head_turn' | 'eye_gaze' | 'identity_mismatch';
+  type: 'no_face' | 'multi_face' | 'head_turn' | 'eye_gaze' | 'identity_mismatch' | 'suspect_phone_check';
   confidence: number;
   description: string;
   timestamp: Date;
@@ -69,6 +69,19 @@ const AI_EVENT_MIN_CONFIRMATIONS: Record<ProctoringDetection['type'], number> = 
   head_turn: 1,
   eye_gaze: 1,
   identity_mismatch: 1,
+  suspect_phone_check: 1,
+};
+
+// Phone check pattern: face disappears briefly then reappears
+const PHONE_CHECK_PATTERN = {
+  // Face must disappear for at least this long (ms) to count as a "check"
+  MIN_ABSENCE_MS: 1000,
+  // But not longer than this (longer = left the seat, not a phone check)
+  MAX_ABSENCE_MS: 5000,
+  // Rolling window to count disappear/reappear cycles
+  WINDOW_MS: 60_000,
+  // Minimum cycles within window to flag as suspicious
+  MIN_CYCLES: 3,
 };
 
 function detectMobileDevice(): boolean {
@@ -113,6 +126,12 @@ export function useProctoring({
   const temporalEventsRef = useRef<Record<string, number[]>>({});
   statsRef.current = stats;
 
+  // Phone check pattern tracking
+  const faceLastSeenRef = useRef<number>(Date.now());
+  const faceAbsentSinceRef = useRef<number | null>(null);
+  const phoneCheckCyclesRef = useRef<number[]>([]);  // timestamps of disappear-reappear cycles
+  const phoneCheckReportedRef = useRef(false);
+
   // ─── Load Models ────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -127,7 +146,7 @@ export function useProctoring({
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+          // faceExpressionNet removed — was loaded but never used, wasting ~2MB
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
 
@@ -271,6 +290,11 @@ export function useProctoring({
       // ─── No Face Detected ──────────────────────────────────────
 
       if (detections.length === 0) {
+        // Track when face disappeared
+        if (faceAbsentSinceRef.current === null) {
+          faceAbsentSinceRef.current = Date.now();
+        }
+
         addDetection({
           type: 'no_face',
           confidence: 1.0,
@@ -296,6 +320,62 @@ export function useProctoring({
         } catch { /* ignore */ }
         
         return;
+      }
+
+      // ─── Face Reappeared — check for phone check pattern ────────
+      if (faceAbsentSinceRef.current !== null) {
+        const absenceDuration = Date.now() - faceAbsentSinceRef.current;
+        faceAbsentSinceRef.current = null;
+        faceLastSeenRef.current = Date.now();
+
+        // If absence was in the "phone check" range (1-5 seconds)
+        if (
+          absenceDuration >= PHONE_CHECK_PATTERN.MIN_ABSENCE_MS &&
+          absenceDuration <= PHONE_CHECK_PATTERN.MAX_ABSENCE_MS
+        ) {
+          const cycleTs = Date.now();
+          // Add this cycle and prune old ones outside the rolling window
+          phoneCheckCyclesRef.current = [
+            ...phoneCheckCyclesRef.current.filter(
+              ts => cycleTs - ts <= PHONE_CHECK_PATTERN.WINDOW_MS
+            ),
+            cycleTs,
+          ];
+
+          const cycleCount = phoneCheckCyclesRef.current.length;
+
+          if (cycleCount >= PHONE_CHECK_PATTERN.MIN_CYCLES && !phoneCheckReportedRef.current) {
+            phoneCheckReportedRef.current = true;
+
+            addDetection({
+              type: 'suspect_phone_check',
+              confidence: Math.min(1, cycleCount / (PHONE_CHECK_PATTERN.MIN_CYCLES + 2)),
+              description: `Pola mencurigakan: wajah hilang-muncul ${cycleCount}x dalam 1 menit`,
+              timestamp: now,
+            });
+
+            try {
+              await monitoringAPI.reportViolation({
+                exam_id: examId,
+                type: 'suspect_phone_check',
+                description: `AI: Pola lirik HP terdeteksi (${cycleCount} siklus hilang-muncul dalam 60 detik)`,
+                metadata: {
+                  event_source: 'ai_proctoring',
+                  device_class: isMobileDevice ? 'mobile' : 'desktop',
+                  cycle_count: cycleCount,
+                  last_absence_ms: absenceDuration,
+                },
+              });
+            } catch { /* ignore */ }
+
+            // Reset — allow re-detection after 30 seconds
+            setTimeout(() => {
+              phoneCheckReportedRef.current = false;
+            }, 30_000);
+          }
+        }
+      } else {
+        faceLastSeenRef.current = Date.now();
       }
 
       // ─── Multiple Faces ────────────────────────────────────────

@@ -121,6 +121,9 @@ export function useExamMode({
   const appLeaveReportedRef = useRef(false);
   const appLeaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const freezeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // iOS timer-drift detection: iOS freezes timers when app goes background
+  const iosTimerDriftRef = useRef<number>(0);
+  const iosTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const applyFreezeWindow = useCallback((freezeSeconds: number) => {
     const durationMs = Math.max(0, freezeSeconds) * 1000;
@@ -671,6 +674,20 @@ export function useExamMode({
       finalizeAppLeave();
     };
 
+    // pageshow — catches bfcache restoration on iOS Safari (user pressed back/returned)
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (!monitoringActiveRef.current) return;
+      // persisted=true means page was restored from bfcache (user navigated away & came back)
+      if (e.persisted) {
+        finalizeAppLeave();
+        // Also report if not already reported
+        if (!appLeaveReportedRef.current && appLeaveStartedAtRef.current !== null) {
+          reportAppLeaveViolation();
+        }
+        resetAppLeaveTracking();
+      }
+    };
+
     // Window blur/focus — used for app switch detection across platforms.
     const handleWindowBlur = () => {
       windowFocusedRef.current = false;
@@ -698,9 +715,16 @@ export function useExamMode({
         return;
       }
 
-      // iOS Safari sering memicu resize palsu karena toolbar/keyboard/viewport dynamics.
-      // Hindari pelanggaran dari sumber ini agar tidak false positive.
+      // iOS Safari: toolbar/keyboard cause ~70px height changes which are false positives.
+      // Only flag if width changes significantly (split-screen) or extreme height drop.
       if (isIOS) {
+        const iosWidthRatio = currentWidth / initialWidth;
+        // Width change > 35% = likely Split View / Slide Over on iPad or app switch artifact
+        if (iosWidthRatio < 0.65 && !splitScreenWarnedRef.current) {
+          splitScreenWarnedRef.current = true;
+          reportViolation('split_screen', 'Mode split screen terdeteksi (iOS)');
+          setTimeout(() => { splitScreenWarnedRef.current = false; }, 10000);
+        }
         lastResizeTimeRef.current = now;
         return;
       }
@@ -866,6 +890,7 @@ export function useExamMode({
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleOrientationChange);
     document.addEventListener('copy', handleCopy);
@@ -884,6 +909,29 @@ export function useExamMode({
       lastGoodDimensionsRef.current = { ...initialDimensionsRef.current };
     }
 
+    // === iOS TIMER DRIFT DETECTION ===
+    // iOS freezes ALL JS timers when the app is backgrounded.
+    // A 2-second interval that actually takes >4 seconds = user left the app.
+    // This is the most reliable iOS background detection method.
+    if (isIOS) {
+      iosTimerDriftRef.current = Date.now();
+      iosTimerIntervalRef.current = setInterval(() => {
+        if (!monitoringActiveRef.current) return;
+        const now = Date.now();
+        const elapsed = now - iosTimerDriftRef.current;
+        iosTimerDriftRef.current = now;
+
+        // If 2s timer took >4s, the page was definitely frozen (backgrounded)
+        if (elapsed > 4000) {
+          console.warn(`[iOS] Timer drift detected: ${elapsed}ms (expected ~2000ms) — user left app`);
+          reportViolation(
+            'tab_switch',
+            `Keluar dari aplikasi/browser ujian (terdeteksi drift ${Math.round(elapsed / 1000)}s)`
+          );
+        }
+      }, 2000);
+    }
+
     // Cleanup
     return () => {
       resetAppLeaveTracking();
@@ -892,6 +940,7 @@ export function useExamMode({
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleOrientationChange);
       document.removeEventListener('copy', handleCopy);
@@ -901,6 +950,11 @@ export function useExamMode({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('enterpictureinpicture', handlePiPEnter);
+      // Clean up iOS timer drift interval
+      if (iosTimerIntervalRef.current) {
+        clearInterval(iosTimerIntervalRef.current);
+        iosTimerIntervalRef.current = null;
+      }
     };
   }, [reportViolation, isMobile, isIOS]);
 
