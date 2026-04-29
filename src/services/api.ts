@@ -1030,9 +1030,13 @@ export const auditLogAPI = {
 
 // Graduation API
 export const graduationAPI = {
-  // Student - get my graduation status (includes pickup_message if lulus)
-  getMyGraduation: () =>
-    api.get('/graduation/my-status'),
+  // Student - check if NIS is required for verification
+  checkRequirements: () =>
+    api.get('/graduation/check-requirements'),
+
+  // Student - get my graduation status (requires NISN + optional NIS verification)
+  getMyGraduation: (data: { nisn: string; nis?: string }) =>
+    api.post('/graduation/my-status', data),
 
   // Admin - get graduations by class (includes pickup_message)
   getByClass: (classId: number) =>
@@ -1046,7 +1050,7 @@ export const graduationAPI = {
   bulkSetGraduationStatus: (data: {
     class_id: number;
     student_ids: number[];
-    status: 'lulus' | 'tidak_lulus';
+    status: 'lulus' | 'tidak_lulus' | 'pending';
     notes?: string;
   }) =>
     api.post('/graduations/bulk', data),

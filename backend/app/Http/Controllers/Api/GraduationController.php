@@ -12,8 +12,27 @@ use Illuminate\Support\Facades\Log;
 class GraduationController extends Controller
 {
     /**
+     * Check if student needs NIS to verify (pre-check endpoint)
+     * Returns whether NISN and NIS are required
+     */
+    public function checkVerificationRequirements(Request $request)
+    {
+        $student = $request->user();
+
+        if ($student->role !== 'siswa') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'success'      => true,
+            'requires_nis' => !empty($student->nis), // true jika siswa punya NIS di DB
+            'has_nisn'     => !empty($student->nisn),
+        ]);
+    }
+
+    /**
      * Get graduation status for student (siswa view)
-     * Returns status + pickup message from admin if lulus
+     * Requires NISN (always) and NIS (only if student has one in DB) for verification
      */
     public function getMyGraduation(Request $request)
     {
@@ -23,6 +42,41 @@ class GraduationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // --- Validate NISN & NIS ---
+        $rules = [
+            'nisn' => 'required|string',
+        ];
+
+        // NIS required only if student has one stored
+        $studentHasNis = !empty($student->nis);
+        if ($studentHasNis) {
+            $rules['nis'] = 'required|string';
+        } else {
+            $rules['nis'] = 'nullable|string';
+        }
+
+        $validated = $request->validate($rules, [
+            'nisn.required' => 'NISN wajib diisi',
+            'nis.required'  => 'NIS wajib diisi karena data NIS Anda sudah terdaftar',
+        ]);
+
+        // Verify NISN matches
+        if ($validated['nisn'] !== $student->nisn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'NISN yang Anda masukkan tidak sesuai dengan data Anda',
+            ], 422);
+        }
+
+        // Verify NIS matches (only if student has one)
+        if ($studentHasNis && ($validated['nis'] ?? '') !== $student->nis) {
+            return response()->json([
+                'success' => false,
+                'message' => 'NIS yang Anda masukkan tidak sesuai dengan data Anda',
+            ], 422);
+        }
+
+        // --- Verified — return graduation data ---
         $graduation = StudentGraduation::where('student_id', $student->id)
             ->with(['class', 'decidedBy'])
             ->first();
@@ -49,7 +103,6 @@ class GraduationController extends Controller
                 'decided_at'      => $graduation->decided_at,
                 'decided_by'      => $graduation->decidedBy?->name,
                 'notes'           => $graduation->notes,
-                // Pesan pengambilan SKL dari admin, hanya tampil jika lulus
                 'pickup_message'  => $isLulus ? ($graduation->class->skl_pickup_message ?? null) : null,
             ],
         ]);
@@ -191,7 +244,7 @@ class GraduationController extends Controller
             'class_id'      => 'required|integer|exists:classes,id',
             'student_ids'   => 'required|array|min:1',
             'student_ids.*' => 'integer|exists:users,id',
-            'status'        => 'required|in:lulus,tidak_lulus',
+            'status'        => 'required|in:lulus,tidak_lulus,pending',
             'notes'         => 'nullable|string|max:500',
         ]);
 
@@ -207,10 +260,17 @@ class GraduationController extends Controller
                     ['status'     => 'pending']
                 );
 
-                $graduation->status     = $validated['status'];
-                $graduation->notes      = $validated['notes'] ?? null;
-                $graduation->decided_at = now();
-                $graduation->decided_by = $request->user()->id;
+                $graduation->status = $validated['status'];
+                $graduation->notes  = $validated['notes'] ?? null;
+
+                if ($validated['status'] === 'pending') {
+                    $graduation->decided_at = null;
+                    $graduation->decided_by = null;
+                } else {
+                    $graduation->decided_at = now();
+                    $graduation->decided_by = $request->user()->id;
+                }
+
                 $graduation->save();
 
                 $this->sendGraduationNotification($student, $graduation);

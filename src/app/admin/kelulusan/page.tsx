@@ -65,7 +65,7 @@ export default function AdminGraduationPage() {
 
   // Bulk edit
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [bulkFormData, setBulkFormData] = useState<{ status: 'lulus' | 'tidak_lulus'; notes: string }>({
+  const [bulkFormData, setBulkFormData] = useState<{ status: 'lulus' | 'tidak_lulus' | 'pending'; notes: string }>({
     status: 'lulus',
     notes: '',
   });
@@ -480,8 +480,9 @@ export default function AdminGraduationPage() {
             </label>
             <Select
               value={bulkFormData.status}
-              onChange={(event) => setBulkFormData({ ...bulkFormData, status: event.target.value as 'lulus' | 'tidak_lulus' })}
+              onChange={(event) => setBulkFormData({ ...bulkFormData, status: event.target.value as 'lulus' | 'tidak_lulus' | 'pending' })}
               options={[
+                { value: 'pending', label: 'Menunggu Keputusan' },
                 { value: 'lulus', label: 'Lulus' },
                 { value: 'tidak_lulus', label: 'Tidak Lulus' },
               ]}

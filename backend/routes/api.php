@@ -216,9 +216,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/assignments-new-count', [AssignmentController::class, 'newCount']);
         Route::get('/assignments-pending', [AssignmentController::class, 'pending']);
         
-        // Student Graduation
-        Route::get('/graduation/my-status', [GraduationController::class, 'getMyGraduation']);
-        Route::get('/graduation/download-skl', [GraduationController::class, 'downloadSKL']);
+        // Student Graduation (requires NISN/NIS verification)
+        Route::get('/graduation/check-requirements', [GraduationController::class, 'checkVerificationRequirements']);
+        Route::post('/graduation/my-status', [GraduationController::class, 'getMyGraduation']);
         
         // Student Schedule
         Route::get('/my-schedule', [ScheduleController::class, 'mySchedule']);
