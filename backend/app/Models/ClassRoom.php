@@ -15,6 +15,7 @@ class ClassRoom extends Model
         'name',
         'grade',
         'academic_year',
+        'skl_pickup_message',
     ];
 
     public function students()

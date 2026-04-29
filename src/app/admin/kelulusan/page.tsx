@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, Button, Input, Select, Modal } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -8,8 +8,6 @@ import { classAPI, graduationAPI } from '@/services/api';
 import {
   GraduationCap,
   Search,
-  Check,
-  X,
   Clock,
   Loader2,
   Save,
@@ -18,6 +16,7 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  MessageSquare,
 } from 'lucide-react';
 
 interface Student {
@@ -41,7 +40,6 @@ interface StudentGraduation {
   status: 'pending' | 'lulus' | 'tidak_lulus';
   status_label: string;
   notes?: string;
-  skl_path?: string;
   decided_at?: string;
   decided_by?: string;
 }
@@ -54,20 +52,24 @@ export default function AdminGraduationPage() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Pickup message state
+  const [pickupMessage, setPickupMessage] = useState('');
+  const [isSavingMessage, setIsSavingMessage] = useState(false);
+
+  // Edit single student
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
-  const [editFormData, setEditFormData] = useState<{ status: string; notes: string }>({
-    status: '',
-    notes: '',
-  });
+  const [editFormData, setEditFormData] = useState<{ status: string; notes: string }>({ status: '', notes: '' });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Bulk edit
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [bulkFormData, setBulkFormData] = useState<{ status: 'lulus' | 'tidak_lulus'; notes: string }>({
     status: 'lulus',
     notes: '',
   });
   const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
-  const [isSaving, setIsSaving] = useState(false);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   useEffect(() => {
@@ -78,6 +80,7 @@ export default function AdminGraduationPage() {
     if (selectedClass) {
       fetchGraduations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass]);
 
   const fetchClasses = async () => {
@@ -85,78 +88,82 @@ export default function AdminGraduationPage() {
       setLoading(true);
       const response = await classAPI.getAll();
       setClasses(response.data?.data || []);
-    } catch (error) {
-      console.error('Failed to fetch classes:', error);
+    } catch {
       toast.error('Gagal memuat data kelas');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchGraduations = async () => {
+  const fetchGraduations = useCallback(async () => {
     if (!selectedClass) return;
-    
     try {
       setSearching(true);
       const response = await graduationAPI.getByClass(selectedClass.id);
       setGraduations(response.data?.data || []);
+      setPickupMessage(response.data?.pickup_message || '');
       setSelectedStudents(new Set());
-    } catch (error) {
-      console.error('Failed to fetch graduations:', error);
+    } catch {
       toast.error('Gagal memuat data kelulusan');
     } finally {
       setSearching(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClass]);
 
-  const filteredGraduations = graduations.filter(g =>
-    g.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.student.nisn?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.student.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredGraduations = graduations.filter(
+    (g) =>
+      g.student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.student.nisn?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.student.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  /* ---- Pickup Message ---- */
+  const handleSavePickupMessage = async () => {
+    if (!selectedClass) return;
+    try {
+      setIsSavingMessage(true);
+      await graduationAPI.updatePickupMessage(selectedClass.id, pickupMessage || null);
+      toast.success('Pesan pengambilan SKL berhasil disimpan');
+    } catch {
+      toast.error('Gagal menyimpan pesan');
+    } finally {
+      setIsSavingMessage(false);
+    }
+  };
+
+  /* ---- Single Edit ---- */
   const handleEditClick = (graduation: StudentGraduation) => {
-    setEditingId(graduation.id);
     setEditingStudentId(graduation.student.id);
-    setEditFormData({
-      status: graduation.status,
-      notes: graduation.notes || '',
-    });
+    setEditFormData({ status: graduation.status, notes: graduation.notes || '' });
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = async () => {
     if (!selectedClass || editingStudentId === null) return;
-
     try {
       setIsSaving(true);
-      await graduationAPI.setGraduationStatus(
-        editingStudentId,
-        selectedClass.id,
-        {
-          status: editFormData.status as 'lulus' | 'tidak_lulus',
-          notes: editFormData.notes,
-        }
-      );
+      await graduationAPI.setGraduationStatus(editingStudentId, selectedClass.id, {
+        status: editFormData.status as 'lulus' | 'tidak_lulus' | 'pending',
+        notes: editFormData.notes,
+      });
       toast.success('Status kelulusan berhasil diperbarui');
       setIsEditModalOpen(false);
-      setEditingId(null);
       setEditingStudentId(null);
       fetchGraduations();
-    } catch (error) {
-      console.error('Failed to save graduation:', error);
+    } catch {
       toast.error('Gagal menyimpan status kelulusan');
     } finally {
       setIsSaving(false);
     }
   };
 
+  /* ---- Bulk Edit ---- */
   const handleBulkSave = async () => {
     if (!selectedClass || selectedStudents.size === 0) {
       toast.warning('Pilih minimal satu siswa');
       return;
     }
-
     try {
       setIsBulkSaving(true);
       await graduationAPI.bulkSetGraduationStatus({
@@ -169,8 +176,7 @@ export default function AdminGraduationPage() {
       setIsBulkModalOpen(false);
       setSelectedStudents(new Set());
       fetchGraduations();
-    } catch (error) {
-      console.error('Failed to bulk save graduations:', error);
+    } catch {
       toast.error('Gagal menyimpan status kelulusan');
     } finally {
       setIsBulkSaving(false);
@@ -178,21 +184,17 @@ export default function AdminGraduationPage() {
   };
 
   const toggleStudentSelection = (studentId: number) => {
-    const newSelected = new Set(selectedStudents);
-    if (newSelected.has(studentId)) {
-      newSelected.delete(studentId);
-    } else {
-      newSelected.add(studentId);
-    }
-    setSelectedStudents(newSelected);
+    const next = new Set(selectedStudents);
+    next.has(studentId) ? next.delete(studentId) : next.add(studentId);
+    setSelectedStudents(next);
   };
 
   const toggleSelectAll = () => {
-    if (selectedStudents.size === filteredGraduations.length) {
-      setSelectedStudents(new Set());
-    } else {
-      setSelectedStudents(new Set(filteredGraduations.map(g => g.student.id)));
-    }
+    setSelectedStudents(
+      selectedStudents.size === filteredGraduations.length
+        ? new Set()
+        : new Set(filteredGraduations.map((g) => g.student.id))
+    );
   };
 
   const getStatusIcon = (status: string) => {
@@ -219,7 +221,7 @@ export default function AdminGraduationPage() {
             </h1>
           </div>
           <p className="text-slate-600 dark:text-slate-400">
-            Tentukan status kelulusan siswa dan generate SKL otomatis
+            Tentukan status kelulusan dan atur pesan informasi pengambilan SKL per kelas
           </p>
         </div>
 
@@ -231,12 +233,13 @@ export default function AdminGraduationPage() {
           <Select
             value={selectedClass?.id.toString() || ''}
             onChange={(event) => {
-              const cls = classes.find(c => c.id === Number(event.target.value));
+              const cls = classes.find((c) => c.id === Number(event.target.value));
               setSelectedClass(cls || null);
+              setPickupMessage('');
             }}
             options={[
               { value: '', label: '-- Pilih Kelas --' },
-              ...classes.map(cls => ({
+              ...classes.map((cls) => ({
                 value: cls.id.toString(),
                 label: `${cls.name} (${cls.academic_year})`,
               })),
@@ -246,7 +249,42 @@ export default function AdminGraduationPage() {
 
         {selectedClass && (
           <>
-            {/* Search and Actions */}
+            {/* ====== PESAN PENGAMBILAN SKL ====== */}
+            <Card className="p-4 border-2 border-teal-200 dark:border-teal-800">
+              <div className="flex items-start gap-3 mb-3">
+                <MessageSquare className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-slate-800 dark:text-white">
+                    Pesan Informasi Pengambilan SKL
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pesan ini akan tampil di bawah status kelulusan siswa yang <strong>Lulus</strong> dari kelas ini.
+                    Contoh: &ldquo;Pengambilan SKL dilakukan pada tanggal 10 Juni 2026, jam 08.00–12.00 WIB. Wajib berpakaian rapi.&rdquo;
+                  </p>
+                </div>
+              </div>
+              <textarea
+                value={pickupMessage}
+                onChange={(e) => setPickupMessage(e.target.value)}
+                placeholder={`Contoh: Pengambilan SKL kelas ${selectedClass.name} dilakukan pada tanggal ..., jam ..., di ruang ..., wajib berpakaian rapi dan membawa kartu pelajar.`}
+                rows={4}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm resize-none"
+              />
+              <div className="flex justify-end mt-3">
+                <Button
+                  onClick={handleSavePickupMessage}
+                  disabled={isSavingMessage}
+                  isLoading={isSavingMessage}
+                  loadingText="Menyimpan..."
+                  className="flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Simpan Pesan
+                </Button>
+              </div>
+            </Card>
+
+            {/* Search and Bulk Actions */}
             <Card className="p-4">
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -298,14 +336,14 @@ export default function AdminGraduationPage() {
               <Card className="p-8 text-center">
                 <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                 <p className="text-slate-600 dark:text-slate-400">
-                  {searchQuery ? 'Tidak ada siswa yang sesuai' : 'Tidak ada data kelulusan'}
+                  {searchQuery ? 'Tidak ada siswa yang sesuai' : 'Tidak ada data siswa di kelas ini'}
                 </p>
               </Card>
             ) : (
               <div className="space-y-3">
                 {filteredGraduations.map((graduation) => (
                   <Card
-                    key={graduation.id}
+                    key={graduation.student.id}
                     className="p-4 hover:border-teal-300 dark:hover:border-teal-700 transition-colors"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -317,7 +355,7 @@ export default function AdminGraduationPage() {
                           className="w-4 h-4 rounded border-slate-300 accent-teal-600 mt-1"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <h3 className="font-semibold text-slate-900 dark:text-white truncate">
                               {graduation.student.name}
                             </h3>
@@ -329,10 +367,13 @@ export default function AdminGraduationPage() {
                           <div className="text-xs text-slate-600 dark:text-slate-400 space-y-0.5">
                             <p>NISN: {graduation.student.nisn}</p>
                             <p>Email: {graduation.student.email}</p>
-                            {graduation.notes && <p className="text-teal-600 dark:text-teal-400">Catatan: {graduation.notes}</p>}
+                            {graduation.notes && (
+                              <p className="text-teal-600 dark:text-teal-400">Catatan: {graduation.notes}</p>
+                            )}
                             {graduation.decided_at && (
-                              <p className="text-slate-500 dark:text-slate-500">
-                                Diputuskan oleh {graduation.decided_by} pada {new Date(graduation.decided_at).toLocaleDateString('id-ID')}
+                              <p className="text-slate-500">
+                                Diputuskan oleh {graduation.decided_by} pada{' '}
+                                {new Date(graduation.decided_at).toLocaleDateString('id-ID')}
                               </p>
                             )}
                           </div>
@@ -359,19 +400,19 @@ export default function AdminGraduationPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="p-4 text-center">
                   <div className="text-3xl font-bold text-green-600 mb-1">
-                    {graduations.filter(g => g.status === 'lulus').length}
+                    {graduations.filter((g) => g.status === 'lulus').length}
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Lulus</p>
                 </Card>
                 <Card className="p-4 text-center">
                   <div className="text-3xl font-bold text-red-600 mb-1">
-                    {graduations.filter(g => g.status === 'tidak_lulus').length}
+                    {graduations.filter((g) => g.status === 'tidak_lulus').length}
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Tidak Lulus</p>
                 </Card>
                 <Card className="p-4 text-center">
                   <div className="text-3xl font-bold text-yellow-600 mb-1">
-                    {graduations.filter(g => g.status === 'pending').length}
+                    {graduations.filter((g) => g.status === 'pending').length}
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Menunggu Keputusan</p>
                 </Card>
@@ -381,21 +422,16 @@ export default function AdminGraduationPage() {
         )}
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Single Modal */}
       <Modal
         isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingId(null);
-        }}
+        onClose={() => { setIsEditModalOpen(false); setEditingStudentId(null); }}
         title="Ubah Status Kelulusan"
         size="md"
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Status
-            </label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status</label>
             <Select
               value={editFormData.status}
               onChange={(event) => setEditFormData({ ...editFormData, status: event.target.value })}
@@ -406,7 +442,6 @@ export default function AdminGraduationPage() {
               ]}
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Catatan (Opsional)
@@ -419,24 +454,11 @@ export default function AdminGraduationPage() {
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
-
           <div className="flex gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setEditingId(null);
-              }}
-              disabled={isSaving}
-            >
+            <Button variant="outline" onClick={() => { setIsEditModalOpen(false); setEditingStudentId(null); }} disabled={isSaving}>
               Batal
             </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              isLoading={isSaving}
-              loadingText="Menyimpan..."
-            >
+            <Button onClick={handleSaveEdit} disabled={isSaving} isLoading={isSaving} loadingText="Menyimpan...">
               <Save className="w-4 h-4 mr-2" />
               Simpan
             </Button>
@@ -465,7 +487,6 @@ export default function AdminGraduationPage() {
               ]}
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Catatan (Opsional)
@@ -478,21 +499,11 @@ export default function AdminGraduationPage() {
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
-
           <div className="flex gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setIsBulkModalOpen(false)}
-              disabled={isBulkSaving}
-            >
+            <Button variant="outline" onClick={() => setIsBulkModalOpen(false)} disabled={isBulkSaving}>
               Batal
             </Button>
-            <Button
-              onClick={handleBulkSave}
-              disabled={isBulkSaving}
-              isLoading={isBulkSaving}
-              loadingText="Menyimpan..."
-            >
+            <Button onClick={handleBulkSave} disabled={isBulkSaving} isLoading={isBulkSaving} loadingText="Menyimpan...">
               <Save className="w-4 h-4 mr-2" />
               Simpan untuk {selectedStudents.size} Siswa
             </Button>

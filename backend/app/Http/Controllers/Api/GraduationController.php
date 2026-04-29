@@ -6,22 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\StudentGraduation;
 use App\Models\User;
 use App\Models\ClassRoom;
-use App\Services\SKLGeneratorService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class GraduationController extends Controller
 {
     /**
      * Get graduation status for student (siswa view)
+     * Returns status + pickup message from admin if lulus
      */
     public function getMyGraduation(Request $request)
     {
         $student = $request->user();
-        
+
         if ($student->role !== 'siswa') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
@@ -33,33 +30,18 @@ class GraduationController extends Controller
         if (!$graduation) {
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'status' => 'pending',
+                'data'    => [
+                    'status'  => 'pending',
                     'message' => 'Status kelulusan belum diumumkan',
-                ]
+                ],
             ]);
         }
 
         $isLulus = $graduation->status === StudentGraduation::STATUS_LULUS;
-        $sklExists = $isLulus && $graduation->skl_path 
-            && Storage::disk('public')->exists($graduation->skl_path);
-
-        // Auto-regenerate SKL if lulus but file is missing
-        if ($isLulus && !$sklExists) {
-            try {
-                $graduation->loadMissing(['student', 'class', 'decidedBy']);
-                $sklPath = SKLGeneratorService::generateSKL($graduation);
-                $graduation->skl_path = $sklPath;
-                $graduation->save();
-                $sklExists = true;
-            } catch (\Exception $e) {
-                Log::error('SKL auto-regeneration failed: ' . $e->getMessage());
-            }
-        }
 
         return response()->json([
             'success' => true,
-            'data' => [
+            'data'    => [
                 'id'              => $graduation->id,
                 'status'          => $graduation->status,
                 'status_label'    => StudentGraduation::getStatusLabel($graduation->status),
@@ -67,15 +49,15 @@ class GraduationController extends Controller
                 'decided_at'      => $graduation->decided_at,
                 'decided_by'      => $graduation->decidedBy?->name,
                 'notes'           => $graduation->notes,
-                'can_download_skl' => $sklExists,
-                'skl_path'        => $isLulus ? $graduation->skl_path : null,
-            ]
+                // Pesan pengambilan SKL dari admin, hanya tampil jika lulus
+                'pickup_message'  => $isLulus ? ($graduation->class->skl_pickup_message ?? null) : null,
+            ],
         ]);
     }
 
     /**
      * Get all graduations for a class (admin view)
-     * Returns ALL students in the class, with their graduation status (pending if no record)
+     * Returns ALL students + current pickup_message for the class
      */
     public function getByClass(Request $request, $classId)
     {
@@ -94,7 +76,7 @@ class GraduationController extends Controller
         // Get all students in this class (relation already filters by role=siswa)
         $students = $class->students()->orderBy('name')->get();
 
-        $data = $students->map(function ($student) use ($graduationRecords, $classId) {
+        $data = $students->map(function ($student) use ($graduationRecords) {
             $graduation = $graduationRecords->get($student->id);
 
             return [
@@ -108,15 +90,42 @@ class GraduationController extends Controller
                 'status'       => $graduation?->status ?? 'pending',
                 'status_label' => StudentGraduation::getStatusLabel($graduation?->status ?? 'pending'),
                 'notes'        => $graduation?->notes,
-                'skl_path'     => $graduation?->skl_path,
                 'decided_at'   => $graduation?->decided_at,
                 'decided_by'   => $graduation?->decidedBy?->name,
             ];
         });
 
         return response()->json([
+            'success'         => true,
+            'data'            => $data,
+            // Admin bisa lihat dan edit pesan ini
+            'pickup_message'  => $class->skl_pickup_message,
+        ]);
+    }
+
+    /**
+     * Update pickup message for a class (admin only)
+     */
+    public function updatePickupMessage(Request $request, $classId)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'pickup_message' => 'nullable|string|max:1000',
+        ]);
+
+        $class = ClassRoom::findOrFail($classId);
+        $class->skl_pickup_message = $validated['pickup_message'] ?? null;
+        $class->save();
+
+        return response()->json([
             'success' => true,
-            'data'    => $data,
+            'message' => 'Pesan pengambilan SKL berhasil diperbarui',
+            'data'    => [
+                'pickup_message' => $class->skl_pickup_message,
+            ],
         ]);
     }
 
@@ -130,102 +139,42 @@ class GraduationController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => 'required|in:lulus,tidak_lulus',
-            'notes' => 'nullable|string|max:500',
+            'status' => 'required|in:lulus,tidak_lulus,pending',
+            'notes'  => 'nullable|string|max:500',
         ]);
 
         $student = User::findOrFail($studentId);
-        $class = ClassRoom::findOrFail($classId);
+        ClassRoom::findOrFail($classId); // validate class exists
 
-        // Find or create graduation record
         $graduation = StudentGraduation::firstOrCreate(
             ['student_id' => $studentId, 'class_id' => $classId],
-            ['status' => 'pending']
+            ['status'     => 'pending']
         );
 
-        $graduation->status     = $validated['status'];
-        $graduation->notes      = $validated['notes'] ?? null;
-        $graduation->decided_at = now();
-        $graduation->decided_by = $request->user()->id;
+        $graduation->status = $validated['status'];
+        $graduation->notes  = $validated['notes'] ?? null;
 
-        // Save FIRST so the record has an ID (needed by SKLGeneratorService)
-        $graduation->save();
-
-        // Generate SKL jika lulus
-        if ($validated['status'] === StudentGraduation::STATUS_LULUS) {
-            try {
-                $graduation->loadMissing(['student', 'class', 'decidedBy']);
-                $sklPath = SKLGeneratorService::generateSKL($graduation);
-                $graduation->skl_path = $sklPath;
-                $graduation->save();
-            } catch (\Exception $e) {
-                Log::error('SKL Generation Error: ' . $e->getMessage());
-                // Continue tanpa SKL
-            }
+        if ($validated['status'] === 'pending') {
+            // Reset — clear decision info
+            $graduation->decided_at = null;
+            $graduation->decided_by = null;
         } else {
-            // Clear SKL path jika tidak lulus
-            $graduation->skl_path = null;
-            $graduation->save();
+            $graduation->decided_at = now();
+            $graduation->decided_by = $request->user()->id;
         }
 
-        // Send notification to student
+        $graduation->save();
+
         $this->sendGraduationNotification($student, $graduation);
 
         return response()->json([
             'success' => true,
             'message' => 'Status kelulusan berhasil diperbarui',
-            'data' => [
-                'id' => $graduation->id,
-                'status' => $graduation->status,
+            'data'    => [
+                'id'           => $graduation->id,
+                'status'       => $graduation->status,
                 'status_label' => StudentGraduation::getStatusLabel($graduation->status),
-            ]
-        ]);
-    }
-
-    /**
-     * Download SKL for student
-     */
-    public function downloadSKL(Request $request)
-    {
-        $student = $request->user();
-        
-        if ($student->role !== 'siswa') {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $graduation = StudentGraduation::where('student_id', $student->id)
-            ->where('status', StudentGraduation::STATUS_LULUS)
-            ->first();
-
-        if (!$graduation || !$graduation->skl_path) {
-            return response()->json([
-                'success' => false,
-                'message' => 'SKL tidak tersedia',
-            ], 404);
-        }
-
-        // Check file exists on storage disk
-        if (!Storage::disk('public')->exists($graduation->skl_path)) {
-            // Try to regenerate
-            try {
-                $graduation->loadMissing(['student', 'class', 'decidedBy']);
-                $sklPath = SKLGeneratorService::generateSKL($graduation);
-                $graduation->skl_path = $sklPath;
-                $graduation->save();
-            } catch (\Exception $e) {
-                Log::error('SKL re-generation failed: ' . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File SKL tidak ditemukan dan gagal di-generate ulang',
-                ], 404);
-            }
-        }
-
-        $absolutePath = Storage::disk('public')->path($graduation->skl_path);
-        $downloadName = "SKL_{$student->name}.html";
-
-        return response()->download($absolutePath, $downloadName, [
-            'Content-Type' => 'text/html; charset=UTF-8',
+            ],
         ]);
     }
 
@@ -247,36 +196,23 @@ class GraduationController extends Controller
         ]);
 
         $successCount = 0;
-        $failCount = 0;
+        $failCount    = 0;
 
         foreach ($validated['student_ids'] as $studentId) {
             try {
                 $student = User::findOrFail($studentId);
+
                 $graduation = StudentGraduation::firstOrCreate(
                     ['student_id' => $studentId, 'class_id' => $validated['class_id']],
-                    ['status' => 'pending']
+                    ['status'     => 'pending']
                 );
 
                 $graduation->status     = $validated['status'];
                 $graduation->notes      = $validated['notes'] ?? null;
                 $graduation->decided_at = now();
                 $graduation->decided_by = $request->user()->id;
-                // Save first so model has an ID (needed by SKLGeneratorService)
                 $graduation->save();
 
-                if ($validated['status'] === StudentGraduation::STATUS_LULUS) {
-                    try {
-                        $graduation->loadMissing(['student', 'class', 'decidedBy']);
-                        $sklPath = SKLGeneratorService::generateSKL($graduation);
-                        $graduation->skl_path = $sklPath;
-                        $graduation->save();
-                    } catch (\Exception $e) {
-                        Log::error('SKL Generation Error: ' . $e->getMessage());
-                    }
-                } else {
-                    $graduation->skl_path = null;
-                    $graduation->save();
-                }
                 $this->sendGraduationNotification($student, $graduation);
                 $successCount++;
             } catch (\Exception $e) {
@@ -288,10 +224,10 @@ class GraduationController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Status kelulusan berhasil diperbarui untuk {$successCount} siswa",
-            'data' => [
+            'data'    => [
                 'success_count' => $successCount,
-                'fail_count' => $failCount,
-            ]
+                'fail_count'    => $failCount,
+            ],
         ]);
     }
 
@@ -301,14 +237,10 @@ class GraduationController extends Controller
     private function sendGraduationNotification(User $student, StudentGraduation $graduation)
     {
         try {
-            if ($graduation->status === StudentGraduation::STATUS_LULUS) {
-                $message = "Selamat! Anda dinyatakan LULUS. Silakan download Surat Keterangan Lulus (SKL) Anda.";
-            } else {
-                $message = "Status kelulusan Anda adalah TIDAK LULUS.";
-            }
+            $message = $graduation->status === StudentGraduation::STATUS_LULUS
+                ? 'Selamat! Anda dinyatakan LULUS. Silakan cek pengumuman di aplikasi untuk informasi pengambilan SKL.'
+                : 'Status kelulusan Anda adalah TIDAK LULUS.';
 
-            // Broadcast ke sistem notifikasi (jika ada)
-            // Database notification atau event-based notification
             Log::info("Graduation notification for student {$student->id}: {$message}");
         } catch (\Exception $e) {
             Log::error('Failed to send graduation notification: ' . $e->getMessage());

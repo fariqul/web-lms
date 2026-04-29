@@ -127,9 +127,12 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/exams/{exam}/unlock', [ExamController::class, 'unlockExam']);
         
         // Graduation Management
+        // ⚠️ IMPORTANT: literal routes MUST be before wildcard {studentId}/{classId}
         Route::get('/graduations/class/{classId}', [GraduationController::class, 'getByClass']);
-        Route::post('/graduations/{studentId}/{classId}', [GraduationController::class, 'setGraduationStatus']);
         Route::post('/graduations/bulk', [GraduationController::class, 'bulkSetGraduationStatus']);
+        Route::post('/graduations/class/{classId}/pickup-message', [GraduationController::class, 'updatePickupMessage']);
+        // Wildcard route last — would catch 'bulk' and 'class' if placed first
+        Route::post('/graduations/{studentId}/{classId}', [GraduationController::class, 'setGraduationStatus']);
     });
 
     // ============================================

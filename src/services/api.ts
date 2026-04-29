@@ -1030,20 +1030,16 @@ export const auditLogAPI = {
 
 // Graduation API
 export const graduationAPI = {
-  // Student - get my graduation status
+  // Student - get my graduation status (includes pickup_message if lulus)
   getMyGraduation: () =>
     api.get('/graduation/my-status'),
 
-  // Student - download SKL
-  downloadSKL: () =>
-    api.get('/graduation/download-skl', { responseType: 'blob' }),
-
-  // Admin - get graduations by class
+  // Admin - get graduations by class (includes pickup_message)
   getByClass: (classId: number) =>
     api.get(`/graduations/class/${classId}`),
 
-  // Admin - set graduation status for single student
-  setGraduationStatus: (studentId: number, classId: number, data: { status: 'lulus' | 'tidak_lulus'; notes?: string }) =>
+  // Admin - set graduation status for single student (includes 'pending' to reset)
+  setGraduationStatus: (studentId: number, classId: number, data: { status: 'lulus' | 'tidak_lulus' | 'pending'; notes?: string }) =>
     api.post(`/graduations/${studentId}/${classId}`, data),
 
   // Admin - bulk set graduation status
@@ -1054,4 +1050,8 @@ export const graduationAPI = {
     notes?: string;
   }) =>
     api.post('/graduations/bulk', data),
+
+  // Admin - update pickup message for a class
+  updatePickupMessage: (classId: number, pickup_message: string | null) =>
+    api.post(`/graduations/class/${classId}/pickup-message`, { pickup_message }),
 };

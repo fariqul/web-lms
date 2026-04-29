@@ -35,7 +35,7 @@ export default function RootLayout({
       <head>
         <meta name="color-scheme" content="light dark" />
       </head>
-      <body className={`${jakarta.variable} font-sans antialiased bg-background text-foreground transition-colors duration-200`}>
+      <body suppressHydrationWarning className={`${jakarta.variable} font-sans antialiased bg-background text-foreground transition-colors duration-200`}>
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>
