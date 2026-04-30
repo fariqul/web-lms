@@ -16,20 +16,16 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SMA Negeri 15 Makassar — Unggul dalam Prestasi, Santun dalam Budi Pekerti",
-  description: "Website resmi SMA Negeri 15 Makassar. Sekolah unggulan dengan program Kurikulum Merdeka, STEM, dan 20+ ekstrakurikuler. Pendaftaran PPDB, LMS, dan informasi akademik.",
-  keywords: ["SMA Negeri 15 Makassar", "SMAN 15 Makassar", "sekolah menengah atas makassar", "PPDB Makassar", "LMS SMA 15"],
-  openGraph: {
-    title: "SMA Negeri 15 Makassar",
-    description: "Unggul dalam Prestasi, Santun dalam Budi Pekerti — Sekolah unggulan di Makassar dengan fasilitas modern dan program pendidikan berkualitas.",
-    type: "website",
-    locale: "id_ID",
-    images: [{ url: "/landing/logo.png", width: 512, height: 512, alt: "Logo SMA Negeri 15 Makassar" }],
+  metadataBase: new URL('https://www.libelslms.my.id'),
+  title: {
+    default: 'SMA Negeri 15 Makassar',
+    template: '%s | SMA Negeri 15 Makassar',
   },
+  description: 'Sistem Manajemen Pembelajaran SMA Negeri 15 Makassar',
   icons: {
-    icon: "/logo_sma15.png",
-    shortcut: "/logo_sma15.png",
-    apple: "/logo_sma15.png",
+    icon: '/logo_sma15.png',
+    shortcut: '/logo_sma15.png',
+    apple: '/logo_sma15.png',
   },
 };
 
