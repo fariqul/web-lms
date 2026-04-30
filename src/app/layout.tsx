@@ -16,8 +16,16 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SMA 15 Makassar LMS - Learning Management System",
-  description: "Sistem Manajemen Pembelajaran SMA 15 Makassar dengan fitur Absensi QR, Ujian CBT, dan Monitoring",
+  title: "SMA Negeri 15 Makassar — Unggul dalam Prestasi, Santun dalam Budi Pekerti",
+  description: "Website resmi SMA Negeri 15 Makassar. Sekolah unggulan dengan program Kurikulum Merdeka, STEM, dan 20+ ekstrakurikuler. Pendaftaran PPDB, LMS, dan informasi akademik.",
+  keywords: ["SMA Negeri 15 Makassar", "SMAN 15 Makassar", "sekolah menengah atas makassar", "PPDB Makassar", "LMS SMA 15"],
+  openGraph: {
+    title: "SMA Negeri 15 Makassar",
+    description: "Unggul dalam Prestasi, Santun dalam Budi Pekerti — Sekolah unggulan di Makassar dengan fasilitas modern dan program pendidikan berkualitas.",
+    type: "website",
+    locale: "id_ID",
+    images: [{ url: "/landing/logo.png", width: 512, height: 512, alt: "Logo SMA Negeri 15 Makassar" }],
+  },
   icons: {
     icon: "/logo_sma15.png",
     shortcut: "/logo_sma15.png",
@@ -34,6 +42,10 @@ export default function RootLayout({
     <html lang="id" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="light dark" />
+        {/* Landing page fonts (Crimson Pro + DM Sans) */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body suppressHydrationWarning className={`${jakarta.variable} font-sans antialiased bg-background text-foreground transition-colors duration-200`}>
         <ThemeProvider>

@@ -45,3 +45,6 @@ yarn-error.log*
 next-env.d.ts
 
 .worktrees/
+
+# Original landing page source (already integrated into Next.js)
+/landing_page/
