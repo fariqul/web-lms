@@ -153,9 +153,6 @@ export default function LandingPage() {
               <Link href="/login" className={s.btnPrimary}>
                 Masuk LMS
               </Link>
-              <Link href="/pengumuman-kelulusan" className={s.btnSecondary}>
-                Pengumuman Kelulusan
-              </Link>
             </div>
           </div>
           <div className={s.heroVisual}>
@@ -283,10 +280,8 @@ export default function LandingPage() {
               dan berprestasi untuk masa depan Indonesia yang lebih baik.
             </p>
             <div className={s.socialLinks}>
-              <a href="#" className={s.socialLink} aria-label="Facebook">FB</a>
-              <a href="#" className={s.socialLink} aria-label="Instagram">IG</a>
-              <a href="#" className={s.socialLink} aria-label="YouTube">YT</a>
-              <a href="#" className={s.socialLink} aria-label="Twitter">TW</a>
+              <a href="https://www.instagram.com/sman15mks.official" target="_blank" rel="noopener noreferrer" className={s.socialLink} aria-label="Instagram">IG</a>
+              <a href="https://www.youtube.com/@SMAN15MAKASSAR" target="_blank" rel="noopener noreferrer" className={s.socialLink} aria-label="YouTube">YT</a>
             </div>
           </div>
 
@@ -315,10 +310,9 @@ export default function LandingPage() {
           <div>
             <h4 className={s.footerSectionTitle}>Kontak</h4>
             <ul className={s.footerList}>
-              <li>Jl. Pendidikan No. 15</li>
-              <li>Makassar, Sulawesi Selatan</li>
-              <li>Telp: (0411) XXX-XXXX</li>
-              <li>Email: info@sman15mks.sch.id</li>
+              <li><a href="https://www.google.com/maps?q=SMA+Negeri+15+Makassar" target="_blank" rel="noopener noreferrer" className={s.footerLink}>Jl. Ir. Sutami No.7, Bulurokeng</a></li>
+              <li>Kec. Biringkanaya, Makassar</li>
+              <li>Sulawesi Selatan 90243</li>
             </ul>
           </div>
         </div>
