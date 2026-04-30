@@ -99,12 +99,12 @@ export default function LandingPage() {
       {/* ═══ Navigation ═══ */}
       <nav className={`${s.nav} ${navScrolled ? s.navScrolled : ''}`}>
         <div className={s.navContainer}>
-          <button onClick={() => scrollTo('home')} className={s.logoContainer} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+          <button onClick={() => scrollTo('home')} className={s.logoBtn}>
             <Image
               src="/landing/logo.png"
               alt="Logo SMA Negeri 15 Makassar"
-              width={44}
-              height={44}
+              width={42}
+              height={42}
               className={s.logo}
               priority
             />
@@ -250,7 +250,7 @@ export default function LandingPage() {
         <div className={s.container}>
           <div className={s.registrationContent}>
             <div className={s.sectionHeader}>
-              <div className={s.sectionLabel}>Pendaftaran</div>
+              <div className={s.registrationLabel}>Pendaftaran</div>
               <h2 className={s.registrationTitle}>Bergabunglah Bersama Kami</h2>
               <p className={s.registrationDesc}>
                 Daftarkan diri Anda untuk menjadi bagian dari keluarga besar SMA Negeri 15
