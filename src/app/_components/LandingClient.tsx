@@ -199,10 +199,10 @@ export default function LandingClient() {
       {/* ═══ About ═══ */}
       <section className={s.about} id="about">
         <div className={s.container}>
-          <div className={s.sectionHeader}>
-            <div className={s.sectionLabel}>Tentang Kami</div>
-            <h2 className={s.sectionTitle}>Profil SMA Negeri 15 Makassar</h2>
-            <p className={s.sectionDescription}>
+          <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Tentang Kami</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Profil SMA Negeri 15 Makassar</h2>
+            <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
               Sekolah unggulan yang berkomitmen menghasilkan lulusan berkualitas dengan pendidikan
               holistik yang mengedepankan akademik dan pembentukan karakter.
             </p>
@@ -226,10 +226,10 @@ export default function LandingClient() {
       {/* ═══ Programs ═══ */}
       <section className={s.programs} id="programs">
         <div className={s.container}>
-          <div className={s.sectionHeader}>
-            <div className={s.sectionLabel}>Program Unggulan</div>
-            <h2 className={s.sectionTitle}>Program &amp; Kurikulum</h2>
-            <p className={s.sectionDescription}>
+          <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Program Unggulan</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Program &amp; Kurikulum</h2>
+            <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
               Beragam program pendidikan yang dirancang untuk mengoptimalkan potensi siswa
               di bidang akademik dan non-akademik.
             </p>
@@ -249,10 +249,10 @@ export default function LandingClient() {
       {/* ═══ Facilities ═══ */}
       <section className={s.facilities} id="facilities">
         <div className={s.container}>
-          <div className={s.sectionHeader}>
-            <div className={s.sectionLabel}>Fasilitas</div>
-            <h2 className={s.sectionTitle}>Fasilitas Lengkap &amp; Modern</h2>
-            <p className={s.sectionDescription}>
+          <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Fasilitas</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Fasilitas Lengkap &amp; Modern</h2>
+            <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
               Infrastruktur dan fasilitas pendukung pembelajaran yang modern untuk kenyamanan
               dan efektivitas proses belajar mengajar.
             </p>
@@ -272,10 +272,10 @@ export default function LandingClient() {
       <section className={s.registration} id="registration">
         <div className={s.container}>
           <div className={s.registrationContent}>
-            <div className={s.sectionHeader}>
-              <div className={s.registrationLabel}>Pendaftaran</div>
-              <h2 className={s.registrationTitle}>Bergabunglah Bersama Kami</h2>
-              <p className={s.registrationDesc}>
+            <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
+              <div className={s.registrationLabel} style={{ textAlign: 'center' }}>Pendaftaran</div>
+              <h2 className={s.registrationTitle} style={{ textAlign: 'center' }}>Bergabunglah Bersama Kami</h2>
+              <p className={s.registrationDesc} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
                 Daftarkan diri Anda untuk menjadi bagian dari keluarga besar SMA Negeri 15
                 Makassar dan raih masa depan gemilang.
               </p>
