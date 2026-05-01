@@ -283,7 +283,7 @@
 
 /* ═══════════════════ SECTIONS ═══════════════════ */
 .section { padding: 80px 32px !important; }
-.container { max-width: 1200px !important; margin: 0 auto !important; }
+.container { max-width: 1200px !important; margin: 0 auto !important; text-align: center !important; }
 
 .sectionHeader {
   text-align: center !important;
@@ -321,6 +321,8 @@
   margin: 0 auto !important;
   line-height: 1.75 !important;
   text-align: center !important;
+  display: block !important;
+  width: 100% !important;
 }
 
 /* ═══════════════════ ABOUT ═══════════════════ */

@@ -176,6 +176,9 @@ export default function LandingClient() {
               <Link href="/login" className={s.btnPrimary}>
                 Masuk LMS
               </Link>
+              <Link href="/pengumuman-kelulusan" className={s.btnSecondary}>
+                Pengumuman Kelulusan
+              </Link>
             </div>
           </div>
           <div className={s.heroVisual}>
@@ -330,6 +333,7 @@ export default function LandingClient() {
               <li><a href="#" className={s.footerLink}>Prestasi Siswa</a></li>
               <li><a href="#" className={s.footerLink}>Berita &amp; Artikel</a></li>
               <li><a href="#" className={s.footerLink}>Alumni</a></li>
+              <li><Link href="/pengumuman-kelulusan" className={s.footerLink}>Pengumuman Kelulusan</Link></li>
               <li><Link href="/login" className={s.footerLink}>Masuk LMS</Link></li>
             </ul>
           </div>
