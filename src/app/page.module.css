@@ -318,11 +318,13 @@
   font-size: 17px !important;
   color: var(--lp-text-muted) !important;
   max-width: 640px !important;
-  margin: 0 auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
   line-height: 1.75 !important;
   text-align: center !important;
   display: block !important;
-  width: 100% !important;
 }
 
 /* ═══════════════════ ABOUT ═══════════════════ */
