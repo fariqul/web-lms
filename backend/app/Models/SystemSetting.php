@@ -103,4 +103,78 @@ class SystemSetting extends Model
         Cache::forever(self::cacheKey(self::TEACHER_EXAM_RESULTS_HIDDEN_KEY), $hidden);
         return true;
     }
+
+    // ─── Graduation Announcement Settings ───
+
+    public const GRADUATION_ANNOUNCEMENT_ACTIVE_KEY = 'graduation_announcement_active';
+    public const GRADUATION_ANNOUNCEMENT_DATETIME_KEY = 'graduation_announcement_datetime';
+
+    public static function getGraduationAnnouncementActive(): bool
+    {
+        $cacheKey = self::cacheKey(self::GRADUATION_ANNOUNCEMENT_ACTIVE_KEY);
+
+        return (bool) Cache::rememberForever($cacheKey, function () {
+            try {
+                $raw = self::query()
+                    ->where('setting_key', self::GRADUATION_ANNOUNCEMENT_ACTIVE_KEY)
+                    ->value('setting_value');
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting read failed for graduation active: ' . $e->getMessage());
+                return false;
+            }
+
+            if ($raw === null) {
+                return false;
+            }
+
+            return filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
+        });
+    }
+
+    public static function setGraduationAnnouncementActive(bool $active): void
+    {
+        try {
+            self::updateOrCreate(
+                ['setting_key' => self::GRADUATION_ANNOUNCEMENT_ACTIVE_KEY],
+                ['setting_value' => $active ? '1' : '0']
+            );
+        } catch (\Throwable $e) {
+            Log::warning('SystemSetting write failed for graduation active: ' . $e->getMessage());
+        }
+
+        Cache::forever(self::cacheKey(self::GRADUATION_ANNOUNCEMENT_ACTIVE_KEY), $active);
+    }
+
+    /**
+     * Get graduation announcement datetime (UTC ISO 8601 string or null)
+     */
+    public static function getGraduationAnnouncementDatetime(): ?string
+    {
+        $cacheKey = self::cacheKey(self::GRADUATION_ANNOUNCEMENT_DATETIME_KEY);
+
+        return Cache::rememberForever($cacheKey, function () {
+            try {
+                return self::query()
+                    ->where('setting_key', self::GRADUATION_ANNOUNCEMENT_DATETIME_KEY)
+                    ->value('setting_value');
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting read failed for graduation datetime: ' . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+    public static function setGraduationAnnouncementDatetime(?string $datetime): void
+    {
+        try {
+            self::updateOrCreate(
+                ['setting_key' => self::GRADUATION_ANNOUNCEMENT_DATETIME_KEY],
+                ['setting_value' => $datetime]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('SystemSetting write failed for graduation datetime: ' . $e->getMessage());
+        }
+
+        Cache::forever(self::cacheKey(self::GRADUATION_ANNOUNCEMENT_DATETIME_KEY), $datetime);
+    }
 }

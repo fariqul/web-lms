@@ -1058,4 +1058,16 @@ export const graduationAPI = {
   // Admin - update pickup message for a class
   updatePickupMessage: (classId: number, pickup_message: string | null) =>
     api.post(`/graduations/class/${classId}/pickup-message`, { pickup_message }),
+
+  // Admin - announcement settings (countdown)
+  getAnnouncementSettings: () =>
+    api.get('/graduations/announcement-settings'),
+  updateAnnouncementSettings: (data: { active: boolean; datetime: string | null }) =>
+    api.post('/graduations/announcement-settings', data),
+
+  // Public (no auth required)
+  publicGetSettings: () =>
+    api.get('/public/graduation/settings'),
+  publicCheck: (data: { nisn: string; nis?: string }) =>
+    api.post('/public/graduation/check', data),
 };

@@ -55,6 +55,13 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:' 
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
 
+// Public graduation announcement (no auth, rate limited)
+Route::prefix('public')->group(function () {
+    Route::get('/graduation/settings', [GraduationController::class, 'publicGetSettings']);
+    Route::post('/graduation/check', [GraduationController::class, 'publicCheckGraduation'])
+        ->middleware('throttle:10,1'); // 10 requests per minute per IP
+});
+
 // Protected routes
 Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle])->group(function () use ($dashboardThrottle, $notificationThrottle, $examPollingThrottle) {
     // Auth - All authenticated users
@@ -131,6 +138,8 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/graduations/class/{classId}', [GraduationController::class, 'getByClass']);
         Route::post('/graduations/bulk', [GraduationController::class, 'bulkSetGraduationStatus']);
         Route::post('/graduations/class/{classId}/pickup-message', [GraduationController::class, 'updatePickupMessage']);
+        Route::get('/graduations/announcement-settings', [GraduationController::class, 'getAnnouncementSettings']);
+        Route::post('/graduations/announcement-settings', [GraduationController::class, 'updateAnnouncementSettings']);
         // Wildcard route last — would catch 'bulk' and 'class' if placed first
         Route::post('/graduations/{studentId}/{classId}', [GraduationController::class, 'setGraduationStatus']);
     });

@@ -285,7 +285,12 @@
 .section { padding: 80px 32px !important; }
 .container { max-width: 1200px !important; margin: 0 auto !important; }
 
-.sectionHeader { text-align: center !important; margin-bottom: 56px !important; }
+.sectionHeader {
+  text-align: center !important;
+  margin-bottom: 56px !important;
+  width: 100% !important;
+  display: block !important;
+}
 
 .sectionLabel {
   font-size: 13px !important;
@@ -295,6 +300,8 @@
   margin-bottom: 8px !important;
   font-weight: 700 !important;
   display: block !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .sectionTitle {
@@ -303,6 +310,8 @@
   font-weight: 700 !important;
   color: var(--lp-secondary) !important;
   margin-bottom: 16px !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .sectionDescription {
@@ -529,6 +538,8 @@
   margin-bottom: 8px !important;
   font-weight: 700 !important;
   display: block !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .registrationTitle {
@@ -537,6 +548,8 @@
   font-weight: 700 !important;
   color: var(--lp-white) !important;
   margin-bottom: 16px !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
 .registrationDesc {
@@ -546,6 +559,7 @@
   margin: 0 auto !important;
   line-height: 1.75 !important;
   text-align: center !important;
+  width: 100% !important;
 }
 
 .stepsGrid {

@@ -1,36 +1,35 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { DashboardLayout } from '@/components/layouts';
-import { Card, Button, Input } from '@/components/ui';
-import { useToast } from '@/components/ui/Toast';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { graduationAPI } from '@/services/api';
-import {
-  Loader2,
-  AlertCircle,
-  ShieldCheck,
-  ArrowLeft,
-  Clock,
-  MapPin,
-  Award,
-  Info,
-} from 'lucide-react';
+import s from './page.module.css';
 
-interface GraduationStatus {
+/* ─── Types ─── */
+interface GraduationResult {
+  student_name: string;
+  nisn?: string;
   status: 'pending' | 'lulus' | 'tidak_lulus';
-  status_label: string;
+  status_label?: string;
   class?: string;
   decided_at?: string;
-  decided_by?: string;
   notes?: string;
   pickup_message?: string | null;
   message?: string;
 }
 
-/* ─── Decorative SVG icons (no emoji) ─── */
-function GraduationCapIcon({ className }: { className?: string }) {
+interface CountdownTime {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+/* ─── SVG Icons ─── */
+function GraduationCapIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg className={className} style={style} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M32 8L4 22l28 14 28-14L32 8z" fill="currentColor" opacity="0.9" />
       <path d="M12 28v14c0 4 8.954 10 20 10s20-6 20-10V28L32 38 12 28z" fill="currentColor" opacity="0.7" />
       <path d="M52 24v20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -39,9 +38,9 @@ function GraduationCapIcon({ className }: { className?: string }) {
   );
 }
 
-function SadFaceIcon({ className }: { className?: string }) {
+function SadFaceIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg className={className} style={style} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="2.5" fill="currentColor" opacity="0.08" />
       <circle cx="22" cy="26" r="3" fill="currentColor" opacity="0.6" />
       <circle cx="42" cy="26" r="3" fill="currentColor" opacity="0.6" />
@@ -50,395 +49,463 @@ function SadFaceIcon({ className }: { className?: string }) {
   );
 }
 
-function HourglassIcon({ className }: { className?: string }) {
+function HourglassIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg className={className} style={style} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M18 8h28v12L34 32l12 12v12H18V44l12-12L18 20V8z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" fill="currentColor" opacity="0.08" />
       <path d="M22 12h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
       <path d="M22 52h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-      <circle cx="32" cy="38" r="2" fill="currentColor" opacity="0.4" />
-      <circle cx="32" cy="43" r="1.5" fill="currentColor" opacity="0.3" />
-      <circle cx="30" cy="47" r="1" fill="currentColor" opacity="0.2" />
     </svg>
   );
 }
 
-export default function GraduationAnnouncementPage() {
-  const toast = useToast();
-  const resultRef = useRef<HTMLDivElement>(null);
+/* ─── Countdown Calculator ─── */
+function getCountdown(targetUtc: string): CountdownTime | null {
+  const diff = new Date(targetUtc).getTime() - Date.now();
+  if (diff <= 0) return null;
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+  };
+}
 
-  // Verification state
+/* ═══════════════════ COMPONENT ═══════════════════ */
+export default function GraduationAnnouncementPage() {
+  // Settings
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState(false);
+  const [targetDatetime, setTargetDatetime] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<CountdownTime | null>(null);
+  const [countdownDone, setCountdownDone] = useState(false);
+
+  // Form
   const [nisn, setNisn] = useState('');
   const [nis, setNis] = useState('');
-  const [requiresNis, setRequiresNis] = useState(false);
-  const [checkingRequirements, setCheckingRequirements] = useState(true);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const [verifyError, setVerifyError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
 
-  // Graduation state
-  const [graduationStatus, setGraduationStatus] = useState<GraduationStatus | null>(null);
-
-  // Animation
+  // Result
+  const [result, setResult] = useState<GraduationResult | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
+  // Load settings
   useEffect(() => {
-    checkRequirements();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (async () => {
+      try {
+        const res = await graduationAPI.publicGetSettings();
+        const data = res.data?.data;
+        setActive(data?.active ?? false);
+        setTargetDatetime(data?.datetime ?? null);
+
+        // If no countdown or it's already passed
+        if (!data?.datetime || new Date(data.datetime).getTime() <= Date.now()) {
+          setCountdownDone(true);
+        }
+      } catch {
+        // If settings fail, assume not active
+        setActive(false);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const checkRequirements = async () => {
-    try {
-      setCheckingRequirements(true);
-      const response = await graduationAPI.checkRequirements();
-      setRequiresNis(response.data?.requires_nis ?? false);
-    } catch {
-      setRequiresNis(false);
-    } finally {
-      setCheckingRequirements(false);
-    }
-  };
+  // Countdown timer
+  useEffect(() => {
+    if (!targetDatetime || countdownDone) return;
 
+    const tick = () => {
+      const cd = getCountdown(targetDatetime);
+      if (!cd) {
+        setCountdownDone(true);
+        setCountdown(null);
+      } else {
+        setCountdown(cd);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [targetDatetime, countdownDone]);
+
+  // Verify
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    setVerifyError('');
+    setError('');
 
-    if (!nisn.trim()) {
-      setVerifyError('NISN wajib diisi');
-      return;
-    }
-    if (requiresNis && !nis.trim()) {
-      setVerifyError('NIS wajib diisi');
-      return;
-    }
+    if (!nisn.trim()) { setError('NISN wajib diisi'); return; }
 
     try {
-      setIsVerifying(true);
-      const response = await graduationAPI.getMyGraduation({
+      setVerifying(true);
+      const res = await graduationAPI.publicCheck({
         nisn: nisn.trim(),
         nis: nis.trim() || undefined,
       });
 
-      if (response.data?.success) {
-        setGraduationStatus(response.data.data);
-        setIsVerified(true);
-        // Stagger reveal
+      if (res.data?.success) {
+        setResult(res.data.data);
         setTimeout(() => setShowResult(true), 100);
       } else {
-        setVerifyError(response.data?.message || 'Verifikasi gagal');
+        setError(res.data?.message || 'Verifikasi gagal');
       }
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      const msg = axiosError?.response?.data?.message || 'Verifikasi gagal. Periksa kembali NISN dan NIS Anda.';
-      setVerifyError(msg);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string; requires_nis?: boolean } } };
+      setError(axiosErr?.response?.data?.message || 'Verifikasi gagal. Periksa kembali data Anda.');
     } finally {
-      setIsVerifying(false);
+      setVerifying(false);
     }
   };
 
+  // Back
   const handleBack = () => {
     setShowResult(false);
-    setTimeout(() => {
-      setIsVerified(false);
-      setNisn('');
-      setNis('');
-      setGraduationStatus(null);
-    }, 200);
+    setTimeout(() => { setResult(null); setNisn(''); setNis(''); }, 200);
   };
 
-  if (checkingRequirements) {
+  // Download PDF
+  const handleDownload = useCallback(async () => {
+    if (!pdfRef.current || !result) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      pdf.save(`Bukti_Kelulusan_${result.student_name.replace(/\s+/g, '_')}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setDownloading(false);
+    }
+  }, [result]);
+
+  // Loading
+  if (loading) {
     return (
-      <DashboardLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-7 h-7 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Memuat...</p>
+      <div className={s.wrapper}>
+        <div className={s.content} style={{ textAlign: 'center' }}>
+          <div className={s.spinner} style={{ margin: '0 auto' }} />
+        </div>
+      </div>
+    );
+  }
+
+  // Not active
+  if (!active) {
+    return (
+      <div className={s.wrapper}>
+        <div className={s.content}>
+          <div className={s.header}>
+            <Image src="/landing/logo.png" alt="Logo SMAN 15" width={64} height={64} className={s.logo} />
+            <h1 className={s.pageTitle}>Pengumuman Kelulusan</h1>
+            <p className={s.pageSubtitle}>Pengumuman kelulusan belum dibuka oleh pihak sekolah.</p>
+          </div>
+          <div className={s.footerLink}>
+            <Link href="/">← Kembali ke Beranda</Link>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="min-h-[80vh] py-6 sm:py-10">
-        <div className="mx-auto px-4 max-w-xl">
+    <div className={s.wrapper}>
+      <div className={s.content}>
+        {/* Header */}
+        <div className={s.header}>
+          <Image src="/landing/logo.png" alt="Logo SMAN 15" width={64} height={64} className={s.logo} />
+          <div className={s.schoolName}>SMA Negeri 15 Makassar</div>
+          <h1 className={s.pageTitle}>Pengumuman Kelulusan</h1>
+          <p className={s.pageSubtitle}>
+            {result ? 'Berikut adalah hasil kelulusan Anda' : 'Masukkan NISN dan NIS untuk melihat status kelulusan'}
+          </p>
+        </div>
 
-          {/* ─── Page Title ─── */}
-          <div className="mb-8 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-4">
-              <Award className="w-7 h-7 text-primary" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-              Pengumuman Kelulusan
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
-              {isVerified
-                ? 'Berikut adalah hasil kelulusan Anda'
-                : 'Silakan verifikasi identitas untuk melihat status kelulusan'}
-            </p>
-          </div>
-
-          {/* ═══════════════════ VERIFICATION FORM ═══════════════════ */}
-          {!isVerified && (
-            <div className="animate-fadeIn">
-              <Card className="overflow-hidden">
-                {/* Header strip */}
-                <div className="h-1.5 w-full bg-gradient-to-r from-primary via-brand-secondary to-primary" />
-
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10">
-                      <ShieldCheck className="w-[18px] h-[18px] text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold text-foreground text-[15px]">
-                        Verifikasi Identitas
-                      </h2>
-                      <p className="text-xs text-muted-foreground leading-snug">
-                        Masukkan data berikut sesuai yang terdaftar
-                      </p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleVerify} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">
-                        NISN <span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        type="text"
-                        value={nisn}
-                        onChange={(e) => { setNisn(e.target.value); setVerifyError(''); }}
-                        placeholder="Masukkan 10 digit NISN"
-                        autoFocus
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">
-                        NIS{' '}
-                        {requiresNis
-                          ? <span className="text-destructive">*</span>
-                          : <span className="text-muted-foreground text-xs font-normal">(opsional)</span>
-                        }
-                      </label>
-                      <Input
-                        type="text"
-                        value={nis}
-                        onChange={(e) => { setNis(e.target.value); setVerifyError(''); }}
-                        placeholder={requiresNis ? 'Masukkan NIS Anda' : 'Kosongkan jika belum memiliki NIS'}
-                      />
-                      {!requiresNis && (
-                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
-                          Data NIS Anda belum terdaftar di sistem, kolom ini dapat dikosongkan.
-                        </p>
-                      )}
-                    </div>
-
-                    {verifyError && (
-                      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-destructive/8 border border-destructive/20">
-                        <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <p className="text-[13px] text-destructive leading-snug">{verifyError}</p>
-                      </div>
-                    )}
-
-                    <Button
-                      type="submit"
-                      disabled={isVerifying}
-                      isLoading={isVerifying}
-                      loadingText="Memverifikasi..."
-                      className="w-full"
-                    >
-                      Lihat Pengumuman
-                    </Button>
-                  </form>
+        {/* ═══ COUNTDOWN ═══ */}
+        {!countdownDone && countdown && !result && (
+          <div className={`${s.card} ${s.fadeIn}`}>
+            <div className={s.cardAccent} />
+            <div className={s.cardBody}>
+              <h2 className={s.countdownTitle}>Pengumuman Akan Dibuka Dalam</h2>
+              <div className={s.countdownGrid}>
+                <div className={s.countdownItem}>
+                  <span className={s.countdownNumber}>{String(countdown.days).padStart(2, '0')}</span>
+                  <span className={s.countdownLabel}>Hari</span>
                 </div>
-              </Card>
-            </div>
-          )}
-
-          {/* ═══════════════════ GRADUATION RESULT ═══════════════════ */}
-          {isVerified && (
-            <div
-              ref={resultRef}
-              className={`space-y-5 transition-all duration-500 ease-out ${showResult ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-            >
-              {/* ─── STATUS: LULUS ─── */}
-              {graduationStatus?.status === 'lulus' && (
-                <>
-                  <Card className="relative overflow-hidden">
-                    {/* Gradient accent top */}
-                    <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-500" />
-
-                    {/* Subtle radial glow */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/[0.04] dark:bg-emerald-400/[0.06] rounded-full blur-3xl pointer-events-none" />
-
-                    <div className="relative px-6 pt-10 pb-8 flex flex-col items-center text-center">
-                      <div className="w-20 h-20 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mb-5 ring-4 ring-emerald-100 dark:ring-emerald-500/20">
-                        <GraduationCapIcon className="w-11 h-11 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-
-                      <p className="text-xs font-semibold tracking-widest uppercase text-emerald-600 dark:text-emerald-400 mb-1.5">
-                        Selamat
-                      </p>
-                      <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-emerald-700 dark:text-emerald-300">
-                        Anda Dinyatakan Lulus
-                      </h2>
-
-                      {graduationStatus.class && (
-                        <p className="text-sm text-muted-foreground mt-3">
-                          Kelas <span className="font-semibold text-foreground">{graduationStatus.class}</span>
-                        </p>
-                      )}
-
-                      {graduationStatus.decided_at && (
-                        <p className="text-xs text-muted-foreground mt-1.5">
-                          {new Date(graduationStatus.decided_at).toLocaleDateString('id-ID', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </p>
-                      )}
-
-                      {graduationStatus.notes && (
-                        <div className="mt-5 w-full p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-500/[0.06] border border-emerald-200/60 dark:border-emerald-500/15 text-left">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600/70 dark:text-emerald-400/70 mb-1">Catatan</p>
-                          <p className="text-sm text-foreground leading-relaxed">{graduationStatus.notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* Pickup message from admin */}
-                  {graduationStatus.pickup_message && (
-                    <Card className="relative overflow-hidden">
-                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-primary to-sky-400" />
-                      <div className="p-5 flex gap-3.5">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center">
-                            <MapPin className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                          </div>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-semibold text-foreground mb-1.5">
-                            Informasi Pengambilan SKL
-                          </p>
-                          <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                            {graduationStatus.pickup_message}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </>
-              )}
-
-              {/* ─── STATUS: TIDAK LULUS ─── */}
-              {graduationStatus?.status === 'tidak_lulus' && (
-                <Card className="relative overflow-hidden">
-                  <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-red-400 via-rose-500 to-red-400" />
-
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-500/[0.03] dark:bg-red-400/[0.05] rounded-full blur-3xl pointer-events-none" />
-
-                  <div className="relative px-6 pt-10 pb-8 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center mb-5 ring-4 ring-red-100 dark:ring-red-500/20">
-                      <SadFaceIcon className="w-11 h-11 text-red-500 dark:text-red-400" />
-                    </div>
-
-                    <p className="text-xs font-semibold tracking-widest uppercase text-red-500 dark:text-red-400 mb-1.5">
-                      Pengumuman
-                    </p>
-                    <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-red-600 dark:text-red-400">
-                      Tidak Lulus
-                    </h2>
-
-                    {graduationStatus.class && (
-                      <p className="text-sm text-muted-foreground mt-3">
-                        Kelas <span className="font-semibold text-foreground">{graduationStatus.class}</span>
-                      </p>
-                    )}
-
-                    {graduationStatus.decided_at && (
-                      <p className="text-xs text-muted-foreground mt-1.5">
-                        {new Date(graduationStatus.decided_at).toLocaleDateString('id-ID', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </p>
-                    )}
-
-                    {graduationStatus.notes && (
-                      <div className="mt-5 w-full p-3.5 rounded-xl bg-red-50/60 dark:bg-red-500/[0.06] border border-red-200/60 dark:border-red-500/15 text-left">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-red-500/70 dark:text-red-400/70 mb-1">Catatan</p>
-                        <p className="text-sm text-foreground leading-relaxed">{graduationStatus.notes}</p>
-                      </div>
-                    )}
-
-                    <p className="text-[13px] text-muted-foreground mt-5 max-w-xs leading-relaxed">
-                      Silakan hubungi pihak sekolah untuk informasi lebih lanjut mengenai langkah selanjutnya.
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {/* ─── STATUS: PENDING ─── */}
-              {(!graduationStatus || graduationStatus.status === 'pending') && (
-                <Card className="relative overflow-hidden">
-                  <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300" />
-
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-amber-400/[0.04] dark:bg-amber-400/[0.06] rounded-full blur-3xl pointer-events-none" />
-
-                  <div className="relative px-6 pt-10 pb-8 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mb-5 ring-4 ring-amber-100 dark:ring-amber-500/20">
-                      <HourglassIcon className="w-11 h-11 text-amber-500 dark:text-amber-400" />
-                    </div>
-
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 mb-3">
-                      <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">Menunggu</span>
-                    </div>
-
-                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-amber-700 dark:text-amber-300">
-                      Belum Diumumkan
-                    </h2>
-
-                    <p className="text-sm text-muted-foreground mt-3 max-w-sm leading-relaxed">
-                      {graduationStatus?.message ||
-                        'Status kelulusan Anda belum diumumkan oleh pihak sekolah. Silakan periksa kembali di lain waktu.'}
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {/* Back button */}
-              <div className="flex justify-center pt-1">
-                <button
-                  onClick={handleBack}
-                  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 group"
-                >
-                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-                  Kembali ke verifikasi
-                </button>
+                <div className={s.countdownItem}>
+                  <span className={s.countdownNumber}>{String(countdown.hours).padStart(2, '0')}</span>
+                  <span className={s.countdownLabel}>Jam</span>
+                </div>
+                <div className={s.countdownItem}>
+                  <span className={s.countdownNumber}>{String(countdown.minutes).padStart(2, '0')}</span>
+                  <span className={s.countdownLabel}>Menit</span>
+                </div>
+                <div className={s.countdownItem}>
+                  <span className={s.countdownNumber}>{String(countdown.seconds).padStart(2, '0')}</span>
+                  <span className={s.countdownLabel}>Detik</span>
+                </div>
               </div>
+              <p className={s.countdownNote}>
+                Silakan kembali pada waktu yang telah ditentukan untuk melihat status kelulusan Anda.
+              </p>
             </div>
-          )}
-
-          {/* ─── Footer Info ─── */}
-          <div className="mt-8 flex gap-3 p-4 rounded-xl bg-muted/50 border border-border/60">
-            <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <p className="text-[12px] text-muted-foreground leading-relaxed">
-              Pengumuman kelulusan ini bersifat resmi dari SMA Negeri 15 Makassar. Surat Keterangan Lulus (SKL)
-              hanya sah setelah ditandatangani dan dicap oleh pihak sekolah.
-            </p>
           </div>
+        )}
 
+        {/* ═══ FORM ═══ */}
+        {countdownDone && !result && (
+          <div className={`${s.card} ${s.fadeIn}`}>
+            <div className={s.cardAccent} />
+            <div className={s.cardBody}>
+              <div className={s.formTitle}>
+                <div className={s.formIcon}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </div>
+                <div>
+                  <div>Verifikasi Identitas</div>
+                  <div style={{ fontSize: '12px', fontWeight: 400, color: '#6B6789', marginTop: '2px' }}>
+                    Masukkan data sesuai yang terdaftar
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleVerify}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>
+                    NISN <span className={s.required}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className={s.input}
+                    value={nisn}
+                    onChange={(e) => { setNisn(e.target.value); setError(''); }}
+                    placeholder="Masukkan 10 digit NISN"
+                    autoFocus
+                  />
+                </div>
+
+                <div className={s.formGroup}>
+                  <label className={s.label}>
+                    NIS <span className={s.optional}>(opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    className={s.input}
+                    value={nis}
+                    onChange={(e) => { setNis(e.target.value); setError(''); }}
+                    placeholder="Masukkan NIS Anda"
+                  />
+                </div>
+
+                {error && (
+                  <div className={s.errorBox}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+                    </svg>
+                    <span className={s.errorText}>{error}</span>
+                  </div>
+                )}
+
+                <button type="submit" className={s.submitBtn} disabled={verifying}>
+                  {verifying ? <><div className={s.spinner} /> Memverifikasi...</> : 'Lihat Pengumuman'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ RESULT ═══ */}
+        {result && (
+          <div className={`${s.resultReveal} ${showResult ? s.resultRevealVisible : ''}`}>
+            {/* ─── LULUS ─── */}
+            {result.status === 'lulus' && (
+              <div className={s.resultCard}>
+                <div className={s.resultAccentLulus} />
+                <div className={s.resultBody}>
+                  <div className={`${s.resultIconWrapper} ${s.resultIconLulus}`}>
+                    <GraduationCapIcon className="" style={{ color: '#059669' }} />
+                  </div>
+                  <p className={`${s.resultLabel} ${s.resultLabelLulus}`}>Selamat</p>
+                  <h2 className={s.studentName}>{result.student_name}</h2>
+                  <p className={`${s.resultStatus} ${s.resultStatusLulus}`}>Anda Dinyatakan Lulus</p>
+                  {result.class && (
+                    <p className={s.resultClass}>Kelas <strong>{result.class}</strong></p>
+                  )}
+                  {result.decided_at && (
+                    <p className={s.resultDate}>
+                      {new Date(result.decided_at).toLocaleDateString('id-ID', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                      })}
+                    </p>
+                  )}
+                  {result.notes && (
+                    <div className={`${s.resultNotes} ${s.resultNotesLulus}`}>
+                      <p className={s.notesLabel} style={{ color: '#059669' }}>Catatan</p>
+                      <p className={s.notesText}>{result.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Download button */}
+                  <button className={s.downloadBtn} onClick={handleDownload} disabled={downloading}>
+                    {downloading ? (
+                      <><div className={s.spinner} /> Mengunduh...</>
+                    ) : (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                        </svg>
+                        Unduh Bukti Kelulusan
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Pickup info */}
+            {result.status === 'lulus' && result.pickup_message && (
+              <div className={s.pickupCard}>
+                <p className={s.pickupTitle}>📍 Informasi Pengambilan SKL</p>
+                <p className={s.pickupText}>{result.pickup_message}</p>
+              </div>
+            )}
+
+            {/* ─── TIDAK LULUS ─── */}
+            {result.status === 'tidak_lulus' && (
+              <div className={s.resultCard}>
+                <div className={s.resultAccentTidak} />
+                <div className={s.resultBody}>
+                  <div className={`${s.resultIconWrapper} ${s.resultIconTidak}`}>
+                    <SadFaceIcon className="" style={{ color: '#DC2626' }} />
+                  </div>
+                  <p className={`${s.resultLabel} ${s.resultLabelTidak}`}>Pengumuman</p>
+                  <h2 className={s.studentName}>{result.student_name}</h2>
+                  <p className={`${s.resultStatus} ${s.resultStatusTidak}`}>Tidak Lulus</p>
+                  {result.class && (
+                    <p className={s.resultClass}>Kelas <strong>{result.class}</strong></p>
+                  )}
+                  {result.notes && (
+                    <div className={`${s.resultNotes} ${s.resultNotesTidak}`}>
+                      <p className={s.notesLabel} style={{ color: '#DC2626' }}>Catatan</p>
+                      <p className={s.notesText}>{result.notes}</p>
+                    </div>
+                  )}
+                  <p style={{ fontSize: '13px', color: '#6B6789', marginTop: '16px', lineHeight: '1.5' }}>
+                    Silakan hubungi pihak sekolah untuk informasi lebih lanjut.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ─── PENDING ─── */}
+            {result.status === 'pending' && (
+              <div className={s.resultCard}>
+                <div className={s.resultAccentPending} />
+                <div className={s.resultBody}>
+                  <div className={`${s.resultIconWrapper} ${s.resultIconPending}`}>
+                    <HourglassIcon className="" style={{ color: '#D97706' }} />
+                  </div>
+                  <p className={`${s.resultLabel} ${s.resultLabelPending}`}>Menunggu</p>
+                  <h2 className={s.studentName}>{result.student_name}</h2>
+                  <p className={`${s.resultStatus} ${s.resultStatusPending}`}>Belum Diumumkan</p>
+                  <p style={{ fontSize: '14px', color: '#6B6789', marginTop: '12px', lineHeight: '1.6' }}>
+                    {result.message || 'Status kelulusan Anda belum diumumkan. Silakan periksa kembali nanti.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Back button */}
+            <div style={{ textAlign: 'center' }}>
+              <button className={s.backBtn} onClick={handleBack}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Kembali ke verifikasi
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className={s.footerLink}>
+          <Link href="/">← Kembali ke Beranda</Link>
         </div>
       </div>
-    </DashboardLayout>
+
+      {/* ═══ HIDDEN PDF TEMPLATE ═══ */}
+      {result && result.status === 'lulus' && (
+        <div ref={pdfRef} className={s.pdfTemplate}>
+          <div className={s.pdfHeader}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/landing/logo.png" alt="Logo" className={s.pdfLogo} />
+            <div className={s.pdfSchoolName}>SMA NEGERI 15 MAKASSAR</div>
+            <div className={s.pdfDocTitle}>BUKTI PENGUMUMAN KELULUSAN</div>
+          </div>
+          <div className={s.pdfBody}>
+            <div className={s.pdfRow}>
+              <div className={s.pdfLabel}>Nama Lengkap</div>
+              <div className={s.pdfValue}>: {result.student_name}</div>
+            </div>
+            {result.nisn && (
+              <div className={s.pdfRow}>
+                <div className={s.pdfLabel}>NISN</div>
+                <div className={s.pdfValue}>: {result.nisn}</div>
+              </div>
+            )}
+            {result.class && (
+              <div className={s.pdfRow}>
+                <div className={s.pdfLabel}>Kelas</div>
+                <div className={s.pdfValue}>: {result.class}</div>
+              </div>
+            )}
+            <div className={s.pdfRow}>
+              <div className={s.pdfLabel}>Status Kelulusan</div>
+              <div className={s.pdfValue}>: <strong>LULUS</strong></div>
+            </div>
+            {result.decided_at && (
+              <div className={s.pdfRow}>
+                <div className={s.pdfLabel}>Tanggal Keputusan</div>
+                <div className={s.pdfValue}>: {new Date(result.decided_at).toLocaleDateString('id-ID', {
+                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                })}</div>
+              </div>
+            )}
+            {result.notes && (
+              <div className={s.pdfRow}>
+                <div className={s.pdfLabel}>Catatan</div>
+                <div className={s.pdfValue}>: {result.notes}</div>
+              </div>
+            )}
+            <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <div className={`${s.pdfStatusBadge} ${s.pdfStatusLulus}`}>✓ DINYATAKAN LULUS</div>
+            </div>
+            {result.pickup_message && (
+              <div style={{ marginTop: '20px', padding: '12px', background: '#f0f9ff', borderRadius: '8px', fontSize: '13px', lineHeight: '1.6' }}>
+                <strong>Informasi Pengambilan SKL:</strong><br />{result.pickup_message}
+              </div>
+            )}
+          </div>
+          <div className={s.pdfFooter}>
+            Dokumen ini diunduh dari sistem pengumuman kelulusan SMA Negeri 15 Makassar — {new Date().toLocaleDateString('id-ID', {
+              year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+            })}
+            <br />Surat Keterangan Lulus (SKL) resmi hanya sah setelah ditandatangani dan dicap oleh pihak sekolah.
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -72,8 +72,14 @@ export default function AdminGraduationPage() {
   const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
   const [isBulkSaving, setIsBulkSaving] = useState(false);
 
+  // Announcement settings
+  const [announcementActive, setAnnouncementActive] = useState(false);
+  const [announcementDatetime, setAnnouncementDatetime] = useState('');
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+
   useEffect(() => {
     fetchClasses();
+    fetchAnnouncementSettings();
   }, []);
 
   useEffect(() => {
@@ -92,6 +98,38 @@ export default function AdminGraduationPage() {
       toast.error('Gagal memuat data kelas');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAnnouncementSettings = async () => {
+    try {
+      const response = await graduationAPI.getAnnouncementSettings();
+      const data = response.data?.data;
+      setAnnouncementActive(data?.active ?? false);
+      if (data?.datetime) {
+        // Convert UTC to local datetime-local format
+        const local = new Date(data.datetime);
+        const offset = local.getTimezoneOffset() * 60000;
+        const localISO = new Date(local.getTime() - offset).toISOString().slice(0, 16);
+        setAnnouncementDatetime(localISO);
+      }
+    } catch {
+      // Settings may not exist yet
+    }
+  };
+
+  const saveAnnouncementSettings = async () => {
+    try {
+      setIsSavingAnnouncement(true);
+      await graduationAPI.updateAnnouncementSettings({
+        active: announcementActive,
+        datetime: announcementDatetime ? new Date(announcementDatetime).toISOString() : null,
+      });
+      toast.success('Pengaturan pengumuman berhasil disimpan');
+    } catch {
+      toast.error('Gagal menyimpan pengaturan pengumuman');
+    } finally {
+      setIsSavingAnnouncement(false);
     }
   };
 
@@ -224,6 +262,78 @@ export default function AdminGraduationPage() {
             Tentukan status kelulusan dan atur pesan informasi pengambilan SKL per kelas
           </p>
         </div>
+
+        {/* Announcement Settings */}
+        <Card className="p-4 border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-900 dark:text-white text-sm">Pengaturan Pengumuman Publik</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Atur countdown dan visibilitas halaman pengumuman kelulusan</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Status</label>
+              <label className="inline-flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={announcementActive}
+                    onChange={(e) => setAnnouncementActive(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-checked:bg-teal-500 rounded-full transition-colors" />
+                  <div className="absolute left-[2px] top-[2px] bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-full shadow" />
+                </div>
+                <span className={`text-sm font-medium ${announcementActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500'}`}>
+                  {announcementActive ? 'Aktif' : 'Nonaktif'}
+                </span>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Waktu Pengumuman
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={announcementDatetime}
+                onChange={(e) => setAnnouncementDatetime(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Button
+                onClick={saveAnnouncementSettings}
+                disabled={isSavingAnnouncement}
+                isLoading={isSavingAnnouncement}
+                loadingText="Menyimpan..."
+                className="w-full"
+              >
+                <Save className="w-4 h-4 mr-1" /> Simpan Pengaturan
+              </Button>
+            </div>
+          </div>
+
+          {announcementActive && (
+            <div className="mt-3 p-2.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/60 dark:border-teal-800/40">
+              <p className="text-xs text-teal-700 dark:text-teal-300">
+                ✓ Halaman pengumuman publik aktif di{' '}
+                <a href="/pengumuman-kelulusan" target="_blank" className="underline font-medium">/pengumuman-kelulusan</a>
+                {announcementDatetime && (
+                  <> — Countdown hingga {new Date(announcementDatetime).toLocaleString('id-ID', {
+                    dateStyle: 'long', timeStyle: 'short',
+                  })}</>
+                )}
+              </p>
+            </div>
+          )}
+        </Card>
 
         {/* Class Selection */}
         <Card className="p-4">

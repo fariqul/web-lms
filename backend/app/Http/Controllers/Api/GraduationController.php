@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StudentGraduation;
 use App\Models\User;
 use App\Models\ClassRoom;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -308,5 +309,174 @@ class GraduationController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to send graduation notification: ' . $e->getMessage());
         }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // PUBLIC ENDPOINTS (no auth required)
+    // ═══════════════════════════════════════════════════
+
+    /**
+     * Get graduation announcement settings (public)
+     * Returns countdown datetime and active status
+     */
+    public function publicGetSettings()
+    {
+        $active   = SystemSetting::getGraduationAnnouncementActive();
+        $datetime = SystemSetting::getGraduationAnnouncementDatetime();
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'active'   => $active,
+                'datetime' => $datetime, // UTC ISO 8601
+            ],
+        ]);
+    }
+
+    /**
+     * Check graduation status (public, no auth)
+     * Looks up student by NISN + NIS directly from DB
+     */
+    public function publicCheckGraduation(Request $request)
+    {
+        // Check if announcements are active
+        $active = SystemSetting::getGraduationAnnouncementActive();
+        if (!$active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengumuman kelulusan belum dibuka.',
+            ], 403);
+        }
+
+        // Check if countdown has passed (server-side UTC check)
+        $datetime = SystemSetting::getGraduationAnnouncementDatetime();
+        if ($datetime && now()->lt(\Carbon\Carbon::parse($datetime))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengumuman kelulusan belum waktunya.',
+            ], 403);
+        }
+
+        // Validate input
+        $validated = $request->validate([
+            'nisn' => 'required|string|min:4|max:20',
+            'nis'  => 'nullable|string|max:30',
+        ], [
+            'nisn.required' => 'NISN wajib diisi',
+        ]);
+
+        // Look up student by NISN
+        $query = User::where('role', 'siswa')
+            ->where('nisn', $validated['nisn']);
+
+        // If NIS provided, also match
+        if (!empty($validated['nis'])) {
+            $query->where('nis', $validated['nis']);
+        }
+
+        $student = $query->first();
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data siswa tidak ditemukan. Periksa kembali NISN dan NIS Anda.',
+            ], 404);
+        }
+
+        // If NIS is required but not provided
+        if (!empty($student->nis) && empty($validated['nis'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'NIS wajib diisi untuk verifikasi.',
+                'requires_nis' => true,
+            ], 422);
+        }
+
+        // Get graduation record
+        $graduation = StudentGraduation::where('student_id', $student->id)
+            ->where('class_id', $student->class_id)
+            ->with(['class', 'decidedBy'])
+            ->first();
+
+        if (!$graduation) {
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'student_name' => $student->name,
+                    'status'       => 'pending',
+                    'message'      => 'Status kelulusan belum diumumkan',
+                ],
+            ]);
+        }
+
+        $isLulus = $graduation->status === StudentGraduation::STATUS_LULUS;
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'student_name'   => $student->name,
+                'nisn'           => $student->nisn,
+                'status'         => $graduation->status,
+                'status_label'   => StudentGraduation::getStatusLabel($graduation->status),
+                'class'          => $graduation->class->name ?? null,
+                'decided_at'     => $graduation->decided_at,
+                'notes'          => $graduation->notes,
+                'pickup_message' => $isLulus ? ($graduation->class->skl_pickup_message ?? null) : null,
+            ],
+        ]);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // ADMIN: Announcement Settings
+    // ═══════════════════════════════════════════════════
+
+    /**
+     * Get announcement settings (admin)
+     */
+    public function getAnnouncementSettings(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'active'   => SystemSetting::getGraduationAnnouncementActive(),
+                'datetime' => SystemSetting::getGraduationAnnouncementDatetime(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update announcement settings (admin)
+     */
+    public function updateAnnouncementSettings(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'active'   => 'required|boolean',
+            'datetime' => 'nullable|date',
+        ]);
+
+        SystemSetting::setGraduationAnnouncementActive($validated['active']);
+
+        if (isset($validated['datetime'])) {
+            // Convert to UTC for storage
+            $utc = \Carbon\Carbon::parse($validated['datetime'])->utc()->toISOString();
+            SystemSetting::setGraduationAnnouncementDatetime($utc);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengaturan pengumuman berhasil disimpan',
+            'data'    => [
+                'active'   => SystemSetting::getGraduationAnnouncementActive(),
+                'datetime' => SystemSetting::getGraduationAnnouncementDatetime(),
+            ],
+        ]);
     }
 }
