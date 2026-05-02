@@ -4,12 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { WifiOff, Wifi, X } from 'lucide-react';
 
 export function OfflineBanner() {
-  const [isOnline, setIsOnline] = useState(() => {
-    if (typeof navigator === 'undefined') return true;
-    return navigator.onLine;
-  });
+  // Always start as online to prevent SSR hydration mismatch / false flash
+  const [isOnline, setIsOnline] = useState(true);
   const [showReconnected, setShowReconnected] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const handleOnline = useCallback(() => {
     setIsOnline(true);
@@ -26,13 +25,23 @@ export function OfflineBanner() {
   }, []);
 
   useEffect(() => {
+    // Delay the initial check to avoid false positives on slow page loads
+    const initTimer = setTimeout(() => {
+      setIsOnline(navigator.onLine);
+      setMounted(true);
+    }, 1500);
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
+      clearTimeout(initTimer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, [handleOnline, handleOffline]);
+
+  // Don't show anything until after the delayed mount check
+  if (!mounted && isOnline) return null;
 
   // Offline banner
   if (!isOnline && !dismissed) {
