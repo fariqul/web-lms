@@ -18,6 +18,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://www.libelslms.my.id/sitemap.xml',
+    sitemap: 'https://libelslms.my.id/sitemap.xml',
   };
 }
