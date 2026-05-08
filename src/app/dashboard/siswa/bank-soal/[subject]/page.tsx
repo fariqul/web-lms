@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
@@ -27,8 +27,9 @@ import { bankQuestionAPI } from '@/services/api';
 interface Question {
   id: number;
   question: string;
+  type: 'pilihan_ganda' | 'essay';
   options: string[];
-  correct_answer: string;
+  correct_answer: string | null;
   explanation: string;
   difficulty: string;
 }
@@ -40,10 +41,10 @@ interface Answer {
   isBookmarked: boolean;
 }
 
-export default function PracticePage({ params }: { params: Promise<{ subject: string }> }) {
+export default function PracticePage({ params }: { params: { subject: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { subject } = use(params);
+  const { subject } = params;
   const mode = searchParams.get('mode') || 'belajar';
   const grade = searchParams.get('grade') || '10';
   
@@ -52,7 +53,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(mode === 'tryout' ? 600 : 0); // 10 minutes for tryout
+  const [timeLeft, setTimeLeft] = useState(mode === 'tryout' ? 5400 : 0); // 90 minutes for tryout
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startTime] = useState(() => Date.now());
@@ -61,6 +62,12 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
   // Get subject name from URL (decode it since it's URL encoded)
   const decodedSubject = decodeURIComponent(subject);
   const subjectName = decodedSubject;
+
+  const normalizeAnswer = (value: string) => value.trim().toLowerCase();
+  const evaluateAnswer = (answer: string, correct: string | null) => {
+    if (!correct) return null;
+    return normalizeAnswer(answer) === normalizeAnswer(correct);
+  };
 
   // Fetch questions from API
   useEffect(() => {
@@ -72,7 +79,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
         const response = await bankQuestionAPI.getPracticeQuestions({
           subject: decodedSubject,
           grade_level: grade,
-          limit: mode === 'tryout' ? 20 : 10
+          limit: mode === 'tryout' ? 45 : 10
         });
         
         const data = response.data?.data || [];
@@ -86,18 +93,28 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
           const mappedQuestions: Question[] = data.map((q: {
             id: number;
             question: string;
-            options: string[] | string;
-            correct_answer: string;
-            explanation: string;
-            difficulty: string;
-          }) => ({
-            id: q.id,
-            question: q.question,
-            options: Array.isArray(q.options) ? q.options : JSON.parse(q.options),
-            correct_answer: q.correct_answer,
-            explanation: q.explanation || 'Tidak ada penjelasan.',
-            difficulty: q.difficulty || 'sedang'
-          }));
+            type?: 'pilihan_ganda' | 'essay';
+            options?: string[] | string | null;
+            correct_answer?: string | null;
+            explanation?: string | null;
+            difficulty?: string | null;
+          }) => {
+            const parsedOptions = Array.isArray(q.options)
+              ? q.options
+              : q.options
+                ? JSON.parse(q.options)
+                : [];
+
+            return {
+              id: q.id,
+              question: q.question,
+              type: q.type || 'pilihan_ganda',
+              options: parsedOptions,
+              correct_answer: q.correct_answer ?? null,
+              explanation: q.explanation || 'Tidak ada penjelasan.',
+              difficulty: q.difficulty || 'sedang'
+            };
+          });
           
           setQuestions(mappedQuestions);
           setAnswers(mappedQuestions.map(q => ({
@@ -138,23 +155,50 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = answers[currentIndex];
+  const explanationState = currentAnswer?.isCorrect === true
+    ? 'correct'
+    : currentAnswer?.isCorrect === false
+      ? 'incorrect'
+      : 'neutral';
 
   const handleSelectAnswer = (answer: string) => {
+    if (!currentQuestion || currentQuestion.type !== 'pilihan_ganda') return;
+    const isCorrect = currentQuestion.correct_answer
+      ? answer === currentQuestion.correct_answer
+      : null;
+
     if (mode === 'tryout' && !isFinished) {
       // In tryout mode, just save answer without showing correct/incorrect
-      setAnswers(prev => prev.map((a, i) => 
-        i === currentIndex 
-          ? { ...a, selectedAnswer: answer, isCorrect: answer === currentQuestion.correct_answer }
-          : a
-      ));
-    } else if (mode === 'belajar' && currentAnswer?.selectedAnswer === null) {
-      // In belajar mode, show result immediately
-      const isCorrect = answer === currentQuestion.correct_answer;
       setAnswers(prev => prev.map((a, i) => 
         i === currentIndex 
           ? { ...a, selectedAnswer: answer, isCorrect }
           : a
       ));
+    } else if (mode === 'belajar' && currentAnswer?.selectedAnswer === null) {
+      // In belajar mode, show result immediately
+      setAnswers(prev => prev.map((a, i) => 
+        i === currentIndex 
+          ? { ...a, selectedAnswer: answer, isCorrect }
+          : a
+      ));
+      setShowExplanation(true);
+    }
+  };
+
+  const handleEssayAnswerChange = (value: string) => {
+    if (!currentQuestion || currentQuestion.type !== 'essay') return;
+    const trimmed = value.trim();
+    const isCorrect = evaluateAnswer(value, currentQuestion.correct_answer);
+
+    setAnswers(prev => prev.map((a, i) => 
+      i === currentIndex
+        ? { ...a, selectedAnswer: trimmed ? value : null, isCorrect }
+        : a
+    ));
+  };
+
+  const handleEssaySubmit = () => {
+    if (mode === 'belajar') {
       setShowExplanation(true);
     }
   };
@@ -182,8 +226,9 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     if (!isFinished || resultSaved || questions.length === 0) return;
     
     const savePracticeResult = async () => {
+      const gradable = answers.filter(a => a.isCorrect !== null).length;
       const correct = answers.filter(a => a.isCorrect === true).length;
-      const score = Math.round((correct / questions.length) * 100);
+      const score = gradable === 0 ? 0 : Math.round((correct / gradable) * 100);
       const timeSpent = Math.round((Date.now() - startTime) / 1000);
       
       try {
@@ -224,7 +269,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     setShowExplanation(false);
     setIsFinished(false);
     setResultSaved(false);
-    setTimeLeft(mode === 'tryout' ? 600 : 0);
+    setTimeLeft(mode === 'tryout' ? 5400 : 0);
   };
 
   const formatTime = (seconds: number) => {
@@ -234,8 +279,10 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
   };
 
   const getScore = () => {
+    const gradable = answers.filter(a => a.isCorrect !== null).length;
+    if (gradable === 0) return 0;
     const correct = answers.filter(a => a.isCorrect === true).length;
-    return Math.round((correct / questions.length) * 100);
+    return Math.round((correct / gradable) * 100);
   };
 
   const getOptionStyle = (option: string) => {
@@ -302,6 +349,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
     const score = getScore();
     const correct = answers.filter(a => a.isCorrect === true).length;
     const incorrect = answers.filter(a => a.isCorrect === false).length;
+    const ungraded = answers.filter(a => a.selectedAnswer !== null && a.isCorrect === null).length;
     const unanswered = answers.filter(a => a.selectedAnswer === null).length;
 
     return (
@@ -324,7 +372,7 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
             <div className="text-5xl font-bold text-slate-900 dark:text-white mb-2">{score}</div>
             <p className="text-slate-600 dark:text-slate-400 mb-8">Skor Anda</p>
 
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
                 <CheckCircle className="w-6 h-6 text-green-500 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">{correct}</div>
@@ -334,6 +382,11 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
                 <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-red-600 dark:text-red-400">{incorrect}</div>
                 <div className="text-sm text-red-600 dark:text-red-400">Salah</div>
+              </div>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{ungraded}</div>
+                <div className="text-sm text-blue-600 dark:text-blue-400">Belum Dinilai</div>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
                 <AlertCircle className="w-6 h-6 text-slate-600 dark:text-slate-400 mx-auto mb-2" />
@@ -502,47 +555,91 @@ export default function PracticePage({ params }: { params: Promise<{ subject: st
               {currentQuestion.question}
             </h3>
 
-            <div className="space-y-3">
-              {currentQuestion.options.map((option, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectAnswer(option)}
-                  disabled={mode === 'belajar' && currentAnswer?.selectedAnswer !== null}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${getOptionStyle(option)}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-sm font-medium flex-shrink-0">
-                      {String.fromCharCode(65 + idx)}
-                    </span>
-                    <span className="flex-1">{option}</span>
-                    {(mode === 'belajar' || isFinished) && currentAnswer?.selectedAnswer && (
-                      option === currentQuestion.correct_answer ? (
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                      ) : currentAnswer.selectedAnswer === option ? (
-                        <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                      ) : null
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+            {currentQuestion.type === 'essay' ? (
+              <div className="space-y-3">
+                <textarea
+                  value={currentAnswer?.selectedAnswer || ''}
+                  onChange={(e) => handleEssayAnswerChange(e.target.value)}
+                  placeholder="Tulis jawaban Anda di sini..."
+                  rows={5}
+                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-white dark:bg-slate-900"
+                />
+                {mode === 'belajar' && (
+                  <Button
+                    variant="outline"
+                    onClick={handleEssaySubmit}
+                    disabled={!currentAnswer?.selectedAnswer}
+                  >
+                    Lihat Pembahasan
+                  </Button>
+                )}
+                {mode === 'tryout' && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Jawaban tersimpan otomatis. Pembahasan tidak ditampilkan pada mode tryout.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentQuestion.options.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSelectAnswer(option)}
+                    disabled={mode === 'belajar' && currentAnswer?.selectedAnswer !== null}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${getOptionStyle(option)}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-sm font-medium flex-shrink-0">
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span className="flex-1">{option}</span>
+                      {(mode === 'belajar' || isFinished) && currentAnswer?.selectedAnswer && (
+                        option === currentQuestion.correct_answer ? (
+                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                        ) : currentAnswer.selectedAnswer === option ? (
+                          <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                        ) : null
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Explanation for Belajar mode */}
             {mode === 'belajar' && showExplanation && currentAnswer?.selectedAnswer && (
               <div className={`mt-6 p-4 rounded-xl ${
-                currentAnswer.isCorrect ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50' : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50'
+                explanationState === 'correct'
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50'
+                  : explanationState === 'incorrect'
+                    ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50'
               }`}>
                 <div className="flex items-start gap-3">
                   <Lightbulb className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                    currentAnswer.isCorrect ? 'text-green-500' : 'text-amber-500'
+                    explanationState === 'correct'
+                      ? 'text-green-500'
+                      : explanationState === 'incorrect'
+                        ? 'text-amber-500'
+                        : 'text-blue-500'
                   }`} />
                   <div>
                     <h4 className={`font-semibold mb-1 ${
-                      currentAnswer.isCorrect ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'
+                      explanationState === 'correct'
+                        ? 'text-green-700 dark:text-green-400'
+                        : explanationState === 'incorrect'
+                          ? 'text-amber-700 dark:text-amber-400'
+                          : 'text-blue-700 dark:text-blue-400'
                     }`}>
-                      {currentAnswer.isCorrect ? 'Benar! 🎉' : 'Pembahasan'}
+                      {explanationState === 'correct' ? 'Benar! 🎉' : 'Pembahasan'}
                     </h4>
-                    <p className={currentAnswer.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
+                    <p className={
+                      explanationState === 'correct'
+                        ? 'text-green-600 dark:text-green-400'
+                        : explanationState === 'incorrect'
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                    }>
                       {currentQuestion.explanation}
                     </p>
                   </div>

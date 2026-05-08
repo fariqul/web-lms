@@ -1029,19 +1029,25 @@ export default function EditSoalPage() {
     setExportingBankSoal(true);
     try {
       const bankQuestions = questions.map(q => {
-        const isEssay = q.question_type === 'essay';
+        const isMultipleAnswer = q.question_type === 'multiple_answer';
+        const isEssay = q.question_type === 'essay' || isMultipleAnswer;
+        const optionLines = q.options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt.text || ''}`).join('\n');
+        const questionText = isMultipleAnswer && optionLines
+          ? `${q.question_text}\n\nPilihan:\n${optionLines}`
+          : q.question_text;
+
         // Convert exam question options to bank soal format (flat string array)
         const options = !isEssay
           ? q.options.map(opt => opt.text || '')
           : undefined;
         const correctOpt = q.options.find(opt => opt.is_correct);
         const correctAnswer = isEssay
-          ? (q.essay_keywords?.join(', ') || '-')
+          ? (q.question_type === 'essay' ? (q.essay_keywords?.join(', ') || '') : '')
           : (correctOpt?.text || '');
         return {
           subject: exam.subject,
           type: isEssay ? 'essay' as const : 'pilihan_ganda' as const,
-          question: q.question_text,
+          question: questionText,
           options,
           correct_answer: correctAnswer,
           explanation: '',

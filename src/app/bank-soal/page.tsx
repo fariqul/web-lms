@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button, ConfirmDialog } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { 
   HelpCircle, Plus, Search, Trash2, Edit, Copy,
-  Loader2, CheckCircle, Filter, Globe, FileText, Link
+  Loader2, CheckCircle, Filter, ChevronDown, FileSpreadsheet, FileType, ClipboardPaste
 } from 'lucide-react';
 import { classAPI, bankQuestionAPI } from '@/services/api';
 import { QuestionFormModal, QuestionFormData } from '@/components/bank-soal/QuestionFormModal';
-import { TriviaImportModal } from '@/components/bank-soal/TriviaImportModal';
-import { PdfImportModal } from '@/components/bank-soal/PdfImportModal';
-import { UrlImportModal } from '@/components/bank-soal/UrlImportModal';
+import { ImportTextModal } from '@/components/ujian/ImportTextModal';
+import { ImportExcelModal } from '@/components/ujian/ImportExcelModal';
+import { ImportWordModal } from '@/components/ujian/ImportWordModal';
+import { SUBJECT_LIST } from '@/constants/subjects';
 
 interface Question {
   id: number;
@@ -30,6 +31,17 @@ interface Question {
   created_at: string;
 }
 
+interface ImportedQuestion {
+  question_text: string;
+  question_type: 'multiple_choice' | 'multiple_answer' | 'essay';
+  points: number;
+  passage?: string | null;
+  image?: string | File | null;
+  essay_keywords?: string[] | null;
+  options: { text: string; is_correct: boolean; image?: string | File | null }[];
+  valid?: boolean;
+}
+
 export default function BankSoalPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -41,9 +53,15 @@ export default function BankSoalPage() {
   const [filterDifficulty, setFilterDifficulty] = useState('');
   const [filterGradeLevel, setFilterGradeLevel] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showPdfImportModal, setShowPdfImportModal] = useState(false);
-  const [showUrlImportModal, setShowUrlImportModal] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
+  const [showImportText, setShowImportText] = useState(false);
+  const [showImportExcel, setShowImportExcel] = useState(false);
+  const [showImportWord, setShowImportWord] = useState(false);
+  const importMenuRef = useRef<HTMLDivElement>(null);
+  const [importSubject, setImportSubject] = useState('');
+  const [importGradeLevel, setImportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
+  const [importDifficulty, setImportDifficulty] = useState<'mudah' | 'sedang' | 'sulit'>('sedang');
+  const [importClassId, setImportClassId] = useState('');
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [formData, setFormData] = useState<QuestionFormData>({
@@ -61,6 +79,24 @@ export default function BankSoalPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (filterSubject && !importSubject) {
+      setImportSubject(filterSubject);
+    }
+  }, [filterSubject, importSubject]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setShowImportMenu(false);
+      }
+    };
+    if (showImportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showImportMenu]);
 
   const fetchData = async () => {
     try {
@@ -161,6 +197,50 @@ export default function BankSoalPage() {
     }
   };
 
+  const handleBulkImport = async (importedQuestions: ImportedQuestion[]) => {
+    if (!importSubject) {
+      toast.warning('Pilih mata pelajaran untuk import');
+      return;
+    }
+
+    const validQuestions = importedQuestions.filter(q => q.valid !== false);
+    if (validQuestions.length === 0) {
+      toast.warning('Tidak ada soal valid untuk diimpor');
+      return;
+    }
+
+    try {
+      const mapped = validQuestions.map(q => {
+        const isMultipleAnswer = q.question_type === 'multiple_answer';
+        const isEssay = q.question_type === 'essay' || isMultipleAnswer;
+        const optionsText = q.options.map(opt => opt.text || '').filter(opt => opt.trim());
+        const optionLines = optionsText.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`).join('\n');
+        const questionText = isMultipleAnswer && optionLines
+          ? `${q.question_text}\n\nPilihan:\n${optionLines}`
+          : q.question_text;
+        const correctOpt = q.options.find(opt => opt.is_correct);
+
+        return {
+          subject: importSubject,
+          type: isEssay ? 'essay' as const : 'pilihan_ganda' as const,
+          question: questionText,
+          options: !isEssay ? optionsText : undefined,
+          correct_answer: isEssay ? '' : (correctOpt?.text || ''),
+          difficulty: importDifficulty,
+          grade_level: importGradeLevel,
+          class_id: importClassId ? parseInt(importClassId, 10) : undefined,
+        };
+      });
+
+      await bankQuestionAPI.bulkCreate(mapped);
+      await fetchData();
+      toast.success(`${mapped.length} soal berhasil diimpor`);
+    } catch (error) {
+      toast.error('Gagal mengimpor soal. Silakan coba lagi.');
+      throw error;
+    }
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'mudah': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
@@ -202,15 +282,37 @@ export default function BankSoalPage() {
               <p className="text-blue-100/80">Kelola koleksi soal ujian</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setShowPdfImportModal(true)} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
-                <FileText className="w-5 h-5 mr-2" />Import PDF
-              </Button>
-              <Button variant="outline" onClick={() => setShowUrlImportModal(true)} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
-                <Link className="w-5 h-5 mr-2" />Import URL
-              </Button>
-              <Button variant="outline" onClick={() => setShowImportModal(true)} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
-                <Globe className="w-5 h-5 mr-2" />Import Online
-              </Button>
+              <div className="relative" ref={importMenuRef}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowImportMenu(!showImportMenu)}
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white"
+                >
+                  <ChevronDown className="w-5 h-5 mr-2" />Import Soal
+                </Button>
+                {showImportMenu && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg z-10 overflow-hidden">
+                    <button
+                      onClick={() => { setShowImportWord(true); setShowImportMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <FileType className="w-4 h-4 text-blue-500" /> Import dari Word
+                    </button>
+                    <button
+                      onClick={() => { setShowImportExcel(true); setShowImportMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-green-500" /> Import dari Excel
+                    </button>
+                    <button
+                      onClick={() => { setShowImportText(true); setShowImportMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <ClipboardPaste className="w-4 h-4 text-amber-500" /> Import dari Teks
+                    </button>
+                  </div>
+                )}
+              </div>
               <Button onClick={() => { resetForm(); setShowAddModal(true); }} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
                 <Plus className="w-5 h-5 mr-2" />Tambah Soal
               </Button>
@@ -245,6 +347,66 @@ export default function BankSoalPage() {
             </div>
           </Card>
         </div>
+
+        {/* Import Settings */}
+        <Card className="p-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Mata Pelajaran (Import)</label>
+              <select
+                value={importSubject}
+                onChange={(e) => setImportSubject(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="">Pilih Mata Pelajaran</option>
+                {SUBJECT_LIST.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full lg:w-48">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Tingkat Kelas (Import)</label>
+              <select
+                value={importGradeLevel}
+                onChange={(e) => setImportGradeLevel(e.target.value as '10' | '11' | '12' | 'semua')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="10">Kelas 10</option>
+                <option value="11">Kelas 11</option>
+                <option value="12">Kelas 12</option>
+                <option value="semua">Semua Tingkat</option>
+              </select>
+            </div>
+            <div className="w-full lg:w-48">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Kesulitan (Import)</label>
+              <select
+                value={importDifficulty}
+                onChange={(e) => setImportDifficulty(e.target.value as 'mudah' | 'sedang' | 'sulit')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="mudah">Mudah</option>
+                <option value="sedang">Sedang</option>
+                <option value="sulit">Sulit</option>
+              </select>
+            </div>
+            <div className="w-full lg:w-56">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Kelas Spesifik (Opsional)</label>
+              <select
+                value={importClassId}
+                onChange={(e) => setImportClassId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="">Semua Kelas</option>
+                {classes.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            Pengaturan ini digunakan untuk import soal dari Word, Excel, atau Teks.
+          </p>
+        </Card>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
@@ -330,22 +492,23 @@ export default function BankSoalPage() {
           onClose={() => { setShowAddModal(false); resetForm(); }}
         />
 
-        <TriviaImportModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          onImportSuccess={fetchData}
+        <ImportWordModal
+          isOpen={showImportWord}
+          onClose={() => setShowImportWord(false)}
+          onImport={handleBulkImport}
+          existingCount={questions.length}
         />
-
-        <PdfImportModal
-          isOpen={showPdfImportModal}
-          onClose={() => setShowPdfImportModal(false)}
-          onImportSuccess={fetchData}
+        <ImportExcelModal
+          isOpen={showImportExcel}
+          onClose={() => setShowImportExcel(false)}
+          onImport={handleBulkImport}
+          existingCount={questions.length}
         />
-
-        <UrlImportModal
-          isOpen={showUrlImportModal}
-          onClose={() => setShowUrlImportModal(false)}
-          onImportSuccess={fetchData}
+        <ImportTextModal
+          isOpen={showImportText}
+          onClose={() => setShowImportText(false)}
+          onImport={handleBulkImport}
+          existingCount={questions.length}
         />
       </div>
 

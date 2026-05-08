@@ -64,7 +64,6 @@ class BankQuestionController extends Controller
     public function forStudents(Request $request)
     {
         $query = BankQuestion::active()
-            ->multipleChoice()
             ->with(['teacher:id,name']);
         
         // Filter by subject (required for students)
@@ -74,7 +73,11 @@ class BankQuestionController extends Controller
         
         // Filter by grade
         if ($request->has('grade_level') && $request->grade_level) {
-            $query->where('grade_level', $request->grade_level);
+            $gradeLevel = $request->grade_level;
+            $query->where(function ($q) use ($gradeLevel) {
+                $q->where('grade_level', $gradeLevel)
+                    ->orWhere('grade_level', 'semua');
+            });
         }
         
         // Filter by difficulty
@@ -92,7 +95,8 @@ class BankQuestionController extends Controller
                 return [
                     'id' => $q->id,
                     'question' => $q->question,
-                    'options' => $q->options,
+                    'type' => $q->type,
+                    'options' => $q->options ?? [],
                     'correct_answer' => $q->correct_answer,
                     'explanation' => $q->explanation,
                     'difficulty' => $q->difficulty,
@@ -115,7 +119,10 @@ class BankQuestionController extends Controller
         $gradeLevel = $request->get('grade_level', '10');
         
         $subjects = BankQuestion::active()
-            ->where('grade_level', $gradeLevel)
+            ->where(function ($query) use ($gradeLevel) {
+                $query->where('grade_level', $gradeLevel)
+                    ->orWhere('grade_level', 'semua');
+            })
             ->selectRaw('subject, COUNT(*) as total_questions')
             ->groupBy('subject')
             ->get();
@@ -136,7 +143,7 @@ class BankQuestionController extends Controller
             'type' => 'required|in:pilihan_ganda,essay',
             'question' => 'required|string',
             'options' => 'required_if:type,pilihan_ganda|array|min:2',
-            'correct_answer' => 'required|string',
+            'correct_answer' => 'required_if:type,pilihan_ganda|nullable|string',
             'explanation' => 'nullable|string',
             'difficulty' => 'required|in:mudah,sedang,sulit',
             'grade_level' => 'required|in:10,11,12,semua',
@@ -150,7 +157,7 @@ class BankQuestionController extends Controller
             'type' => $request->type,
             'question' => $request->question,
             'options' => $request->options,
-            'correct_answer' => $request->correct_answer,
+            'correct_answer' => $request->correct_answer ?: null,
             'explanation' => $request->explanation,
             'difficulty' => $request->difficulty,
             'grade_level' => $request->grade_level,
@@ -186,7 +193,7 @@ class BankQuestionController extends Controller
             'type' => 'sometimes|required|in:pilihan_ganda,essay',
             'question' => 'sometimes|required|string',
             'options' => 'required_if:type,pilihan_ganda|array|min:2',
-            'correct_answer' => 'sometimes|required|string',
+            'correct_answer' => 'sometimes|required_if:type,pilihan_ganda|nullable|string',
             'explanation' => 'nullable|string',
             'difficulty' => 'sometimes|required|in:mudah,sedang,sulit',
             'grade_level' => 'sometimes|required|in:10,11,12,semua',
@@ -257,7 +264,7 @@ class BankQuestionController extends Controller
                 'type' => $q['type'],
                 'question' => $q['question'],
                 'options' => $q['options'] ?? null,
-                'correct_answer' => $q['correct_answer'],
+                'correct_answer' => $q['correct_answer'] ?? null,
                 'explanation' => $q['explanation'] ?? null,
                 'difficulty' => $q['difficulty'],
                 'grade_level' => $q['grade_level'],
@@ -278,6 +285,13 @@ class BankQuestionController extends Controller
     public function duplicate($id)
     {
         $original = BankQuestion::findOrFail($id);
+
+        if (Auth::user()->role === 'guru' && $original->teacher_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menduplikasi soal ini',
+            ], 403);
+        }
         
         $duplicate = $original->replicate();
         $duplicate->question = $original->question . ' (Copy)';
