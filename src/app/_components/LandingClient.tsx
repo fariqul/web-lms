@@ -52,24 +52,6 @@ type FacilityGalleryState = {
   photos: FacilityPhoto[];
 };
 
-type UnsplashPhoto = {
-  urls?: {
-    regular?: string;
-    small?: string;
-    thumb?: string;
-    full?: string;
-  };
-  alt_description?: string | null;
-  description?: string | null;
-};
-
-type UnsplashResponse = {
-  results?: UnsplashPhoto[];
-};
-
-const UNSPLASH_ACCESS_KEY = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || '';
-const UNSPLASH_ENDPOINT = 'https://api.unsplash.com/search/photos';
-
 const mapLocalPhotos = (facility: FacilityItem) =>
   (facility.photos || []).map((src, idx) => ({
     src,
@@ -82,31 +64,19 @@ const fetchFacilityPhotos = async (facility: FacilityItem) => {
     return mapLocalPhotos(facility);
   }
 
-  if (!UNSPLASH_ACCESS_KEY) {
-    throw new Error('Missing Unsplash access key');
+  const params = new URLSearchParams({
+    query: facility.keyword,
+    per_page: '4',
+    orientation: 'landscape',
+  });
+  const response = await fetch(`/api/unsplash/search?${params.toString()}`);
+  const data = (await response.json()) as { success: boolean; photos?: FacilityPhoto[]; message?: string };
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || 'Gagal memuat foto fasilitas');
   }
 
-  const url = `${UNSPLASH_ENDPOINT}?query=${encodeURIComponent(facility.keyword)}&per_page=4&orientation=landscape`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
-    },
-  });
-  if (!response.ok) throw new Error('Failed to fetch Unsplash images');
-
-  const data = (await response.json()) as UnsplashResponse;
-  const results = (data.results || []).slice(0, 4);
-  return results
-    .map((photo, idx) => {
-      const regular = photo.urls?.regular || photo.urls?.full || '';
-      const thumb = photo.urls?.small || photo.urls?.thumb || regular;
-      return {
-        src: regular,
-        thumb,
-        alt: photo.alt_description || photo.description || `${facility.name} ${idx + 1}`,
-      };
-    })
-    .filter((photo) => Boolean(photo.src));
+  return data.photos || [];
 };
 
 const FACILITIES: FacilityItem[] = [
