@@ -322,6 +322,52 @@ export const classAPI = {
     api.get('/classes/export', { params, responseType: 'blob', timeout: 120000 }),
 };
 
+const buildFacilityFormData = (
+  data: {
+    name: string;
+    description?: string;
+    display_order?: number;
+    is_active: boolean;
+  },
+  photos?: File[]
+) => {
+  const formData = new FormData();
+  formData.append('name', data.name);
+  if (data.description !== undefined) formData.append('description', data.description);
+  if (typeof data.display_order === 'number') {
+    formData.append('display_order', String(data.display_order));
+  }
+  formData.append('is_active', data.is_active ? '1' : '0');
+  (photos || []).forEach((file) => {
+    formData.append('photos[]', file);
+  });
+  return formData;
+};
+
+// Facilities API
+export const facilityAPI = {
+  getPublic: () =>
+    api.get('/public/facilities'),
+
+  getAll: (params?: { search?: string; is_active?: boolean }) =>
+    api.get('/facilities', { params }),
+
+  create: (data: { name: string; description?: string; display_order?: number; is_active: boolean }, photos?: File[]) =>
+    api.post('/facilities', buildFacilityFormData(data, photos)),
+
+  update: (id: number, data: { name: string; description?: string; display_order?: number; is_active: boolean }, photos?: File[]) => {
+    const formData = buildFacilityFormData(data, photos);
+    formData.append('_method', 'PUT');
+    return api.post(`/facilities/${id}`, formData);
+  },
+
+  delete: (id: number) =>
+    api.delete(`/facilities/${id}`),
+
+  deletePhoto: (facilityId: number, photoId: number) =>
+    api.delete(`/facilities/${facilityId}/photos/${photoId}`),
+};
+
 // Attendance API
 export const attendanceAPI = {
   // Session management (Teacher)

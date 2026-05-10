@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { facilityAPI, getSecureFileUrl } from '@/services/api';
 import s from '../page.module.css';
 
 /* ─── Scroll Reveal Hook ─── */
@@ -34,60 +35,56 @@ function useScrollReveal() {
   return ref;
 }
 
-type FacilityItem = {
-  key: string;
+type FacilityApiPhoto = {
+  id: number;
+  path: string;
+  position: number;
+};
+
+type FacilityApiItem = {
+  id: number;
   name: string;
-  keyword: string;
-  photos?: string[];
+  description?: string | null;
+  display_order: number;
+  is_active: boolean;
+  photos?: FacilityApiPhoto[];
 };
 
 type FacilityPhoto = {
+  id: number;
   src: string;
   thumb: string;
   alt: string;
 };
 
-type FacilityGalleryState = {
-  status: 'idle' | 'loading' | 'ready' | 'error';
+type FacilityItem = {
+  id: number;
+  name: string;
+  description?: string | null;
   photos: FacilityPhoto[];
 };
 
-const mapLocalPhotos = (facility: FacilityItem) =>
-  (facility.photos || []).map((src, idx) => ({
-    src,
-    thumb: src,
-    alt: `${facility.name} ${idx + 1}`,
-  }));
+const mapFacilityItem = (facility: FacilityApiItem): FacilityItem => {
+  const photos = (facility.photos || [])
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((photo) => {
+      const safeUrl = getSecureFileUrl(photo.path);
+      return {
+        id: photo.id,
+        src: safeUrl,
+        thumb: safeUrl,
+        alt: facility.name,
+      };
+    });
 
-const fetchFacilityPhotos = async (facility: FacilityItem) => {
-  if (facility.photos && facility.photos.length > 0) {
-    return mapLocalPhotos(facility);
-  }
-
-  const params = new URLSearchParams({
-    query: facility.keyword,
-    per_page: '4',
-    orientation: 'landscape',
-  });
-  const response = await fetch(`/api/unsplash/search?${params.toString()}`);
-  const data = (await response.json()) as { success: boolean; photos?: FacilityPhoto[]; message?: string };
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.message || 'Gagal memuat foto fasilitas');
-  }
-
-  return data.photos || [];
+  return {
+    id: facility.id,
+    name: facility.name,
+    description: facility.description || null,
+    photos,
+  };
 };
-
-const FACILITIES: FacilityItem[] = [
-  { key: 'lab_sains', name: 'Laboratorium Sains', keyword: 'science laboratory school' },
-  { key: 'lab_komputer', name: 'Lab Komputer', keyword: 'computer lab school classroom' },
-  { key: 'perpustakaan', name: 'Perpustakaan Digital', keyword: 'school library books' },
-  { key: 'lapangan', name: 'Lapangan Olahraga', keyword: 'school sports field outdoor' },
-  { key: 'aula', name: 'Aula Serbaguna', keyword: 'school auditorium hall' },
-  { key: 'kantin', name: 'Kantin Sehat', keyword: 'school cafeteria canteen' },
-  { key: 'musholla', name: 'Musholla Modern', keyword: 'mosque interior modern' },
-];
 
 const PROGRAMS = [
   {
@@ -124,22 +121,16 @@ const STEPS = [
 export default function LandingClient() {
   const wrapperRef = useScrollReveal();
   const [navScrolled, setNavScrolled] = useState(false);
-  const [facilityGallery, setFacilityGallery] = useState<Record<string, FacilityGalleryState>>(() =>
-    FACILITIES.reduce((acc, facility) => {
-      acc[facility.key] = facility.photos && facility.photos.length > 0
-        ? { status: 'ready', photos: mapLocalPhotos(facility) }
-        : { status: 'idle', photos: [] };
-      return acc;
-    }, {} as Record<string, FacilityGalleryState>)
-  );
-  const [activeFacilityKey, setActiveFacilityKey] = useState<string | null>(null);
+  const [facilities, setFacilities] = useState<FacilityItem[]>([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(true);
+  const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
+  const [activeFacilityId, setActiveFacilityId] = useState<number | null>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const modalCloseRef = useRef<HTMLButtonElement>(null);
-  const activeFacility = activeFacilityKey
-    ? FACILITIES.find((facility) => facility.key === activeFacilityKey) || null
+  const activeFacility = activeFacilityId
+    ? facilities.find((facility) => facility.id === activeFacilityId) || null
     : null;
-  const activeGallery = activeFacilityKey ? facilityGallery[activeFacilityKey] : null;
-  const activePhotos = activeGallery?.photos || [];
+  const activePhotos = activeFacility?.photos || [];
   const hasPhotos = activePhotos.length > 0;
 
   useEffect(() => {
@@ -149,7 +140,7 @@ export default function LandingClient() {
   }, []);
 
   useEffect(() => {
-    if (!activeFacilityKey) return;
+    if (!activeFacilityId) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -166,10 +157,10 @@ export default function LandingClient() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeFacilityKey, activePhotos.length]);
+  }, [activeFacilityId, activePhotos.length]);
 
   useEffect(() => {
-    if (!activeFacilityKey) return;
+    if (!activeFacilityId) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const timer = window.setTimeout(() => {
@@ -179,7 +170,7 @@ export default function LandingClient() {
       document.body.style.overflow = previousOverflow;
       window.clearTimeout(timer);
     };
-  }, [activeFacilityKey]);
+  }, [activeFacilityId]);
 
   /* Smooth scroll for anchor links */
   const scrollTo = (id: string) => {
@@ -188,80 +179,46 @@ export default function LandingClient() {
   };
 
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true;
 
-    const prefetchPhotos = async () => {
-      const tasks = FACILITIES.map(async (facility) => {
-        if (cancelled) return;
-        if (facility.photos && facility.photos.length > 0) {
-          setFacilityGallery((prev) => ({
-            ...prev,
-            [facility.key]: { status: 'ready', photos: mapLocalPhotos(facility) },
-          }));
-          return;
+    const loadFacilities = async () => {
+      setFacilitiesLoading(true);
+      setFacilitiesError(null);
+
+      try {
+        const response = await facilityAPI.getPublic();
+        const rows = response.data?.data || [];
+        const mapped = Array.isArray(rows)
+          ? rows.map((facility: FacilityApiItem) => mapFacilityItem(facility))
+          : [];
+        if (mounted) {
+          setFacilities(mapped);
         }
-
-        setFacilityGallery((prev) => ({
-          ...prev,
-          [facility.key]: { status: 'loading', photos: prev[facility.key]?.photos || [] },
-        }));
-
-        try {
-          const photos = await fetchFacilityPhotos(facility);
-          if (cancelled) return;
-          setFacilityGallery((prev) => ({
-            ...prev,
-            [facility.key]: { status: 'ready', photos },
-          }));
-        } catch (error) {
-          if (cancelled) return;
-          setFacilityGallery((prev) => ({
-            ...prev,
-            [facility.key]: { status: 'error', photos: [] },
-          }));
+      } catch (error) {
+        if (mounted) {
+          setFacilities([]);
+          setFacilitiesError('Gagal memuat fasilitas. Silakan coba lagi nanti.');
         }
-      });
-
-      await Promise.all(tasks);
+      } finally {
+        if (mounted) {
+          setFacilitiesLoading(false);
+        }
+      }
     };
 
-    prefetchPhotos();
+    loadFacilities();
     return () => {
-      cancelled = true;
+      mounted = false;
     };
   }, []);
 
-  const openGallery = async (facility: FacilityItem) => {
-    setActiveFacilityKey(facility.key);
+  const openGallery = (facility: FacilityItem) => {
+    setActiveFacilityId(facility.id);
     setActivePhotoIndex(0);
-
-    const currentGallery = facilityGallery[facility.key];
-    if (currentGallery?.status === 'ready' || currentGallery?.status === 'loading') return;
-
-    setFacilityGallery((prev) => ({
-      ...prev,
-      [facility.key]: {
-        status: 'loading',
-        photos: prev[facility.key]?.photos || [],
-      },
-    }));
-
-    try {
-      const photos = await fetchFacilityPhotos(facility);
-      setFacilityGallery((prev) => ({
-        ...prev,
-        [facility.key]: { status: 'ready', photos },
-      }));
-    } catch (error) {
-      setFacilityGallery((prev) => ({
-        ...prev,
-        [facility.key]: { status: 'error', photos: [] },
-      }));
-    }
   };
 
   const closeGallery = () => {
-    setActiveFacilityKey(null);
+    setActiveFacilityId(null);
     setActivePhotoIndex(0);
   };
 
@@ -416,21 +373,38 @@ export default function LandingClient() {
             </p>
           </div>
           <div className={s.facilitiesGrid}>
-            {FACILITIES.map((facility) => {
-              const cardGallery = facilityGallery[facility.key];
-              const cardPhoto = cardGallery?.photos?.[0];
-              const cardLoading = cardGallery?.status === 'loading' || cardGallery?.status === 'idle';
-              const cardError = cardGallery?.status === 'error';
+            {facilitiesLoading && Array.from({ length: 7 }).map((_, idx) => (
+              <div key={`facility-skeleton-${idx}`} className={`${s.facilityCard} ${s.scrollReveal}`} aria-hidden="true">
+                <div className={s.facilityThumb}>
+                  <div className={s.facilityThumbSkeleton} />
+                </div>
+                <div className={s.facilityTitle}>Memuat...</div>
+              </div>
+            ))}
+
+            {!facilitiesLoading && facilities.length === 0 && (
+              <div className={`${s.facilityCard} ${s.scrollReveal}`}>
+                <div className={s.facilityThumb}>
+                  <div className={s.facilityThumbSkeleton} />
+                </div>
+                <div className={s.facilityTitle}>{facilitiesError || 'Belum ada fasilitas.'}</div>
+              </div>
+            )}
+
+            {!facilitiesLoading && facilities.map((facility) => {
+              const cardPhoto = facility.photos?.[0];
+              const hasCardPhoto = Boolean(cardPhoto);
+              const overlayText = hasCardPhoto ? 'Lihat Foto' : 'Foto Belum Tersedia';
 
               return (
                 <button
-                  key={facility.key}
+                  key={facility.id}
                   type="button"
                   className={`${s.facilityCard} ${s.scrollReveal}`}
                   onClick={() => openGallery(facility)}
                   aria-label={`Lihat foto ${facility.name}`}
                   aria-haspopup="dialog"
-                  aria-expanded={activeFacilityKey === facility.key}
+                  aria-expanded={activeFacilityId === facility.id}
                 >
                   <div className={s.facilityThumb}>
                     {cardPhoto ? (
@@ -450,9 +424,7 @@ export default function LandingClient() {
                           <circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
                         </svg>
                       </div>
-                      <div className={s.facilityOverlayText}>
-                        {cardError ? 'Foto Belum Tersedia' : cardLoading ? 'Memuat Foto' : 'Lihat Foto'}
-                      </div>
+                      <div className={s.facilityOverlayText}>{overlayText}</div>
                     </div>
                   </div>
                   <div className={s.facilityTitle}>{facility.name}</div>
@@ -494,13 +466,13 @@ export default function LandingClient() {
 
               <div className={s.facilityModalBody}>
                 <div className={s.facilityHero}>
-                  {activeGallery?.status === 'loading' && (
+                  {facilitiesLoading && (
                     <div className={s.facilityHeroSkeleton} />
                   )}
-                  {activeGallery?.status === 'error' && (
-                    <div className={s.facilityHeroError}>Gagal memuat foto. Silakan coba lagi.</div>
+                  {!facilitiesLoading && !hasPhotos && (
+                    <div className={s.facilityHeroError}>Belum ada foto untuk fasilitas ini.</div>
                   )}
-                  {activeGallery?.status === 'ready' && hasPhotos && (
+                  {!facilitiesLoading && hasPhotos && (
                     <img
                       src={activePhotos[activePhotoIndex]?.src}
                       alt={activePhotos[activePhotoIndex]?.alt || activeFacility.name}
@@ -532,18 +504,18 @@ export default function LandingClient() {
                 </div>
 
                 <div className={s.facilityThumbStrip}>
-                  {activeGallery?.status === 'loading' && (
+                  {facilitiesLoading && (
                     <div className={s.facilityThumbSkeletonRow}>
                       {Array.from({ length: 4 }).map((_, idx) => (
                         <div key={`thumb-skeleton-${idx}`} className={s.facilityThumbSkeleton} />
                       ))}
                     </div>
                   )}
-                  {activeGallery?.status === 'ready' && hasPhotos && (
+                  {!facilitiesLoading && hasPhotos && (
                     <div className={s.facilityThumbRow}>
                       {activePhotos.map((photo, idx) => (
                         <button
-                          key={`${activeFacility.key}-${idx}`}
+                          key={`${activeFacility.id}-${idx}`}
                           type="button"
                           className={`${s.facilityThumbButton} ${idx === activePhotoIndex ? s.facilityThumbActive : ''}`}
                           onClick={() => setActivePhotoIndex(idx)}

@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\SummativeScoreController;
 use App\Http\Controllers\Api\ExamResultVisibilityController;
 use App\Http\Controllers\Api\GraduationController;
+use App\Http\Controllers\Api\FacilityController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +61,7 @@ Route::prefix('public')->group(function () {
     Route::get('/graduation/settings', [GraduationController::class, 'publicGetSettings']);
     Route::post('/graduation/check', [GraduationController::class, 'publicCheckGraduation'])
         ->middleware('throttle:10,1'); // 10 requests per minute per IP
+    Route::get('/facilities', [FacilityController::class, 'publicIndex']);
 });
 
 // Protected routes
@@ -116,6 +118,10 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::put('/exam-results-visibility', [ExamResultVisibilityController::class, 'update']);
         Route::get('/school-network-settings/live-sync-stats', [SchoolNetworkController::class, 'liveSyncStats']);
         Route::apiResource('school-network-settings', SchoolNetworkController::class);
+
+        // Facilities management
+        Route::apiResource('facilities', FacilityController::class)->except(['show']);
+        Route::delete('/facilities/{facility}/photos/{photo}', [FacilityController::class, 'deletePhoto']);
         
         // Cache management
         Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearCache']);
