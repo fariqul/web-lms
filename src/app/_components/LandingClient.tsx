@@ -34,39 +34,89 @@ function useScrollReveal() {
   return ref;
 }
 
-/* SVG icon components for facilities */
-const FacilityIcons: Record<string, React.ReactNode> = {
-  lab_sains: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v6.5L4 18.5C3.3 19.6 4.1 21 5.4 21h13.2c1.3 0 2.1-1.4 1.4-2.5L14 9.5V3"/><path d="M8.5 14h7"/></svg>
-  ),
-  lab_komputer: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-  ),
-  perpustakaan: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/></svg>
-  ),
-  lapangan: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/><path d="M2 12h20"/><path d="M6 4.5c2.5 3 6 5 6 7.5s-3.5 4.5-6 7.5"/><path d="M18 4.5c-2.5 3-6 5-6 7.5s3.5 4.5 6 7.5"/></svg>
-  ),
-  aula: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/></svg>
-  ),
-  kantin: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><path d="M6 1v3M10 1v3M14 1v3"/></svg>
-  ),
-  musholla: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 9h3v12h14V9h3L12 2z"/><path d="M12 6a2 2 0 0 1 0 4"/><path d="M9 22v-5a3 3 0 0 1 6 0v5"/></svg>
-  ),
+type FacilityItem = {
+  key: string;
+  name: string;
+  keyword: string;
+  photos?: string[];
 };
 
-const FACILITIES = [
-  { key: 'lab_sains', name: 'Laboratorium Sains' },
-  { key: 'lab_komputer', name: 'Lab Komputer' },
-  { key: 'perpustakaan', name: 'Perpustakaan Digital' },
-  { key: 'lapangan', name: 'Lapangan Olahraga' },
-  { key: 'aula', name: 'Aula Serbaguna' },
-  { key: 'kantin', name: 'Kantin Sehat' },
-  { key: 'musholla', name: 'Musholla Modern' },
+type FacilityPhoto = {
+  src: string;
+  thumb: string;
+  alt: string;
+};
+
+type FacilityGalleryState = {
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  photos: FacilityPhoto[];
+};
+
+type UnsplashPhoto = {
+  urls?: {
+    regular?: string;
+    small?: string;
+    thumb?: string;
+    full?: string;
+  };
+  alt_description?: string | null;
+  description?: string | null;
+};
+
+type UnsplashResponse = {
+  results?: UnsplashPhoto[];
+};
+
+const UNSPLASH_ACCESS_KEY = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || '';
+const UNSPLASH_ENDPOINT = 'https://api.unsplash.com/search/photos';
+
+const mapLocalPhotos = (facility: FacilityItem) =>
+  (facility.photos || []).map((src, idx) => ({
+    src,
+    thumb: src,
+    alt: `${facility.name} ${idx + 1}`,
+  }));
+
+const fetchFacilityPhotos = async (facility: FacilityItem) => {
+  if (facility.photos && facility.photos.length > 0) {
+    return mapLocalPhotos(facility);
+  }
+
+  if (!UNSPLASH_ACCESS_KEY) {
+    throw new Error('Missing Unsplash access key');
+  }
+
+  const url = `${UNSPLASH_ENDPOINT}?query=${encodeURIComponent(facility.keyword)}&per_page=4&orientation=landscape`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to fetch Unsplash images');
+
+  const data = (await response.json()) as UnsplashResponse;
+  const results = (data.results || []).slice(0, 4);
+  return results
+    .map((photo, idx) => {
+      const regular = photo.urls?.regular || photo.urls?.full || '';
+      const thumb = photo.urls?.small || photo.urls?.thumb || regular;
+      return {
+        src: regular,
+        thumb,
+        alt: photo.alt_description || photo.description || `${facility.name} ${idx + 1}`,
+      };
+    })
+    .filter((photo) => Boolean(photo.src));
+};
+
+const FACILITIES: FacilityItem[] = [
+  { key: 'lab_sains', name: 'Laboratorium Sains', keyword: 'science laboratory school' },
+  { key: 'lab_komputer', name: 'Lab Komputer', keyword: 'computer lab school classroom' },
+  { key: 'perpustakaan', name: 'Perpustakaan Digital', keyword: 'school library books' },
+  { key: 'lapangan', name: 'Lapangan Olahraga', keyword: 'school sports field outdoor' },
+  { key: 'aula', name: 'Aula Serbaguna', keyword: 'school auditorium hall' },
+  { key: 'kantin', name: 'Kantin Sehat', keyword: 'school cafeteria canteen' },
+  { key: 'musholla', name: 'Musholla Modern', keyword: 'mosque interior modern' },
 ];
 
 const PROGRAMS = [
@@ -104,6 +154,23 @@ const STEPS = [
 export default function LandingClient() {
   const wrapperRef = useScrollReveal();
   const [navScrolled, setNavScrolled] = useState(false);
+  const [facilityGallery, setFacilityGallery] = useState<Record<string, FacilityGalleryState>>(() =>
+    FACILITIES.reduce((acc, facility) => {
+      acc[facility.key] = facility.photos && facility.photos.length > 0
+        ? { status: 'ready', photos: mapLocalPhotos(facility) }
+        : { status: 'idle', photos: [] };
+      return acc;
+    }, {} as Record<string, FacilityGalleryState>)
+  );
+  const [activeFacilityKey, setActiveFacilityKey] = useState<string | null>(null);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const modalCloseRef = useRef<HTMLButtonElement>(null);
+  const activeFacility = activeFacilityKey
+    ? FACILITIES.find((facility) => facility.key === activeFacilityKey) || null
+    : null;
+  const activeGallery = activeFacilityKey ? facilityGallery[activeFacilityKey] : null;
+  const activePhotos = activeGallery?.photos || [];
+  const hasPhotos = activePhotos.length > 0;
 
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 80);
@@ -111,10 +178,131 @@ export default function LandingClient() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!activeFacilityKey) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeGallery();
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goPrevPhoto();
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goNextPhoto();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeFacilityKey, activePhotos.length]);
+
+  useEffect(() => {
+    if (!activeFacilityKey) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const timer = window.setTimeout(() => {
+      modalCloseRef.current?.focus();
+    }, 0);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.clearTimeout(timer);
+    };
+  }, [activeFacilityKey]);
+
   /* Smooth scroll for anchor links */
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const prefetchPhotos = async () => {
+      const tasks = FACILITIES.map(async (facility) => {
+        if (cancelled) return;
+        if (facility.photos && facility.photos.length > 0) {
+          setFacilityGallery((prev) => ({
+            ...prev,
+            [facility.key]: { status: 'ready', photos: mapLocalPhotos(facility) },
+          }));
+          return;
+        }
+
+        setFacilityGallery((prev) => ({
+          ...prev,
+          [facility.key]: { status: 'loading', photos: prev[facility.key]?.photos || [] },
+        }));
+
+        try {
+          const photos = await fetchFacilityPhotos(facility);
+          if (cancelled) return;
+          setFacilityGallery((prev) => ({
+            ...prev,
+            [facility.key]: { status: 'ready', photos },
+          }));
+        } catch (error) {
+          if (cancelled) return;
+          setFacilityGallery((prev) => ({
+            ...prev,
+            [facility.key]: { status: 'error', photos: [] },
+          }));
+        }
+      });
+
+      await Promise.all(tasks);
+    };
+
+    prefetchPhotos();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const openGallery = async (facility: FacilityItem) => {
+    setActiveFacilityKey(facility.key);
+    setActivePhotoIndex(0);
+
+    const currentGallery = facilityGallery[facility.key];
+    if (currentGallery?.status === 'ready' || currentGallery?.status === 'loading') return;
+
+    setFacilityGallery((prev) => ({
+      ...prev,
+      [facility.key]: {
+        status: 'loading',
+        photos: prev[facility.key]?.photos || [],
+      },
+    }));
+
+    try {
+      const photos = await fetchFacilityPhotos(facility);
+      setFacilityGallery((prev) => ({
+        ...prev,
+        [facility.key]: { status: 'ready', photos },
+      }));
+    } catch (error) {
+      setFacilityGallery((prev) => ({
+        ...prev,
+        [facility.key]: { status: 'error', photos: [] },
+      }));
+    }
+  };
+
+  const closeGallery = () => {
+    setActiveFacilityKey(null);
+    setActivePhotoIndex(0);
+  };
+
+  const goPrevPhoto = () => {
+    if (!hasPhotos) return;
+    setActivePhotoIndex((prev) => (prev - 1 + activePhotos.length) % activePhotos.length);
+  };
+
+  const goNextPhoto = () => {
+    if (!hasPhotos) return;
+    setActivePhotoIndex((prev) => (prev + 1) % activePhotos.length);
   };
 
   return (
@@ -258,14 +446,149 @@ export default function LandingClient() {
             </p>
           </div>
           <div className={s.facilitiesGrid}>
-            {FACILITIES.map((f) => (
-              <div key={f.key} className={`${s.facilityCard} ${s.scrollReveal}`}>
-                <div className={s.facilityIcon}>{FacilityIcons[f.key]}</div>
-                <h3 className={s.facilityName}>{f.name}</h3>
-              </div>
-            ))}
+            {FACILITIES.map((facility) => {
+              const cardGallery = facilityGallery[facility.key];
+              const cardPhoto = cardGallery?.photos?.[0];
+              const cardLoading = cardGallery?.status === 'loading' || cardGallery?.status === 'idle';
+              const cardError = cardGallery?.status === 'error';
+
+              return (
+                <button
+                  key={facility.key}
+                  type="button"
+                  className={`${s.facilityCard} ${s.scrollReveal}`}
+                  onClick={() => openGallery(facility)}
+                  aria-label={`Lihat foto ${facility.name}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={activeFacilityKey === facility.key}
+                >
+                  <div className={s.facilityThumb}>
+                    {cardPhoto ? (
+                      <img
+                        src={cardPhoto.thumb || cardPhoto.src}
+                        alt={cardPhoto.alt || facility.name}
+                        className={s.facilityThumbImage}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className={s.facilityThumbSkeleton} aria-hidden="true" />
+                    )}
+                    <div className={s.facilityOverlay}>
+                      <div className={s.facilityOverlayIcon}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 7h3l2-2h6l2 2h3v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                        </svg>
+                      </div>
+                      <div className={s.facilityOverlayText}>
+                        {cardError ? 'Foto Belum Tersedia' : cardLoading ? 'Memuat Foto' : 'Lihat Foto'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={s.facilityTitle}>{facility.name}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
+        {activeFacility && (
+          <div
+            className={s.facilityModalBackdrop}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) closeGallery();
+            }}
+          >
+            <div
+              className={s.facilityModal}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Galeri ${activeFacility.name}`}
+            >
+              <div className={s.facilityModalHeader}>
+                <div>
+                  <div className={s.facilityModalLabel}>Galeri Fasilitas</div>
+                  <h3 className={s.facilityModalTitle}>{activeFacility.name}</h3>
+                </div>
+                <button
+                  ref={modalCloseRef}
+                  type="button"
+                  className={s.facilityModalClose}
+                  onClick={closeGallery}
+                  aria-label="Tutup galeri"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6l-12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className={s.facilityModalBody}>
+                <div className={s.facilityHero}>
+                  {activeGallery?.status === 'loading' && (
+                    <div className={s.facilityHeroSkeleton} />
+                  )}
+                  {activeGallery?.status === 'error' && (
+                    <div className={s.facilityHeroError}>Gagal memuat foto. Silakan coba lagi.</div>
+                  )}
+                  {activeGallery?.status === 'ready' && hasPhotos && (
+                    <img
+                      src={activePhotos[activePhotoIndex]?.src}
+                      alt={activePhotos[activePhotoIndex]?.alt || activeFacility.name}
+                      className={s.facilityHeroImage}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className={s.facilityNavButton}
+                    onClick={goPrevPhoto}
+                    aria-label="Foto sebelumnya"
+                    disabled={!hasPhotos}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${s.facilityNavButton} ${s.facilityNavButtonNext}`}
+                    onClick={goNextPhoto}
+                    aria-label="Foto berikutnya"
+                    disabled={!hasPhotos}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className={s.facilityThumbStrip}>
+                  {activeGallery?.status === 'loading' && (
+                    <div className={s.facilityThumbSkeletonRow}>
+                      {Array.from({ length: 4 }).map((_, idx) => (
+                        <div key={`thumb-skeleton-${idx}`} className={s.facilityThumbSkeleton} />
+                      ))}
+                    </div>
+                  )}
+                  {activeGallery?.status === 'ready' && hasPhotos && (
+                    <div className={s.facilityThumbRow}>
+                      {activePhotos.map((photo, idx) => (
+                        <button
+                          key={`${activeFacility.key}-${idx}`}
+                          type="button"
+                          className={`${s.facilityThumbButton} ${idx === activePhotoIndex ? s.facilityThumbActive : ''}`}
+                          onClick={() => setActivePhotoIndex(idx)}
+                          aria-label={`Foto ${idx + 1}`}
+                        >
+                          <img src={photo.thumb} alt={photo.alt || ''} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ═══ Registration ═══ */}
