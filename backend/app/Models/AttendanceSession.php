@@ -14,7 +14,9 @@ class AttendanceSession extends Model
         'class_id',
         'teacher_id',
         'subject',
+        'jam_ke',
         'qr_token',
+        'token_refresh_interval',
         'valid_from',
         'valid_until',
         'status',
@@ -25,6 +27,8 @@ class AttendanceSession extends Model
     protected $casts = [
         'class_id' => 'integer',
         'teacher_id' => 'integer',
+        'jam_ke' => 'integer',
+        'token_refresh_interval' => 'integer',
         'valid_from' => 'datetime',
         'valid_until' => 'datetime',
         'require_school_network' => 'boolean',

@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -23,7 +24,7 @@ class ClassController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ClassRoom::withCount('students');
+        $query = ClassRoom::withCount('students')->with('waliKelas:id,name,nip');
 
         // Filter by grade level
         if ($request->has('grade_level')) {
@@ -37,7 +38,7 @@ class ClassController extends Controller
 
         $classes = $query->orderBy('grade_level')
             ->orderBy('name')
-            ->get(['id', 'name', 'grade_level', 'academic_year']);
+            ->get(['id', 'name', 'grade_level', 'academic_year', 'wali_kelas_id']);
 
         return response()->json([
             'success' => true,
@@ -54,12 +55,17 @@ class ClassController extends Controller
             'name' => 'required|string|max:255|unique:classes',
             'grade_level' => 'required|in:X,XI,XII',
             'academic_year' => 'required|string',
+            'wali_kelas_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where('role', 'guru'),
+            ],
         ]);
 
         $class = ClassRoom::create([
             'name' => $request->name,
             'grade_level' => $request->grade_level,
             'academic_year' => $request->academic_year,
+            'wali_kelas_id' => $request->input('wali_kelas_id'),
         ]);
 
         return response()->json([
@@ -75,7 +81,7 @@ class ClassController extends Controller
     public function show(ClassRoom $class)
     {
         $class->loadCount('students');
-        $class->load(['students:id,class_id,name,nisn,nis,jenis_kelamin,email,photo']);
+        $class->load(['students:id,class_id,name,nisn,nis,jenis_kelamin,email,photo', 'waliKelas:id,name,nip']);
 
         return response()->json([
             'success' => true,
@@ -92,6 +98,10 @@ class ClassController extends Controller
             'name' => 'sometimes|string|max:255|unique:classes,name,' . $class->id,
             'grade_level' => 'sometimes|in:X,XI,XII',
             'academic_year' => 'sometimes|string',
+            'wali_kelas_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where('role', 'guru'),
+            ],
         ]);
 
         if ($request->has('name')) {
@@ -102,6 +112,9 @@ class ClassController extends Controller
         }
         if ($request->has('academic_year')) {
             $class->academic_year = $request->academic_year;
+        }
+        if ($request->exists('wali_kelas_id')) {
+            $class->wali_kelas_id = $request->input('wali_kelas_id');
         }
 
         $class->save();

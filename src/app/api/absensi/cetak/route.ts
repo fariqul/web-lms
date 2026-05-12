@@ -30,6 +30,11 @@ const DAY_MAP: Record<number, string> = {
   6: 'sabtu',
 };
 
+function jamCodeFromNumber(value?: number | null): JamCode | null {
+  if (!value || value < 1 || value > JAM_CODES.length) return null;
+  return JAM_CODES[value - 1] || null;
+}
+
 function normalizeKey(value: string | null | undefined): string {
   if (!value) return '';
   return value.toLowerCase().replace(/[\s\/_-]+/g, '').replace(/[^a-z0-9]/g, '');
@@ -147,10 +152,11 @@ export async function GET(request: NextRequest) {
   const dayIndex = getDayIndex(tanggalParam);
   const dayKey = dayIndex === null ? null : DAY_MAP[dayIndex];
 
-  const [studentsRes, schedulesRes, sessionsRes] = await Promise.all([
+  const [studentsRes, schedulesRes, sessionsRes, classDetailRes] = await Promise.all([
     backendFetchJson(request, `/students/class/${classId}`),
     backendFetchJson(request, `/schedules?class_id=${classId}`),
     backendFetchJson(request, `/attendance-sessions?class_id=${classId}&date=${encodeURIComponent(tanggalParam)}&per_page=100`),
+    backendFetchJson(request, `/classes/${classId}`),
   ]);
 
   let students: Array<{
@@ -161,14 +167,14 @@ export async function GET(request: NextRequest) {
     jenis_kelamin?: 'L' | 'P';
   }> = [];
 
+  const classDetail = classDetailRes.ok
+    ? (classDetailRes.data as { data?: { students?: typeof students; wali_kelas?: { name?: string; nip?: string }; waliKelas?: { name?: string; nip?: string } } })?.data
+    : null;
+
   if (studentsRes.ok) {
     students = (studentsRes.data as { data?: typeof students })?.data || [];
   } else if (studentsRes.status === 403 || studentsRes.status === 401) {
-    const classDetailRes = await backendFetchJson(request, `/classes/${classId}`);
-    if (classDetailRes.ok) {
-      const classData = (classDetailRes.data as { data?: { students?: typeof students } })?.data;
-      students = classData?.students || [];
-    }
+    students = classDetail?.students || [];
   }
 
   if (!sessionsRes.ok) {
@@ -176,7 +182,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message }, { status: sessionsRes.status });
   }
 
-  const sessionsPayload = sessionsRes.data as { data?: { data?: Array<{ id: number; subject?: string; valid_from?: string }> } | Array<{ id: number; subject?: string; valid_from?: string }> };
+  const sessionsPayload = sessionsRes.data as { data?: { data?: Array<{ id: number; subject?: string; valid_from?: string; jam_ke?: number | null }> } | Array<{ id: number; subject?: string; valid_from?: string; jam_ke?: number | null }> };
   const sessionsRaw = Array.isArray(sessionsPayload?.data)
     ? sessionsPayload?.data
     : sessionsPayload?.data?.data || [];
@@ -198,6 +204,8 @@ export async function GET(request: NextRequest) {
   const scheduleRows: Array<{ jam: JamCode; mapel: string; guru: string; subjectKey: string; startMinutes: number | null }> = [];
   const usedScheduleJams = new Set<JamCode>();
 
+  const scheduleByJam = new Map<JamCode, { mapel: string; guru: string }>();
+
   const pickNextScheduleJam = () => JAM_CODES.find((code) => !usedScheduleJams.has(code)) || null;
 
   schedulesSorted.forEach((row) => {
@@ -214,6 +222,7 @@ export async function GET(request: NextRequest) {
       subjectKey: normalizeKey(row.subject),
       startMinutes: parseMinutes(row.start_time),
     });
+    scheduleByJam.set(jam, { mapel: row.subject, guru: row.teacher?.name || '' });
   });
 
   const sessionDetails = await Promise.all(
@@ -225,6 +234,7 @@ export async function GET(request: NextRequest) {
           id: number;
           subject?: string;
           valid_from?: string;
+          teacher?: { name?: string };
           student_attendances?: Array<{
             student: { id: number; name: string; nisn?: string; nis?: string; jenis_kelamin?: 'L' | 'P' };
             status?: string;
@@ -271,13 +281,20 @@ export async function GET(request: NextRequest) {
       id: s.id,
       subject: s.subject || '',
       valid_from: s.valid_from || '',
+      jam_ke: typeof s.jam_ke === 'number' ? s.jam_ke : null,
     }))
     .sort((a, b) => (a.valid_from || '').localeCompare(b.valid_from || ''));
 
   const pickNextSessionJam = () => JAM_CODES.find((code) => !usedSessionJams.has(code)) || null;
 
   sortedSessions.forEach((session) => {
-    let jam = mapTimeToJam(session.valid_from);
+    let jam = jamCodeFromNumber(session.jam_ke);
+    if (jam && usedSessionJams.has(jam)) {
+      jam = null;
+    }
+    if (!jam) {
+      jam = mapTimeToJam(session.valid_from);
+    }
     if (!jam || usedSessionJams.has(jam)) {
       const subjectKey = normalizeKey(session.subject);
       const scheduleMatch = scheduleRows.find((row) => row.subjectKey === subjectKey && !usedSessionJams.has(row.jam));
@@ -295,6 +312,15 @@ export async function GET(request: NextRequest) {
     if (!detail?.data) return;
     const jam = sessionJamMap.get(detail.data.id);
     if (!jam) return;
+
+    const sessionMapel = detail.data.subject || '';
+    const sessionGuru = detail.data.teacher?.name || '';
+    if (sessionMapel || sessionGuru) {
+      scheduleByJam.set(jam, {
+        mapel: sessionMapel,
+        guru: sessionGuru,
+      });
+    }
 
     const studentAttendances = detail.data.student_attendances || [];
     studentAttendances.forEach((item) => {
@@ -325,18 +351,27 @@ export async function GET(request: NextRequest) {
       { status: 422 }
     );
   }
-  const jadwal = scheduleRows
-    .sort((a, b) => JAM_CODES.indexOf(a.jam) - JAM_CODES.indexOf(b.jam))
-    .map((row) => ({
-      jam: row.jam,
-      mapel: row.mapel,
-      guru: row.guru,
-    }));
+  const jadwal = JAM_CODES.map((code) => {
+    const entry = scheduleByJam.get(code);
+    if (!entry) return null;
+    return {
+      jam: code,
+      mapel: entry.mapel || '',
+      guru: entry.guru || '',
+    };
+  }).filter((row): row is { jam: JamCode; mapel: string; guru: string } =>
+    !!row && (row.mapel !== '' || row.guru !== '')
+  );
+
+  const waliKelasRaw = classDetail?.wali_kelas || classDetail?.waliKelas || null;
+  const waliKelas = waliKelasRaw
+    ? { nama: waliKelasRaw.name || '', nip: waliKelasRaw.nip || '' }
+    : { nama: '', nip: '' };
 
   return NextResponse.json({
     kelas: matchedClass.name,
     tanggal: tanggalDisplay,
-    waliKelas: { nama: '', nip: '' },
+    waliKelas,
     siswa,
     jadwal,
   });

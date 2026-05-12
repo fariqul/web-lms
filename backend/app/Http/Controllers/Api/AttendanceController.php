@@ -102,6 +102,8 @@ class AttendanceController extends Controller
         $request->validate([
             'class_id' => 'required|exists:classes,id',
             'subject' => 'required|string|max:255',
+            'jam_ke' => 'nullable|integer|min:1|max:10',
+            'token_refresh_interval' => 'nullable|integer|min:60|max:1800',
             'valid_from' => 'required|date',
             'valid_until' => 'required|date|after:valid_from',
             'require_school_network' => 'boolean',
@@ -111,7 +113,9 @@ class AttendanceController extends Controller
             'class_id' => $request->class_id,
             'teacher_id' => $request->user()->id,
             'subject' => $request->subject,
+            'jam_ke' => $request->jam_ke,
             'qr_token' => Str::random(32),
+            'token_refresh_interval' => $request->input('token_refresh_interval', 300),
             'valid_from' => $request->valid_from,
             'valid_until' => $request->valid_until,
             'status' => 'active',
@@ -220,7 +224,7 @@ class AttendanceController extends Controller
         $request->validate([
             'subject' => 'sometimes|string|max:255',
             'status' => 'sometimes|in:active,closed',
-            'token_refresh_interval' => 'sometimes|integer|min:5|max:300',
+            'token_refresh_interval' => 'sometimes|integer|min:60|max:1800',
         ]);
 
         if ($request->has('subject')) {
@@ -668,7 +672,7 @@ class AttendanceController extends Controller
             ->where('class_id', $user->class_id)
             ->where('status', 'active')
             ->whereDate('created_at', today())
-            ->get(['id', 'class_id', 'teacher_id', 'subject', 'valid_from', 'valid_until', 'status']);
+            ->get(['id', 'class_id', 'teacher_id', 'subject', 'jam_ke', 'token_refresh_interval', 'valid_from', 'valid_until', 'status']);
 
         return response()->json([
             'success' => true,

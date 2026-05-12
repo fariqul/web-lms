@@ -294,10 +294,10 @@ export const classAPI = {
   getById: (id: number) =>
     api.get(`/classes/${id}`),
   
-  create: (data: { name: string; grade?: string; grade_level?: string; academic_year: string }) =>
+  create: (data: { name: string; grade?: string; grade_level?: string; academic_year: string; wali_kelas_id?: number | null }) =>
     api.post('/classes', data),
   
-  update: (id: number, data: Partial<{ name: string; grade?: string; grade_level?: string; academic_year: string }>) =>
+  update: (id: number, data: Partial<{ name: string; grade?: string; grade_level?: string; academic_year: string; wali_kelas_id?: number | null }>) =>
     api.put(`/classes/${id}`, data),
   
   delete: (id: number) =>

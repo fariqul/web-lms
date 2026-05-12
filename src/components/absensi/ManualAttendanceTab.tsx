@@ -34,6 +34,19 @@ const statusOptions = [
   { value: 'alpha', label: 'Alpa', color: 'bg-red-100 text-red-700 border-red-300' },
 ];
 
+const JAM_OPTIONS = [
+  { value: '1', label: 'Jam I (07.45 - 08.25)' },
+  { value: '2', label: 'Jam II (08.25 - 09.05)' },
+  { value: '3', label: 'Jam III (09.05 - 09.45)' },
+  { value: '4', label: 'Jam IV (09.45 - 10.25)' },
+  { value: '5', label: 'Jam V (10.40 - 11.20)' },
+  { value: '6', label: 'Jam VI (11.20 - 12.00)' },
+  { value: '7', label: 'Jam VII (13.00 - 13.40)' },
+  { value: '8', label: 'Jam VIII (13.40 - 14.20)' },
+  { value: '9', label: 'Jam IX (14.20 - 15.00)' },
+  { value: '10', label: 'Jam X (15.00 - 15.40)' },
+];
+
 interface ManualAttendanceTabProps {
   classes: ClassOption[];
   subjects: SubjectOption[];
@@ -44,6 +57,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
   const toast = useToast();
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedJam, setSelectedJam] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [statuses, setStatuses] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
@@ -106,6 +120,10 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
       toast.warning('Pilih kelas dan mata pelajaran terlebih dahulu');
       return;
     }
+    if (!selectedJam) {
+      toast.warning('Pilih jam ke terlebih dahulu');
+      return;
+    }
 
     if (students.length === 0) {
       toast.warning('Tidak ada siswa di kelas ini');
@@ -125,6 +143,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
         const sessionResponse = await api.post('/attendance-sessions', {
           class_id: parseInt(selectedClass),
           subject: selectedSubject,
+          jam_ke: parseInt(selectedJam),
           valid_from: validFrom,
           valid_until: validUntil,
           require_school_network: false,
@@ -166,6 +185,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
   const handleReset = () => {
     setSelectedClass('');
     setSelectedSubject('');
+    setSelectedJam('');
     setStudents([]);
     setStatuses({});
     setSessionId(null);
@@ -198,7 +218,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
         {!saved ? (
           <div className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <Select
                 label="Pilih Kelas"
                 options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
@@ -213,7 +233,21 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                 label="Mata Pelajaran"
                 options={[{ value: '', label: 'Pilih mata pelajaran…' }, ...subjects]}
                 value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
+                onChange={(e) => {
+                  setSelectedSubject(e.target.value);
+                  setSessionId(null);
+                  setSaved(false);
+                }}
+              />
+              <Select
+                label="Jam Ke"
+                options={[{ value: '', label: 'Pilih jam…' }, ...JAM_OPTIONS]}
+                value={selectedJam}
+                onChange={(e) => {
+                  setSelectedJam(e.target.value);
+                  setSessionId(null);
+                  setSaved(false);
+                }}
               />
             </div>
 

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
 import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, Upload } from 'lucide-react';
-import { classAPI, getSecureFileUrl } from '@/services/api';
+import { classAPI, getSecureFileUrl, userAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-error';
 
@@ -23,8 +23,16 @@ interface ClassRoom {
   name: string;
   grade_level: string;
   academic_year: string;
+  wali_kelas_id?: number | null;
+  wali_kelas?: { id: number; name: string; nip?: string };
   students_count?: number;
   students?: Student[];
+}
+
+interface TeacherOption {
+  id: number;
+  name: string;
+  nip?: string;
 }
 
 interface ClassImportPreviewRow {
@@ -48,6 +56,7 @@ const gradeOptions = [
 export default function AdminKelasPage() {
   const toast = useToast();
   const [classes, setClasses] = useState<ClassRoom[]>([]);
+  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
@@ -79,6 +88,7 @@ export default function AdminKelasPage() {
     name: '',
     grade_level: '',
     academic_year: '2025/2026',
+    wali_kelas_id: '',
   });
 
   useEffect(() => {
@@ -97,8 +107,18 @@ export default function AdminKelasPage() {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const response = await classAPI.getAll();
-      setClasses(response.data?.data || []);
+      const [classesRes, teachersRes] = await Promise.all([
+        classAPI.getAll(),
+        userAPI.getAll({ role: 'guru', per_page: 1000 }),
+      ]);
+      setClasses(classesRes.data?.data || []);
+      const teachersRaw = teachersRes.data?.data;
+      const teachersData = Array.isArray(teachersRaw) ? teachersRaw : (teachersRaw?.data || []);
+      setTeachers(teachersData.map((t: { id: number; name: string; nip?: string }) => ({
+        id: t.id,
+        name: t.name,
+        nip: t.nip,
+      })));
     } catch (error) {
       console.error('Failed to fetch classes:', error);
     } finally {
@@ -121,6 +141,7 @@ export default function AdminKelasPage() {
         name: cls.name,
         grade_level: cls.grade_level,
         academic_year: cls.academic_year,
+        wali_kelas_id: cls.wali_kelas_id?.toString() || cls.wali_kelas?.id?.toString() || '',
       });
     } else {
       setSelectedClass(null);
@@ -128,6 +149,7 @@ export default function AdminKelasPage() {
         name: '',
         grade_level: '',
         academic_year: '2025/2026',
+        wali_kelas_id: '',
       });
     }
     setIsModalOpen(true);
@@ -142,10 +164,16 @@ export default function AdminKelasPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const payload = {
+        name: formData.name,
+        grade_level: formData.grade_level,
+        academic_year: formData.academic_year,
+        wali_kelas_id: formData.wali_kelas_id ? parseInt(formData.wali_kelas_id) : null,
+      };
       if (selectedClass) {
-        await classAPI.update(selectedClass.id, formData);
+        await classAPI.update(selectedClass.id, payload);
       } else {
-        await classAPI.create(formData);
+        await classAPI.create(payload);
       }
       setIsModalOpen(false);
       fetchClasses(); // Refresh data
@@ -345,6 +373,14 @@ export default function AdminKelasPage() {
     },
   ];
 
+  const teacherOptions = [
+    { value: '', label: 'Belum ditentukan' },
+    ...teachers.map((teacher) => ({
+      value: teacher.id.toString(),
+      label: teacher.nip ? `${teacher.name} (${teacher.nip})` : teacher.name,
+    })),
+  ];
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -486,6 +522,12 @@ export default function AdminKelasPage() {
             onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
             placeholder="Contoh: 2025/2026"
             required
+          />
+          <Select
+            label="Wali Kelas"
+            options={teacherOptions}
+            value={formData.wali_kelas_id}
+            onChange={(e) => setFormData({ ...formData, wali_kelas_id: e.target.value })}
           />
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>

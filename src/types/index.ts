@@ -25,6 +25,8 @@ export interface Class {
   name: string;
   grade: string;
   academic_year: string;
+  wali_kelas_id?: number | null;
+  wali_kelas?: { id: number; name: string; nip?: string };
   students_count?: number;
 }
 
@@ -33,6 +35,8 @@ export interface AttendanceSession {
   id: number;
   class_id: number;
   subject: string;
+  jam_ke?: number;
+  token_refresh_interval?: number;
   teacher_id: number;
   qr_token: string;
   valid_from: string;

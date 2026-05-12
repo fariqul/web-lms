@@ -16,11 +16,17 @@ class ClassRoom extends Model
         'grade',
         'academic_year',
         'skl_pickup_message',
+        'wali_kelas_id',
     ];
 
     public function students()
     {
         return $this->hasMany(User::class, 'class_id')->where('role', 'siswa');
+    }
+
+    public function waliKelas()
+    {
+        return $this->belongsTo(User::class, 'wali_kelas_id');
     }
 
     public function schedules()

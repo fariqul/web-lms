@@ -51,6 +51,30 @@ const subjects = [
   { value: 'Prakarya dan Kewirausahaan', label: 'Prakarya dan Kewirausahaan' },
 ];
 
+const QR_REFRESH_OPTIONS = [
+  { value: '60', label: '1 menit' },
+  { value: '120', label: '2 menit' },
+  { value: '180', label: '3 menit' },
+  { value: '300', label: '5 menit' },
+  { value: '600', label: '10 menit' },
+  { value: '900', label: '15 menit' },
+  { value: '1200', label: '20 menit' },
+  { value: '1800', label: '30 menit' },
+];
+
+const JAM_OPTIONS = [
+  { value: '1', label: 'Jam I (07.45 - 08.25)' },
+  { value: '2', label: 'Jam II (08.25 - 09.05)' },
+  { value: '3', label: 'Jam III (09.05 - 09.45)' },
+  { value: '4', label: 'Jam IV (09.45 - 10.25)' },
+  { value: '5', label: 'Jam V (10.40 - 11.20)' },
+  { value: '6', label: 'Jam VI (11.20 - 12.00)' },
+  { value: '7', label: 'Jam VII (13.00 - 13.40)' },
+  { value: '8', label: 'Jam VIII (13.40 - 14.20)' },
+  { value: '9', label: 'Jam IX (14.20 - 15.00)' },
+  { value: '10', label: 'Jam X (15.00 - 15.40)' },
+];
+
 export default function AbsensiPage() {
   const toast = useToast();
   const qrId = useId();
@@ -59,6 +83,8 @@ export default function AbsensiPage() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedJam, setSelectedJam] = useState('');
+  const [qrRefreshInterval, setQrRefreshInterval] = useState(300);
   const [qrToken, setQrToken] = useState('');
   const [timeRemaining, setTimeRemaining] = useState(300);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -110,6 +136,13 @@ export default function AbsensiPage() {
           setCurrentSessionId(session.id);
           setSelectedClass(session.class_id.toString());
           setSelectedSubject(session.subject);
+          setSelectedJam(
+            response.data.data.jam_ke ? String(response.data.data.jam_ke) : (session.jam_ke ? String(session.jam_ke) : '')
+          );
+          const intervalValue =
+            response.data.data.token_refresh_interval ?? session.token_refresh_interval ?? 300;
+          setQrRefreshInterval(intervalValue);
+          setTimeRemaining(intervalValue);
           setTotalStudents(session.totalStudents || 30);
           setQrToken(response.data.data.qr_token);
           setIsSessionActive(true);
@@ -141,11 +174,13 @@ export default function AbsensiPage() {
     }
   };
 
-  const saveSessionToStorage = (sessionId: number, classId: string, subject: string, totalStudents: number) => {
+  const saveSessionToStorage = (sessionId: number, classId: string, subject: string, totalStudents: number, jamKe?: string, refreshInterval?: number) => {
     localStorage.setItem('activeAttendanceSession', JSON.stringify({
       id: sessionId,
       class_id: classId,
       subject: subject,
+      jam_ke: jamKe || '',
+      token_refresh_interval: refreshInterval || 300,
       totalStudents: totalStudents,
     }));
   };
@@ -243,14 +278,20 @@ export default function AbsensiPage() {
           if (prev <= 1) {
             // Trigger server-side QR refresh via ref (avoids side effects in state updater)
             refreshQRRef.current();
-            return 300;
+            return qrRefreshInterval;
           }
           return prev - 1;
         });
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isSessionActive, timeRemaining]);
+  }, [isSessionActive, timeRemaining, qrRefreshInterval]);
+
+  useEffect(() => {
+    if (!isSessionActive) {
+      setTimeRemaining(qrRefreshInterval);
+    }
+  }, [isSessionActive, qrRefreshInterval]);
 
   const fetchClasses = async () => {
     try {
@@ -377,13 +418,13 @@ export default function AbsensiPage() {
       const response = await api.post(`/attendance-sessions/${currentSessionId}/refresh-token`);
       if (response.data?.data?.qr_token) {
         setQrToken(response.data.data.qr_token);
-        setTimeRemaining(300);
+        setTimeRemaining(qrRefreshInterval);
       }
     } catch (error) {
       console.error('Failed to refresh QR token:', error);
       // Don't reset timer on error — will retry next countdown
     }
-  }, [currentSessionId]);
+  }, [currentSessionId, qrRefreshInterval]);
 
   // Ref to track server refresh without stale closure in timer
   const refreshQRRef = useRef(refreshQRFromServer);
@@ -395,13 +436,17 @@ export default function AbsensiPage() {
   const generateQRTokenLocal = useCallback(() => {
     const token = 'QR-' + Date.now().toString(36).toUpperCase() + '-' + qrId.replace(/:/g, '').slice(0, 4).toUpperCase();
     setQrToken(token);
-    setTimeRemaining(300);
+    setTimeRemaining(qrRefreshInterval);
     return token;
-  }, [qrId]);
+  }, [qrId, qrRefreshInterval]);
 
   const handleStartSession = async () => {
     if (!selectedClass || !selectedSubject) {
       toast.warning('Pilih kelas dan mata pelajaran terlebih dahulu');
+      return;
+    }
+    if (!selectedJam) {
+      toast.warning('Pilih jam ke terlebih dahulu');
       return;
     }
 
@@ -415,6 +460,8 @@ export default function AbsensiPage() {
       const response = await api.post('/attendance-sessions', {
         class_id: parseInt(selectedClass),
         subject: selectedSubject,
+        jam_ke: parseInt(selectedJam),
+        token_refresh_interval: qrRefreshInterval,
         valid_from: validFrom,
         valid_until: validUntil,
         require_school_network: requireSchoolNetwork,
@@ -437,7 +484,7 @@ export default function AbsensiPage() {
         const selectedClassData = classes.find((c) => c.value === selectedClass);
         const studentsCount = (selectedClassData as { studentsCount?: number })?.studentsCount || 30;
         
-        saveSessionToStorage(sessionId, selectedClass, selectedSubject, studentsCount);
+        saveSessionToStorage(sessionId, selectedClass, selectedSubject, studentsCount, selectedJam, qrRefreshInterval);
       } else {
         console.error('No session ID in API response!');
       }
@@ -447,7 +494,7 @@ export default function AbsensiPage() {
       setTotalStudents((selectedClassData as { studentsCount?: number })?.studentsCount || 30);
       setIsSessionActive(true);
       setAttendanceRecords([]);
-      setTimeRemaining(300); // 5 minutes display timer
+      setTimeRemaining(qrRefreshInterval);
     } catch (error) {
       console.error('Failed to start session:', error);
       toast.error('Gagal memulai sesi absensi. Pastikan API backend sudah berjalan.');
@@ -471,6 +518,7 @@ export default function AbsensiPage() {
       setQrToken('');
       setAttendanceRecords([]);
       setCurrentSessionId(null);
+      setSelectedJam('');
       clearSessionFromStorage();
       // Refresh history after closing session
       fetchSessionHistory();
@@ -491,6 +539,10 @@ export default function AbsensiPage() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const refreshIntervalLabel =
+    QR_REFRESH_OPTIONS.find((option) => option.value === String(qrRefreshInterval))?.label ||
+    `${Math.max(1, Math.round(qrRefreshInterval / 60))} menit`;
 
   const columns = [
     { key: 'name', header: 'Nama Siswa' },
@@ -586,7 +638,7 @@ export default function AbsensiPage() {
 
               {!isSessionActive ? (
                 <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-3 gap-4">
                     <Select
                       label="Pilih Kelas"
                       options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
@@ -598,6 +650,12 @@ export default function AbsensiPage() {
                       options={[{ value: '', label: 'Pilih mata pelajaran…' }, ...subjects]}
                       value={selectedSubject}
                       onChange={(e) => setSelectedSubject(e.target.value)}
+                    />
+                    <Select
+                      label="Jam Ke"
+                      options={[{ value: '', label: 'Pilih jam…' }, ...JAM_OPTIONS]}
+                      value={selectedJam}
+                      onChange={(e) => setSelectedJam(e.target.value)}
                     />
                   </div>
                   
@@ -616,6 +674,17 @@ export default function AbsensiPage() {
                         <p className="text-xs text-slate-600 dark:text-slate-400">Siswa hanya bisa absen jika terhubung ke jaringan sekolah</p>
                       </div>
                     </label>
+                    <div className="mt-4 grid md:grid-cols-2 gap-4">
+                      <Select
+                        label="Refresh QR setiap"
+                        options={QR_REFRESH_OPTIONS}
+                        value={String(qrRefreshInterval)}
+                        onChange={(e) => setQrRefreshInterval(parseInt(e.target.value) || 300)}
+                      />
+                      <div className="text-xs text-slate-600 dark:text-slate-400 md:self-end">
+                        Interval yang lebih singkat meningkatkan keamanan tetapi lebih sering mengganti QR.
+                      </div>
+                    </div>
                   </div>
                   
                   <Button
@@ -636,6 +705,7 @@ export default function AbsensiPage() {
                 <p className="text-slate-700 dark:text-slate-300">
                   {classes.find((c) => c.value === selectedClass)?.label} -{' '}
                   {subjects.find((s) => s.value === selectedSubject)?.label}
+                  {selectedJam ? ` • ${JAM_OPTIONS.find((j) => j.value === selectedJam)?.label || `Jam ${selectedJam}`}` : ''}
                 </p>
               </div>
 
@@ -665,7 +735,7 @@ export default function AbsensiPage() {
                     {formatTime(timeRemaining)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">QR akan refresh otomatis setiap 5 menit</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">QR akan refresh otomatis setiap {refreshIntervalLabel}</p>
               </div>
 
               {/* Stats */}
