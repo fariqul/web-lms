@@ -955,6 +955,10 @@ img {
 }
 
 /* ===== Print-Friendly Styles ===== */
+.print-only {
+  display: none;
+}
+
 @media print {
   /* Hide non-essential UI elements */
   nav,
@@ -1047,5 +1051,22 @@ img {
   @page {
     margin: 1.5cm;
     size: A4 portrait;
+  }
+
+  body.print-attendance * {
+    visibility: hidden !important;
+  }
+
+  body.print-attendance .print-only,
+  body.print-attendance .print-only * {
+    visibility: visible !important;
+  }
+
+  body.print-attendance .print-only {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
   }
 }

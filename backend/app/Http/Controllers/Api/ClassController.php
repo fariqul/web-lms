@@ -75,7 +75,7 @@ class ClassController extends Controller
     public function show(ClassRoom $class)
     {
         $class->loadCount('students');
-        $class->load(['students:id,class_id,name,nisn,email,photo']);
+        $class->load(['students:id,class_id,name,nisn,nis,jenis_kelamin,email,photo']);
 
         return response()->json([
             'success' => true,

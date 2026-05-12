@@ -277,7 +277,8 @@ export default function AbsensiPage() {
       const sessions = response.data?.data?.data || response.data?.data || [];
       const formattedSessions: SessionHistory[] = sessions.map((s: {
         id: number;
-        class?: { name: string };
+        class?: { id?: number; name: string };
+        class_id?: number;
         subject: string;
         status: string;
         created_at: string;
@@ -285,6 +286,7 @@ export default function AbsensiPage() {
       }) => ({
         id: s.id,
         class_name: s.class?.name || 'Unknown',
+        class_id: s.class?.id ?? s.class_id,
         subject: subjects.find(sub => sub.value === s.subject)?.label || s.subject,
         status: s.status,
         created_at: s.created_at,

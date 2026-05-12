@@ -1,0 +1,105 @@
+.sheet {
+  font-family: "Times New Roman", serif;
+  font-size: 11px;
+  color: #000;
+  width: 100%;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.headerTitle {
+  text-align: center;
+}
+
+.schoolName {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.mainTitle {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.semesterTitle {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  margin: 6px 0 10px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.table th,
+.table td {
+  border: 1px solid #000;
+  padding: 3px 4px;
+}
+
+.table th {
+  font-weight: 700;
+  text-align: center;
+}
+
+.center {
+  text-align: center;
+}
+
+.scheduleTable {
+  margin-top: 12px;
+}
+
+.breakRow {
+  text-align: center;
+  font-weight: 700;
+  background: #f0f0f0;
+}
+
+.footer {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.signatureBlock {
+  width: 46%;
+  text-align: center;
+  font-size: 11px;
+}
+
+.signatureSpace {
+  height: 48px;
+  border-bottom: 1px solid #000;
+  margin: 6px 0 8px;
+}
+
+.signatureName {
+  font-weight: 700;
+  text-decoration: underline;
+}

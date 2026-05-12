@@ -3,8 +3,10 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardHeader, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { History, Eye, Users, Edit2, Save, X, Download, Loader2, RefreshCw, Filter, ChevronDown, FileSpreadsheet, ClipboardList } from 'lucide-react';
+import { History, Eye, Users, Edit2, Save, X, Download, Loader2, RefreshCw, Filter, ChevronDown, FileSpreadsheet, ClipboardList, Printer, AlertTriangle } from 'lucide-react';
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+import { AttendancePrintSheet, AttendancePrintProps } from './AttendancePrintSheet';
 
 const statusOptions = [
   { value: 'hadir', label: 'Hadir', color: 'bg-green-100 text-green-700' },
@@ -17,6 +19,7 @@ const statusOptions = [
 export interface SessionHistory {
   id: number;
   class_name: string;
+  class_id?: number;
   subject: string;
   status: 'active' | 'closed';
   created_at: string;
@@ -25,7 +28,7 @@ export interface SessionHistory {
 }
 
 interface StudentAttendance {
-  student: { id: number; name: string; nisn: string };
+  student: { id: number; name: string; nisn: string; nis?: string; jenis_kelamin?: 'L' | 'P' };
   status: string;
   attendance?: { id: number; scanned_at: string | null };
 }
@@ -38,6 +41,7 @@ interface SessionHistoryTabProps {
 
 export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: SessionHistoryTabProps) {
   const toast = useToast();
+  const { user } = useAuth();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [allStudents, setAllStudents] = useState<StudentAttendance[]>([]);
@@ -47,6 +51,9 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
   const [filterSubject, setFilterSubject] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [printPayload, setPrintPayload] = useState<AttendancePrintProps | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [missingNis, setMissingNis] = useState<Array<{ id?: number; nama?: string; nisn?: string }>>([]);
 
   // Close download menu on outside click
   useEffect(() => {
@@ -56,6 +63,16 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
       return () => document.removeEventListener('click', handleClick);
     }
   }, [showDownloadMenu]);
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      document.body.classList.remove('print-attendance');
+      setPrintPayload(null);
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, []);
 
   // Unique subjects & classes from sessions
   const uniqueSubjects = useMemo(() => {
@@ -98,6 +115,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
     setLoadingDetail(true);
     setIsEditMode(false);
     setEditedStatuses({});
+    setMissingNis([]);
     try {
       const response = await api.get(`/attendance-sessions/${sessionId}`);
       const data = response.data?.data;
@@ -267,6 +285,79 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
     setAllStudents([]);
     setIsEditMode(false);
     setEditedStatuses({});
+    setMissingNis([]);
+  };
+
+  const selectedSessionData = useMemo(
+    () => (selectedSession ? sessions.find((s) => s.id === selectedSession) : null),
+    [selectedSession, sessions]
+  );
+
+  const formatDateParam = (dateString?: string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handlePrintSession = async () => {
+    if (!selectedSession) return;
+
+    const session = selectedSessionData;
+    if (!session) {
+      toast.error('Sesi tidak ditemukan');
+      return;
+    }
+
+    const tanggalParam = formatDateParam(session.created_at);
+    if (!tanggalParam) {
+      toast.error('Tanggal sesi tidak valid');
+      return;
+    }
+
+    setIsPrinting(true);
+    setMissingNis([]);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = { Accept: 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const response = await fetch(
+        `/api/absensi/cetak?kelas=${encodeURIComponent(session.class_name)}&tanggal=${encodeURIComponent(tanggalParam)}`,
+        { headers }
+      );
+
+      let payload: any = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        if (response.status === 422 && payload?.data?.missing_nis) {
+          const missing = payload.data.missing_nis as Array<{ nama?: string }>;
+          const names = missing.slice(0, 6).map((item) => item.nama).filter(Boolean).join(', ');
+          const more = missing.length > 6 ? ` dan ${missing.length - 6} lainnya` : '';
+          toast.warning(`NIS siswa wajib diisi sebelum cetak. Mohon admin lengkapi di Kelola Pengguna. ${names ? `Siswa: ${names}${more}.` : ''}`.trim());
+          setMissingNis(payload.data.missing_nis as Array<{ id?: number; nama?: string; nisn?: string }>);
+          return;
+        }
+        toast.error(payload?.message || 'Gagal menyiapkan data cetak');
+        return;
+      }
+
+      setPrintPayload(payload as AttendancePrintProps);
+      document.body.classList.add('print-attendance');
+      window.setTimeout(() => window.print(), 100);
+    } catch {
+      toast.error('Gagal menyiapkan data cetak');
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   const hasFilters = filterSubject || filterClass;
@@ -460,7 +551,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
         <Card>
           <CardHeader
             title="Detail Kehadiran"
-            subtitle={`Sesi #${selectedSession} - ${sessions.find(s => s.id === selectedSession)?.class_name || ''} • ${sessions.find(s => s.id === selectedSession)?.subject || ''}`}
+            subtitle={`Sesi #${selectedSession} - ${selectedSessionData?.class_name || ''} • ${selectedSessionData?.subject || ''}`}
             action={
               <div className="flex gap-2 print:hidden">
                 {isEditMode ? (
@@ -476,6 +567,15 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                   <>
                     <Button size="sm" variant="outline" leftIcon={<Edit2 className="w-4 h-4" />} onClick={() => setIsEditMode(true)}>
                       Edit Status
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      leftIcon={isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                      onClick={handlePrintSession}
+                      disabled={allStudents.length === 0 || isPrinting}
+                    >
+                      Cetak PDF
                     </Button>
                     <Button
                       size="sm"
@@ -507,6 +607,34 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
             </div>
           ) : allStudents.length > 0 ? (
             <div className="overflow-x-auto">
+              {missingNis.length > 0 && user?.role !== 'admin' && (
+                <div className="px-4 pt-4">
+                  <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-200">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-300 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">NIS siswa belum lengkap</p>
+                        <p className="text-sm text-amber-700/90 dark:text-amber-200/80">Mohon admin lengkapi NIS siswa berikut di Kelola Pengguna sebelum cetak absensi.</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                      {missingNis.slice(0, 12).map((item, index) => (
+                        <span
+                          key={`${item.id ?? 'missing'}-${index}`}
+                          className="inline-flex items-center rounded-full bg-white/80 px-2 py-0.5 text-xs font-medium text-amber-700 shadow-sm dark:bg-amber-950/40 dark:text-amber-200"
+                        >
+                          {item.nama || 'Siswa'}{item.nisn ? ` (${item.nisn})` : ''}
+                        </span>
+                      ))}
+                      {missingNis.length > 12 && (
+                        <span className="text-xs text-amber-700/80 dark:text-amber-200/70">
+                          +{missingNis.length - 12} siswa lainnya
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Summary */}
               <div className="flex flex-wrap gap-3 mb-4 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
                 {statusOptions.filter(s => s.value !== 'belum').map(status => {
@@ -576,6 +704,8 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
           )}
         </Card>
       )}
+
+      {printPayload && <AttendancePrintSheet {...printPayload} />}
     </div>
   );
 }

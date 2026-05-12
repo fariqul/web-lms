@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
 import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck, Upload } from 'lucide-react';
@@ -64,6 +65,7 @@ const roleOptions = [
 
 export default function AdminUsersPage() {
   const toast = useToast();
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,7 @@ export default function AdminUsersPage() {
 
   const [totalUsers, setTotalUsers] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const skipDebounceRef = useRef(true);
   const profilePreviewCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchUsers = useCallback(async (search?: string, role?: string, classId?: string) => {
@@ -147,13 +150,27 @@ export default function AdminUsersPage() {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
+    const initialSearch = searchParams.get('search') || '';
+    const initialRole = searchParams.get('role') || '';
+    const initialClassId = searchParams.get('class_id') || '';
+
+    skipDebounceRef.current = true;
+    setSearchQuery(initialSearch);
+    setRoleFilter(initialRole);
+    setClassFilter(initialClassId);
+
+    fetchUsers(initialSearch, initialRole, initialClassId);
+
     // Fetch classes for dropdown
     classAPI.getAll().then(res => setClasses(res.data?.data || [])).catch(() => {});
-  }, [fetchUsers]);
+  }, [fetchUsers, searchParams]);
 
   // Server-side search with debounce
   useEffect(() => {
+    if (skipDebounceRef.current) {
+      skipDebounceRef.current = false;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchUsers(searchQuery, roleFilter, classFilter);
