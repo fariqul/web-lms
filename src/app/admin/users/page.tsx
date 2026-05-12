@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
@@ -63,7 +63,7 @@ const roleOptions = [
   { value: 'admin', label: 'Admin' },
 ];
 
-export default function AdminUsersPage() {
+function AdminUsersPageContent() {
   const toast = useToast();
   const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
@@ -1623,5 +1623,21 @@ export default function AdminUsersPage() {
         )}
       </Modal>
     </DashboardLayout>
+  );
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <AdminUsersPageContent />
+    </Suspense>
   );
 }

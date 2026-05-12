@@ -7,7 +7,15 @@ type JamCode = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI' | 'VII' | 'VIII' | 'IX' | 
 
 const JAM_CODES: JamCode[] = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
-const DEFAULT_SCHEDULE = [
+type ScheduleRow = {
+  jam: string;
+  waktu: string;
+  isBreak?: boolean;
+  mapel?: string;
+  guru?: string;
+};
+
+const DEFAULT_SCHEDULE: ScheduleRow[] = [
   { jam: 'I', waktu: '07.45 - 08.25' },
   { jam: 'II', waktu: '08.25 - 09.05' },
   { jam: 'III', waktu: '09.05 - 09.45' },
