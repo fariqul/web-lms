@@ -34,7 +34,7 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'login' => ['Email/NIS atau password salah.'],
+                'login' => ['NISN atau password salah.'],
             ]);
         }
 
