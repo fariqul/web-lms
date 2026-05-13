@@ -45,8 +45,8 @@ function detectIOS(): boolean {
   return /iPhone|iPad|iPod/i.test(ua);
 }
 
-const IOS_APP_LEAVE_THRESHOLD_MS = 3000;
-const DEFAULT_APP_LEAVE_THRESHOLD_MS = 1200;
+const IOS_APP_LEAVE_THRESHOLD_MS = 1000;
+const DEFAULT_APP_LEAVE_THRESHOLD_MS = 800;
 const VIRTUAL_CAMERA_PATTERNS = [
   'obs', 'virtual', 'droidcam', 'manycam', 'snap camera', 'xsplit',
   'camtwist', 'e2esoft', 'splitcam', 'youcam', 'epoccam', 'iriun',
@@ -93,7 +93,7 @@ export function useExamMode({
   const fullscreenTransitionRef = useRef(false);
   // Debounce rapid-fire violation reports on mobile
   const lastViolationTimeRef = useRef(0);
-  const VIOLATION_DEBOUNCE_MS = 2000;
+  const VIOLATION_DEBOUNCE_MS = 500;
   // Track consecutive snapshot failures for auto-restart
   const [consecutiveSnapshotFails, setConsecutiveSnapshotFails] = useState(0);
   const consecutiveFailsRef = useRef(0);
@@ -187,7 +187,11 @@ export function useExamMode({
     
     // Debounce rapid violations (mobile fires multiple events)
     const now = Date.now();
-    const isCriticalViolation = type === 'tab_switch' || type === 'window_blur' || type === 'fullscreen_exit';
+    const isCriticalViolation = type === 'tab_switch'
+      || type === 'window_blur'
+      || type === 'fullscreen_exit'
+      || type === 'screen_capture'
+      || type === 'screenshot_attempt';
     if (!isCriticalViolation && now - lastViolationTimeRef.current < VIOLATION_DEBOUNCE_MS) return;
     lastViolationTimeRef.current = now;
     
@@ -237,12 +241,12 @@ export function useExamMode({
   // Activate monitoring — can be called independently of fullscreen
   const activateMonitoring = useCallback(() => {
     if (monitoringActiveRef.current) return;
-    // Longer delay to avoid false positives during fullscreen transition & camera permission dialog
+    // Perketat: kurangi jeda aktivasi agar pelanggaran cepat terdeteksi
     setTimeout(() => {
       monitoringActiveRef.current = true;
       fullscreenTransitionRef.current = false;
       console.log('[Monitoring] Anti-cheat monitoring activated');
-    }, 5000);
+    }, 1500);
   }, []);
 
   // Suppress violation reporting temporarily (for work photo capture on mobile)
@@ -661,13 +665,8 @@ export function useExamMode({
       if (!monitoringActiveRef.current || fullscreenTransitionRef.current) return;
 
       if (document.hidden) {
-        // iOS frequently freezes background timers; record immediately when page is hidden.
-        if (isIOS) {
-          markAppLeaveStarted();
-          reportAppLeaveOnce();
-          return;
-        }
         markAppLeaveStarted();
+        reportAppLeaveOnce();
         return;
       }
 
@@ -692,6 +691,7 @@ export function useExamMode({
     const handleWindowBlur = () => {
       windowFocusedRef.current = false;
       markAppLeaveStarted();
+      reportAppLeaveOnce();
     };
     
     const handleWindowFocus = () => {
@@ -715,11 +715,18 @@ export function useExamMode({
         return;
       }
 
-      // iOS Safari: toolbar/keyboard cause ~70px height changes which are false positives.
-      // Only flag if width changes significantly (split-screen) or extreme height drop.
       if (isIOS) {
         const iosWidthRatio = currentWidth / initialWidth;
-        // Width change > 35% = likely Split View / Slide Over on iPad or app switch artifact
+        const iosHeightRatio = currentHeight / initialHeight;
+        const activeTag = document.activeElement?.tagName || '';
+        const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+        if (!isTyping && iosHeightRatio < 0.9 && !splitScreenWarnedRef.current) {
+          splitScreenWarnedRef.current = true;
+          reportViolation('fullscreen_exit', 'Keluar dari mode fullscreen (iOS)');
+          setTimeout(() => { splitScreenWarnedRef.current = false; }, 10000);
+          lastResizeTimeRef.current = now;
+          return;
+        }
         if (iosWidthRatio < 0.65 && !splitScreenWarnedRef.current) {
           splitScreenWarnedRef.current = true;
           reportViolation('split_screen', 'Mode split screen terdeteksi (iOS)');
@@ -853,6 +860,9 @@ export function useExamMode({
     // Context menu prevention (long-press on mobile)
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
+      if (monitoringActiveRef.current) {
+        reportViolation('right_click', 'Mencoba membuka menu konteks');
+      }
     };
 
     // Touch selection prevention on mobile
@@ -864,6 +874,11 @@ export function useExamMode({
 
     // Key combination prevention
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isPrintScreen = e.key === 'PrintScreen';
+      const isMacScreenshot = e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5');
+      if (isPrintScreen || isMacScreenshot) {
+        reportViolation('screen_capture', 'Percobaan screenshot terdeteksi');
+      }
       // Prevent common shortcuts
       if (
         (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'a' || e.key === 'p')) ||
@@ -878,7 +893,6 @@ export function useExamMode({
 
     // Multi-touch detection (possible screenshot gesture on mobile)
     const handleTouchStart = (e: TouchEvent) => {
-      if (isIOS) return;
       if (e.touches.length >= 3 && monitoringActiveRef.current) {
         reportViolation('screenshot_attempt', 'Gerakan multi-touch terdeteksi (kemungkinan screenshot)');
       }

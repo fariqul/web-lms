@@ -17,6 +17,7 @@ use App\Models\ClassRoom;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\NomorTes;
+use App\Support\ViolationStrictMode;
 use App\Services\SocketBroadcastService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
@@ -79,6 +80,10 @@ class ExamController extends Controller
 
     private function isCriticalViolationType(string $type): bool
     {
+        if (ViolationStrictMode::isEnabled()) {
+            return true;
+        }
+
         return in_array($type, ['tab_switch', 'window_blur', 'fullscreen_exit'], true);
     }
 
@@ -3779,7 +3784,7 @@ class ExamController extends Controller
 
         // Guard iOS false positives for selected noisy signals.
         // Critical anti-exit signals must always be counted on iOS.
-        if ($isIOSUa && !$criticalViolation) {
+        if (!ViolationStrictMode::isEnabled() && $isIOSUa && !$criticalViolation) {
             $volatileTypes = [
                 'split_screen',
                 'floating_app',
@@ -3816,7 +3821,7 @@ class ExamController extends Controller
             }
         }
 
-        if (!$criticalViolation) {
+        if (!ViolationStrictMode::isEnabled() && !$criticalViolation) {
             $gateResult = $this->evaluateNonCriticalViolationGate((int) $result->id, $violationType);
             if ($gateResult !== null) {
                 return $this->buildTransientViolationResponse(
