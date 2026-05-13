@@ -1052,7 +1052,16 @@ export const exportAPI = {
   exportGrades: (params: { class_id?: number; exam_id?: number; format: 'xlsx' | 'pdf' }) =>
     api.get('/export/grades', { params, responseType: 'blob', timeout: 120000 }),
 
-  exportAttendance: (params: { class_id?: number; month?: number; year?: number; format: 'xlsx' | 'pdf' }) =>
+  exportAttendance: (params: {
+    class_id?: number;
+    period?: 'week' | 'month' | 'semester';
+    week?: number;
+    month?: number;
+    year?: number;
+    semester?: number;
+    academic_year?: string;
+    format: 'xlsx' | 'pdf';
+  }) =>
     api.get('/export/attendance', { params, responseType: 'blob', timeout: 120000 }),
 
   exportStudentReport: (studentId: number, params: { semester?: string; format: 'xlsx' | 'pdf' }) =>

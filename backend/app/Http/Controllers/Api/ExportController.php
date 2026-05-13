@@ -10,6 +10,7 @@ use App\Models\Exam;
 use App\Models\ExamResult;
 use App\Models\User;
 use App\Support\NomorTes;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -554,62 +555,173 @@ class ExportController extends Controller
         $request->validate([
             'format' => 'required|in:xlsx,pdf',
             'class_id' => 'nullable|integer|exists:classes,id',
-            'month' => 'nullable|integer|min:1|max:12',
-            'year' => 'nullable|integer|min:2020|max:2099',
+            'period' => 'nullable|in:week,month,semester',
+            'week' => 'nullable|integer|min:1|max:53|required_if:period,week',
+            'month' => 'nullable|integer|min:1|max:12|required_if:period,month',
+            'year' => 'nullable|integer|min:2020|max:2099|required_if:period,month,week',
+            'semester' => 'nullable|integer|in:1,2|required_if:period,semester',
+            'academic_year' => 'nullable|string|required_if:period,semester',
         ]);
+
+        if ($request->user()?->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengekspor rekap absensi',
+            ], 403);
+        }
 
         $format = $request->input('format');
         $classId = $request->input('class_id');
-        $month = $request->input('month', now()->month);
-        $year = $request->input('year', now()->year);
+        $period = $request->input('period', 'month');
 
         $class = $classId ? ClassRoom::findOrFail($classId) : null;
 
-        $studentsQuery = User::where('role', 'siswa');
-        if ($classId) {
-            $studentsQuery->where('class_id', $classId);
-        }
-        $students = $studentsQuery->orderBy('name')->get();
+        $periodLabel = '';
+        if ($period === 'week') {
+            $week = (int) $request->input('week');
+            $year = (int) $request->input('year', now()->year);
+            $startDate = Carbon::now()->setISODate($year, $week)->startOfWeek();
+            $endDate = (clone $startDate)->endOfWeek();
+            $periodLabel = 'Minggu ' . $week . ' ' . $year;
+        } elseif ($period === 'semester') {
+            $semester = (int) $request->input('semester');
+            $academicYear = $request->input('academic_year');
+            [$startYear, $endYear] = $this->parseAcademicYear($academicYear);
 
-        $sessionsQuery = AttendanceSession::whereMonth('valid_from', $month)
-            ->whereYear('valid_from', $year);
+            if (!$startYear || !$endYear) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tahun akademik tidak valid',
+                ], 422);
+            }
+
+            if ($semester === 1) {
+                $startDate = Carbon::create($startYear, 7, 1)->startOfDay();
+                $endDate = Carbon::create($startYear, 12, 31)->endOfDay();
+                $semesterLabel = 'Ganjil';
+            } else {
+                $startDate = Carbon::create($endYear, 1, 1)->startOfDay();
+                $endDate = Carbon::create($endYear, 6, 30)->endOfDay();
+                $semesterLabel = 'Genap';
+            }
+
+            $periodLabel = 'Semester ' . $semesterLabel . ' ' . $academicYear;
+        } else {
+            $month = (int) $request->input('month', now()->month);
+            $year = (int) $request->input('year', now()->year);
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = (clone $startDate)->endOfMonth();
+            $periodLabel = $this->monthName($month) . ' ' . $year;
+        }
+
+        $sessionsQuery = AttendanceSession::with(['teacher:id,name', 'class:id,name'])
+            ->whereBetween('valid_from', [$startDate, $endDate]);
+
         if ($classId) {
             $sessionsQuery->where('class_id', $classId);
         }
-        $sessionIds = $sessionsQuery->pluck('id');
 
-        $data = [
-            'title' => 'Rekap Absensi ' . $this->monthName($month) . ' ' . $year . ($class ? ' - ' . $class->name : ''),
-            'headers' => ['No', 'Nama', 'NISN', 'Hadir', 'Sakit', 'Izin', 'Alpha', 'Total', '% Kehadiran'],
-            'rows' => [],
-        ];
+        $sessions = $sessionsQuery->get(['id', 'class_id', 'teacher_id', 'subject', 'valid_from']);
+        $sessionIds = $sessions->pluck('id');
+        $attendanceBySession = Attendance::whereIn('session_id', $sessionIds)
+            ->get(['session_id', 'student_id', 'status'])
+            ->groupBy('session_id');
 
-        foreach ($students as $i => $student) {
-            $attendances = Attendance::where('student_id', $student->id)
-                ->whereIn('session_id', $sessionIds)
-                ->get();
-
-            $hadir = $attendances->where('status', 'hadir')->count();
-            $sakit = $attendances->where('status', 'sakit')->count();
-            $izin = $attendances->where('status', 'izin')->count();
-            $alpha = $attendances->where('status', 'alpha')->count();
-            $total = $hadir + $sakit + $izin + $alpha;
-            $percentage = $total > 0 ? round(($hadir / $total) * 100, 2) : 0;
-
-            $data['rows'][] = [
-                $i + 1,
-                $student->name,
-                $student->nisn ?? '-',
-                $hadir,
-                $sakit,
-                $izin,
-                $alpha,
-                $total,
-                $percentage . '%',
+        $groups = $sessions->groupBy(function ($session) {
+            return $session->teacher_id . '|' . ($session->subject ?? '-') . '|' . $session->class_id;
+        })->map(function ($items) {
+            $first = $items->first();
+            return [
+                'teacher_name' => $first->teacher?->name ?? 'Tidak diketahui',
+                'subject' => $first->subject ?? 'Tanpa Mapel',
+                'class_name' => $first->class?->name ?? '-',
+                'class_id' => $first->class_id,
+                'sessions' => $items,
             ];
+        })->values()->sortBy(function ($group) {
+            return strtolower($group['teacher_name'] . '|' . $group['subject'] . '|' . $group['class_name']);
+        })->values();
+
+        $studentsByClass = [];
+        $rows = [];
+        $rowNumber = 1;
+
+        foreach ($groups as $group) {
+            $classIdForGroup = $group['class_id'];
+            if (!isset($studentsByClass[$classIdForGroup])) {
+                $studentsByClass[$classIdForGroup] = User::where('role', 'siswa')
+                    ->where('class_id', $classIdForGroup)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'nisn', 'nis']);
+            }
+
+            $counts = [];
+            foreach ($group['sessions'] as $session) {
+                $sessionAttendances = $attendanceBySession->get($session->id, collect());
+                foreach ($sessionAttendances as $attendance) {
+                    $studentId = $attendance->student_id;
+                    if (!isset($counts[$studentId])) {
+                        $counts[$studentId] = ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpha' => 0];
+                    }
+                    if (isset($counts[$studentId][$attendance->status])) {
+                        $counts[$studentId][$attendance->status]++;
+                    }
+                }
+            }
+
+            foreach ($studentsByClass[$classIdForGroup] as $student) {
+                $studentCounts = $counts[$student->id] ?? ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpha' => 0];
+                $total = array_sum($studentCounts);
+                $percentage = $total > 0 ? round(($studentCounts['hadir'] / $total) * 100, 2) : 0;
+
+                $rows[] = [
+                    $rowNumber++,
+                    $group['teacher_name'],
+                    $group['subject'],
+                    $group['class_name'],
+                    $student->nisn ?? '-',
+                    $student->nis ?? '-',
+                    $student->name,
+                    $studentCounts['hadir'],
+                    $studentCounts['izin'],
+                    $studentCounts['sakit'],
+                    $studentCounts['alpha'],
+                    $total,
+                ];
+            }
         }
 
+        $subtitleParts = ['Periode: ' . $periodLabel];
+        if ($class) {
+            array_unshift($subtitleParts, 'Kelas: ' . $class->name);
+        }
+
+        $data = [
+            'title' => 'Rekap Absensi',
+            'subtitle' => implode(' | ', $subtitleParts),
+            'headers' => ['No', 'Guru', 'Mata Pelajaran', 'Kelas', 'NISN', 'NIS', 'Nama', 'Hadir', 'Izin', 'Sakit', 'Alpha', 'Total'],
+            'rows' => $rows,
+        ];
+
         return $this->generateExport($data, $format, 'absensi');
+    }
+
+    private function parseAcademicYear(?string $academicYear): array
+    {
+        if (!$academicYear) {
+            return [null, null];
+        }
+
+        if (preg_match('/(\d{4})\D+(\d{4})/', $academicYear, $matches)) {
+            return [(int) $matches[1], (int) $matches[2]];
+        }
+
+        if (preg_match('/\d{4}/', $academicYear, $matches)) {
+            $startYear = (int) $matches[0];
+            return [$startYear, $startYear + 1];
+        }
+
+        return [null, null];
     }
 
     // =========================================

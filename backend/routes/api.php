@@ -336,7 +336,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
     // ============================================
     Route::middleware('role:admin,guru')->group(function () {
         Route::get('/export/grades', [ExportController::class, 'grades']);
-        Route::get('/export/attendance', [ExportController::class, 'attendance']);
+        Route::get('/export/attendance', [ExportController::class, 'attendance'])->middleware('role:admin');
         Route::get('/export/student/{studentId}', [ExportController::class, 'studentReport']);
         Route::get('/export/exam-results/{examId}', [ExportController::class, 'examResults'])->middleware('role:admin');
         Route::get('/export/quiz-results/{quizId}', [ExportController::class, 'quizResults'])->middleware('role:admin');

@@ -5,31 +5,60 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, CardHeader, Button, Select } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Download, FileSpreadsheet, FileText, Loader2, BarChart3, ClipboardList, Users } from 'lucide-react';
-import { classAPI, exportAPI } from '@/services/api';
+import { classAPI, exportAPI, progressAPI } from '@/services/api';
 
 type ExportType = 'grades' | 'attendance' | 'student-report';
 type ExportFormat = 'xlsx' | 'pdf';
+type AttendancePeriod = 'week' | 'month' | 'semester';
+
+type SemesterOption = {
+  value: string;
+  label: string;
+  semester: string;
+  academic_year: string;
+};
+
+const getIsoWeek = (date: Date) => {
+  const temp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = temp.getUTCDay() || 7;
+  temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+  return Math.ceil((((temp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+};
 
 export default function ExportPage() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [classes, setClasses] = useState<{ value: string; label: string }[]>([]);
+  const [semesterOptions, setSemesterOptions] = useState<SemesterOption[]>([]);
   const [exportType, setExportType] = useState<ExportType>('grades');
   const [selectedClass, setSelectedClass] = useState('');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [format, setFormat] = useState<ExportFormat>('xlsx');
-  const [semester, setSemester] = useState('ganjil');
+  const [studentReportSemester, setStudentReportSemester] = useState('ganjil');
+  const [attendancePeriod, setAttendancePeriod] = useState<AttendancePeriod>('month');
+  const [attendanceWeek, setAttendanceWeek] = useState(getIsoWeek(new Date()));
+  const [attendanceSemester, setAttendanceSemester] = useState('');
 
   useEffect(() => {
     const init = async () => {
       try {
-        const res = await classAPI.getAll();
-        const data = res.data?.data || [];
-        setClasses(data.map((c: { id: number; name: string }) => ({ value: c.id.toString(), label: c.name })));
+        const [classRes, semesterRes] = await Promise.all([
+          classAPI.getAll(),
+          progressAPI.getSemesters(),
+        ]);
+        const classData = classRes.data?.data || [];
+        setClasses(classData.map((c: { id: number; name: string }) => ({ value: c.id.toString(), label: c.name })));
+
+        const semesterData = semesterRes.data?.data || [];
+        setSemesterOptions(semesterData);
+        if (semesterData.length > 0) {
+          setAttendanceSemester(semesterData[0].value);
+        }
       } catch {
-        toast.error('Gagal memuat data kelas');
+        toast.error('Gagal memuat data export');
       } finally {
         setLoading(false);
       }
@@ -60,14 +89,36 @@ export default function ExportPage() {
           break;
         }
         case 'attendance': {
+          let semesterMeta: SemesterOption | undefined;
+          if (attendancePeriod === 'semester') {
+            semesterMeta = semesterOptions.find((opt) => opt.value === attendanceSemester);
+            if (!semesterMeta) {
+              toast.warning('Pilih semester terlebih dahulu');
+              setExporting(false);
+              return;
+            }
+          }
+
           const res = await exportAPI.exportAttendance({
             class_id: selectedClass ? parseInt(selectedClass) : undefined,
-            month,
-            year,
+            period: attendancePeriod,
+            month: attendancePeriod === 'month' ? month : undefined,
+            week: attendancePeriod === 'week' ? attendanceWeek : undefined,
+            year: attendancePeriod === 'month' || attendancePeriod === 'week' ? year : undefined,
+            semester: semesterMeta ? parseInt(semesterMeta.semester) : undefined,
+            academic_year: semesterMeta?.academic_year,
             format,
           });
           blob = res.data;
-          filename = `absensi_${className.replace(/\s+/g, '_')}_${year}-${String(month).padStart(2, '0')}.${format}`;
+          let periodSuffix = `${year}-${String(month).padStart(2, '0')}`;
+          if (attendancePeriod === 'week') {
+            periodSuffix = `minggu-${attendanceWeek}_${year}`;
+          }
+          if (attendancePeriod === 'semester' && semesterMeta) {
+            const safeYear = semesterMeta.academic_year.replace(/\s+/g, '_').replace(/\//g, '-');
+            periodSuffix = `semester-${semesterMeta.semester}_${safeYear}`;
+          }
+          filename = `absensi_${className.replace(/\s+/g, '_')}_${periodSuffix}.${format}`;
           break;
         }
         case 'student-report': {
@@ -77,7 +128,7 @@ export default function ExportPage() {
             format,
           });
           blob = res.data;
-          filename = `rapor_${className.replace(/\s+/g, '_')}_${semester}.${format}`;
+          filename = `rapor_${className.replace(/\s+/g, '_')}_${studentReportSemester}.${format}`;
           break;
         }
       }
@@ -107,6 +158,16 @@ export default function ExportPage() {
     { value: '11', label: 'November' }, { value: '12', label: 'Desember' },
   ];
 
+  const weekOptions = Array.from({ length: 53 }, (_, i) => ({
+    value: String(i + 1),
+    label: `Minggu ${i + 1}`,
+  }));
+
+  const yearOptions = Array.from({ length: 5 }, (_, i) => {
+    const optionYear = new Date().getFullYear() - i;
+    return { value: optionYear.toString(), label: optionYear.toString() };
+  });
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -133,7 +194,7 @@ export default function ExportPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { type: 'grades' as ExportType, icon: BarChart3, title: 'Nilai Ujian', desc: 'Export semua nilai ujian siswa', color: 'blue' },
-            { type: 'attendance' as ExportType, icon: ClipboardList, title: 'Data Absensi', desc: 'Export rekap kehadiran per bulan', color: 'teal' },
+            { type: 'attendance' as ExportType, icon: ClipboardList, title: 'Data Absensi', desc: 'Export rekap kehadiran per minggu/bulan/semester', color: 'teal' },
             { type: 'student-report' as ExportType, icon: Users, title: 'Rapor Siswa', desc: 'Export laporan progress per kelas', color: 'purple' },
           ].map(({ type, icon: Icon, title, desc, color }) => (
             <Card
@@ -168,21 +229,58 @@ export default function ExportPage() {
             {exportType === 'attendance' && (
               <>
                 <Select
-                  label="Bulan"
-                  options={months}
-                  value={month.toString()}
-                  onChange={(e) => setMonth(parseInt(e.target.value))}
-                />
-                <Select
-                  label="Tahun"
+                  label="Periode"
                   options={[
-                    { value: '2026', label: '2026' },
-                    { value: '2025', label: '2025' },
-                    { value: '2024', label: '2024' },
+                    { value: 'week', label: 'Mingguan' },
+                    { value: 'month', label: 'Bulanan' },
+                    { value: 'semester', label: 'Semester' },
                   ]}
-                  value={year.toString()}
-                  onChange={(e) => setYear(parseInt(e.target.value))}
+                  value={attendancePeriod}
+                  onChange={(e) => setAttendancePeriod(e.target.value as AttendancePeriod)}
                 />
+
+                {attendancePeriod === 'week' && (
+                  <>
+                    <Select
+                      label="Minggu"
+                      options={weekOptions}
+                      value={attendanceWeek.toString()}
+                      onChange={(e) => setAttendanceWeek(parseInt(e.target.value))}
+                    />
+                    <Select
+                      label="Tahun"
+                      options={yearOptions}
+                      value={year.toString()}
+                      onChange={(e) => setYear(parseInt(e.target.value))}
+                    />
+                  </>
+                )}
+
+                {attendancePeriod === 'month' && (
+                  <>
+                    <Select
+                      label="Bulan"
+                      options={months}
+                      value={month.toString()}
+                      onChange={(e) => setMonth(parseInt(e.target.value))}
+                    />
+                    <Select
+                      label="Tahun"
+                      options={yearOptions}
+                      value={year.toString()}
+                      onChange={(e) => setYear(parseInt(e.target.value))}
+                    />
+                  </>
+                )}
+
+                {attendancePeriod === 'semester' && (
+                  <Select
+                    label="Semester"
+                    options={semesterOptions.length > 0 ? semesterOptions : [{ value: '', label: 'Belum ada data semester' }]}
+                    value={attendanceSemester}
+                    onChange={(e) => setAttendanceSemester(e.target.value)}
+                  />
+                )}
               </>
             )}
 
@@ -190,8 +288,8 @@ export default function ExportPage() {
               <Select
                 label="Semester"
                 options={[{ value: 'ganjil', label: 'Ganjil' }, { value: 'genap', label: 'Genap' }]}
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
+                value={studentReportSemester}
+                onChange={(e) => setStudentReportSemester(e.target.value)}
               />
             )}
           </div>
