@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AttendanceSession;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Models\StudentEnrollment;
 use App\Models\StudentDevice;
 use App\Models\DeviceSwitchRequest;
 use App\Models\SchoolNetworkSetting;
@@ -16,6 +17,33 @@ use Carbon\Carbon;
 
 class AttendanceController extends Controller
 {
+    private function getSessionDate(AttendanceSession $session): Carbon
+    {
+        return $session->valid_from ? $session->valid_from->copy() : Carbon::parse($session->created_at);
+    }
+
+    private function getStudentsForSession(AttendanceSession $session)
+    {
+        $sessionDate = $this->getSessionDate($session);
+
+        return User::where('role', 'siswa')
+            ->whereHas('enrollments', function ($query) use ($session, $sessionDate) {
+                $query->where('class_id', $session->class_id)
+                    ->activeAt($sessionDate);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'nisn', 'nis']);
+    }
+
+    private function countStudentsForSession(AttendanceSession $session): int
+    {
+        $sessionDate = $this->getSessionDate($session);
+
+        return StudentEnrollment::query()
+            ->where('class_id', $session->class_id)
+            ->activeAt($sessionDate)
+            ->count();
+    }
     /**
      * Get the real client IP, with fallback to forwarded headers
      */
@@ -74,9 +102,7 @@ class AttendanceController extends Controller
 
         // Add summary for each session
         $sessions->getCollection()->transform(function ($session) {
-            $totalStudents = User::where('class_id', $session->class_id)
-                ->where('role', 'siswa')
-                ->count();
+            $totalStudents = $this->countStudentsForSession($session);
             $totalHadir = Attendance::where('session_id', $session->id)
                 ->where('status', 'hadir')
                 ->count();
@@ -161,10 +187,7 @@ class AttendanceController extends Controller
             ->keyBy('student_id');
 
         // Get list of students in the class
-        $students = User::where('class_id', $attendanceSession->class_id)
-            ->where('role', 'siswa')
-            ->orderBy('name')
-            ->get(['id', 'name', 'nisn']);
+        $students = $this->getStudentsForSession($attendanceSession);
 
         // Map attendance status for each student
         $studentAttendances = $students->map(function ($student) use ($attendances) {
@@ -270,8 +293,7 @@ class AttendanceController extends Controller
             ->toArray();
         
         // Get absent students using whereNotIn (uses index)
-        $absentStudentIds = User::where('class_id', $attendanceSession->class_id)
-            ->where('role', 'siswa')
+        $absentStudentIds = $this->getStudentsForSession($attendanceSession)
             ->whereNotIn('id', $attendedStudentIds)
             ->pluck('id');
 

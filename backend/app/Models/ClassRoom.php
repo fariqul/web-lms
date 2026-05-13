@@ -15,13 +15,25 @@ class ClassRoom extends Model
         'name',
         'grade',
         'academic_year',
+        'is_active',
         'skl_pickup_message',
         'wali_kelas_id',
     ];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
     public function students()
     {
-        return $this->hasMany(User::class, 'class_id')->where('role', 'siswa');
+        return $this->belongsToMany(User::class, 'student_enrollments', 'class_id', 'student_id')
+            ->where('users.role', 'siswa')
+            ->wherePivot('is_active', true);
+    }
+
+    public function studentEnrollments()
+    {
+        return $this->hasMany(StudentEnrollment::class, 'class_id');
     }
 
     public function waliKelas()

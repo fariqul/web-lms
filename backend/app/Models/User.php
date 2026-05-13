@@ -53,6 +53,16 @@ class User extends Authenticatable
         return $this->belongsTo(ClassRoom::class, 'class_id');
     }
 
+    public function enrollments()
+    {
+        return $this->hasMany(StudentEnrollment::class, 'student_id');
+    }
+
+    public function activeEnrollment()
+    {
+        return $this->hasOne(StudentEnrollment::class, 'student_id')->where('is_active', true);
+    }
+
     public function attendances()
     {
         return $this->hasMany(Attendance::class, 'student_id');

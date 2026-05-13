@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClassRoom;
+use App\Models\StudentEnrollment;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -19,12 +23,25 @@ class ClassController extends Controller
 {
     private const CLASS_IMPORT_PREVIEW_TTL_SECONDS = 1800;
 
+    private function resolveSemester(Carbon $date): int
+    {
+        return $date->month >= 7 ? 1 : 2;
+    }
+
     /**
      * Display a listing of classes - OPTIMIZED
      */
     public function index(Request $request)
     {
         $query = ClassRoom::withCount('students')->with('waliKelas:id,name,nip');
+
+        $includeInactive = filter_var($request->query('include_inactive', false), FILTER_VALIDATE_BOOLEAN);
+        $onlyInactive = filter_var($request->query('only_inactive', false), FILTER_VALIDATE_BOOLEAN);
+        if ($onlyInactive) {
+            $query->where('is_active', false);
+        } elseif (!$includeInactive) {
+            $query->where('is_active', true);
+        }
 
         // Filter by grade level
         if ($request->has('grade_level')) {
@@ -38,7 +55,7 @@ class ClassController extends Controller
 
         $classes = $query->orderBy('grade_level')
             ->orderBy('name')
-            ->get(['id', 'name', 'grade_level', 'academic_year', 'wali_kelas_id']);
+            ->get(['id', 'name', 'grade_level', 'academic_year', 'wali_kelas_id', 'is_active']);
 
         return response()->json([
             'success' => true,
@@ -55,16 +72,20 @@ class ClassController extends Controller
             'name' => 'required|string|max:255|unique:classes',
             'grade_level' => 'required|in:X,XI,XII',
             'academic_year' => 'required|string',
+            'is_active' => 'nullable|boolean',
             'wali_kelas_id' => [
                 'nullable',
                 Rule::exists('users', 'id')->where('role', 'guru'),
             ],
         ]);
 
+        $isActive = $request->has('is_active') ? $request->boolean('is_active') : true;
+
         $class = ClassRoom::create([
             'name' => $request->name,
             'grade_level' => $request->grade_level,
             'academic_year' => $request->academic_year,
+            'is_active' => $isActive,
             'wali_kelas_id' => $request->input('wali_kelas_id'),
         ]);
 
@@ -81,7 +102,7 @@ class ClassController extends Controller
     public function show(ClassRoom $class)
     {
         $class->loadCount('students');
-        $class->load(['students:id,class_id,name,nisn,nis,jenis_kelamin,email,photo', 'waliKelas:id,name,nip']);
+        $class->load(['students:id,name,nisn,nis,jenis_kelamin,email,photo', 'waliKelas:id,name,nip']);
 
         return response()->json([
             'success' => true,
@@ -98,6 +119,7 @@ class ClassController extends Controller
             'name' => 'sometimes|string|max:255|unique:classes,name,' . $class->id,
             'grade_level' => 'sometimes|in:X,XI,XII',
             'academic_year' => 'sometimes|string',
+            'is_active' => 'nullable|boolean',
             'wali_kelas_id' => [
                 'nullable',
                 Rule::exists('users', 'id')->where('role', 'guru'),
@@ -112,6 +134,9 @@ class ClassController extends Controller
         }
         if ($request->has('academic_year')) {
             $class->academic_year = $request->academic_year;
+        }
+        if ($request->has('is_active')) {
+            $class->is_active = $request->boolean('is_active');
         }
         if ($request->exists('wali_kelas_id')) {
             $class->wali_kelas_id = $request->input('wali_kelas_id');
@@ -132,7 +157,7 @@ class ClassController extends Controller
     public function destroy(ClassRoom $class)
     {
         // Check if class has students
-        if ($class->students()->count() > 0) {
+        if ($class->studentEnrollments()->count() > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak dapat menghapus kelas yang masih memiliki siswa',
@@ -271,15 +296,185 @@ class ClassController extends Controller
         ]);
     }
 
+    /**
+     * Promote/roll students to new classes (admin only)
+     */
+    public function promote(Request $request)
+    {
+        $validated = $request->validate([
+            'from_academic_year' => 'required|string',
+            'to_academic_year' => 'required|string',
+            'effective_date' => 'nullable|date',
+            'archive_from_classes' => 'nullable|boolean',
+            'mappings' => 'required|array|min:1',
+            'mappings.*.from_class_id' => 'required|integer|distinct|exists:classes,id',
+            'mappings.*.to_class_id' => 'nullable|integer|exists:classes,id',
+        ]);
+
+        $fromYear = $validated['from_academic_year'];
+        $toYear = $validated['to_academic_year'];
+        $effectiveDate = Carbon::parse($validated['effective_date'] ?? now()->toDateString())->startOfDay();
+        $startDate = $effectiveDate->toDateString();
+        $endDate = $effectiveDate->copy()->subDay()->toDateString();
+        $semester = $this->resolveSemester($effectiveDate);
+        $archiveFromClasses = $request->boolean('archive_from_classes', false);
+
+        $mappingRows = collect($validated['mappings']);
+        $classIds = $mappingRows
+            ->pluck('from_class_id')
+            ->merge($mappingRows->pluck('to_class_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $classes = ClassRoom::query()
+            ->whereIn('id', $classIds)
+            ->get(['id', 'name', 'academic_year'])
+            ->keyBy('id');
+
+        foreach ($mappingRows as $row) {
+            $fromClass = $classes->get((int) $row['from_class_id']);
+            if (!$fromClass || $fromClass->academic_year !== $fromYear) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kelas sumber tidak sesuai tahun ajaran yang dipilih',
+                ], 422);
+            }
+
+            if (!empty($row['to_class_id'])) {
+                if ((int) $row['to_class_id'] === (int) $row['from_class_id']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Kelas tujuan tidak boleh sama dengan kelas sumber',
+                    ], 422);
+                }
+                $toClass = $classes->get((int) $row['to_class_id']);
+                if (!$toClass || $toClass->academic_year !== $toYear) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Kelas tujuan tidak sesuai tahun ajaran yang dipilih',
+                    ], 422);
+                }
+            }
+        }
+
+        $summary = [
+            'from_academic_year' => $fromYear,
+            'to_academic_year' => $toYear,
+            'effective_date' => $startDate,
+            'classes_processed' => 0,
+            'students_moved' => 0,
+            'students_graduated' => 0,
+            'details' => [],
+        ];
+
+        DB::transaction(function () use ($mappingRows, $classes, $startDate, $endDate, $semester, $archiveFromClasses, &$summary) {
+            foreach ($mappingRows as $row) {
+                $fromClassId = (int) $row['from_class_id'];
+                $toClassId = isset($row['to_class_id']) ? (int) $row['to_class_id'] : null;
+                $fromClass = $classes->get($fromClassId);
+                $toClass = $toClassId ? $classes->get($toClassId) : null;
+
+                $activeEnrollments = StudentEnrollment::query()
+                    ->where('class_id', $fromClassId)
+                    ->where('is_active', true)
+                    ->get(['id', 'student_id']);
+
+                $studentIds = $activeEnrollments->pluck('student_id');
+                if ($studentIds->isEmpty()) {
+                    $summary['details'][] = [
+                        'from_class_id' => $fromClassId,
+                        'to_class_id' => $toClassId,
+                        'students' => 0,
+                        'status' => 'skipped',
+                        'message' => 'Tidak ada siswa aktif di kelas sumber',
+                    ];
+                    continue;
+                }
+
+                StudentEnrollment::query()
+                    ->whereIn('student_id', $studentIds)
+                    ->where('is_active', true)
+                    ->update([
+                        'is_active' => false,
+                        'end_date' => $endDate,
+                    ]);
+
+                if ($toClassId && $toClass) {
+                    $rows = $studentIds->map(function ($studentId) use ($toClassId, $toClass, $startDate, $semester) {
+                        return [
+                            'student_id' => $studentId,
+                            'class_id' => $toClassId,
+                            'academic_year' => $toClass->academic_year,
+                            'semester' => $semester,
+                            'start_date' => $startDate,
+                            'end_date' => null,
+                            'is_active' => true,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    })->all();
+
+                    StudentEnrollment::query()->insert($rows);
+                    User::query()->whereIn('id', $studentIds)->update(['class_id' => $toClassId]);
+
+                    $summary['students_moved'] += $studentIds->count();
+                    $summary['details'][] = [
+                        'from_class_id' => $fromClassId,
+                        'to_class_id' => $toClassId,
+                        'students' => $studentIds->count(),
+                        'status' => 'moved',
+                        'from_class_name' => $fromClass?->name,
+                        'to_class_name' => $toClass?->name,
+                    ];
+                } else {
+                    User::query()->whereIn('id', $studentIds)->update(['class_id' => null]);
+                    $summary['students_graduated'] += $studentIds->count();
+                    $summary['details'][] = [
+                        'from_class_id' => $fromClassId,
+                        'to_class_id' => null,
+                        'students' => $studentIds->count(),
+                        'status' => 'graduated',
+                        'from_class_name' => $fromClass?->name,
+                    ];
+                }
+
+                $summary['classes_processed']++;
+            }
+
+            if ($archiveFromClasses) {
+                $fromClassIds = $mappingRows->pluck('from_class_id')->unique()->values();
+                ClassRoom::query()
+                    ->whereIn('id', $fromClassIds)
+                    ->update(['is_active' => false]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Promosi/rolling siswa berhasil diproses',
+            'data' => $summary,
+        ]);
+    }
+
     public function export(Request $request)
     {
         $request->validate([
             'format' => 'nullable|in:xlsx,csv',
             'grade_level' => 'nullable|in:X,XI,XII',
+            'include_inactive' => 'nullable|boolean',
+            'only_inactive' => 'nullable|boolean',
         ]);
 
         $format = (string) ($request->input('format') ?: 'xlsx');
         $query = ClassRoom::query()->withCount('students')->orderBy('grade_level')->orderBy('name');
+        $includeInactive = filter_var($request->query('include_inactive', false), FILTER_VALIDATE_BOOLEAN);
+        $onlyInactive = filter_var($request->query('only_inactive', false), FILTER_VALIDATE_BOOLEAN);
+        if ($onlyInactive) {
+            $query->where('is_active', false);
+        } elseif (!$includeInactive) {
+            $query->where('is_active', true);
+        }
         if ($request->filled('grade_level')) {
             $query->where('grade_level', $request->input('grade_level'));
         }

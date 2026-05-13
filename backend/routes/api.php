@@ -106,6 +106,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Class Management
         Route::post('/classes/import/preview', [ClassController::class, 'importPreview']);
         Route::post('/classes/import/confirm', [ClassController::class, 'importConfirm']);
+        Route::post('/classes/promote', [ClassController::class, 'promote']);
         Route::get('/classes/export', [ClassController::class, 'export']);
         Route::apiResource('classes', ClassController::class)->except(['index', 'show']);
         

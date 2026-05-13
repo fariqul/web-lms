@@ -8,6 +8,7 @@ use App\Models\AttendanceSession;
 use App\Models\ClassRoom;
 use App\Models\Exam;
 use App\Models\ExamResult;
+use App\Models\StudentEnrollment;
 use App\Models\User;
 use App\Support\NomorTes;
 use Carbon\Carbon;
@@ -650,7 +651,14 @@ class ExportController extends Controller
             $classIdForGroup = $group['class_id'];
             if (!isset($studentsByClass[$classIdForGroup])) {
                 $studentsByClass[$classIdForGroup] = User::where('role', 'siswa')
-                    ->where('class_id', $classIdForGroup)
+                    ->whereHas('enrollments', function ($query) use ($classIdForGroup, $startDate, $endDate) {
+                        $query->where('class_id', $classIdForGroup)
+                            ->whereDate('start_date', '<=', $endDate)
+                            ->where(function ($sub) use ($startDate) {
+                                $sub->whereNull('end_date')
+                                    ->orWhereDate('end_date', '>=', $startDate);
+                            });
+                    })
                     ->orderBy('name')
                     ->get(['id', 'name', 'nisn', 'nis']);
             }

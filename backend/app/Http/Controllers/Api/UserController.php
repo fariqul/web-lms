@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ClassRoom;
+use App\Models\StudentEnrollment;
+use Carbon\Carbon;
+use App\Models\ClassRoom;
 use App\Services\SocketBroadcastService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -116,6 +119,10 @@ class UserController extends Controller
         $user->role = $request->role;
         $user->save();
 
+        if ($user->role === 'siswa') {
+            $this->syncStudentEnrollment($user, $user->class_id);
+        }
+
         $user->load('classRoom:id,name');
 
         return response()->json([
@@ -162,6 +169,9 @@ class UserController extends Controller
             'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
+        $previousRole = $user->role;
+        $previousClassId = $user->class_id;
+
         if ($request->has('name')) {
             $user->name = $request->name;
         }
@@ -196,6 +206,14 @@ class UserController extends Controller
         $user->save();
         $user->load('classRoom:id,name');
 
+        if ($user->role === 'siswa') {
+            if ($previousRole !== 'siswa' || $previousClassId !== $user->class_id) {
+                $this->syncStudentEnrollment($user, $user->class_id);
+            }
+        } elseif ($previousRole === 'siswa') {
+            $this->syncStudentEnrollment($user, null);
+        }
+
         return response()->json([
             'success' => true,
             'data' => $user,
@@ -222,7 +240,10 @@ class UserController extends Controller
     public function studentsByClass($classId)
     {
         $students = User::where('role', 'siswa')
-            ->where('class_id', $classId)
+            ->whereHas('enrollments', function ($query) use ($classId) {
+                $query->where('class_id', $classId)
+                    ->where('is_active', true);
+            })
             ->orderBy('name')
             ->get();
 
@@ -368,6 +389,9 @@ class UserController extends Controller
             $user->role = $payload['role'];
             $user->password = Hash::make(self::USER_DEFAULT_IMPORT_PASSWORD);
             $user->save();
+            if ($user->role === 'siswa') {
+                $this->syncStudentEnrollment($user, $user->class_id);
+            }
             $created++;
         }
 
@@ -400,6 +424,11 @@ class UserController extends Controller
             $user->email = strtolower((string) $payload['email']);
             $user->role = $payload['role'];
             $user->save();
+            if ($user->role === 'siswa') {
+                $this->syncStudentEnrollment($user, $user->class_id);
+            } else {
+                $this->syncStudentEnrollment($user, null);
+            }
             $updated++;
         }
 
@@ -639,6 +668,67 @@ class UserController extends Controller
             'conflict_count' => $conflictCount,
             // Batasi daftar konflik agar payload tetap ringan.
             'conflicts' => array_slice($conflicts, 0, 20),
+        ]);
+    }
+
+    private function resolveSemester(Carbon $date): int
+    {
+        return $date->month >= 7 ? 1 : 2;
+    }
+
+    private function syncStudentEnrollment(User $user, ?int $classId): void
+    {
+        $effectiveDate = Carbon::now()->toDateString();
+
+        $activeEnrollment = StudentEnrollment::query()
+            ->where('student_id', $user->id)
+            ->where('is_active', true)
+            ->first();
+
+        if ($user->role !== 'siswa') {
+            if ($activeEnrollment) {
+                $activeEnrollment->update([
+                    'is_active' => false,
+                    'end_date' => $effectiveDate,
+                ]);
+            }
+            return;
+        }
+
+        if (!$classId) {
+            if ($activeEnrollment) {
+                $activeEnrollment->update([
+                    'is_active' => false,
+                    'end_date' => $effectiveDate,
+                ]);
+            }
+            return;
+        }
+
+        $classRoom = ClassRoom::query()->find($classId);
+        if (!$classRoom) {
+            return;
+        }
+
+        if ($activeEnrollment && $activeEnrollment->class_id === $classId) {
+            return;
+        }
+
+        if ($activeEnrollment) {
+            $activeEnrollment->update([
+                'is_active' => false,
+                'end_date' => $effectiveDate,
+            ]);
+        }
+
+        StudentEnrollment::create([
+            'student_id' => $user->id,
+            'class_id' => $classId,
+            'academic_year' => $classRoom->academic_year,
+            'semester' => $this->resolveSemester(Carbon::now()),
+            'start_date' => $effectiveDate,
+            'end_date' => null,
+            'is_active' => true,
         ]);
     }
 

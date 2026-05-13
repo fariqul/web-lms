@@ -289,16 +289,16 @@ export const userAPI = {
 
 // Class API
 export const classAPI = {
-  getAll: () =>
-    api.get('/classes'),
+  getAll: (params?: { include_inactive?: boolean; only_inactive?: boolean }) =>
+    api.get('/classes', { params }),
   
   getById: (id: number) =>
     api.get(`/classes/${id}`),
   
-  create: (data: { name: string; grade?: string; grade_level?: string; academic_year: string; wali_kelas_id?: number | null }) =>
+  create: (data: { name: string; grade?: string; grade_level?: string; academic_year: string; is_active?: boolean; wali_kelas_id?: number | null }) =>
     api.post('/classes', data),
   
-  update: (id: number, data: Partial<{ name: string; grade?: string; grade_level?: string; academic_year: string; wali_kelas_id?: number | null }>) =>
+  update: (id: number, data: Partial<{ name: string; grade?: string; grade_level?: string; academic_year: string; is_active?: boolean; wali_kelas_id?: number | null }>) =>
     api.put(`/classes/${id}`, data),
   
   delete: (id: number) =>
@@ -319,8 +319,17 @@ export const classAPI = {
   importConfirm: (previewToken: string) =>
     api.post('/classes/import/confirm', { preview_token: previewToken }),
 
-  exportData: (params?: { format?: 'xlsx' | 'csv'; grade_level?: string }) =>
+  exportData: (params?: { format?: 'xlsx' | 'csv'; grade_level?: string; include_inactive?: boolean; only_inactive?: boolean }) =>
     api.get('/classes/export', { params, responseType: 'blob', timeout: 120000 }),
+
+  promoteAcademicYear: (data: {
+    from_academic_year: string;
+    to_academic_year: string;
+    effective_date?: string;
+    archive_from_classes?: boolean;
+    mappings: Array<{ from_class_id: number; to_class_id: number | null }>;
+  }) =>
+    api.post('/classes/promote', data),
 };
 
 const buildFacilityFormData = (

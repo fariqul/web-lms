@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
-import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, Upload } from 'lucide-react';
+import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog, Checkbox } from '@/components/ui';
+import { Plus, Search, Edit2, Trash2, Users, Download, Loader2, Eye, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
 import { classAPI, getSecureFileUrl, userAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -23,6 +23,7 @@ interface ClassRoom {
   name: string;
   grade_level: string;
   academic_year: string;
+  is_active?: boolean;
   wali_kelas_id?: number | null;
   wali_kelas?: { id: number; name: string; nip?: string };
   students_count?: number;
@@ -53,6 +54,12 @@ const gradeOptions = [
   { value: 'XII', label: 'Kelas XII' },
 ];
 
+const statusOptions = [
+  { value: 'active', label: 'Aktif' },
+  { value: 'archived', label: 'Arsip' },
+  { value: 'all', label: 'Semua' },
+];
+
 export default function AdminKelasPage() {
   const toast = useToast();
   const [classes, setClasses] = useState<ClassRoom[]>([]);
@@ -60,6 +67,7 @@ export default function AdminKelasPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassRoom | null>(null);
@@ -84,16 +92,25 @@ export default function AdminKelasPage() {
   const [profilePreviewFitMode, setProfilePreviewFitMode] = useState<'contain' | 'cover'>('contain');
   const profilePreviewCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [promoteFromYear, setPromoteFromYear] = useState('');
+  const [promoteToYear, setPromoteToYear] = useState('');
+  const [promoteEffectiveDate, setPromoteEffectiveDate] = useState('');
+  const [promoteMappings, setPromoteMappings] = useState<Record<number, string>>({});
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [archiveFromClasses, setArchiveFromClasses] = useState(true);
+
   const [formData, setFormData] = useState({
     name: '',
     grade_level: '',
     academic_year: '2025/2026',
+    is_active: true,
     wali_kelas_id: '',
   });
 
   useEffect(() => {
-    fetchClasses();
-  }, []);
+    fetchClasses(statusFilter);
+  }, [statusFilter]);
 
   useEffect(() => {
     return () => {
@@ -104,11 +121,17 @@ export default function AdminKelasPage() {
     };
   }, []);
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (status: 'active' | 'archived' | 'all') => {
     try {
       setLoading(true);
+      const classParams =
+        status === 'archived'
+          ? { only_inactive: true }
+          : status === 'all'
+            ? { include_inactive: true }
+            : undefined;
       const [classesRes, teachersRes] = await Promise.all([
-        classAPI.getAll(),
+        classAPI.getAll(classParams),
         userAPI.getAll({ role: 'guru', per_page: 1000 }),
       ]);
       setClasses(classesRes.data?.data || []);
@@ -129,8 +152,39 @@ export default function AdminKelasPage() {
   const filteredClasses = classes.filter((cls) => {
     const matchesSearch = cls.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGrade = !gradeFilter || cls.grade_level === gradeFilter;
-    return matchesSearch && matchesGrade;
+    const isActive = cls.is_active !== false;
+    const matchesStatus = statusFilter === 'all'
+      ? true
+      : statusFilter === 'archived'
+        ? !isActive
+        : isActive;
+    return matchesSearch && matchesGrade && matchesStatus;
   });
+
+  const parseAcademicYearStart = (value: string) => {
+    const match = value.match(/(\d{4})/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  const getNextAcademicYear = (value: string) => {
+    const start = parseAcademicYearStart(value);
+    return start ? `${start + 1}/${start + 2}` : '';
+  };
+
+  const getDefaultEffectiveDate = (value: string) => {
+    const start = parseAcademicYearStart(value);
+    if (!start) return new Date().toISOString().slice(0, 10);
+    const nextStart = start + 1;
+    return `${nextStart}-07-01`;
+  };
+
+  const academicYearOptions = Array.from(new Set(classes.map((c) => c.academic_year)))
+    .filter(Boolean)
+    .sort((a, b) => parseAcademicYearStart(a) - parseAcademicYearStart(b))
+    .map((year) => ({ value: year, label: year }));
+
+  const promoteFromClasses = classes.filter((cls) => cls.academic_year === promoteFromYear);
+  const promoteTargetClasses = classes.filter((cls) => cls.academic_year === promoteToYear);
 
   const totalStudents = filteredClasses.reduce((sum, cls) => sum + (cls.students_count || 0), 0);
 
@@ -141,6 +195,7 @@ export default function AdminKelasPage() {
         name: cls.name,
         grade_level: cls.grade_level,
         academic_year: cls.academic_year,
+        is_active: cls.is_active ?? true,
         wali_kelas_id: cls.wali_kelas_id?.toString() || cls.wali_kelas?.id?.toString() || '',
       });
     } else {
@@ -149,6 +204,7 @@ export default function AdminKelasPage() {
         name: '',
         grade_level: '',
         academic_year: '2025/2026',
+        is_active: true,
         wali_kelas_id: '',
       });
     }
@@ -168,6 +224,7 @@ export default function AdminKelasPage() {
         name: formData.name,
         grade_level: formData.grade_level,
         academic_year: formData.academic_year,
+        is_active: formData.is_active,
         wali_kelas_id: formData.wali_kelas_id ? parseInt(formData.wali_kelas_id) : null,
       };
       if (selectedClass) {
@@ -176,7 +233,7 @@ export default function AdminKelasPage() {
         await classAPI.create(payload);
       }
       setIsModalOpen(false);
-      fetchClasses(); // Refresh data
+      fetchClasses(statusFilter); // Refresh data
     } catch {
       toast.error('Gagal menyimpan data kelas');
     } finally {
@@ -189,7 +246,7 @@ export default function AdminKelasPage() {
     try {
       await classAPI.delete(selectedClass.id);
       setIsDeleteDialogOpen(false);
-      fetchClasses(); // Refresh data
+      fetchClasses(statusFilter); // Refresh data
     } catch {
       toast.error('Gagal menghapus kelas');
     }
@@ -265,9 +322,16 @@ export default function AdminKelasPage() {
 
   const handleExportClasses = async (format: 'xlsx' | 'csv') => {
     try {
+      const statusParams =
+        statusFilter === 'archived'
+          ? { only_inactive: true }
+          : statusFilter === 'all'
+            ? { include_inactive: true }
+            : {};
       const res = await classAPI.exportData({
         format,
         grade_level: gradeFilter || undefined,
+        ...statusParams,
       });
       const blob = res.data as Blob;
       const url = URL.createObjectURL(blob);
@@ -316,7 +380,7 @@ export default function AdminKelasPage() {
       toast.success(res.data?.message || 'Import kelas selesai');
       setIsImportModalOpen(false);
       resetImportState();
-      fetchClasses();
+      fetchClasses(statusFilter);
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, 'Gagal konfirmasi import kelas'));
     } finally {
@@ -324,10 +388,77 @@ export default function AdminKelasPage() {
     }
   };
 
+  const openPromoteModal = () => {
+    const latestYear = academicYearOptions.length > 0
+      ? academicYearOptions[academicYearOptions.length - 1].value
+      : '';
+    const nextYear = latestYear ? getNextAcademicYear(latestYear) : '';
+    setPromoteFromYear(latestYear);
+    setPromoteToYear(nextYear);
+    setPromoteEffectiveDate(latestYear ? getDefaultEffectiveDate(latestYear) : new Date().toISOString().slice(0, 10));
+    setPromoteMappings({});
+    setArchiveFromClasses(true);
+    setIsPromoteModalOpen(true);
+  };
+
+  const handlePromoteSubmit = async () => {
+    if (!promoteFromYear || !promoteToYear) {
+      toast.warning('Pilih tahun ajaran asal dan tujuan terlebih dahulu');
+      return;
+    }
+
+    const mappings = Object.entries(promoteMappings)
+      .filter(([, target]) => target)
+      .map(([fromId, target]) => ({
+        from_class_id: Number(fromId),
+        to_class_id: target === '__graduate__' ? null : Number(target),
+      }));
+
+    if (mappings.length === 0) {
+      toast.warning('Pilih minimal satu mapping kelas');
+      return;
+    }
+
+    setIsPromoting(true);
+    try {
+      const response = await classAPI.promoteAcademicYear({
+        from_academic_year: promoteFromYear,
+        to_academic_year: promoteToYear,
+        effective_date: promoteEffectiveDate || undefined,
+        archive_from_classes: archiveFromClasses,
+        mappings,
+      });
+      const moved = response.data?.data?.students_moved ?? 0;
+      const graduated = response.data?.data?.students_graduated ?? 0;
+      toast.success(`Promosi selesai: ${moved} siswa dipindah, ${graduated} lulus`);
+      setIsPromoteModalOpen(false);
+      fetchClasses(statusFilter);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal melakukan promosi kelas'));
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
   const columns = [
     { key: 'name', header: 'Nama Kelas' },
     { key: 'grade_level', header: 'Tingkat' },
     { key: 'academic_year', header: 'Tahun Ajaran' },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (item: ClassRoom) => (
+        <span
+          className={
+            item.is_active === false
+              ? 'inline-flex items-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-200 px-2 py-0.5 text-xs'
+              : 'inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 px-2 py-0.5 text-xs'
+          }
+        >
+          {item.is_active === false ? 'Arsip' : 'Aktif'}
+        </span>
+      ),
+    },
     {
       key: 'students_count',
       header: 'Jumlah Siswa',
@@ -452,6 +583,14 @@ export default function AdminKelasPage() {
                   Export CSV
                 </Button>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<RefreshCw className="w-4 h-4" />}
+                  onClick={openPromoteModal}
+                >
+                  Promosi/Rolling
+                </Button>
+                <Button
                   size="sm"
                   leftIcon={<Plus className="w-4 h-4" />}
                   onClick={() => handleOpenModal()}
@@ -477,6 +616,13 @@ export default function AdminKelasPage() {
                 options={gradeOptions}
                 value={gradeFilter}
                 onChange={(e) => setGradeFilter(e.target.value)}
+              />
+            </div>
+            <div className="w-full md:w-48">
+              <Select
+                options={statusOptions}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'active' | 'archived' | 'all')}
               />
             </div>
           </div>
@@ -522,6 +668,11 @@ export default function AdminKelasPage() {
             onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
             placeholder="Contoh: 2025/2026"
             required
+          />
+          <Checkbox
+            label="Kelas aktif (tampil di daftar)"
+            checked={formData.is_active}
+            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
           />
           <Select
             label="Wali Kelas"
@@ -644,6 +795,127 @@ export default function AdminKelasPage() {
               disabled={!importPreviewToken || isImportProcessing}
             >
               {isImportProcessing ? 'Mengimport…' : 'Konfirmasi Import'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Promote/Rolling Modal */}
+      <Modal
+        isOpen={isPromoteModalOpen}
+        onClose={() => setIsPromoteModalOpen(false)}
+        title="Promosi / Rolling Siswa"
+        size="lg"
+      >
+        <div className="space-y-5">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5" />
+            <div>
+              Pastikan kelas tujuan untuk tahun ajaran baru sudah dibuat terlebih dahulu.
+              Rolling akan memindahkan siswa berdasarkan mapping kelas yang Anda pilih.
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Select
+              label="Tahun Ajaran Asal"
+              options={academicYearOptions}
+              value={promoteFromYear}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setPromoteFromYear(nextValue);
+                setPromoteMappings({});
+                setPromoteEffectiveDate(getDefaultEffectiveDate(nextValue));
+                if (!promoteToYear) {
+                  setPromoteToYear(getNextAcademicYear(nextValue));
+                }
+              }}
+            />
+            <Input
+              label="Tahun Ajaran Tujuan"
+              value={promoteToYear}
+              onChange={(e) => setPromoteToYear(e.target.value)}
+              placeholder="Contoh: 2026/2027"
+            />
+            <Input
+              label="Tanggal Mulai"
+              type="date"
+              value={promoteEffectiveDate}
+              onChange={(e) => setPromoteEffectiveDate(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Mapping Kelas</p>
+            {promoteFromClasses.length === 0 ? (
+              <p className="text-sm text-slate-500">Tidak ada kelas pada tahun ajaran asal.</p>
+            ) : (
+              <div className="max-h-80 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                      <th className="text-left px-3 py-2">Kelas Asal</th>
+                      <th className="text-left px-3 py-2">Siswa Aktif</th>
+                      <th className="text-left px-3 py-2">Kelas Tujuan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {promoteFromClasses.map((cls) => (
+                      <tr key={cls.id}>
+                        <td className="px-3 py-2">
+                          <div className="font-medium text-slate-900 dark:text-white">{cls.name}</div>
+                          <div className="text-xs text-slate-500">{cls.grade_level} • {cls.academic_year}</div>
+                        </td>
+                        <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                          {cls.students_count || 0}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Select
+                            options={[
+                              { value: '', label: 'Lewati (tidak diproses)' },
+                              { value: '__graduate__', label: 'Lulus (keluar kelas)' },
+                              ...promoteTargetClasses.map((target) => ({
+                                value: target.id.toString(),
+                                label: `${target.name} (${target.grade_level})`,
+                              })),
+                            ]}
+                            value={promoteMappings[cls.id] || ''}
+                            onChange={(e) =>
+                              setPromoteMappings((prev) => ({
+                                ...prev,
+                                [cls.id]: e.target.value,
+                              }))
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <Checkbox
+            label="Arsipkan kelas asal setelah promosi"
+            checked={archiveFromClasses}
+            onChange={(e) => setArchiveFromClasses(e.target.checked)}
+          />
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsPromoteModalOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handlePromoteSubmit} disabled={isPromoting}>
+              {isPromoting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Memproses…
+                </>
+              ) : (
+                'Jalankan Promosi'
+              )}
             </Button>
           </div>
         </div>
