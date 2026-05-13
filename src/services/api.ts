@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import type { LandingContent } from '@/types/landing';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -344,6 +345,22 @@ const buildFacilityFormData = (
   return formData;
 };
 
+const buildLandingPageFormData = (
+  content: LandingContent,
+  media?: {
+    logo?: File | null;
+    hero_background?: File | null;
+    hero_video?: File | null;
+  }
+) => {
+  const formData = new FormData();
+  formData.append('content', JSON.stringify(content));
+  if (media?.logo) formData.append('logo', media.logo);
+  if (media?.hero_background) formData.append('hero_background', media.hero_background);
+  if (media?.hero_video) formData.append('hero_video', media.hero_video);
+  return formData;
+};
+
 // Facilities API
 export const facilityAPI = {
   getPublic: () =>
@@ -366,6 +383,18 @@ export const facilityAPI = {
 
   deletePhoto: (facilityId: number, photoId: number) =>
     api.delete(`/facilities/${facilityId}/photos/${photoId}`),
+};
+
+// Landing Page API
+export const landingPageAPI = {
+  getPublic: () =>
+    api.get('/public/landing-page'),
+
+  getAdmin: () =>
+    api.get('/landing-page'),
+
+  update: (content: LandingContent, media?: { logo?: File | null; hero_background?: File | null; hero_video?: File | null }) =>
+    api.post('/landing-page', buildLandingPageFormData(content, media)),
 };
 
 // Attendance API

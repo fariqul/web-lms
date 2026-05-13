@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { facilityAPI, getSecureFileUrl } from '@/services/api';
+import { facilityAPI, getSecureFileUrl, landingPageAPI } from '@/services/api';
+import { DEFAULT_LANDING_CONTENT, mergeLandingContent } from '@/constants/landing';
+import type { LandingContent } from '@/types/landing';
 import s from '../page.module.css';
 
 /* ─── Scroll Reveal Hook ─── */
@@ -86,40 +88,12 @@ const mapFacilityItem = (facility: FacilityApiItem): FacilityItem => {
   };
 };
 
-const PROGRAMS = [
-  {
-    num: '01',
-    title: 'Kurikulum Merdeka',
-    desc: 'Implementasi Kurikulum Merdeka yang memberikan kebebasan belajar dan mengembangkan kompetensi sesuai minat dan bakat siswa dengan pendekatan student-centered learning.',
-  },
-  {
-    num: '02',
-    title: 'Program STEM',
-    desc: 'Pembelajaran Science, Technology, Engineering, and Mathematics yang terintegrasi untuk mempersiapkan siswa menghadapi era digital dan industri 4.0.',
-  },
-  {
-    num: '03',
-    title: 'Ekstrakurikuler',
-    desc: 'Lebih dari 20 pilihan ekstrakurikuler di bidang olahraga, seni, sains, dan kepemimpinan untuk mengembangkan bakat dan minat siswa.',
-  },
-  {
-    num: '04',
-    title: 'Program Akselerasi',
-    desc: 'Program khusus untuk siswa berprestasi dengan pembelajaran yang lebih mendalam dan persiapan kompetisi tingkat nasional dan internasional.',
-  },
-];
-
-const STEPS = [
-  { num: 1, title: 'Registrasi Online', desc: 'Isi formulir pendaftaran melalui portal PPDB online' },
-  { num: 2, title: 'Upload Dokumen', desc: 'Lengkapi dokumen persyaratan yang dibutuhkan' },
-  { num: 3, title: 'Seleksi', desc: 'Mengikuti proses seleksi berdasarkan nilai dan prestasi' },
-  { num: 4, title: 'Pengumuman', desc: 'Cek hasil pengumuman kelulusan secara online' },
-];
 
 /* ═══════════════════ COMPONENT ═══════════════════ */
 
 export default function LandingClient() {
   const wrapperRef = useScrollReveal();
+  const [landingContent, setLandingContent] = useState<LandingContent>(DEFAULT_LANDING_CONTENT);
   const [navScrolled, setNavScrolled] = useState(false);
   const [facilities, setFacilities] = useState<FacilityItem[]>([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
@@ -132,11 +106,46 @@ export default function LandingClient() {
     : null;
   const activePhotos = activeFacility?.photos || [];
   const hasPhotos = activePhotos.length > 0;
+  const hero = landingContent.hero;
+  const about = landingContent.about;
+  const programs = landingContent.programs;
+  const facilitiesCopy = landingContent.facilities;
+  const registration = landingContent.registration;
+  const footer = landingContent.footer;
+  const heroLogoUrl = hero.logo_url ? getSecureFileUrl(hero.logo_url) : '';
+  const heroBackgroundUrl = hero.background_url ? getSecureFileUrl(hero.background_url) : '';
+  const heroVideoUrl = hero.video_url ? getSecureFileUrl(hero.video_url) : '';
+  const heroVideoSrc = heroVideoUrl || '/landing/hero-video.webm';
+  const heroVideoType = heroVideoSrc.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
+  const heroTitleLines = hero.title.split('\n');
 
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 80);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLandingContent = async () => {
+      try {
+        const response = await landingPageAPI.getPublic();
+        const data = response.data?.data as Partial<LandingContent> | undefined;
+        if (mounted) {
+          setLandingContent(mergeLandingContent(DEFAULT_LANDING_CONTENT, data || null));
+        }
+      } catch {
+        if (mounted) {
+          setLandingContent(DEFAULT_LANDING_CONTENT);
+        }
+      }
+    };
+
+    loadLandingContent();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -232,6 +241,24 @@ export default function LandingClient() {
     setActivePhotoIndex((prev) => (prev + 1) % activePhotos.length);
   };
 
+  const renderCtaLink = (cta: { label: string; href: string }, className: string) => {
+    if (!cta?.label) return null;
+    const href = cta.href || '#';
+    const isExternal = href.startsWith('http');
+    if (isExternal) {
+      return (
+        <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+          {cta.label}
+        </a>
+      );
+    }
+    return (
+      <Link href={href} className={className}>
+        {cta.label}
+      </Link>
+    );
+  };
+
   return (
     <div className={s.landing} ref={wrapperRef}>
       {/* ═══ Navigation ═══ */}
@@ -239,7 +266,7 @@ export default function LandingClient() {
         <div className={s.navContainer}>
           <button onClick={() => scrollTo('home')} className={s.logoBtn}>
             <Image
-              src="/landing/logo.png"
+              src={heroLogoUrl || '/landing/logo.png'}
               alt="Logo SMA Negeri 15 Makassar"
               width={42}
               height={42}
@@ -276,24 +303,30 @@ export default function LandingClient() {
       </nav>
 
       {/* ═══ Hero ═══ */}
-      <section className={s.hero} id="home">
+      <section
+        className={s.hero}
+        id="home"
+        style={heroBackgroundUrl ? {
+          backgroundImage: `linear-gradient(135deg, rgba(61, 53, 128, 0.93) 0%, rgba(22, 18, 64, 0.96) 100%), url('${heroBackgroundUrl}')`,
+        } : undefined}
+      >
         <div className={s.heroContainer}>
           <div className={s.heroContent}>
-            <div className={s.heroSubtitle}>SMAN 15 Makassar</div>
+            <div className={s.heroSubtitle}>{hero.subtitle}</div>
             <h1 className={s.heroTitle}>
-              Unggul dalam<br />Prestasi, Santun<br />dalam Budi Pekerti
+              {heroTitleLines.map((line, idx) => (
+                <span key={`${line}-${idx}`}>
+                  {line}
+                  {idx < heroTitleLines.length - 1 && <br />}
+                </span>
+              ))}
             </h1>
             <p className={s.heroDescription}>
-              Membentuk generasi muda yang berprestasi, berkarakter, dan siap menghadapi
-              tantangan masa depan dengan nilai-nilai luhur bangsa.
+              {hero.description}
             </p>
             <div className={s.ctaButtons}>
-              <Link href="/login" className={s.btnPrimary}>
-                Masuk LMS
-              </Link>
-              <Link href="/pengumuman-kelulusan" className={s.btnSecondary}>
-                Pengumuman Kelulusan
-              </Link>
+              {renderCtaLink(hero.cta_primary, s.btnPrimary)}
+              {renderCtaLink(hero.cta_secondary, s.btnSecondary)}
             </div>
           </div>
           <div className={s.heroVisual}>
@@ -305,7 +338,7 @@ export default function LandingClient() {
               playsInline
               preload="metadata"
             >
-              <source src="/landing/hero-video.webm" type="video/webm" />
+              <source src={heroVideoSrc} type={heroVideoType} />
             </video>
           </div>
         </div>
@@ -315,20 +348,15 @@ export default function LandingClient() {
       <section className={s.about} id="about">
         <div className={s.container}>
           <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
-            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Tentang Kami</div>
-            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Profil SMA Negeri 15 Makassar</h2>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>{about.label}</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>{about.title}</h2>
             <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
-              Sekolah unggulan yang berkomitmen menghasilkan lulusan berkualitas dengan pendidikan
-              holistik yang mengedepankan akademik dan pembentukan karakter.
+              {about.description}
             </p>
           </div>
           <div className={s.aboutGrid}>
-            {[
-              { icon: 'V', title: 'Visi', text: 'Mewujudkan peserta didik yang unggul dalam prestasi, santun dalam budi pekerti, dan berwawasan lingkungan.' },
-              { icon: 'M', title: 'Misi', text: 'Menyelenggarakan pendidikan berkualitas yang mengintegrasikan nilai akademik, karakter, dan kepedulian lingkungan.' },
-              { icon: 'T', title: 'Tujuan', text: 'Menghasilkan lulusan yang kompeten, berakhlak mulia, dan siap melanjutkan ke perguruan tinggi terbaik.' },
-            ].map((card) => (
-              <div key={card.icon} className={`${s.aboutCard} ${s.scrollReveal}`}>
+            {about.cards.map((card, idx) => (
+              <div key={`${card.title}-${idx}`} className={`${s.aboutCard} ${s.scrollReveal}`}>
                 <div className={s.aboutIcon}>{card.icon}</div>
                 <h3 className={s.aboutCardTitle}>{card.title}</h3>
                 <p className={s.aboutCardText}>{card.text}</p>
@@ -342,19 +370,18 @@ export default function LandingClient() {
       <section className={s.programs} id="programs">
         <div className={s.container}>
           <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
-            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Program Unggulan</div>
-            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Program &amp; Kurikulum</h2>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>{programs.label}</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>{programs.title}</h2>
             <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
-              Beragam program pendidikan yang dirancang untuk mengoptimalkan potensi siswa
-              di bidang akademik dan non-akademik.
+              {programs.description}
             </p>
           </div>
           <div className={s.programsGrid}>
-            {PROGRAMS.map((p) => (
-              <div key={p.num} className={`${s.programCard} ${s.scrollReveal}`}>
-                <div className={s.programNumber}>{p.num}</div>
-                <h3 className={s.programCardTitle}>{p.title}</h3>
-                <p className={s.programCardText}>{p.desc}</p>
+            {programs.items.map((item, idx) => (
+              <div key={`${item.title}-${idx}`} className={`${s.programCard} ${s.scrollReveal}`}>
+                <div className={s.programNumber}>{String(idx + 1).padStart(2, '0')}</div>
+                <h3 className={s.programCardTitle}>{item.title}</h3>
+                <p className={s.programCardText}>{item.description}</p>
               </div>
             ))}
           </div>
@@ -365,11 +392,10 @@ export default function LandingClient() {
       <section className={s.facilities} id="facilities">
         <div className={s.container}>
           <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
-            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Fasilitas</div>
-            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Fasilitas Lengkap &amp; Modern</h2>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>{facilitiesCopy.label}</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>{facilitiesCopy.title}</h2>
             <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
-              Infrastruktur dan fasilitas pendukung pembelajaran yang modern untuk kenyamanan
-              dan efektivitas proses belajar mengajar.
+              {facilitiesCopy.description}
             </p>
           </div>
           <div className={s.facilitiesGrid}>
@@ -538,24 +564,31 @@ export default function LandingClient() {
         <div className={s.container}>
           <div className={s.registrationContent}>
             <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
-              <div className={s.registrationLabel} style={{ textAlign: 'center' }}>Pendaftaran</div>
-              <h2 className={s.registrationTitle} style={{ textAlign: 'center' }}>Bergabunglah Bersama Kami</h2>
+              <div className={s.registrationLabel} style={{ textAlign: 'center' }}>{registration.label}</div>
+              <h2 className={s.registrationTitle} style={{ textAlign: 'center' }}>{registration.title}</h2>
               <p className={s.registrationDesc} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
-                Daftarkan diri Anda untuk menjadi bagian dari keluarga besar SMA Negeri 15
-                Makassar dan raih masa depan gemilang.
+                {registration.description}
               </p>
             </div>
             <div className={s.stepsGrid}>
-              {STEPS.map((step) => (
-                <div key={step.num} className={`${s.step} ${s.scrollReveal}`}>
-                  <div className={s.stepNumber}>{step.num}</div>
+              {registration.steps.map((step, idx) => (
+                <div key={`${step.title}-${idx}`} className={`${s.step} ${s.scrollReveal}`}>
+                  <div className={s.stepNumber}>{idx + 1}</div>
                   <h3 className={s.stepTitle}>{step.title}</h3>
-                  <p className={s.stepText}>{step.desc}</p>
+                  <p className={s.stepText}>{step.description}</p>
                 </div>
               ))}
             </div>
             <div className={s.ctaFinal}>
-              <a href="#" className={s.btnPrimaryDark}>Informasi Lengkap PPDB</a>
+              {registration.cta_href.startsWith('http') ? (
+                <a href={registration.cta_href} className={s.btnPrimaryDark} target="_blank" rel="noopener noreferrer">
+                  {registration.cta_label}
+                </a>
+              ) : (
+                <Link href={registration.cta_href || '#'} className={s.btnPrimaryDark}>
+                  {registration.cta_label}
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -565,16 +598,13 @@ export default function LandingClient() {
       <footer className={s.footer}>
         <div className={s.footerContent}>
           <div>
-            <h3 className={s.footerAboutTitle}>SMA Negeri 15 Makassar</h3>
-            <p className={s.footerAboutText}>
-              Sekolah menengah atas negeri yang berkomitmen mencetak generasi unggul, berkarakter,
-              dan berprestasi untuk masa depan Indonesia yang lebih baik.
-            </p>
+            <h3 className={s.footerAboutTitle}>{footer.about_title}</h3>
+            <p className={s.footerAboutText}>{footer.about_text}</p>
             <div className={s.socialLinks}>
-              <a href="https://www.instagram.com/sman15mks.official" target="_blank" rel="noopener noreferrer" className={s.socialLink} aria-label="Instagram">
+              <a href={footer.instagram_url} target="_blank" rel="noopener noreferrer" className={s.socialLink} aria-label="Instagram">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>
               </a>
-              <a href="https://www.youtube.com/@SMAN15MAKASSAR" target="_blank" rel="noopener noreferrer" className={s.socialLink} aria-label="YouTube">
+              <a href={footer.youtube_url} target="_blank" rel="noopener noreferrer" className={s.socialLink} aria-label="YouTube">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.5 48.284 47.821C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.321 42.003-24.171 48.284-47.821 11.412-42.867 11.412-132.305 11.412-132.305s0-89.438-11.412-132.305zm-317.51 213.508V175.185l142.739 81.205-142.739 81.201z"/></svg>
               </a>
             </div>
@@ -594,21 +624,43 @@ export default function LandingClient() {
           <div>
             <h4 className={s.footerSectionTitle}>Informasi</h4>
             <ul className={s.footerList}>
-              <li><a href="#" className={s.footerLink}>Kalender Akademik</a></li>
-              <li><a href="#" className={s.footerLink}>Prestasi Siswa</a></li>
-              <li><a href="#" className={s.footerLink}>Berita &amp; Artikel</a></li>
-              <li><a href="#" className={s.footerLink}>Alumni</a></li>
-              <li><Link href="/pengumuman-kelulusan" className={s.footerLink}>Pengumuman Kelulusan</Link></li>
-              <li><Link href="/login" className={s.footerLink}>Masuk LMS</Link></li>
+              {footer.info_links.map((link, idx) => {
+                const href = link.href || '#';
+                const isExternal = href.startsWith('http');
+                if (isExternal) {
+                  return (
+                    <li key={`${link.label}-${idx}`}>
+                      <a href={href} className={s.footerLink} target="_blank" rel="noopener noreferrer">
+                        {link.label}
+                      </a>
+                    </li>
+                  );
+                }
+                return (
+                  <li key={`${link.label}-${idx}`}>
+                    <Link href={href} className={s.footerLink}>
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
           <div>
             <h4 className={s.footerSectionTitle}>Kontak</h4>
             <ul className={s.footerList}>
-              <li><a href="https://www.google.com/maps?q=SMA+Negeri+15+Makassar" target="_blank" rel="noopener noreferrer" className={s.footerLink}>Jl. Ir. Sutami No.7, Bulurokeng</a></li>
-              <li>Kec. Biringkanaya, Makassar</li>
-              <li>Sulawesi Selatan 90243</li>
+              {footer.contact.lines.map((line, idx) => (
+                <li key={`${line}-${idx}`}>
+                  {idx === 0 ? (
+                    <a href={footer.contact.map_url} target="_blank" rel="noopener noreferrer" className={s.footerLink}>
+                      {line}
+                    </a>
+                  ) : (
+                    line
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         </div>

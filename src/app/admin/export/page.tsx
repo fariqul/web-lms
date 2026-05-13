@@ -67,7 +67,7 @@ export default function ExportPage() {
   }, [toast]);
 
   const handleExport = async () => {
-    if (!selectedClass && exportType !== 'grades') {
+    if (exportType === 'student-report' && !selectedClass) {
       toast.warning('Pilih kelas terlebih dahulu');
       return;
     }

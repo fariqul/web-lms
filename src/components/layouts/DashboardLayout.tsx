@@ -71,7 +71,7 @@ const navigation: NavItem[] = [
   { name: 'Kelola Kelas', href: '/admin/kelas', icon: GraduationCap, roles: ['admin'] },
   { name: 'Kelola Ujian', href: '/admin/ujian', icon: ClipboardList, roles: ['admin'] },
   { name: 'Kelola Kelulusan', href: '/admin/kelulusan', icon: GraduationCap, roles: ['admin'] },
-  { name: 'Kelola Fasilitas', href: '/admin/fasilitas', icon: ImagePlus, roles: ['admin'] },
+  { name: 'Kelola Beranda', href: '/admin/fasilitas', icon: ImagePlus, roles: ['admin'] },
   { name: 'Manajemen Jadwal', href: '/admin/jadwal', icon: Calendar, roles: ['admin'] },
   { name: 'Jaringan Sekolah', href: '/admin/jaringan', icon: Wifi, roles: ['admin'] },
   { name: 'Statistik', href: '/admin/statistik', icon: BarChart3, roles: ['admin'] },

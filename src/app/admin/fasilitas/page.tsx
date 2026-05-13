@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Textarea, Select, Checkbox, Table, Modal, ConfirmDialog } from '@/components/ui';
+import LandingContentEditor from '@/components/landing/LandingContentEditor';
 import { Plus, Search, Edit2, Trash2, ImagePlus, Loader2, X } from 'lucide-react';
 import { facilityAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -28,6 +29,7 @@ const statusOptions = [
 
 export default function AdminFasilitasPage() {
   const toast = useToast();
+  const [activeTab, setActiveTab] = useState<'content' | 'facilities'>('content');
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -391,48 +393,69 @@ export default function AdminFasilitasPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <Card>
-          <CardHeader
-            title="Kelola Fasilitas"
-            subtitle={`${facilities.length} fasilitas • ${activeCount} aktif • ${totalPhotos} foto`}
-            action={(
-              <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleOpenModal()}>
-                Tambah Fasilitas
-              </Button>
-            )}
-          />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={activeTab === 'content' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('content')}
+          >
+            Konten Beranda
+          </Button>
+          <Button
+            size="sm"
+            variant={activeTab === 'facilities' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('facilities')}
+          >
+            Fasilitas
+          </Button>
+        </div>
 
-          <div className="flex flex-col md:flex-row gap-4 mb-5">
-            <div className="flex-1">
-              <Input
-                placeholder="Cari fasilitas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                leftIcon={<Search className="w-4 h-4" />}
-              />
+        {activeTab === 'content' ? (
+          <LandingContentEditor />
+        ) : (
+          <Card>
+            <CardHeader
+              title="Fasilitas Beranda"
+              subtitle={`${facilities.length} fasilitas • ${activeCount} aktif • ${totalPhotos} foto`}
+              action={(
+                <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleOpenModal()}>
+                  Tambah Fasilitas
+                </Button>
+              )}
+            />
+
+            <div className="flex flex-col md:flex-row gap-4 mb-5">
+              <div className="flex-1">
+                <Input
+                  placeholder="Cari fasilitas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  leftIcon={<Search className="w-4 h-4" />}
+                />
+              </div>
+              <div className="w-full md:w-56">
+                <Select
+                  options={statusOptions}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                />
+              </div>
             </div>
-            <div className="w-full md:w-56">
-              <Select
-                options={statusOptions}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              />
+
+            <div className="mb-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-600 dark:text-slate-300">
+              Fasilitas yang <span className="font-semibold">aktif</span> akan tampil di landing page sesuai urutan
+              <span className="font-semibold"> display order</span>. Maksimal {MAX_PHOTOS} foto per fasilitas.
             </div>
-          </div>
 
-          <div className="mb-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-600 dark:text-slate-300">
-            Fasilitas yang <span className="font-semibold">aktif</span> akan tampil di landing page sesuai urutan
-            <span className="font-semibold"> display order</span>. Maksimal {MAX_PHOTOS} foto per fasilitas.
-          </div>
-
-          <Table
-            columns={columns}
-            data={facilities}
-            keyExtractor={(item) => item.id}
-            isLoading={loading}
-            emptyMessage="Belum ada fasilitas"
-          />
-        </Card>
+            <Table
+              columns={columns}
+              data={facilities}
+              keyExtractor={(item) => item.id}
+              isLoading={loading}
+              emptyMessage="Belum ada fasilitas"
+            />
+          </Card>
+        )}
       </div>
 
       <Modal
