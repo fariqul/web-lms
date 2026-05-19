@@ -1143,7 +1143,7 @@ class UserController extends Controller
     }
 
     /**
-     * Block/unblock all student accounts at once (admin only)
+     * Block/unblock all student and teacher accounts at once (admin only)
      */
     public function toggleAllStudentsBlock(Request $request)
     {
@@ -1152,12 +1152,12 @@ class UserController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        $users = User::where('role', 'siswa')->get();
+        $users = User::whereIn('role', ['siswa', 'guru'])->get();
 
         if ($users->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada akun siswa yang ditemukan',
+                'message' => 'Tidak ada akun siswa/guru yang ditemukan',
             ], 404);
         }
 
@@ -1173,7 +1173,7 @@ class UserController extends Controller
             $updateData['blocked_at'] = null;
         }
 
-        User::where('role', 'siswa')->update($updateData);
+        User::whereIn('role', ['siswa', 'guru'])->update($updateData);
 
         if ($request->is_blocked) {
             $reason = $request->reason ?: 'Diblokir massal oleh admin';
@@ -1188,13 +1188,13 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Semua akun siswa berhasil {$action}",
+            'message' => "Semua akun siswa & guru berhasil {$action}",
             'affected_count' => $users->count(),
         ]);
     }
 
     /**
-     * Block/unblock student accounts by class (admin only)
+     * Block/unblock student and teacher accounts by class (admin only)
      */
     public function toggleStudentsBlockByClass(Request $request)
     {
@@ -1204,14 +1204,14 @@ class UserController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        $users = User::where('role', 'siswa')
+        $users = User::whereIn('role', ['siswa', 'guru'])
             ->where('class_id', $request->class_id)
             ->get();
 
         if ($users->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada akun siswa di kelas tersebut',
+                'message' => 'Tidak ada akun siswa/guru di kelas tersebut',
             ], 404);
         }
 
@@ -1227,7 +1227,7 @@ class UserController extends Controller
             $updateData['blocked_at'] = null;
         }
 
-        User::where('role', 'siswa')
+        User::whereIn('role', ['siswa', 'guru'])
             ->where('class_id', $request->class_id)
             ->update($updateData);
 

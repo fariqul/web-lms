@@ -269,7 +269,7 @@ function AdminUsersPageContent() {
     if (studentBlockFilter === 'all') return sortedUsers;
 
     return sortedUsers.filter((u) => {
-      if (u.role !== 'siswa') return false;
+      if (!['siswa', 'guru'].includes(u.role)) return false;
       if (studentBlockFilter === 'blocked') return u.is_blocked === true;
       return u.is_blocked !== true;
     });
@@ -280,7 +280,7 @@ function AdminUsersPageContent() {
     [users]
   );
   const blockedStudentsCount = React.useMemo(
-    () => users.filter((u) => u.role === 'siswa' && u.is_blocked === true).length,
+    () => users.filter((u) => (u.role === 'siswa' || u.role === 'guru') && u.is_blocked === true).length,
     [users]
   );
   const activeStudentsCount = Math.max(0, totalStudentsCount - blockedStudentsCount);
@@ -294,7 +294,7 @@ function AdminUsersPageContent() {
     return users.filter((u) => u.role === 'siswa' && String(u.class_id) === classFilter).length;
   }, [users, classFilter]);
   const filteredStudentIds = React.useMemo(
-    () => filteredUsers.filter((u) => u.role === 'siswa').map((u) => u.id),
+    () => filteredUsers.filter((u) => u.role === 'siswa' || u.role === 'guru').map((u) => u.id),
     [filteredUsers]
   );
   const selectedClassName = classes.find((c) => c.id.toString() === classFilter)?.name;
@@ -670,7 +670,7 @@ function AdminUsersPageContent() {
             )}
           </div>
           <span>{item.name}</span>
-          {item.role === 'siswa' && item.is_blocked && (
+          {(item.role === 'siswa' || item.role === 'guru') && item.is_blocked && (
             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
               DIBLOKIR
             </span>
@@ -746,7 +746,7 @@ function AdminUsersPageContent() {
           >
             <KeyRound className="w-4 h-4" />
           </button>
-          {item.role === 'siswa' && (
+          {(item.role === 'siswa' || item.role === 'guru') && (
             item.is_blocked ? (
               <button
                 onClick={() => handleBlockClick(item, 'unblock')}
@@ -760,8 +760,8 @@ function AdminUsersPageContent() {
               <button
                 onClick={() => handleBlockClick(item, 'block')}
                 className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                title="Blokir Siswa"
-                aria-label="Blokir siswa"
+                title={`Blokir ${item.role === 'guru' ? 'Guru' : 'Siswa'}`}
+                aria-label={`Blokir ${item.role === 'guru' ? 'guru' : 'siswa'}`}
               >
                 <Ban className="w-4 h-4" />
               </button>
@@ -807,7 +807,7 @@ function AdminUsersPageContent() {
                   className="text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                   title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredStudentIds.length}`}
                 >
-                  Blokir Siswa
+                  Blokir Massal
                   <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-semibold">
                     <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40">A:{allStudentCount}</span>
                     <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
@@ -822,7 +822,7 @@ function AdminUsersPageContent() {
                   className="text-green-700 dark:text-green-400 border-green-300 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-900/20"
                   title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredStudentIds.length}`}
                 >
-                  Aktifkan Siswa
+                  Aktifkan Massal
                   <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-semibold">
                     <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40">A:{allStudentCount}</span>
                     <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
