@@ -22,7 +22,7 @@ class BlockedStudentMiddleware
             return $next($request);
         }
 
-        if ($user && $user->role === 'siswa' && (bool) $user->is_blocked) {
+        if ($user && in_array($user->role, ['siswa', 'guru']) && (bool) $user->is_blocked) {
             $reason = $user->block_reason ?: 'Akun Anda diblokir oleh admin.';
 
             return response()->json([

@@ -34,12 +34,12 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'login' => ['NISN atau password salah.'],
+                'login' => ['NISN/Email atau password salah.'],
             ]);
         }
 
-        // Check if user is blocked (only for students)
-        if ($user->role === 'siswa' && $user->is_blocked) {
+        // Check if user is blocked (students and teachers)
+        if (in_array($user->role, ['siswa', 'guru']) && $user->is_blocked) {
             $reason = $user->block_reason ?: 'Akun Anda diblokir oleh admin.';
             return response()->json([
                 'success' => false,

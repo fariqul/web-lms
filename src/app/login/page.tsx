@@ -270,8 +270,8 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <Input
                 type="text"
-                label="NISN"
-                placeholder="Masukkan NISN"
+                label="NISN / Email"
+                placeholder="Masukkan NISN atau Email"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
                 autoComplete="username"

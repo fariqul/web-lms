@@ -27,23 +27,23 @@ class UserController extends Controller
     private const USER_IMPORT_PREVIEW_TTL_SECONDS = 1800;
     private const USER_DEFAULT_IMPORT_PASSWORD = 'Password123';
 
-    private function broadcastBlockedForceLogout(User $student, ?string $message = null): void
+    private function broadcastBlockedForceLogout(User $user, ?string $message = null): void
     {
-        if ($student->role !== 'siswa') {
+        if (!in_array($user->role, ['siswa', 'guru'])) {
             return;
         }
 
         try {
-            app(SocketBroadcastService::class)->notifyUser($student->id, [
+            app(SocketBroadcastService::class)->notifyUser($user->id, [
                 'type' => 'force_logout',
                 'reason' => 'blocked',
-                'message' => $message ?: ($student->block_reason ?: 'Akun Anda diblokir oleh admin.'),
-                'user_id' => $student->id,
+                'message' => $message ?: ($user->block_reason ?: 'Akun Anda diblokir oleh admin.'),
+                'user_id' => $user->id,
                 'timestamp' => now()->toIso8601String(),
             ]);
         } catch (\Exception $e) {
             Log::warning('Broadcast blocked force logout failed: ' . $e->getMessage(), [
-                'student_id' => $student->id,
+                'user_id' => $user->id,
             ]);
         }
     }
@@ -1010,15 +1010,15 @@ class UserController extends Controller
     }
 
     /**
-     * Toggle block status for a student (admin only)
+     * Toggle block status for a student or teacher (admin only)
      */
     public function toggleBlock(Request $request, User $user)
     {
-        // Only students can be blocked
-        if ($user->role !== 'siswa') {
+        // Students and teachers can be blocked
+        if (!in_array($user->role, ['siswa', 'guru'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya siswa yang dapat diblokir',
+                'message' => 'Hanya siswa dan guru yang dapat diblokir',
             ], 400);
         }
 
@@ -1045,21 +1045,22 @@ class UserController extends Controller
         }
 
         $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
+        $roleLabel = $user->role === 'guru' ? 'guru' : 'siswa';
 
         return response()->json([
             'success' => true,
             'data' => $user,
-            'message' => "Akun siswa {$user->name} berhasil {$action}",
+            'message' => "Akun {$roleLabel} {$user->name} berhasil {$action}",
         ]);
     }
 
     /**
-     * Get all blocked students (admin only)
+     * Get all blocked students and teachers (admin only)
      */
     public function blockedStudents(Request $request)
     {
         $query = User::with('classRoom:id,name')
-            ->where('role', 'siswa')
+            ->whereIn('role', ['siswa', 'guru'])
             ->where('is_blocked', true);
 
         // Filter by class
@@ -1099,13 +1100,13 @@ class UserController extends Controller
         ]);
 
         $users = User::whereIn('id', $request->user_ids)
-            ->where('role', 'siswa')
+            ->whereIn('role', ['siswa', 'guru'])
             ->get();
 
         if ($users->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada siswa yang ditemukan',
+                'message' => 'Tidak ada siswa/guru yang ditemukan',
             ], 404);
         }
 
