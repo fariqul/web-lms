@@ -117,6 +117,13 @@ export default function ExamTakingPage() {
   const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<ExamImagePreview | null>(null);
   const [imagePreviewZoom, setImagePreviewZoom] = useState<number>(MIN_IMAGE_PREVIEW_ZOOM);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = React.useRef({ x: 0, y: 0 });
+  const panStartRef = React.useRef({ x: 0, y: 0 });
+  const lastPinchDistRef = React.useRef<number | null>(null);
+  const lastTapRef = React.useRef<number>(0);
+  const imageContainerRef = React.useRef<HTMLDivElement | null>(null);
   const previewVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const previewStreamRef = React.useRef<MediaStream | null>(null);
   // Ref to track intentional navigation (submission) to bypass beforeunload
@@ -1201,6 +1208,7 @@ export default function ExamTakingPage() {
 
   const closeImagePreview = useCallback(() => {
     setImagePreviewZoom(MIN_IMAGE_PREVIEW_ZOOM);
+    setPanPosition({ x: 0, y: 0 });
     setImagePreview(null);
   }, []);
 
@@ -1209,11 +1217,120 @@ export default function ExamTakingPage() {
   }, []);
 
   const zoomOutImagePreview = useCallback(() => {
-    setImagePreviewZoom((prev) => Math.max(MIN_IMAGE_PREVIEW_ZOOM, Number((prev - IMAGE_PREVIEW_ZOOM_STEP).toFixed(2))));
+    setImagePreviewZoom((prev) => {
+      const next = Math.max(MIN_IMAGE_PREVIEW_ZOOM, Number((prev - IMAGE_PREVIEW_ZOOM_STEP).toFixed(2)));
+      if (next <= MIN_IMAGE_PREVIEW_ZOOM) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
   }, []);
 
   const resetImagePreviewZoom = useCallback(() => {
     setImagePreviewZoom(MIN_IMAGE_PREVIEW_ZOOM);
+    setPanPosition({ x: 0, y: 0 });
+  }, []);
+
+  // Drag/pan handlers for zoomed image
+  const clampPan = useCallback((x: number, y: number, zoom: number) => {
+    // Limit pan so image doesn't go more than 60% off-screen
+    const el = imageContainerRef.current;
+    if (!el || zoom <= MIN_IMAGE_PREVIEW_ZOOM) return { x: 0, y: 0 };
+    const maxX = el.clientWidth * (zoom - 1) * 0.6;
+    const maxY = el.clientHeight * (zoom - 1) * 0.6;
+    return {
+      x: Math.max(-maxX, Math.min(maxX, x)),
+      y: Math.max(-maxY, Math.min(maxY, y)),
+    };
+  }, []);
+
+  const handlePanStart = useCallback((clientX: number, clientY: number) => {
+    if (imagePreviewZoom <= MIN_IMAGE_PREVIEW_ZOOM) return;
+    setIsDragging(true);
+    dragStartRef.current = { x: clientX, y: clientY };
+    panStartRef.current = { ...panPosition };
+  }, [imagePreviewZoom, panPosition]);
+
+  const handlePanMove = useCallback((clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    const dx = clientX - dragStartRef.current.x;
+    const dy = clientY - dragStartRef.current.y;
+    setPanPosition(clampPan(
+      panStartRef.current.x + dx,
+      panStartRef.current.y + dy,
+      imagePreviewZoom,
+    ));
+  }, [isDragging, imagePreviewZoom, clampPan]);
+
+  const handlePanEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Scroll wheel zoom (desktop)
+  const handleWheelZoom = useCallback((e: React.WheelEvent) => {
+    if (!imagePreview) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -IMAGE_PREVIEW_ZOOM_STEP : IMAGE_PREVIEW_ZOOM_STEP;
+    setImagePreviewZoom((prev) => {
+      const next = Math.max(MIN_IMAGE_PREVIEW_ZOOM, Math.min(MAX_IMAGE_PREVIEW_ZOOM, Number((prev + delta).toFixed(2))));
+      if (next <= MIN_IMAGE_PREVIEW_ZOOM) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  }, [imagePreview]);
+
+  // Pinch-to-zoom (mobile)
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return null;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStartZoom = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch start
+      lastPinchDistRef.current = getTouchDistance(e.touches);
+      setIsDragging(false); // stop pan during pinch
+    } else if (e.touches.length === 1) {
+      // Double-tap detection
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        // Double tap → toggle zoom
+        if (imagePreviewZoom <= MIN_IMAGE_PREVIEW_ZOOM) {
+          setImagePreviewZoom(2);
+        } else {
+          setImagePreviewZoom(MIN_IMAGE_PREVIEW_ZOOM);
+          setPanPosition({ x: 0, y: 0 });
+        }
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
+      // Single finger pan
+      handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, [imagePreviewZoom, handlePanStart]);
+
+  const handleTouchMoveZoom = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch move
+      const dist = getTouchDistance(e.touches);
+      if (dist !== null && lastPinchDistRef.current !== null) {
+        const diff = dist - lastPinchDistRef.current;
+        const zoomDelta = diff * 0.005; // sensitivity
+        setImagePreviewZoom((prev) => {
+          const next = Math.max(MIN_IMAGE_PREVIEW_ZOOM, Math.min(MAX_IMAGE_PREVIEW_ZOOM, Number((prev + zoomDelta).toFixed(2))));
+          if (next <= MIN_IMAGE_PREVIEW_ZOOM) setPanPosition({ x: 0, y: 0 });
+          return next;
+        });
+        lastPinchDistRef.current = dist;
+      }
+    } else if (e.touches.length === 1) {
+      handlePanMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, [handlePanMove]);
+
+  const handleTouchEndZoom = useCallback(() => {
+    lastPinchDistRef.current = null;
+    setIsDragging(false);
   }, []);
 
   const handleSubmit = () => {
@@ -2138,21 +2255,40 @@ export default function ExamTakingPage() {
                 </button>
               </div>
             </div>
-            <div className="w-full max-h-[75vh] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-2 sm:p-3">
-              <div className="min-h-[220px] flex items-start justify-center">
+            <div
+              ref={imageContainerRef}
+              className="w-full max-h-[75vh] overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-2 sm:p-3 touch-none select-none"
+              style={{ cursor: imagePreviewZoom > MIN_IMAGE_PREVIEW_ZOOM ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+              onMouseDown={(e) => { e.preventDefault(); handlePanStart(e.clientX, e.clientY); }}
+              onMouseMove={(e) => { e.preventDefault(); handlePanMove(e.clientX, e.clientY); }}
+              onMouseUp={handlePanEnd}
+              onMouseLeave={handlePanEnd}
+              onWheel={handleWheelZoom}
+              onTouchStart={handleTouchStartZoom}
+              onTouchMove={handleTouchMoveZoom}
+              onTouchEnd={handleTouchEndZoom}
+            >
+              <div className="min-h-[220px] flex items-center justify-center overflow-hidden">
                 <Image
                   src={imagePreview.src}
                   alt={imagePreview.alt}
                   width={1800}
                   height={1200}
-                  className="h-auto max-w-none rounded-lg transition-[width] duration-200"
-                  style={{ width: `${Math.round(imagePreviewZoom * 100)}%` }}
+                  className="max-w-full h-auto rounded-lg pointer-events-none"
+                  style={{
+                    transform: `scale(${imagePreviewZoom}) translate(${panPosition.x / imagePreviewZoom}px, ${panPosition.y / imagePreviewZoom}px)`,
+                    transformOrigin: 'center center',
+                    transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                  }}
+                  draggable={false}
                   unoptimized
                 />
               </div>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-              Gunakan tombol zoom untuk melihat detail. Tekan ESC atau klik area luar untuk menutup pratinjau.
+              {imagePreviewZoom > MIN_IMAGE_PREVIEW_ZOOM
+                ? 'Seret untuk melihat bagian lain. Scroll/pinch untuk zoom. Ketuk 2x untuk reset.'
+                : 'Scroll mouse atau pinch untuk zoom. Ketuk 2x untuk zoom cepat. ESC untuk menutup.'}
             </p>
           </div>
         )}
