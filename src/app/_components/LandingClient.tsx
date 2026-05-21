@@ -254,6 +254,16 @@ export default function LandingClient() {
     };
   }, []);
 
+  const goPrevPhoto = useCallback(() => {
+    if (activePhotos.length === 0) return;
+    setActivePhotoIndex((prev) => (prev - 1 + activePhotos.length) % activePhotos.length);
+  }, [activePhotos.length]);
+
+  const goNextPhoto = useCallback(() => {
+    if (activePhotos.length === 0) return;
+    setActivePhotoIndex((prev) => (prev + 1) % activePhotos.length);
+  }, [activePhotos.length]);
+
   useEffect(() => {
     if (!activeFacilityId) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -336,16 +346,6 @@ export default function LandingClient() {
     setActiveFacilityId(null);
     setActivePhotoIndex(0);
   };
-
-  const goPrevPhoto = useCallback(() => {
-    if (activePhotos.length === 0) return;
-    setActivePhotoIndex((prev) => (prev - 1 + activePhotos.length) % activePhotos.length);
-  }, [activePhotos.length]);
-
-  const goNextPhoto = useCallback(() => {
-    if (activePhotos.length === 0) return;
-    setActivePhotoIndex((prev) => (prev + 1) % activePhotos.length);
-  }, [activePhotos.length]);
 
   const renderCtaLink = (cta: { label: string; href: string }, className: string) => {
     if (!cta?.label) return null;

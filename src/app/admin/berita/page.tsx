@@ -83,7 +83,12 @@ export default function AdminBeritaPage() {
   const fetchNews = useCallback(async (search?: string, category?: 'all' | NewsCategory, status?: StatusFilter) => {
     setLoading(true);
     try {
-      const params: { per_page: number; search?: string; category?: string; status?: StatusFilter } = { per_page: 50 };
+      const params: {
+        per_page: number;
+        search?: string;
+        category?: string;
+        status?: 'draft' | 'published';
+      } = { per_page: 50 };
       if (search?.trim()) params.search = search.trim();
       if (category && category !== 'all') params.category = category;
       if (status && status !== 'all') params.status = status;
