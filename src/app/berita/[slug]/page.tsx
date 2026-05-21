@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -39,36 +39,59 @@ const getAuthorName = (author?: NewsItem['author']) => {
 };
 
 const renderNewsContent = (content: string, fallbackAlt: string) => {
-  const blocks = content.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+  const tokens: Array<{ url: string; caption?: string }> = [];
+  const cleaned = content.replace(/\[\[img:([^\]]+)\]\]/g, (_match, rawToken: string) => {
+    const [rawUrl, rawCaption] = rawToken.split('|');
+    const url = rawUrl?.trim();
+    if (url) {
+      tokens.push({
+        url,
+        caption: rawCaption?.trim() || undefined,
+      });
+    }
+    return '';
+  });
 
-  return blocks.map((block, index) => {
-    const imageMatch = block.match(/^\[\[img:(.+)\]\]$/);
-    if (imageMatch) {
-      const token = imageMatch[1].trim();
-      const [rawUrl, rawCaption] = token.split('|');
-      const url = getSecureFileUrl(rawUrl.trim());
-      const caption = rawCaption?.trim();
-      return (
-        <figure key={`news-image-${index}`} className="space-y-2">
-          <img
-            src={url}
-            alt={caption || fallbackAlt}
-            className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-cover"
-            loading="lazy"
-          />
-          {caption && (
-            <figcaption className="text-xs text-slate-500 dark:text-slate-400">{caption}</figcaption>
-          )}
-        </figure>
+  const paragraphs = cleaned
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const output: ReactNode[] = [];
+  const total = Math.max(paragraphs.length, tokens.length);
+
+  for (let index = 0; index < total; index += 1) {
+    const paragraph = paragraphs[index];
+    if (paragraph) {
+      output.push(
+        <p key={`news-paragraph-${index}`} className="whitespace-pre-line" style={{ textAlign: 'justify' }}>
+          {paragraph}
+        </p>
       );
     }
 
-    return (
-      <p key={`news-paragraph-${index}`} className="whitespace-pre-line">
-        {block}
-      </p>
-    );
-  });
+    const token = tokens[index];
+    if (token) {
+      const url = getSecureFileUrl(token.url);
+      if (url) {
+        output.push(
+          <figure key={`news-image-${index}`} className="space-y-2">
+            <img
+              src={url}
+              alt={token.caption || fallbackAlt}
+              className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-cover"
+              loading="lazy"
+            />
+            {token.caption && (
+              <figcaption className="text-xs text-slate-500 dark:text-slate-400">{token.caption}</figcaption>
+            )}
+          </figure>
+        );
+      }
+    }
+  }
+
+  return output;
 };
 
 export default function NewsDetailPage() {

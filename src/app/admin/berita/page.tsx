@@ -163,6 +163,81 @@ export default function AdminBeritaPage() {
     });
   }, []);
 
+  const renderContentPreview = useCallback((content: string) => {
+    const tokens: Array<{ url: string; caption?: string }> = [];
+    const cleaned = content.replace(/\[\[img:([^\]]+)\]\]/g, (_match, rawToken: string) => {
+      const [rawUrl, rawCaption] = rawToken.split('|');
+      const url = rawUrl?.trim();
+      if (url) {
+        tokens.push({
+          url,
+          caption: rawCaption?.trim() || undefined,
+        });
+      }
+      return '';
+    });
+
+    const paragraphs = cleaned
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+
+    const output: React.ReactNode[] = [];
+    const total = Math.max(paragraphs.length, tokens.length);
+
+    for (let index = 0; index < total; index += 1) {
+      const paragraph = paragraphs[index];
+      if (paragraph) {
+        output.push(
+          <p key={`preview-paragraph-${index}`} className="whitespace-pre-line" style={{ textAlign: 'justify' }}>
+            {paragraph}
+          </p>
+        );
+      }
+
+      const token = tokens[index];
+      if (token) {
+        const url = getSecureFileUrl(token.url);
+        if (url) {
+          output.push(
+            <figure key={`preview-image-${index}`} className="space-y-2">
+              <img
+                src={url}
+                alt={token.caption || formData.title || 'Foto berita'}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 object-cover"
+                loading="lazy"
+              />
+              {token.caption && (
+                <figcaption className="text-xs text-slate-500 dark:text-slate-400">{token.caption}</figcaption>
+              )}
+            </figure>
+          );
+        }
+      }
+    }
+
+    return output;
+  }, [formData.title]);
+
+  const contentPreview = useMemo(
+    () => renderContentPreview(formData.content || ''),
+    [formData.content, renderContentPreview]
+  );
+
+  const previewDate = useMemo(
+    () => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+    []
+  );
+  const previewCoverUrl = useMemo(() => {
+    if (imagePreview) return imagePreview;
+    if (selectedNews?.image) return getSecureFileUrl(selectedNews.image);
+    return '';
+  }, [imagePreview, selectedNews?.image]);
+  const previewTitle = formData.title.trim() || 'Judul berita';
+  const previewExcerpt = formData.excerpt.trim();
+  const previewCategoryLabel = getCategoryLabel(formData.category);
+  const previewDateLabel = formData.is_published ? previewDate : 'Draft';
+
   const handleOpenModal = (item?: NewsItem) => {
     if (item) {
       setSelectedNews(item);
@@ -527,6 +602,42 @@ export default function AdminBeritaPage() {
               <span className="text-xs text-slate-500">PNG/JPG/WEBP, max 5MB per foto.</span>
             </div>
             <p className="text-xs text-slate-500">Foto akan ditambahkan sebagai token [[img:...]] di konten.</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 bg-slate-50 dark:bg-slate-900/40">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Preview Konten</p>
+              <span className="text-xs text-slate-500">Tampilan mendekati halaman berita.</span>
+            </div>
+            <div className="space-y-4 text-sm text-slate-700 dark:text-slate-200">
+              {previewCoverUrl ? (
+                <img
+                  src={previewCoverUrl}
+                  alt={previewTitle}
+                  className="w-full h-48 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
+                />
+              ) : (
+                <div className="h-48 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 flex items-center justify-center text-xs text-slate-400">
+                  Sampul belum dipilih
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  {previewCategoryLabel}
+                </span>
+                <span>{previewDateLabel}</span>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{previewTitle}</h3>
+              {previewExcerpt && (
+                <p className="text-sm text-slate-600 dark:text-slate-300">{previewExcerpt}</p>
+              )}
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-4">
+                {formData.content?.trim() ? (
+                  contentPreview
+                ) : (
+                  <p className="text-xs text-slate-500">Konten belum diisi.</p>
+                )}
+              </div>
+            </div>
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Gambar Sampul</label>
