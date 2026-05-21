@@ -100,7 +100,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     info_links: [
       { label: 'Kalender Akademik', href: '#' },
       { label: 'Prestasi Siswa', href: '#' },
-      { label: 'Berita & Artikel', href: '#' },
+      { label: 'Berita & Artikel', href: '/berita' },
       { label: 'Alumni', href: '#' },
       { label: 'Pengumuman Kelulusan', href: '/pengumuman-kelulusan' },
       { label: 'Masuk LMS', href: '/login' },

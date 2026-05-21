@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
 import { Button, Card, CardHeader, Input, Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { landingPageAPI, getSecureFileUrl } from '@/services/api';

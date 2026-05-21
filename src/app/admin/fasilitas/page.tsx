@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Input, Textarea, Select, Checkbox, Table, Modal, ConfirmDialog } from '@/components/ui';
 import LandingContentEditor from '@/components/landing/LandingContentEditor';

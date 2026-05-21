@@ -33,6 +33,13 @@ interface StudentAttendance {
   attendance?: { id: number; scanned_at: string | null };
 }
 
+type MissingNisItem = { id?: number; nama?: string; nisn?: string };
+
+type PrintErrorPayload = {
+  message?: string;
+  data?: { missing_nis?: MissingNisItem[] };
+};
+
 interface SessionHistoryTabProps {
   sessions: SessionHistory[];
   loadingHistory: boolean;
@@ -53,7 +60,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [printPayload, setPrintPayload] = useState<AttendancePrintProps | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [missingNis, setMissingNis] = useState<Array<{ id?: number; nama?: string; nisn?: string }>>([]);
+  const [missingNis, setMissingNis] = useState<MissingNisItem[]>([]);
 
   // Close download menu on outside click
   useEffect(() => {
@@ -330,23 +337,25 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
         { headers }
       );
 
-      let payload: any = null;
+      let payload: unknown = null;
       try {
         payload = await response.json();
       } catch {
         payload = null;
       }
 
+      const errorPayload = payload as PrintErrorPayload;
+
       if (!response.ok) {
-        if (response.status === 422 && payload?.data?.missing_nis) {
-          const missing = payload.data.missing_nis as Array<{ nama?: string }>;
+        if (response.status === 422 && errorPayload.data?.missing_nis) {
+          const missing = errorPayload.data.missing_nis;
           const names = missing.slice(0, 6).map((item) => item.nama).filter(Boolean).join(', ');
           const more = missing.length > 6 ? ` dan ${missing.length - 6} lainnya` : '';
           toast.warning(`NIS siswa wajib diisi sebelum cetak. Mohon admin lengkapi di Kelola Pengguna. ${names ? `Siswa: ${names}${more}.` : ''}`.trim());
-          setMissingNis(payload.data.missing_nis as Array<{ id?: number; nama?: string; nisn?: string }>);
+          setMissingNis(missing);
           return;
         }
-        toast.error(payload?.message || 'Gagal menyiapkan data cetak');
+        toast.error(errorPayload.message || 'Gagal menyiapkan data cetak');
         return;
       }
 

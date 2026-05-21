@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\ExamResultVisibilityController;
 use App\Http\Controllers\Api\GraduationController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\LandingPageController;
+use App\Http\Controllers\Api\NewsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,8 @@ Route::prefix('public')->group(function () {
         ->middleware('throttle:10,1'); // 10 requests per minute per IP
     Route::get('/facilities', [FacilityController::class, 'publicIndex']);
     Route::get('/landing-page', [LandingPageController::class, 'publicShow']);
+    Route::get('/news', [NewsController::class, 'publicIndex']);
+    Route::get('/news/{slug}', [NewsController::class, 'publicShow']);
 });
 
 // Protected routes
@@ -95,6 +98,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/users/nomor-tes/normalize', [UserController::class, 'normalizeNomorTes']);
         Route::get('/teachers', [UserController::class, 'teachers']);
         Route::get('/students/class/{classId}', [UserController::class, 'studentsByClass']);
+
+        // News Management
+        Route::apiResource('news', NewsController::class);
         
         // Student Blocking
         Route::post('/users/{user}/toggle-block', [UserController::class, 'toggleBlock']);

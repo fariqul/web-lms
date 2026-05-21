@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { LandingContent } from '@/types/landing';
+import type { NewsPayload } from '@/types/news';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -370,6 +371,22 @@ const buildLandingPageFormData = (
   return formData;
 };
 
+const buildNewsFormData = (data: Partial<NewsPayload>, image?: File | null) => {
+  const formData = new FormData();
+  if (data.title !== undefined) formData.append('title', data.title);
+  if (data.category !== undefined) formData.append('category', data.category);
+  if (data.excerpt !== undefined) formData.append('excerpt', data.excerpt || '');
+  if (data.content !== undefined) formData.append('content', data.content || '');
+  if (data.is_featured !== undefined) {
+    formData.append('is_featured', data.is_featured ? '1' : '0');
+  }
+  if (data.is_published !== undefined) {
+    formData.append('is_published', data.is_published ? '1' : '0');
+  }
+  if (image) formData.append('image', image);
+  return formData;
+};
+
 // Facilities API
 export const facilityAPI = {
   getPublic: () =>
@@ -404,6 +421,33 @@ export const landingPageAPI = {
 
   update: (content: LandingContent, media?: { logo?: File | null; hero_background?: File | null; hero_video?: File | null }) =>
     api.post('/landing-page', buildLandingPageFormData(content, media)),
+};
+
+// News API
+export const newsAPI = {
+  getPublic: (params?: { limit?: number }) =>
+    api.get('/public/news', { params }),
+
+  getPublicBySlug: (slug: string) =>
+    api.get(`/public/news/${slug}`),
+
+  getAll: (params?: { page?: number; per_page?: number; search?: string; category?: string; status?: 'published' | 'draft' }) =>
+    api.get('/news', { params }),
+
+  getById: (id: number) =>
+    api.get(`/news/${id}`),
+
+  create: (data: NewsPayload, image?: File | null) =>
+    api.post('/news', buildNewsFormData(data, image)),
+
+  update: (id: number, data: Partial<NewsPayload>, image?: File | null) => {
+    const formData = buildNewsFormData(data, image);
+    formData.append('_method', 'PUT');
+    return api.post(`/news/${id}`, formData);
+  },
+
+  delete: (id: number) =>
+    api.delete(`/news/${id}`),
 };
 
 // Attendance API

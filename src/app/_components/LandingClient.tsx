@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { facilityAPI, getSecureFileUrl, landingPageAPI } from '@/services/api';
+import { facilityAPI, getSecureFileUrl, landingPageAPI, newsAPI } from '@/services/api';
 import { DEFAULT_LANDING_CONTENT, mergeLandingContent } from '@/constants/landing';
 import type { LandingContent } from '@/types/landing';
+import type { NewsItem } from '@/types/news';
 import s from '../page.module.css';
 
 /* ─── Scroll Reveal Hook ─── */
@@ -66,6 +69,48 @@ type FacilityItem = {
   photos: FacilityPhoto[];
 };
 
+const fallbackNews: NewsItem[] = [
+  {
+    id: 1,
+    title: 'Tim Olimpiade Sains SMA Negeri 15 Raih Medali Emas di Kompetisi Nasional 2026',
+    slug: 'prestasi-olimpiade-sains-2026',
+    category: 'prestasi',
+    excerpt: 'Empat siswa berhasil membawa pulang medali emas dan perak dalam ajang Olimpiade Sains Nasional di Jakarta.',
+    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c476?w=800&q=80',
+    is_featured: true,
+    published_at_human: '20 Mei 2026',
+  },
+  {
+    id: 2,
+    title: 'Jadwal PPDB 2026/2027 Telah Dibuka, Simak Persyaratannya',
+    slug: 'ppdb-2026-2027',
+    category: 'pendaftaran',
+    excerpt: 'Informasi lengkap jadwal dan persyaratan PPDB untuk calon siswa baru SMA Negeri 15 Makassar.',
+    image: 'https://images.unsplash.com/photo-1588072432836-e10032774350?w=400&q=80',
+    published_at_human: '18 Mei 2026',
+  },
+  {
+    id: 3,
+    title: 'Festival Seni dan Budaya SMAN 15 Sukses Digelar',
+    slug: 'festival-seni-2026',
+    category: 'kegiatan',
+    excerpt: 'Kegiatan tahunan menampilkan kreasi seni dan budaya siswa dengan antusiasme tinggi.',
+    image: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400&q=80',
+    published_at_human: '15 Mei 2026',
+  },
+  {
+    id: 4,
+    title: 'Workshop Kurikulum Merdeka untuk Guru dan Tenaga Pendidik',
+    slug: 'workshop-kurikulum-merdeka',
+    category: 'akademik',
+    excerpt: 'Pelatihan intensif untuk memperkuat implementasi kurikulum merdeka di SMA 15 Makassar.',
+    image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=80',
+    published_at_human: '12 Mei 2026',
+  },
+];
+
+const NEWS_PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1523050854058-8df90110c476?w=800&q=80';
+
 const mapFacilityItem = (facility: FacilityApiItem): FacilityItem => {
   const photos = (facility.photos || [])
     .slice()
@@ -88,6 +133,29 @@ const mapFacilityItem = (facility: FacilityApiItem): FacilityItem => {
   };
 };
 
+const getNewsCategoryLabel = (category: string) => {
+  switch (category) {
+    case 'prestasi':
+      return 'Prestasi';
+    case 'kegiatan':
+      return 'Kegiatan';
+    case 'akademik':
+      return 'Akademik';
+    case 'pendaftaran':
+      return 'Pendaftaran';
+    default:
+      return 'Umum';
+  }
+};
+
+const formatNewsDate = (item: NewsItem) => {
+  if (item.published_at_human) return item.published_at_human;
+  if (!item.published_at) return '';
+  const parsed = new Date(item.published_at);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
 
 /* ═══════════════════ COMPONENT ═══════════════════ */
 
@@ -98,6 +166,9 @@ export default function LandingClient() {
   const [facilities, setFacilities] = useState<FacilityItem[]>([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState<string | null>(null);
   const [activeFacilityId, setActiveFacilityId] = useState<number | null>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const modalCloseRef = useRef<HTMLButtonElement>(null);
@@ -118,6 +189,10 @@ export default function LandingClient() {
   const heroVideoSrc = heroVideoUrl || '/landing/hero-video.webm';
   const heroVideoType = heroVideoSrc.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
   const heroTitleLines = hero.title.split('\n');
+  const hasNews = newsItems.length > 0;
+  const displayNews = hasNews ? newsItems : fallbackNews;
+  const featuredNews = displayNews.find((item) => item.is_featured) || displayNews[0];
+  const otherNews = displayNews.filter((item) => item.id !== featuredNews?.id).slice(0, 3);
 
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 80);
@@ -149,6 +224,37 @@ export default function LandingClient() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    const loadNews = async () => {
+      setNewsLoading(true);
+      setNewsError(null);
+      try {
+        const response = await newsAPI.getPublic({ limit: 4 });
+        const rows = response.data?.data || [];
+        const list = Array.isArray(rows) ? rows : [];
+        if (mounted) {
+          setNewsItems(list);
+        }
+      } catch {
+        if (mounted) {
+          setNewsItems([]);
+          setNewsError('Berita belum tersedia.');
+        }
+      } finally {
+        if (mounted) {
+          setNewsLoading(false);
+        }
+      }
+    };
+
+    loadNews();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!activeFacilityId) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -166,7 +272,7 @@ export default function LandingClient() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeFacilityId, activePhotos.length]);
+  }, [activeFacilityId, goPrevPhoto, goNextPhoto]);
 
   useEffect(() => {
     if (!activeFacilityId) return;
@@ -203,7 +309,7 @@ export default function LandingClient() {
         if (mounted) {
           setFacilities(mapped);
         }
-      } catch (error) {
+      } catch {
         if (mounted) {
           setFacilities([]);
           setFacilitiesError('Gagal memuat fasilitas. Silakan coba lagi nanti.');
@@ -231,15 +337,15 @@ export default function LandingClient() {
     setActivePhotoIndex(0);
   };
 
-  const goPrevPhoto = () => {
-    if (!hasPhotos) return;
+  const goPrevPhoto = useCallback(() => {
+    if (activePhotos.length === 0) return;
     setActivePhotoIndex((prev) => (prev - 1 + activePhotos.length) % activePhotos.length);
-  };
+  }, [activePhotos.length]);
 
-  const goNextPhoto = () => {
-    if (!hasPhotos) return;
+  const goNextPhoto = useCallback(() => {
+    if (activePhotos.length === 0) return;
     setActivePhotoIndex((prev) => (prev + 1) % activePhotos.length);
-  };
+  }, [activePhotos.length]);
 
   const renderCtaLink = (cta: { label: string; href: string }, className: string) => {
     if (!cta?.label) return null;
@@ -283,6 +389,7 @@ export default function LandingClient() {
             <li><button onClick={() => scrollTo('about')} className={s.navLink}>Profil</button></li>
             <li><button onClick={() => scrollTo('programs')} className={s.navLink}>Program</button></li>
             <li><button onClick={() => scrollTo('facilities')} className={s.navLink}>Fasilitas</button></li>
+            <li><button onClick={() => scrollTo('news')} className={s.navLink}>Berita</button></li>
             <li><button onClick={() => scrollTo('registration')} className={s.navLink}>Pendaftaran</button></li>
             <li>
               <Link href="/login" className={s.navCta}>
@@ -559,6 +666,81 @@ export default function LandingClient() {
         )}
       </section>
 
+      {/* ═══ News / Berita ═══ */}
+      <section className={s.news} id="news">
+        <div className={s.container}>
+          <div className={s.sectionHeader} style={{ textAlign: 'center', width: '100%' }}>
+            <div className={s.sectionLabel} style={{ textAlign: 'center' }}>Berita & Informasi</div>
+            <h2 className={s.sectionTitle} style={{ textAlign: 'center' }}>Kabar Terbaru Sekolah</h2>
+            <p className={s.sectionDescription} style={{ textAlign: 'center', marginLeft: 'auto', marginRight: 'auto' }}>
+              Ikuti perkembangan terbaru seputar kegiatan, prestasi, dan informasi penting dari SMA Negeri 15 Makassar.
+            </p>
+          </div>
+          {!newsLoading && !hasNews ? (
+            <div className="text-center text-slate-500 text-sm">
+              {newsError || 'Belum ada berita yang dipublikasikan.'}
+            </div>
+          ) : (
+            <div className={s.newsLayout}>
+              {/* Featured Article */}
+              {featuredNews && (
+                <Link
+                  href={`/berita/${featuredNews.slug}`}
+                  className={`${s.newsFeatured} ${s.scrollReveal}`}
+                >
+                  <img
+                    src={featuredNews.image ? getSecureFileUrl(featuredNews.image) : NEWS_PLACEHOLDER_IMAGE}
+                    alt={featuredNews.title}
+                    className={s.newsFeaturedImage}
+                    loading="lazy"
+                  />
+                  <div className={s.newsFeaturedOverlay}>
+                    <span className={s.newsCategoryBadge}>{getNewsCategoryLabel(featuredNews.category)}</span>
+                    <h3 className={s.newsFeaturedTitle}>{featuredNews.title}</h3>
+                    <p className={s.newsFeaturedExcerpt}>
+                      {featuredNews.excerpt || 'Baca kabar terbaru dari SMA Negeri 15 Makassar.'}
+                    </p>
+                    <div className={s.newsMeta}>
+                      <span>{formatNewsDate(featuredNews)}</span>
+                      <span className={s.newsMetaDot} />
+                      <span>Baca selengkapnya</span>
+                    </div>
+                  </div>
+                </Link>
+              )}
+
+              {/* Recent Articles Grid */}
+              <div className={s.newsGrid}>
+                {otherNews.map((item) => (
+                  <Link key={item.id} href={`/berita/${item.slug}`} className={`${s.newsCard} ${s.scrollReveal}`}>
+                    <div className={s.newsCardThumb}>
+                      <img
+                        src={item.image ? getSecureFileUrl(item.image) : NEWS_PLACEHOLDER_IMAGE}
+                        alt={item.title}
+                        className={s.newsCardThumbImage}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className={s.newsCardBody}>
+                      <span className={s.newsCategoryBadgeSmall}>{getNewsCategoryLabel(item.category)}</span>
+                      <h4 className={s.newsCardTitle}>{item.title}</h4>
+                      <div className={`${s.newsMeta} ${s.newsMetaDark}`}>
+                        <span>{formatNewsDate(item)}</span>
+                        <span className={s.newsMetaDot} />
+                        <span>Baca selengkapnya</span>
+                      </div>
+                      <div className={s.newsReadMore}>
+                        Baca selengkapnya <span className={s.newsReadMoreArrow}>→</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ═══ Registration ═══ */}
       <section className={s.registration} id="registration">
         <div className={s.container}>
@@ -617,6 +799,7 @@ export default function LandingClient() {
               <li><button onClick={() => scrollTo('about')} className={s.footerLink}>Profil Sekolah</button></li>
               <li><button onClick={() => scrollTo('programs')} className={s.footerLink}>Program</button></li>
               <li><button onClick={() => scrollTo('facilities')} className={s.footerLink}>Fasilitas</button></li>
+              <li><button onClick={() => scrollTo('news')} className={s.footerLink}>Berita</button></li>
               <li><button onClick={() => scrollTo('registration')} className={s.footerLink}>Pendaftaran</button></li>
             </ul>
           </div>

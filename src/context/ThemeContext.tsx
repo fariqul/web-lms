@@ -31,37 +31,23 @@ function getInitialTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Start with 'light' on both server AND client to avoid hydration mismatch.
-  // The real stored theme is applied after mount via useEffect.
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('light');
-  const [mounted, setMounted] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => getSystemTheme());
 
   const resolvedTheme = useMemo(
     () => (theme === 'system' ? systemTheme : theme),
     [theme, systemTheme]
   );
 
-  // ─── Hydrate theme from localStorage AFTER mount (client only) ───────────
-  useEffect(() => {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    const initial: Theme = isValidTheme(saved) ? saved : 'light';
-    const sys = getSystemTheme();
-    setSystemTheme(sys);
-    setThemeState(initial);
-    setMounted(true);
-  }, []);
-
   // Apply resolved theme class to <html>
   useEffect(() => {
-    if (!mounted) return;
     const root = document.documentElement;
     if (resolvedTheme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-  }, [resolvedTheme, mounted]);
+  }, [resolvedTheme]);
 
   // Listen for system theme changes when in 'system' mode
   useEffect(() => {

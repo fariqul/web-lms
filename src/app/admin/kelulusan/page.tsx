@@ -49,7 +49,6 @@ export default function AdminGraduationPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [graduations, setGraduations] = useState<StudentGraduation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -77,31 +76,16 @@ export default function AdminGraduationPage() {
   const [announcementDatetime, setAnnouncementDatetime] = useState('');
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
 
-  useEffect(() => {
-    fetchClasses();
-    fetchAnnouncementSettings();
-  }, []);
-
-  useEffect(() => {
-    if (selectedClass) {
-      fetchGraduations();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClass]);
-
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await classAPI.getAll();
       setClasses(response.data?.data || []);
     } catch {
       toast.error('Gagal memuat data kelas');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchAnnouncementSettings = async () => {
+  const fetchAnnouncementSettings = useCallback(async () => {
     try {
       const response = await graduationAPI.getAnnouncementSettings();
       const data = response.data?.data;
@@ -116,7 +100,7 @@ export default function AdminGraduationPage() {
     } catch {
       // Settings may not exist yet
     }
-  };
+  }, []);
 
   const saveAnnouncementSettings = async () => {
     try {
@@ -146,8 +130,18 @@ export default function AdminGraduationPage() {
     } finally {
       setSearching(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClass]);
+  }, [selectedClass, toast]);
+
+  useEffect(() => {
+    fetchClasses();
+    fetchAnnouncementSettings();
+  }, [fetchClasses, fetchAnnouncementSettings]);
+
+  useEffect(() => {
+    if (selectedClass) {
+      fetchGraduations();
+    }
+  }, [selectedClass, fetchGraduations]);
 
   const filteredGraduations = graduations.filter(
     (g) =>
@@ -223,7 +217,11 @@ export default function AdminGraduationPage() {
 
   const toggleStudentSelection = (studentId: number) => {
     const next = new Set(selectedStudents);
-    next.has(studentId) ? next.delete(studentId) : next.add(studentId);
+    if (next.has(studentId)) {
+      next.delete(studentId);
+    } else {
+      next.add(studentId);
+    }
     setSelectedStudents(next);
   };
 
