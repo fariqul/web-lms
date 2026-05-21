@@ -29,4 +29,5 @@ export type NewsPayload = {
   content?: string;
   is_featured?: boolean;
   is_published?: boolean;
+  remove_image?: boolean;
 };

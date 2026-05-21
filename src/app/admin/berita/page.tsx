@@ -81,9 +81,11 @@ export default function AdminBeritaPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imagePreviewRef = useRef<string | null>(null);
+  const [removeCoverImage, setRemoveCoverImage] = useState(false);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
   const [inlineUploading, setInlineUploading] = useState(false);
+  const [deletingInlineImage, setDeletingInlineImage] = useState<string | null>(null);
 
   const fetchNews = useCallback(async (search?: string, category?: 'all' | NewsCategory, status?: StatusFilter) => {
     setLoading(true);
@@ -137,6 +139,7 @@ export default function AdminBeritaPage() {
     setSelectedNews(null);
     setFormData(emptyForm);
     resetImagePreview();
+    setRemoveCoverImage(false);
   };
 
   const insertContentSnippet = useCallback((snippet: string) => {
@@ -163,6 +166,36 @@ export default function AdminBeritaPage() {
     });
   }, []);
 
+  const extractInlineImages = useCallback((content: string) => {
+    const items: Array<{ token: string; path: string; caption?: string; url: string }> = [];
+    const regex = /\[\[img:([^\]]+)\]\]/g;
+    let match: RegExpExecArray | null = null;
+
+    while ((match = regex.exec(content)) !== null) {
+      const rawToken = match[1];
+      const [rawUrl, rawCaption] = rawToken.split('|');
+      const path = rawUrl?.trim();
+      if (!path) continue;
+      items.push({
+        token: match[0],
+        path,
+        caption: rawCaption?.trim() || undefined,
+        url: getSecureFileUrl(path),
+      });
+    }
+
+    return items;
+  }, []);
+
+  const removeInlineToken = useCallback((token: string) => {
+    setFormData((prev) => {
+      const current = prev.content || '';
+      if (!current.includes(token)) return prev;
+      const next = current.replace(token, '').replace(/\n{3,}/g, '\n\n').trim();
+      return { ...prev, content: next };
+    });
+  }, []);
+
   const renderContentPreview = useCallback((content: string) => {
     const tokens: Array<{ url: string; caption?: string }> = [];
     const cleaned = content.replace(/\[\[img:([^\]]+)\]\]/g, (_match, rawToken: string) => {
@@ -178,7 +211,7 @@ export default function AdminBeritaPage() {
     });
 
     const paragraphs = cleaned
-      .split(/\n{2,}/)
+      .split(/\n+/)
       .map((block) => block.trim())
       .filter(Boolean);
 
@@ -224,15 +257,38 @@ export default function AdminBeritaPage() {
     [formData.content, renderContentPreview]
   );
 
+  const inlineImages = useMemo(
+    () => extractInlineImages(formData.content || ''),
+    [extractInlineImages, formData.content]
+  );
+
+  const handleDeleteInlineImage = useCallback(async (item: { token: string; path: string }) => {
+    if (deletingInlineImage) return;
+    const confirmed = window.confirm('Hapus foto ini dari konten berita?');
+    if (!confirmed) return;
+
+    setDeletingInlineImage(item.token);
+    try {
+      await newsAPI.deleteContentImage(item.path);
+      removeInlineToken(item.token);
+      toast.success('Foto konten berhasil dihapus.');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menghapus foto konten'));
+    } finally {
+      setDeletingInlineImage(null);
+    }
+  }, [deletingInlineImage, removeInlineToken, toast]);
+
   const previewDate = useMemo(
     () => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
     []
   );
   const previewCoverUrl = useMemo(() => {
+    if (removeCoverImage) return '';
     if (imagePreview) return imagePreview;
     if (selectedNews?.image) return getSecureFileUrl(selectedNews.image);
     return '';
-  }, [imagePreview, selectedNews?.image]);
+  }, [imagePreview, removeCoverImage, selectedNews?.image]);
   const previewTitle = formData.title.trim() || 'Judul berita';
   const previewExcerpt = formData.excerpt.trim();
   const previewCategoryLabel = getCategoryLabel(formData.category);
@@ -253,6 +309,7 @@ export default function AdminBeritaPage() {
       if (item.image) {
         setImagePreview(getSecureFileUrl(item.image));
       }
+      setRemoveCoverImage(false);
     } else {
       resetForm();
     }
@@ -290,11 +347,20 @@ export default function AdminBeritaPage() {
     if (!file) return;
 
     resetImagePreview();
+    setRemoveCoverImage(false);
     const previewUrl = URL.createObjectURL(file);
     imagePreviewRef.current = previewUrl;
     setImageFile(file);
     setImagePreview(previewUrl);
     event.target.value = '';
+  };
+
+  const handleRemoveCoverImage = () => {
+    if (!imagePreview && !selectedNews?.image) return;
+    const confirmed = window.confirm('Hapus gambar sampul berita ini?');
+    if (!confirmed) return;
+    resetImagePreview();
+    setRemoveCoverImage(true);
   };
 
   const handleInlineImagesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,6 +439,10 @@ export default function AdminBeritaPage() {
       is_featured: formData.is_featured,
       is_published: formData.is_published,
     };
+
+    if (selectedNews && removeCoverImage) {
+      payload.remove_image = true;
+    }
 
     setSubmitting(true);
     try {
@@ -603,6 +673,43 @@ export default function AdminBeritaPage() {
             </div>
             <p className="text-xs text-slate-500">Foto akan ditambahkan sebagai token [[img:...]] di konten.</p>
           </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Foto Selipan</p>
+              <span className="text-xs text-slate-500">{inlineImages.length} foto</span>
+            </div>
+            {inlineImages.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {inlineImages.map((item, idx) => (
+                  <div key={`${item.path}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+                    <img
+                      src={item.url}
+                      alt={item.caption || 'Foto selipan'}
+                      className="h-24 w-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className="flex items-center justify-between gap-2 p-2">
+                      <span className="text-[11px] text-slate-500 truncate">
+                        {item.caption || 'Foto konten'}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        isLoading={deletingInlineImage === item.token}
+                        loadingText="Menghapus..."
+                        onClick={() => handleDeleteInlineImage({ token: item.token, path: item.path })}
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Belum ada foto selipan.</p>
+            )}
+          </div>
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 bg-slate-50 dark:bg-slate-900/40">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Preview Konten</p>
@@ -647,14 +754,22 @@ export default function AdminBeritaPage() {
               onChange={handleImageChange}
               className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
             />
-            {imagePreview && (
+            {(imagePreview || selectedNews?.image) && !removeCoverImage && (
+              <Button type="button" variant="ghost" size="sm" onClick={handleRemoveCoverImage}>
+                Hapus Sampul
+              </Button>
+            )}
+            {removeCoverImage && (
+              <p className="text-xs text-amber-600">Sampul akan dihapus saat disimpan.</p>
+            )}
+            {imagePreview && !removeCoverImage && (
               <img
                 src={imagePreview}
                 alt="Preview berita"
                 className="mt-2 h-40 w-full rounded-xl object-cover border border-slate-200 dark:border-slate-700"
               />
             )}
-            {!imagePreview && selectedNews?.image && (
+            {!imagePreview && selectedNews?.image && !removeCoverImage && (
               <img
                 src={getSecureFileUrl(selectedNews.image)}
                 alt={selectedNews.title}

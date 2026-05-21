@@ -383,6 +383,9 @@ const buildNewsFormData = (data: Partial<NewsPayload>, image?: File | null) => {
   if (data.is_published !== undefined) {
     formData.append('is_published', data.is_published ? '1' : '0');
   }
+  if (data.remove_image !== undefined) {
+    formData.append('remove_image', data.remove_image ? '1' : '0');
+  }
   if (image) formData.append('image', image);
   return formData;
 };
@@ -442,6 +445,9 @@ export const newsAPI = {
     formData.append('image', image);
     return api.post('/news/upload-image', formData);
   },
+
+  deleteContentImage: (path: string) =>
+    api.post('/news/delete-image', { path }),
 
   create: (data: NewsPayload, image?: File | null) =>
     api.post('/news', buildNewsFormData(data, image)),

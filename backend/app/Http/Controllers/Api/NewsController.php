@@ -173,12 +173,19 @@ class NewsController extends Controller
             'excerpt' => 'nullable|string|max:500',
             'content' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'remove_image' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
             'is_published' => 'nullable|boolean',
         ]);
 
         if (isset($validated['title']) && $validated['title'] !== $news->title) {
             $news->slug = News::generateSlug($validated['title'], $news->id);
+        }
+
+        $removeImage = filter_var($validated['remove_image'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($removeImage && $news->image) {
+            Storage::disk('public')->delete($news->image);
+            $news->image = null;
         }
 
         if ($request->hasFile('image')) {
@@ -231,6 +238,35 @@ class NewsController extends Controller
             'data' => [
                 'path' => $path,
             ],
+        ]);
+    }
+
+    /**
+     * Admin: Hapus gambar selipan untuk konten berita.
+     */
+    public function deleteContentImage(Request $request)
+    {
+        $validated = $request->validate([
+            'path' => 'required|string',
+        ]);
+
+        $path = $validated['path'];
+        if (str_contains($path, '..') || !str_starts_with($path, 'news/content/')) {
+            return response()->json([
+                'message' => 'Path gambar tidak valid.',
+            ], 422);
+        }
+
+        if (!Storage::disk('public')->exists($path)) {
+            return response()->json([
+                'message' => 'Gambar tidak ditemukan.',
+            ], 404);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json([
+            'message' => 'Gambar konten berhasil dihapus',
         ]);
     }
 

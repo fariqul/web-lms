@@ -53,7 +53,7 @@ const renderNewsContent = (content: string, fallbackAlt: string) => {
   });
 
   const paragraphs = cleaned
-    .split(/\n{2,}/)
+    .split(/\n+/)
     .map((block) => block.trim())
     .filter(Boolean);
 

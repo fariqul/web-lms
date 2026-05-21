@@ -101,6 +101,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
 
         // News Management
         Route::post('/news/upload-image', [NewsController::class, 'uploadContentImage']);
+        Route::post('/news/delete-image', [NewsController::class, 'deleteContentImage']);
         Route::apiResource('news', NewsController::class);
         
         // Student Blocking
