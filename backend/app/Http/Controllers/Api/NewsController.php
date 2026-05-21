@@ -216,6 +216,25 @@ class NewsController extends Controller
     }
 
     /**
+     * Admin: Upload gambar selipan untuk konten berita.
+     */
+    public function uploadContentImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+        ]);
+
+        $path = $request->file('image')->store('news/content', 'public');
+
+        return response()->json([
+            'message' => 'Gambar konten berhasil diunggah',
+            'data' => [
+                'path' => $path,
+            ],
+        ]);
+    }
+
+    /**
      * Admin: Delete news.
      */
     public function destroy(News $news)

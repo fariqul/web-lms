@@ -437,6 +437,12 @@ export const newsAPI = {
   getById: (id: number) =>
     api.get(`/news/${id}`),
 
+  uploadContentImage: (image: File) => {
+    const formData = new FormData();
+    formData.append('image', image);
+    return api.post('/news/upload-image', formData);
+  },
+
   create: (data: NewsPayload, image?: File | null) =>
     api.post('/news', buildNewsFormData(data, image)),
 

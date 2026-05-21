@@ -38,6 +38,39 @@ const getAuthorName = (author?: NewsItem['author']) => {
   return author.name;
 };
 
+const renderNewsContent = (content: string, fallbackAlt: string) => {
+  const blocks = content.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+
+  return blocks.map((block, index) => {
+    const imageMatch = block.match(/^\[\[img:(.+)\]\]$/);
+    if (imageMatch) {
+      const token = imageMatch[1].trim();
+      const [rawUrl, rawCaption] = token.split('|');
+      const url = getSecureFileUrl(rawUrl.trim());
+      const caption = rawCaption?.trim();
+      return (
+        <figure key={`news-image-${index}`} className="space-y-2">
+          <img
+            src={url}
+            alt={caption || fallbackAlt}
+            className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-cover"
+            loading="lazy"
+          />
+          {caption && (
+            <figcaption className="text-xs text-slate-500 dark:text-slate-400">{caption}</figcaption>
+          )}
+        </figure>
+      );
+    }
+
+    return (
+      <p key={`news-paragraph-${index}`} className="whitespace-pre-line">
+        {block}
+      </p>
+    );
+  });
+};
+
 export default function NewsDetailPage() {
   const params = useParams();
   const slug = typeof params.slug === 'string' ? params.slug : params.slug?.[0];
@@ -114,8 +147,8 @@ export default function NewsDetailPage() {
               {news.excerpt && (
                 <p className="text-slate-600 dark:text-slate-300">{news.excerpt}</p>
               )}
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-4 text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">
-                {news.content || 'Konten berita belum tersedia.'}
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-4 text-slate-700 dark:text-slate-200 leading-relaxed space-y-4">
+                {news.content?.trim() ? renderNewsContent(news.content, news.title) : 'Konten berita belum tersedia.'}
               </div>
             </div>
           </article>

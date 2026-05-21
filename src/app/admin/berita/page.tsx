@@ -49,6 +49,8 @@ const emptyForm: FormState = {
   is_published: false,
 };
 
+const MAX_INLINE_IMAGE_SIZE = 5 * 1024 * 1024;
+
 const getCategoryLabel = (category: string) => {
   const match = categoryOptions.find((item) => item.value === category);
   return match?.label || category;
@@ -79,6 +81,9 @@ export default function AdminBeritaPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imagePreviewRef = useRef<string | null>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [inlineUploading, setInlineUploading] = useState(false);
 
   const fetchNews = useCallback(async (search?: string, category?: 'all' | NewsCategory, status?: StatusFilter) => {
     setLoading(true);
@@ -133,6 +138,30 @@ export default function AdminBeritaPage() {
     setFormData(emptyForm);
     resetImagePreview();
   };
+
+  const insertContentSnippet = useCallback((snippet: string) => {
+    const target = contentRef.current;
+    const selectionStart = target?.selectionStart ?? null;
+    const selectionEnd = target?.selectionEnd ?? null;
+
+    setFormData((prev) => {
+      const current = prev.content || '';
+      const start = selectionStart ?? current.length;
+      const end = selectionEnd ?? current.length;
+      const insert = `\n\n${snippet}\n\n`;
+      const nextValue = `${current.slice(0, start)}${insert}${current.slice(end)}`;
+
+      requestAnimationFrame(() => {
+        if (!contentRef.current) return;
+        const cursor = start + insert.length;
+        contentRef.current.focus();
+        contentRef.current.selectionStart = cursor;
+        contentRef.current.selectionEnd = cursor;
+      });
+
+      return { ...prev, content: nextValue };
+    });
+  }, []);
 
   const handleOpenModal = (item?: NewsItem) => {
     if (item) {
@@ -191,6 +220,61 @@ export default function AdminBeritaPage() {
     setImageFile(file);
     setImagePreview(previewUrl);
     event.target.value = '';
+  };
+
+  const handleInlineImagesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    event.target.value = '';
+
+    const invalidType = files.find((file) => !file.type.startsWith('image/'));
+    if (invalidType) {
+      toast.warning('File harus berupa gambar.');
+      return;
+    }
+
+    const oversize = files.find((file) => file.size > MAX_INLINE_IMAGE_SIZE);
+    if (oversize) {
+      toast.warning('Ukuran foto maksimal 5MB per file.');
+      return;
+    }
+
+    setInlineUploading(true);
+    try {
+      const results = await Promise.allSettled(
+        files.map((file) => newsAPI.uploadContentImage(file))
+      );
+
+      const tokens: string[] = [];
+      let failedCount = 0;
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const path = result.value.data?.data?.path as string | undefined;
+          if (path) {
+            tokens.push(`[[img:${path}]]`);
+          } else {
+            failedCount += 1;
+          }
+        } else {
+          failedCount += 1;
+        }
+      });
+
+      if (tokens.length > 0) {
+        insertContentSnippet(tokens.join('\n\n'));
+        toast.success('Foto konten berhasil disisipkan.');
+      }
+
+      if (failedCount > 0) {
+        toast.error(`${failedCount} foto gagal diunggah.`);
+      }
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengunggah foto konten'));
+    } finally {
+      setInlineUploading(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -415,7 +499,35 @@ export default function AdminBeritaPage() {
             onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             placeholder="Isi berita lengkap"
             rows={6}
+            helperText="Gunakan tombol sisipkan foto untuk menambah gambar di konten."
+            ref={contentRef}
           />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sisipkan Foto di Konten</label>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                ref={inlineImageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                onChange={handleInlineImagesChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                isLoading={inlineUploading}
+                loadingText="Mengunggah..."
+                leftIcon={!inlineUploading ? <Plus className="w-4 h-4" /> : undefined}
+                onClick={() => inlineImageInputRef.current?.click()}
+              >
+                Unggah Foto Konten
+              </Button>
+              <span className="text-xs text-slate-500">PNG/JPG/WEBP, max 5MB per foto.</span>
+            </div>
+            <p className="text-xs text-slate-500">Foto akan ditambahkan sebagai token [[img:...]] di konten.</p>
+          </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Gambar Sampul</label>
             <input

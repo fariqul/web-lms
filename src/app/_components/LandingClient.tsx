@@ -12,7 +12,7 @@ import type { NewsItem } from '@/types/news';
 import s from '../page.module.css';
 
 /* ─── Scroll Reveal Hook ─── */
-function useScrollReveal() {
+function useScrollReveal(deps: readonly unknown[] = []) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ function useScrollReveal() {
 
     children.forEach((child) => observer.observe(child));
     return () => observer.disconnect();
-  }, []);
+  }, deps);
 
   return ref;
 }
@@ -160,8 +160,8 @@ const formatNewsDate = (item: NewsItem) => {
 /* ═══════════════════ COMPONENT ═══════════════════ */
 
 export default function LandingClient() {
-  const wrapperRef = useScrollReveal();
   const [landingContent, setLandingContent] = useState<LandingContent>(DEFAULT_LANDING_CONTENT);
+  const wrapperRef = useScrollReveal([landingContent]);
   const [navScrolled, setNavScrolled] = useState(false);
   const [facilities, setFacilities] = useState<FacilityItem[]>([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
