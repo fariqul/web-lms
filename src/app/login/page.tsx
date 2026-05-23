@@ -371,6 +371,9 @@ export default function LoginPage() {
           <p className="text-center text-slate-500 dark:text-slate-400 text-xs mt-4">
             © 2026 SMA 15 Makassar. All rights reserved.
           </p>
+          <p className="text-center text-slate-400 dark:text-slate-500 mt-1.5" style={{ fontSize: '11px' }}>
+            Made with ❤️ by Tim AMSP Teknik Informatika dan Komputer Universitas Negeri Makassar 2026
+          </p>
         </div>
       </div>
     </div>

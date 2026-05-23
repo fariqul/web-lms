@@ -849,6 +849,9 @@ export default function LandingClient() {
         </div>
         <div className={s.footerBottom}>
           <p>&copy; {new Date().getFullYear()} SMA Negeri 15 Makassar. All rights reserved.</p>
+          <p style={{ marginTop: '8px', fontSize: '12px', opacity: 0.6 }}>
+            Made with ❤️ by Tim AMSP Teknik Informatika dan Komputer Universitas Negeri Makassar 2026
+          </p>
         </div>
       </footer>
     </div>
