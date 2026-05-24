@@ -1441,4 +1441,62 @@ class UserController extends Controller
             'affected_count' => $users->count(),
         ]);
     }
+
+    /**
+     * Block/unblock student and teacher accounts by grade level (admin only)
+     */
+    public function toggleStudentsBlockByGradeLevel(Request $request)
+    {
+        $request->validate([
+            'grade_level' => 'required|in:X,XI,XII',
+            'is_blocked' => 'required|boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $classIds = ClassRoom::where('grade_level', $request->grade_level)->pluck('id');
+
+        $users = User::whereIn('role', ['siswa', 'guru'])
+            ->whereIn('class_id', $classIds)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada akun siswa/guru di angkatan tersebut',
+            ], 404);
+        }
+
+        $updateData = [
+            'is_blocked' => $request->is_blocked,
+        ];
+
+        if ($request->is_blocked) {
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal per angkatan oleh admin';
+            $updateData['blocked_at'] = now();
+        } else {
+            $updateData['block_reason'] = null;
+            $updateData['blocked_at'] = null;
+        }
+
+        User::whereIn('role', ['siswa', 'guru'])
+            ->whereIn('class_id', $classIds)
+            ->update($updateData);
+
+        if ($request->is_blocked) {
+            $reason = $request->reason ?: 'Diblokir massal per angkatan oleh admin';
+            foreach ($users as $student) {
+                if ($student instanceof User) {
+                    $this->broadcastBlockedForceLogout($student, $reason);
+                }
+            }
+        }
+
+        $action = $request->is_blocked ? 'diblokir' : 'diaktifkan kembali';
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$users->count()} siswa di angkatan {$request->grade_level} berhasil {$action}",
+            'affected_count' => $users->count(),
+        ]);
+    }
 }

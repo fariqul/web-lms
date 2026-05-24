@@ -111,6 +111,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/students/bulk-toggle-block', [UserController::class, 'bulkToggleBlock']);
         Route::post('/students/toggle-block-all', [UserController::class, 'toggleAllStudentsBlock']);
         Route::post('/students/toggle-block-by-class', [UserController::class, 'toggleStudentsBlockByClass']);
+        Route::post('/students/toggle-block-by-grade', [UserController::class, 'toggleStudentsBlockByGradeLevel']);
         
         // Class Management
         Route::post('/classes/import/preview', [ClassController::class, 'importPreview']);

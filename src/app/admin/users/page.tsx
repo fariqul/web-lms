@@ -91,7 +91,7 @@ function AdminUsersPageContent() {
   const [isBulkBlockModalOpen, setIsBulkBlockModalOpen] = useState(false);
   const [bulkBlockReason, setBulkBlockReason] = useState('');
   const [bulkBlockAction, setBulkBlockAction] = useState<'block' | 'unblock'>('block');
-  const [bulkBlockScope, setBulkBlockScope] = useState<'all' | 'class' | 'filter'>('all');
+  const [bulkBlockScope, setBulkBlockScope] = useState<string>('all');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreviewToken, setImportPreviewToken] = useState('');
@@ -418,6 +418,9 @@ function AdminUsersPageContent() {
           return;
         }
         response = await userAPI.toggleBlockStudentsByClass(Number(classFilter), isBlocking, bulkBlockReason || undefined);
+      } else if (bulkBlockScope.startsWith('grade_')) {
+        const gradeLevel = bulkBlockScope.replace('grade_', '');
+        response = await userAPI.toggleBlockStudentsByGrade(gradeLevel, isBlocking, bulkBlockReason || undefined);
       } else {
         const idsRes = await userAPI.getAll({
           role: roleFilter || undefined,
@@ -1556,10 +1559,13 @@ function AdminUsersPageContent() {
               options={[
                 { value: 'all', label: 'Semua siswa' },
                 { value: 'class', label: classFilter ? `Semua siswa di kelas ${selectedClassName || classFilter}` : 'Semua siswa di kelas terfilter (pilih kelas dulu)' },
+                { value: 'grade_X', label: 'Semua siswa kelas X (Angkatan X)' },
+                { value: 'grade_XI', label: 'Semua siswa kelas XI (Angkatan XI)' },
+                { value: 'grade_XII', label: 'Semua siswa kelas XII (Angkatan XII)' },
                 { value: 'filter', label: `Siswa sesuai filter aktif (${filteredCount} orang)` },
               ]}
               value={bulkBlockScope}
-              onChange={(e) => setBulkBlockScope(e.target.value as 'all' | 'class' | 'filter')}
+              onChange={(e) => setBulkBlockScope(e.target.value)}
             />
             {!classFilter && bulkBlockScope === 'class' && (
               <p className="text-xs text-amber-600 dark:text-amber-400">Filter kelas belum dipilih.</p>
@@ -1585,7 +1591,13 @@ function AdminUsersPageContent() {
                 ? 'Aksi akan mempengaruhi seluruh pengguna dengan role siswa.'
                 : bulkBlockScope === 'class'
                   ? `Aksi akan mempengaruhi seluruh siswa pada ${selectedClassName || 'kelas terpilih'}.`
-                  : `Aksi akan mempengaruhi ${filteredCount} orang sesuai filter aktif.`}
+                  : bulkBlockScope === 'grade_X'
+                    ? 'Aksi akan mempengaruhi seluruh siswa di tingkat kelas X.'
+                    : bulkBlockScope === 'grade_XI'
+                      ? 'Aksi akan mempengaruhi seluruh siswa di tingkat kelas XI.'
+                      : bulkBlockScope === 'grade_XII'
+                        ? 'Aksi akan mempengaruhi seluruh siswa di tingkat kelas XII.'
+                        : `Aksi akan mempengaruhi ${filteredCount} orang sesuai filter aktif.`}
             </p>
           </div>
 

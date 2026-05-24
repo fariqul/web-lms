@@ -287,6 +287,9 @@ export const userAPI = {
   toggleBlockStudentsByClass: (classId: number, isBlocked: boolean, reason?: string) =>
     api.post('/students/toggle-block-by-class', { class_id: classId, is_blocked: isBlocked, reason }),
 
+  toggleBlockStudentsByGrade: (gradeLevel: string, isBlocked: boolean, reason?: string) =>
+    api.post('/students/toggle-block-by-grade', { grade_level: gradeLevel, is_blocked: isBlocked, reason }),
+
   importPreview: (file: File) => {
     const formData = new FormData();
     formData.append('import_file', file);
