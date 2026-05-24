@@ -53,20 +53,25 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with('classRoom:id,name');
+        $query = User::query();
 
         // Filter by role
-        if ($request->has('role')) {
+        if ($request->has('role') && $request->role !== '') {
             $query->where('role', $request->role);
         }
 
         // Filter by class
-        if ($request->has('class_id')) {
+        if ($request->has('class_id') && $request->class_id !== '') {
             $query->where('class_id', $request->class_id);
         }
 
+        // Filter by status (active/blocked)
+        if ($request->has('status') && $request->status !== '' && $request->status !== 'all') {
+            $query->where('is_blocked', $request->status === 'blocked');
+        }
+
         // Search - uses index on name, email
-        if ($request->has('search')) {
+        if ($request->has('search') && $request->search !== '') {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -78,12 +83,53 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->orderBy('name')
-            ->paginate(min($request->per_page ?? 15, 500));
+        // Check if we only need the matching IDs (useful for bulk actions on filtered sets)
+        if ($request->boolean('ids_only')) {
+            $ids = $query->pluck('id');
+            return response()->json([
+                'success' => true,
+                'data' => $ids,
+            ]);
+        }
+
+        // Summary counts
+        $totalStudents = User::where('role', 'siswa')->count();
+        $blockedStudents = User::whereIn('role', ['siswa', 'guru'])->where('is_blocked', true)->count();
+        $classStudentCount = 0;
+        if ($request->has('class_id') && $request->class_id !== '') {
+            $classStudentCount = User::where('role', 'siswa')->where('class_id', $request->class_id)->count();
+        }
+
+        // Load class relationship if not just fetching IDs
+        $query->with('classRoom:id,name');
+
+        // Sorting
+        $sortBy = $request->input('sort_by', 'name');
+        $sortOrder = $request->input('sort_order', 'asc');
+
+        if (in_array($sortBy, ['name', 'nomor_tes', 'email', 'role'])) {
+            if ($sortBy === 'nomor_tes') {
+                $query->orderByRaw('LENGTH(nomor_tes) ' . ($sortOrder === 'desc' ? 'desc' : 'asc'))
+                      ->orderBy('nomor_tes', $sortOrder === 'desc' ? 'desc' : 'asc');
+            } else {
+                $query->orderBy($sortBy, $sortOrder === 'desc' ? 'desc' : 'asc');
+            }
+        } else {
+            $query->orderBy('name', 'asc');
+        }
+
+        // Pagination
+        $perPage = min($request->input('per_page', 25), 100);
+        $users = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'data' => $users,
+            'summary' => [
+                'total_students' => $totalStudents,
+                'blocked_students' => $blockedStudents,
+                'class_students' => $classStudentCount,
+            ],
         ]);
     }
 

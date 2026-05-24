@@ -220,7 +220,17 @@ export const authAPI = {
 
 // User API
 export const userAPI = {
-  getAll: (params?: { role?: string; class_id?: number | string; page?: number; per_page?: number; search?: string }) =>
+  getAll: (params?: { 
+    role?: string; 
+    class_id?: number | string; 
+    page?: number; 
+    per_page?: number; 
+    search?: string; 
+    status?: string; 
+    sort_by?: string; 
+    sort_order?: string; 
+    ids_only?: boolean; 
+  }) =>
     api.get('/users', { params }),
   
   getById: (id: number) =>

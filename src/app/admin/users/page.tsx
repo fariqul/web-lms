@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layouts';
-import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog } from '@/components/ui';
+import { Card, CardHeader, Button, Input, Select, Table, Modal, ConfirmDialog, Pagination } from '@/components/ui';
 import { Search, Edit2, Trash2, UserPlus, Download, Loader2, Eye, EyeOff, KeyRound, Eraser, Users, ArrowUpDown, ArrowUp, ArrowDown, Ban, UserCheck, Upload } from 'lucide-react';
 import { userAPI, classAPI, getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -130,25 +130,63 @@ function AdminUsersPageContent() {
     nomor_tes: '',
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [studentSummary, setStudentSummary] = useState({
+    total_students: 0,
+    blocked_students: 0,
+    class_students: 0,
+  });
+
   const [totalUsers, setTotalUsers] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const skipDebounceRef = useRef(true);
   const profilePreviewCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchUsers = useCallback(async (search?: string, role?: string, classId?: string) => {
+  const fetchUsers = useCallback(async (
+    page: number,
+    search: string,
+    role: string,
+    classId: string,
+    status: string,
+    sortBy: 'name' | 'nomor_tes' | null,
+    sortOrderDir: 'asc' | 'desc'
+  ) => {
     try {
       setLoading(true);
-      const params: { per_page: number; search?: string; role?: string; class_id?: string } = { per_page: 500 };
+      const params: Parameters<typeof userAPI.getAll>[0] = {
+        page,
+        per_page: 25,
+      };
       if (search) params.search = search;
       if (role) params.role = role;
       if (classId) params.class_id = classId;
+      if (status && status !== 'all') params.status = status;
+      if (sortBy) {
+        params.sort_by = sortBy;
+        params.sort_order = sortOrderDir;
+      }
+
       const usersRes = await userAPI.getAll(params);
-      const usersData = usersRes.data?.data;
-      const usersList = Array.isArray(usersData) ? usersData : (usersData?.data || []);
+      const resData = usersRes.data?.data;
+      const usersList = resData?.data || (Array.isArray(resData) ? resData : []);
       setUsers(usersList);
-      // Get total from pagination meta
-      const total = usersData?.total ?? usersList.length;
+
+      const total = resData?.total ?? usersList.length;
       setTotalUsers(total);
+
+      const lastPage = resData?.last_page ?? 1;
+      setTotalPages(lastPage);
+
+      const summary = usersRes.data?.summary;
+      if (summary) {
+        setStudentSummary({
+          total_students: summary.total_students ?? 0,
+          blocked_students: summary.blocked_students ?? 0,
+          class_students: summary.class_students ?? 0,
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
     } finally {
@@ -165,8 +203,10 @@ function AdminUsersPageContent() {
     setSearchQuery(initialSearch);
     setRoleFilter(initialRole);
     setClassFilter(initialClassId);
+    setStudentBlockFilter('all');
+    setCurrentPage(1);
 
-    fetchUsers(initialSearch, initialRole, initialClassId);
+    fetchUsers(1, initialSearch, initialRole, initialClassId, 'all', null, 'asc');
 
     // Fetch classes for dropdown
     classAPI.getAll().then(res => setClasses(res.data?.data || [])).catch(() => {});
@@ -180,10 +220,11 @@ function AdminUsersPageContent() {
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      fetchUsers(searchQuery, roleFilter, classFilter);
+      setCurrentPage(1);
+      fetchUsers(1, searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, sortOrder);
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery, roleFilter, classFilter, fetchUsers]);
+  }, [searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, sortOrder, fetchUsers]);
 
   useEffect(() => {
     return () => {
@@ -194,7 +235,12 @@ function AdminUsersPageContent() {
     };
   }, []);
 
-  const fetchData = () => fetchUsers(searchQuery, roleFilter, classFilter);
+  const fetchData = () => fetchUsers(currentPage, searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, sortOrder);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchUsers(page, searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, sortOrder);
+  };
 
   const openProfilePreview = (name: string, rawUrl?: string | null) => {
     const safeUrl = getSecureFileUrl(rawUrl);
@@ -237,73 +283,28 @@ function AdminUsersPageContent() {
   // Toggle sort function
   const handleSort = (key: 'name' | 'nomor_tes') => {
     if (sortKey === key) {
-      // Toggle order if same key
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(nextOrder);
+      setCurrentPage(1);
+      fetchUsers(1, searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, nextOrder);
     } else {
-      // Set new key with ascending order
       setSortKey(key);
       setSortOrder('asc');
+      setCurrentPage(1);
+      fetchUsers(1, searchQuery, roleFilter, classFilter, studentBlockFilter, key, 'asc');
     }
   };
 
-  // Sort users based on sortKey and sortOrder
-  const sortedUsers = React.useMemo(() => {
-    if (!sortKey) return users;
-    
-    return [...users].sort((a, b) => {
-      if (sortKey === 'name') {
-        const nameA = (a.name || '').toLowerCase();
-        const nameB = (b.name || '').toLowerCase();
-        if (sortOrder === 'asc') {
-          return nameA.localeCompare(nameB, 'id');
-        } else {
-          return nameB.localeCompare(nameA, 'id');
-        }
-      } else if (sortKey === 'nomor_tes') {
-        const numA = extractNomorTesNumber(a.nomor_tes);
-        const numB = extractNomorTesNumber(b.nomor_tes);
-        if (sortOrder === 'asc') {
-          return numA - numB;
-        } else {
-          return numB - numA;
-        }
-      }
-      return 0;
-    });
-  }, [users, sortKey, sortOrder]);
+  const sortedUsers = users;
+  const filteredUsers = users;
 
-  const filteredUsers = React.useMemo(() => {
-    if (studentBlockFilter === 'all') return sortedUsers;
-
-    return sortedUsers.filter((u) => {
-      if (!['siswa', 'guru'].includes(u.role)) return false;
-      if (studentBlockFilter === 'blocked') return u.is_blocked === true;
-      return u.is_blocked !== true;
-    });
-  }, [sortedUsers, studentBlockFilter]);
-
-  const totalStudentsCount = React.useMemo(
-    () => users.filter((u) => u.role === 'siswa').length,
-    [users]
-  );
-  const blockedStudentsCount = React.useMemo(
-    () => users.filter((u) => (u.role === 'siswa' || u.role === 'guru') && u.is_blocked === true).length,
-    [users]
-  );
+  const totalStudentsCount = studentSummary.total_students;
+  const blockedStudentsCount = studentSummary.blocked_students;
   const activeStudentsCount = Math.max(0, totalStudentsCount - blockedStudentsCount);
 
-  const allStudentCount = React.useMemo(
-    () => users.filter((u) => u.role === 'siswa').length,
-    [users]
-  );
-  const classScopedStudentCount = React.useMemo(() => {
-    if (!classFilter) return 0;
-    return users.filter((u) => u.role === 'siswa' && String(u.class_id) === classFilter).length;
-  }, [users, classFilter]);
-  const filteredStudentIds = React.useMemo(
-    () => filteredUsers.filter((u) => u.role === 'siswa' || u.role === 'guru').map((u) => u.id),
-    [filteredUsers]
-  );
+  const allStudentCount = studentSummary.total_students;
+  const classScopedStudentCount = studentSummary.class_students;
+  const filteredCount = totalUsers;
   const selectedClassName = classes.find((c) => c.id.toString() === classFilter)?.name;
 
   const handleOpenModal = (user?: User) => {
@@ -418,11 +419,19 @@ function AdminUsersPageContent() {
         }
         response = await userAPI.toggleBlockStudentsByClass(Number(classFilter), isBlocking, bulkBlockReason || undefined);
       } else {
-        if (filteredStudentIds.length === 0) {
+        const idsRes = await userAPI.getAll({
+          role: roleFilter || undefined,
+          class_id: classFilter || undefined,
+          status: studentBlockFilter || undefined,
+          search: searchQuery || undefined,
+          ids_only: true,
+        });
+        const targetIds = idsRes.data?.data || [];
+        if (targetIds.length === 0) {
           toast.error('Tidak ada siswa sesuai filter aktif.');
           return;
         }
-        response = await userAPI.bulkToggleBlock(filteredStudentIds, isBlocking, bulkBlockReason || undefined);
+        response = await userAPI.bulkToggleBlock(targetIds, isBlocking, bulkBlockReason || undefined);
       }
 
       const message = response.data?.message || (isBlocking ? 'Akun siswa berhasil diblokir' : 'Akun siswa berhasil diaktifkan kembali');
@@ -831,13 +840,13 @@ function AdminUsersPageContent() {
                   leftIcon={<Ban className="w-4 h-4" />}
                   onClick={() => handleBulkBlockClick('block')}
                   className="text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                  title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredStudentIds.length}`}
+                  title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredCount}`}
                 >
                   Blokir Massal
                   <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-semibold">
                     <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40">A:{allStudentCount}</span>
                     <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredStudentIds.length}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredCount}</span>
                   </span>
                 </Button>
                 <Button
@@ -846,13 +855,13 @@ function AdminUsersPageContent() {
                   leftIcon={<UserCheck className="w-4 h-4" />}
                   onClick={() => handleBulkBlockClick('unblock')}
                   className="text-green-700 dark:text-green-400 border-green-300 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-900/20"
-                  title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredStudentIds.length}`}
+                  title={`Target: Semua ${allStudentCount}, Kelas ${classScopedStudentCount}, Filter ${filteredCount}`}
                 >
                   Aktifkan Massal
                   <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-semibold">
                     <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/40">A:{allStudentCount}</span>
                     <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40">K:{classScopedStudentCount}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredStudentIds.length}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40">F:{filteredCount}</span>
                   </span>
                 </Button>
                 <Button
@@ -1049,6 +1058,17 @@ function AdminUsersPageContent() {
             data={filteredUsers}
             keyExtractor={(item) => item.id}
           />
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </Card>
       </div>
 
@@ -1536,7 +1556,7 @@ function AdminUsersPageContent() {
               options={[
                 { value: 'all', label: 'Semua siswa' },
                 { value: 'class', label: classFilter ? `Semua siswa di kelas ${selectedClassName || classFilter}` : 'Semua siswa di kelas terfilter (pilih kelas dulu)' },
-                { value: 'filter', label: `Siswa sesuai filter aktif (${filteredStudentIds.length} siswa)` },
+                { value: 'filter', label: `Siswa sesuai filter aktif (${filteredCount} orang)` },
               ]}
               value={bulkBlockScope}
               onChange={(e) => setBulkBlockScope(e.target.value as 'all' | 'class' | 'filter')}
@@ -1565,7 +1585,7 @@ function AdminUsersPageContent() {
                 ? 'Aksi akan mempengaruhi seluruh pengguna dengan role siswa.'
                 : bulkBlockScope === 'class'
                   ? `Aksi akan mempengaruhi seluruh siswa pada ${selectedClassName || 'kelas terpilih'}.`
-                  : `Aksi akan mempengaruhi ${filteredStudentIds.length} siswa sesuai filter aktif.`}
+                  : `Aksi akan mempengaruhi ${filteredCount} orang sesuai filter aktif.`}
             </p>
           </div>
 

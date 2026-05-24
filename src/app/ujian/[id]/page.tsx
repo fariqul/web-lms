@@ -131,9 +131,14 @@ export default function ExamTakingPage() {
   const kickedByAdminRef = React.useRef(false);
 
   // Nomor Tes
-  const { user: authUser } = useAuth();
+  const { user: authUser, refreshUser } = useAuth();
   const [nomorTes, setNomorTes] = useState('');
   const [nomorTesError, setNomorTesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    refreshUser().catch((err) => console.error('Failed to refresh user on mount:', err));
+  }, [refreshUser]);
+
   const hasNomorTes = authUser?.has_nomor_tes === true;
   const canManualSubmit = timeRemaining <= 600;
 
