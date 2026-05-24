@@ -565,6 +565,152 @@ class UserController extends Controller
     }
 
     /**
+     * Bulk import nomor_tes from Excel/CSV (by NISN lookup).
+     * Expects columns: NISN + NO. TES (or nomor_tes / no_tes).
+     */
+    public function importNomorTes(Request $request)
+    {
+        $request->validate([
+            'import_file' => ['required', File::types(['xlsx', 'csv'])->max(10 * 1024)],
+        ]);
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('import_file')->getRealPath());
+            $sheet = $spreadsheet->getActiveSheet();
+            $rawRows = $sheet->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak dapat diproses. Pastikan format XLSX/CSV valid.',
+            ], 422);
+        }
+
+        if (count($rawRows) < 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File kosong atau hanya berisi header.',
+            ], 422);
+        }
+
+        // Find NISN and NO TES column indexes from header row
+        $headers = array_map(fn($h) => strtolower(trim((string) $h)), $rawRows[0]);
+        $nisnAliases = ['nisn'];
+        $noTesAliases = ['no. tes', 'no.tes', 'no tes', 'no_tes', 'nomor_tes', 'nomor tes', 'nomer_tes', 'nomer tes'];
+
+        $nisnIdx = null;
+        $noTesIdx = null;
+        foreach ($headers as $idx => $header) {
+            if (in_array($header, $nisnAliases)) $nisnIdx = $idx;
+            if (in_array($header, $noTesAliases)) $noTesIdx = $idx;
+        }
+
+        if ($nisnIdx === null || $noTesIdx === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kolom NISN dan/atau NO. TES tidak ditemukan di header file. Header yang ditemukan: ' . implode(', ', array_filter($headers)),
+            ], 422);
+        }
+
+        // Build NISN -> nomor_tes map from rows
+        $importMap = [];
+        $duplicates = [];
+        $emptyRows = 0;
+
+        for ($i = 1; $i < count($rawRows); $i++) {
+            $row = $rawRows[$i];
+            $nisn = trim((string) ($row[$nisnIdx] ?? ''));
+            $noTes = trim((string) ($row[$noTesIdx] ?? ''));
+
+            if ($nisn === '' || $noTes === '') {
+                $emptyRows++;
+                continue;
+            }
+
+            // Normalize nomor_tes
+            $noTes = preg_replace('/[\s\x{00A0}\x{200B}-\x{200D}\x{FEFF}]+/u', '', $noTes) ?? $noTes;
+            $noTes = mb_strtoupper($noTes, 'UTF-8');
+
+            if (isset($importMap[$nisn])) {
+                $duplicates[] = "Baris " . ($i + 1) . ": NISN {$nisn} duplikat";
+                continue;
+            }
+            $importMap[$nisn] = $noTes;
+        }
+
+        if (empty($importMap)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada data valid yang ditemukan. Pastikan kolom NISN dan NO. TES terisi.',
+            ], 422);
+        }
+
+        // Fetch all students with matching NISNs
+        $students = User::where('role', 'siswa')
+            ->whereIn('nisn', array_keys($importMap))
+            ->get(['id', 'nisn', 'name', 'nomor_tes']);
+
+        $updated = 0;
+        $skipped = 0;
+        $notFound = [];
+        $conflicts = [];
+
+        // Check for nomor_tes uniqueness conflicts
+        $allNewValues = array_values($importMap);
+        $existingNomorTes = User::where('role', 'siswa')
+            ->whereIn('nomor_tes', $allNewValues)
+            ->whereNotIn('nisn', array_keys($importMap))
+            ->pluck('nomor_tes', 'name')
+            ->toArray();
+
+        $studentsByNisn = $students->keyBy('nisn');
+
+        foreach ($importMap as $nisn => $noTes) {
+            $student = $studentsByNisn->get($nisn);
+
+            if (!$student) {
+                $notFound[] = $nisn;
+                continue;
+            }
+
+            // Check conflict with students outside import set
+            $conflictOwner = array_search($noTes, $existingNomorTes);
+            if ($conflictOwner !== false) {
+                $conflicts[] = "NISN {$nisn}: nomor tes {$noTes} sudah dipakai oleh {$conflictOwner}";
+                $skipped++;
+                continue;
+            }
+
+            if ($student->nomor_tes === $noTes) {
+                $skipped++;
+                continue;
+            }
+
+            $student->nomor_tes = $noTes;
+            $student->save();
+            $updated++;
+        }
+
+        $totalInFile = count($importMap);
+        $message = "Import nomor tes selesai: {$updated} diupdate";
+        if ($skipped > 0) $message .= ", {$skipped} dilewati";
+        if (count($notFound) > 0) $message .= ", " . count($notFound) . " NISN tidak ditemukan";
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'total_in_file' => $totalInFile,
+                'updated' => $updated,
+                'skipped' => $skipped,
+                'not_found_count' => count($notFound),
+                'not_found_nisn' => array_slice($notFound, 0, 20),
+                'conflicts' => array_slice($conflicts, 0, 20),
+                'duplicates' => array_slice($duplicates, 0, 10),
+            ],
+        ]);
+    }
+
+    /**
      * Bulk clear nomor_tes for all students (admin only)
      * Used when exam period is over
      */

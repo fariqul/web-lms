@@ -10,6 +10,32 @@ export function OfflineBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Robust check to double check with a fetch if navigator says offline
+  const verifyConnectivity = useCallback(async () => {
+    if (!navigator.onLine) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        // Fetch favicon or any tiny static file from origin to see if we're actually connected
+        const response = await fetch('/favicon.ico', {
+          method: 'HEAD',
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        clearTimeout(timeoutId);
+        if (response.ok || response.status < 500) {
+          setIsOnline(true);
+          return;
+        }
+      } catch (e) {
+        // Fetch failed, we are indeed offline
+      }
+      setIsOnline(false);
+    } else {
+      setIsOnline(true);
+    }
+  }, []);
+
   const handleOnline = useCallback(() => {
     setIsOnline(true);
     setDismissed(false);
@@ -19,15 +45,13 @@ export function OfflineBanner() {
   }, []);
 
   const handleOffline = useCallback(() => {
-    setIsOnline(false);
-    setDismissed(false);
-    setShowReconnected(false);
-  }, []);
+    verifyConnectivity();
+  }, [verifyConnectivity]);
 
   useEffect(() => {
     // Delay the initial check to avoid false positives on slow page loads
-    const initTimer = setTimeout(() => {
-      setIsOnline(navigator.onLine);
+    const initTimer = setTimeout(async () => {
+      await verifyConnectivity();
       setMounted(true);
     }, 1500);
 
@@ -38,7 +62,7 @@ export function OfflineBanner() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [handleOnline, handleOffline]);
+  }, [handleOnline, handleOffline, verifyConnectivity]);
 
   // Don't show anything until after the delayed mount check
   if (!mounted && isOnline) return null;
@@ -56,7 +80,7 @@ export function OfflineBanner() {
           </div>
           <button
             onClick={() => setDismissed(true)}
-            className="text-white/80 hover:text-white flex-shrink-0"
+            className="text-white/80 hover:text-white flex-shrink-0 cursor-pointer"
             aria-label="Tutup"
           >
             <X className="w-4 h-4" />

@@ -236,4 +236,124 @@ class UserImportExportTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['format']);
     }
+
+    public function test_admin_can_bulk_import_nomor_tes_by_nisn(): void
+    {
+        $classId = $this->createClassRoom('X Nomor Tes');
+        $admin = $this->createAdmin($classId, 'nomor-tes-admin');
+
+        $student1Id = (int) DB::table('users')->insertGetId([
+            'name' => 'Siswa Tes Satu',
+            'email' => 'siswa.tes.satu@example.com',
+            'password' => Hash::make('password123'),
+            'role' => 'siswa',
+            'class_id' => $classId,
+            'nisn' => 'NISN-001',
+            'nomor_tes' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $student2Id = (int) DB::table('users')->insertGetId([
+            'name' => 'Siswa Tes Dua',
+            'email' => 'siswa.tes.dua@example.com',
+            'password' => Hash::make('password123'),
+            'role' => 'siswa',
+            'class_id' => $classId,
+            'nisn' => 'NISN-002',
+            'nomor_tes' => 'TES-OLD',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $csv = implode("\n", [
+            'NISN,NO. TES',
+            'NISN-001,TES-NEW-001', // Should update
+            'NISN-002,TES-NEW-002', // Should update (overwriting TES-OLD)
+            'NISN-003,TES-NEW-003', // NISN not found
+            'NISN-001,TES-NEW-001', // Duplicate row in file, should skip/report
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent('nomor_tes_import.csv', $csv);
+
+        $response = $this->post('/api/users/nomor-tes/import', [
+            'import_file' => $file,
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.updated', 2)
+            ->assertJsonPath('data.not_found_count', 1)
+            ->assertJsonPath('data.not_found_nisn.0', 'NISN-003');
+
+        $student1 = User::find($student1Id);
+        $student2 = User::find($student2Id);
+
+        $this->assertSame('TES-NEW-001', $student1->nomor_tes);
+        $this->assertSame('TES-NEW-002', $student2->nomor_tes);
+    }
+
+    public function test_admin_bulk_import_nomor_tes_validation_and_conflicts(): void
+    {
+        $classId = $this->createClassRoom('X Nomor Tes Conflict');
+        $admin = $this->createAdmin($classId, 'nomor-tes-conflict-admin');
+
+        // Student with existing nomor_tes that will conflict
+        DB::table('users')->insert([
+            'name' => 'Siswa Tes Lain',
+            'email' => 'siswa.tes.lain@example.com',
+            'password' => Hash::make('password123'),
+            'role' => 'siswa',
+            'class_id' => $classId,
+            'nisn' => 'NISN-EXISTING',
+            'nomor_tes' => 'TES-TERPAKAI',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $studentId = (int) DB::table('users')->insertGetId([
+            'name' => 'Siswa Tes Target',
+            'email' => 'siswa.tes.target@example.com',
+            'password' => Hash::make('password123'),
+            'role' => 'siswa',
+            'class_id' => $classId,
+            'nisn' => 'NISN-TARGET',
+            'nomor_tes' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        // Scenario 1: Import with target trying to use an already taken nomor_tes
+        $csvConflict = implode("\n", [
+            'nisn,no_tes',
+            'NISN-TARGET,TES-TERPAKAI',
+        ]);
+        $fileConflict = UploadedFile::fake()->createWithContent('conflict.csv', $csvConflict);
+
+        $this->post('/api/users/nomor-tes/import', ['import_file' => $fileConflict], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.updated', 0)
+            ->assertJsonPath('data.skipped', 1)
+            ->assertJsonCount(1, 'data.conflicts');
+
+        $this->assertNull(User::find($studentId)->nomor_tes);
+
+        // Scenario 2: Bad header columns
+        $csvBadHeader = implode("\n", [
+            'nama,no_urut',
+            'A,1',
+        ]);
+        $fileBad = UploadedFile::fake()->createWithContent('bad_header.csv', $csvBadHeader);
+        $this->post('/api/users/nomor-tes/import', ['import_file' => $fileBad], ['Accept' => 'application/json'])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
 }
+

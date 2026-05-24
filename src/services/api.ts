@@ -253,6 +253,14 @@ export const userAPI = {
   normalizeNomorTes: (classId?: number) =>
     api.post('/users/nomor-tes/normalize', classId ? { class_id: classId } : {}),
 
+  importNomorTes: (file: File) => {
+    const formData = new FormData();
+    formData.append('import_file', file);
+    return api.post('/users/nomor-tes/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   // Student blocking
   toggleBlock: (id: number, isBlocked: boolean, reason?: string) =>
     api.post(`/users/${id}/toggle-block`, { is_blocked: isBlocked, reason }),

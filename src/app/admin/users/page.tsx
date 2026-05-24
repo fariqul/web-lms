@@ -99,6 +99,13 @@ function AdminUsersPageContent() {
   const [importPreviewRows, setImportPreviewRows] = useState<ImportPreviewRow[]>([]);
   const [importPreviewErrors, setImportPreviewErrors] = useState<ImportPreviewError[]>([]);
   const [isImportProcessing, setIsImportProcessing] = useState(false);
+  const [isImportNomorTesOpen, setIsImportNomorTesOpen] = useState(false);
+  const [importNomorTesFile, setImportNomorTesFile] = useState<File | null>(null);
+  const [isImportNomorTesProcessing, setIsImportNomorTesProcessing] = useState(false);
+  const [importNomorTesResult, setImportNomorTesResult] = useState<{
+    total_in_file: number; updated: number; skipped: number;
+    not_found_count: number; not_found_nisn: string[]; conflicts: string[]; duplicates: string[];
+  } | null>(null);
   const [brokenProfilePhotoIds, setBrokenProfilePhotoIds] = useState<Record<number, boolean>>({});
   const [profilePreview, setProfilePreview] = useState<{ src: string; name: string } | null>(null);
   const [isProfilePreviewBroken, setIsProfilePreviewBroken] = useState(false);
@@ -526,6 +533,25 @@ function AdminUsersPageContent() {
     }
   };
 
+  const handleImportNomorTes = async () => {
+    if (!importNomorTesFile) {
+      toast.warning('Pilih file Excel terlebih dahulu');
+      return;
+    }
+    try {
+      setIsImportNomorTesProcessing(true);
+      const res = await userAPI.importNomorTes(importNomorTesFile);
+      const msg = res.data?.message || 'Import nomor tes selesai';
+      toast.success(msg);
+      setImportNomorTesResult(res.data?.data || null);
+      fetchData();
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal import nomor tes'));
+    } finally {
+      setIsImportNomorTesProcessing(false);
+    }
+  };
+
   const resetImportState = () => {
     setImportFile(null);
     setImportPreviewToken('');
@@ -850,7 +876,20 @@ function AdminUsersPageContent() {
                 <Button
                   variant="outline"
                   size="sm"
-                  leftIcon={<Upload className="w-4 h-4" />}
+                  leftIcon={<Download className="w-4 h-4" />}
+                  onClick={() => {
+                    setImportNomorTesFile(null);
+                    setImportNomorTesResult(null);
+                    setIsImportNomorTesOpen(true);
+                  }}
+                  className="text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                >
+                  Import No. Tes
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Download className="w-4 h-4" />}
                   onClick={() => {
                     resetImportState();
                     setIsImportModalOpen(true);
@@ -861,7 +900,7 @@ function AdminUsersPageContent() {
                 <Button
                   variant="outline"
                   size="sm"
-                  leftIcon={<Download className="w-4 h-4" />}
+                  leftIcon={<Upload className="w-4 h-4" />}
                   onClick={() => handleExportUsers('xlsx')}
                 >
                   Export XLSX
@@ -869,7 +908,7 @@ function AdminUsersPageContent() {
                 <Button
                   variant="outline"
                   size="sm"
-                  leftIcon={<Download className="w-4 h-4" />}
+                  leftIcon={<Upload className="w-4 h-4" />}
                   onClick={() => handleExportUsers('csv')}
                 >
                   Export CSV
@@ -1621,6 +1660,90 @@ function AdminUsersPageContent() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Import Nomor Tes Modal */}
+      <Modal
+        isOpen={isImportNomorTesOpen}
+        onClose={() => { setIsImportNomorTesOpen(false); setImportNomorTesResult(null); }}
+        title="Import Nomor Tes dari Excel"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl text-sm text-indigo-700 dark:text-indigo-300">
+            <p className="font-semibold mb-1">Format Excel yang didukung:</p>
+            <p>File harus memiliki kolom <strong>NISN</strong> dan <strong>NO. TES</strong> di baris header. Sistem akan mencocokkan siswa berdasarkan NISN lalu mengisi nomor tes secara otomatis.</p>
+            <p className="mt-1 text-xs opacity-75">Alias kolom yang dikenali: NO. TES, NO TES, NO_TES, NOMOR_TES, NOMOR TES</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Pilih File Excel (.xlsx)</label>
+            <input
+              type="file"
+              accept=".xlsx,.csv"
+              onChange={(e) => {
+                setImportNomorTesFile(e.target.files?.[0] || null);
+                setImportNomorTesResult(null);
+              }}
+              className="w-full text-sm text-slate-600 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-400 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 file:cursor-pointer"
+            />
+          </div>
+
+          {importNomorTesFile && !importNomorTesResult && (
+            <Button
+              onClick={handleImportNomorTes}
+              isLoading={isImportNomorTesProcessing}
+              loadingText="Memproses..."
+              fullWidth
+              leftIcon={<Download className="w-4 h-4" />}
+            >
+              Proses Import Nomor Tes
+            </Button>
+          )}
+
+          {importNomorTesResult && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-xl">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importNomorTesResult.updated}</p>
+                  <p className="text-xs text-green-700 dark:text-green-300">Berhasil Update</p>
+                </div>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                  <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{importNomorTesResult.skipped}</p>
+                  <p className="text-xs text-slate-500">Dilewati</p>
+                </div>
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl">
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{importNomorTesResult.not_found_count}</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">NISN Tidak Ditemukan</p>
+                </div>
+              </div>
+
+              {importNomorTesResult.not_found_nisn.length > 0 && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs">
+                  <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1">NISN tidak ditemukan di database:</p>
+                  <p className="text-amber-600 dark:text-amber-300 break-all">{importNomorTesResult.not_found_nisn.join(', ')}</p>
+                </div>
+              )}
+
+              {importNomorTesResult.conflicts.length > 0 && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-xs">
+                  <p className="font-semibold text-red-700 dark:text-red-400 mb-1">Konflik nomor tes:</p>
+                  {importNomorTesResult.conflicts.map((c, i) => (
+                    <p key={i} className="text-red-600 dark:text-red-300">{c}</p>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => { setIsImportNomorTesOpen(false); setImportNomorTesResult(null); }}
+              >
+                Tutup
+              </Button>
+            </div>
+          )}
+        </div>
       </Modal>
     </DashboardLayout>
   );
