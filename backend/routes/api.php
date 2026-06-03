@@ -295,6 +295,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         
         // Reactivate exam result (for violations)
         Route::post('/exam-results/{result}/reactivate', [ExamController::class, 'reactivateResult']);
+
+        // Reactivate ALL violators for an exam (bulk)
+        Route::post('/exams/{exam}/reactivate-all', [ExamController::class, 'reactivateAllViolators']);
         
         // End exam (force finish all students)
         Route::post('/exams/{exam}/end', [ExamController::class, 'endExam']);

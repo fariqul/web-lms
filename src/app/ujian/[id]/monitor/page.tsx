@@ -137,6 +137,11 @@ export default function MonitorUjianPage() {
   const [reactivateModal, setReactivateModal] = useState<{ participantId: number; studentName: string; resultId: number } | null>(null);
   const [reactivateReason, setReactivateReason] = useState('');
   const [isReactivating, setIsReactivating] = useState(false);
+
+  // Bulk reactivate all violators
+  const [bulkReactivateModal, setBulkReactivateModal] = useState(false);
+  const [bulkReactivateReason, setBulkReactivateReason] = useState('');
+  const [isBulkReactivating, setIsBulkReactivating] = useState(false);
   const [kickModal, setKickModal] = useState<{ studentId: number; studentName: string } | null>(null);
   const [kickMessage, setKickMessage] = useState(defaultKickMessage);
   const [kickConfirmStep, setKickConfirmStep] = useState<1 | 2>(1);
@@ -555,6 +560,41 @@ export default function MonitorUjianPage() {
     }
   };
 
+  const handleBulkReactivate = async () => {
+    setIsBulkReactivating(true);
+    try {
+      const response = await api.post(`/exams/${examId}/reactivate-all`, {
+        reason: bulkReactivateReason || undefined,
+      });
+
+      if (response.data?.success) {
+        const count = response.data?.data?.reactivated_count ?? 0;
+        await fetchData();
+        setBulkReactivateModal(false);
+        setBulkReactivateReason('');
+        setRealtimeEvents(prev => [{
+          type: 'reactivate',
+          message: `${count} siswa berhasil direaktivasikan sekaligus`,
+          time: new Date(),
+        }, ...prev].slice(0, 20));
+      } else {
+        throw new Error(response.data?.message || 'Bulk reactivation failed');
+      }
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string } } };
+      const errMsg = axiosErr?.response?.data?.message
+        ?? (error instanceof Error ? error.message : 'Gagal reaktivasi massal');
+      console.error('Bulk reactivate error:', errMsg);
+      setRealtimeEvents(prev => [{
+        type: 'error',
+        message: `Gagal reaktivasi massal: ${errMsg}`,
+        time: new Date(),
+      }, ...prev].slice(0, 20));
+    } finally {
+      setIsBulkReactivating(false);
+    }
+  };
+
   const handleKickParticipant = async () => {
     if (!kickModal) return;
 
@@ -864,7 +904,24 @@ export default function MonitorUjianPage() {
         {/* View Mode Toggle */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Daftar Peserta</h3>
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+          <div className="flex items-center gap-2">
+            {/* Tombol Aktifkan Semua — hanya muncul jika ada siswa yang terkena pelanggaran */}
+            {user?.role === 'admin' && (() => {
+              const violatorCount = participants.filter(
+                p => p.status === 'completed' && p.violation_count > 0 && p.result_id
+              ).length;
+              return violatorCount > 0 ? (
+                <button
+                  onClick={() => setBulkReactivateModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                  title={`Aktifkan kembali semua ${violatorCount} siswa yang terkena pelanggaran`}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Aktifkan Semua ({violatorCount})
+                </button>
+              ) : null;
+            })()}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             <button
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
@@ -887,6 +944,7 @@ export default function MonitorUjianPage() {
               <LayoutGrid className="w-4 h-4" />
               Kamera
             </button>
+            </div>
           </div>
         </div>
 
@@ -1497,6 +1555,75 @@ export default function MonitorUjianPage() {
           </div>
         </div>
       )}
+      {/* Bulk Reactivate Modal */}
+      {bulkReactivateModal && (() => {
+        const violatorCount = participants.filter(
+          p => p.status === 'completed' && p.violation_count > 0 && p.result_id
+        ).length;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !isBulkReactivating && setBulkReactivateModal(false)}>
+            <div
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Aktifkan Kembali Semua</h3>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Sebanyak <span className="font-semibold text-amber-600 dark:text-amber-400">{violatorCount} siswa</span> yang ujiannya berakhir karena pelanggaran akan diizinkan ikut ujian kembali. Jawaban sebelumnya tetap tersimpan dan waktu ujian tetap berjalan.
+                </p>
+              </div>
+
+              <div className="p-5">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Alasan reaktivasi (opsional)
+                </label>
+                <textarea
+                  value={bulkReactivateReason}
+                  onChange={(e) => setBulkReactivateReason(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  placeholder="Contoh: salah terdeteksi pelanggaran, kendala teknis kamera, dll"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
+                  disabled={isBulkReactivating}
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{bulkReactivateReason.length}/500</p>
+
+                <div className="flex items-center justify-end gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkReactivateModal(false)}
+                    disabled={isBulkReactivating}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    onClick={handleBulkReactivate}
+                    disabled={isBulkReactivating}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    {isBulkReactivating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Memproses...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Aktifkan {violatorCount} Siswa
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </DashboardLayout>
   );
 }

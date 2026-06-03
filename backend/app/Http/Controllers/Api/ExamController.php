@@ -3462,8 +3462,30 @@ class ExamController extends Controller
             'force_submit' => 'nullable|boolean',
         ]);
 
-        // Siswa diperbolehkan mengumpulkan ujian kapan saja setelah dimulai.
-        // Pembatasan "10 menit sebelum berakhir" telah dihapus.
+        // Validasi: siswa hanya boleh kumpul manual saat sisa waktu ≤ 10 menit.
+        // Pengecualian: force_submit = true (timer habis / admin akhiri ujian).
+        if (!$request->boolean('force_submit')) {
+            $activeResult = ExamResult::where('exam_id', $exam->id)
+                ->where('student_id', $user->id)
+                ->where('status', 'in_progress')
+                ->first();
+
+            if ($activeResult && $activeResult->started_at) {
+                $durationSeconds = $exam->duration * 60;
+                $elapsedSeconds  = now()->diffInSeconds($activeResult->started_at);
+                $remainingSeconds = max(0, $durationSeconds - $elapsedSeconds);
+
+                // Tolak jika sisa waktu masih lebih dari 10 menit
+                if ($remainingSeconds > 600) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ujian hanya dapat dikumpulkan saat sisa waktu ≤ 10 menit.',
+                        'error_code' => 'SUBMIT_TOO_EARLY',
+                        'remaining_seconds' => (int) $remainingSeconds,
+                    ], 422);
+                }
+            }
+        }
 
         // Use transaction with lock to prevent double-submit race condition
         $responseData = DB::transaction(function () use ($exam, $user, $request) {
@@ -5009,6 +5031,133 @@ class ExamController extends Controller
                 'exam_id' => $result->exam_id,
                 'reactivation_count' => $result->reactivation_count,
                 'answers_preserved_count' => $preservedAnswerCount,
+            ],
+        ]);
+    }
+
+    /**
+     * Reactivate ALL exam results that ended due to violations (bulk operation).
+     * Only admin can do this.
+     */
+    public function reactivateAllViolators(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang dapat mengaktifkan kembali semua siswa',
+            ], 403);
+        }
+
+        $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        if (!in_array($exam->status, ['scheduled', 'active'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian tidak aktif/terjadwal, siswa tidak dapat diaktifkan kembali',
+            ], 422);
+        }
+
+        // Ambil semua result yang completed karena pelanggaran
+        $violatorResults = ExamResult::where('exam_id', $exam->id)
+            ->where('status', 'completed')
+            ->where('violation_count', '>', 0)
+            ->with('student')
+            ->get();
+
+        if ($violatorResults->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada siswa yang perlu direaktivasikan pada ujian ini',
+            ], 422);
+        }
+
+        $reactivatedCount = 0;
+        $reactivatedStudents = [];
+        $errors = [];
+
+        foreach ($violatorResults as $result) {
+            try {
+                DB::transaction(function () use ($result, $user, $request) {
+                    $oldStatus = $result->status;
+                    $oldViolationCount = $result->violation_count;
+
+                    $preservedAnswers = Answer::where('exam_id', $result->exam_id)
+                        ->where('student_id', $result->student_id)
+                        ->count();
+
+                    $result->status = 'in_progress';
+                    $result->submitted_at = null;
+                    $result->finished_at = null;
+                    $result->reactivation_count = ($result->reactivation_count ?? 0) + 1;
+                    $result->reactivated_by = $user->id;
+                    $result->reactivated_at = now();
+                    $result->reactivation_reason = $request->reason ?? 'Reaktivasi massal oleh admin';
+                    $result->save();
+
+                    Violation::where('exam_result_id', $result->id)->delete();
+                    $result->violation_count = 0;
+                    $result->save();
+
+                    AuditLog::create([
+                        'user_id' => $user->id,
+                        'action' => 'exam.result.reactivate',
+                        'description' => 'Reaktivasi massal — siswa: ' . $result->student->name . ' (Ujian: ' . $result->exam->title . ')'
+                            . ($request->reason ? ' (Alasan: ' . $request->reason . ')' : ''),
+                        'target_type' => 'ExamResult',
+                        'target_id' => $result->id,
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'old_values' => [
+                            'status' => $oldStatus,
+                            'violation_count' => $oldViolationCount,
+                        ],
+                        'new_values' => [
+                            'status' => 'in_progress',
+                            'violation_count' => 0,
+                            'preserve_answers' => true,
+                            'answers_preserved_count' => $preservedAnswers,
+                            'timer_reset' => false,
+                            'reason' => $request->reason ?? 'Reaktivasi massal oleh admin',
+                            'bulk' => true,
+                        ],
+                    ]);
+                });
+
+                // Broadcast ke masing-masing siswa
+                try {
+                    app(SocketBroadcastService::class)->examStudentReactivated($exam->id, [
+                        'exam_id' => $exam->id,
+                        'student_id' => $result->student_id,
+                        'student_name' => $result->student->name,
+                        'message' => 'Ujian Anda telah diaktifkan kembali oleh admin. Jawaban sebelumnya tetap tersimpan dan waktu ujian tetap berjalan.',
+                        'reason' => $request->reason ?? 'Reaktivasi massal oleh admin',
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Broadcast reactivateAll failed for student ' . $result->student_id . ': ' . $e->getMessage());
+                }
+
+                $reactivatedCount++;
+                $reactivatedStudents[] = [
+                    'student_id' => $result->student_id,
+                    'student_name' => $result->student->name,
+                ];
+            } catch (\Exception $e) {
+                Log::error('Bulk reactivate failed for result ' . $result->id . ': ' . $e->getMessage());
+                $errors[] = $result->student->name;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil mengaktifkan kembali {$reactivatedCount} siswa.",
+            'data' => [
+                'reactivated_count' => $reactivatedCount,
+                'reactivated_students' => $reactivatedStudents,
+                'errors' => $errors,
             ],
         ]);
     }

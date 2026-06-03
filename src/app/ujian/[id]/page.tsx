@@ -140,7 +140,9 @@ export default function ExamTakingPage() {
   }, [refreshUser]);
 
   const hasNomorTes = authUser?.has_nomor_tes === true;
-  const canManualSubmit = true; // Siswa bisa kumpul kapan saja setelah ujian dimulai
+  // Siswa hanya bisa kumpul manual saat sisa waktu ≤ 10 menit (600 detik)
+  const SUBMIT_UNLOCK_SECONDS = 10 * 60; // 10 menit
+  const canManualSubmit = timeRemaining <= SUBMIT_UNLOCK_SECONDS;
 
   // === FIX 1: Reliable answer saving with retry queue ===
   const answerQueue = useAnswerQueue({
@@ -939,6 +941,7 @@ export default function ExamTakingPage() {
       await api.post(`/exams/${examId}/finish`, {
         answers,
         time_spent: (exam?.duration || 90) * 60 - timeRemaining,
+        force_submit: true, // bypass validasi 10 menit — ini auto-submit karena waktu habis
       });
       clearExamSession();
       toast.warning('Waktu ujian habis! Jawaban telah dikumpulkan otomatis.');
@@ -1357,7 +1360,13 @@ export default function ExamTakingPage() {
       router.push('/ujian-siswa?submitted=true');
     } catch (error) {
       console.error('Failed to submit exam:', error);
-      toast.error('Gagal mengumpulkan ujian. Coba lagi.');
+      // Tangani penolakan backend saat submit terlalu awal
+      const axiosError = error as { response?: { data?: { error_code?: string; message?: string } } };
+      if (axiosError?.response?.data?.error_code === 'SUBMIT_TOO_EARLY') {
+        toast.error(axiosError.response.data.message ?? 'Ujian hanya dapat dikumpulkan saat sisa waktu ≤ 10 menit.');
+      } else {
+        toast.error('Gagal mengumpulkan ujian. Coba lagi.');
+      }
       setSubmitting(false);
     }
   };
@@ -1973,10 +1982,23 @@ export default function ExamTakingPage() {
               </Button>
               <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">{answeredCount}/{questions.length}</span>
               {currentQuestion === questions.length - 1 ? (
-                <Button onClick={handleSubmit} disabled={submitting} className="text-xs sm:text-sm">
-                  {submitting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />}
-                  Kumpulkan
-                </Button>
+                <div className="relative group">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={submitting || !canManualSubmit}
+                    className="text-xs sm:text-sm"
+                    title={!canManualSubmit ? `Dapat dikumpulkan saat sisa waktu ≤ 10 menit` : undefined}
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />}
+                    Kumpulkan
+                  </Button>
+                  {!canManualSubmit && (
+                    <div className="absolute bottom-full right-0 mb-2 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 text-center">
+                      Ujian dapat dikumpulkan saat sisa waktu ≤ 10 menit
+                      <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-800" />
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Button onClick={() => setCurrentQuestion((prev) => Math.min(questions.length - 1, prev + 1))} className="text-xs sm:text-sm">
                   <span className="hidden sm:inline">Selanjutnya</span>
