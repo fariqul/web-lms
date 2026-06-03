@@ -34,12 +34,12 @@ CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.45"))
 DEVICE = os.getenv("DEVICE", "0")  # "0" for GPU, "cpu" for CPU
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-# Head pose thresholds (degrees)
-HEAD_YAW_THRESHOLD = float(os.getenv("HEAD_YAW_THRESHOLD", "28"))    # left/right
-HEAD_PITCH_THRESHOLD = float(os.getenv("HEAD_PITCH_THRESHOLD", "24"))  # up/down
+# Head pose thresholds (degrees) — dilonggarkan agar gerakan natural tidak terhitung
+HEAD_YAW_THRESHOLD = float(os.getenv("HEAD_YAW_THRESHOLD", "35"))    # left/right (was 28)
+HEAD_PITCH_THRESHOLD = float(os.getenv("HEAD_PITCH_THRESHOLD", "30"))  # up/down (was 24)
 
-# Eye gaze threshold (ratio deviation from center, 0-1)
-EYE_GAZE_THRESHOLD = float(os.getenv("EYE_GAZE_THRESHOLD", "0.35"))
+# Eye gaze threshold — dinaikkan agar lebih toleran terhadap gerakan mata natural
+EYE_GAZE_THRESHOLD = float(os.getenv("EYE_GAZE_THRESHOLD", "0.45"))   # (was 0.35)
 ALERT_DEDUP_WINDOW_SECONDS = int(os.getenv("ALERT_DEDUP_WINDOW_SECONDS", "15"))
 
 logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -444,8 +444,9 @@ async def analyze_snapshot(image: UploadFile = File(...)):
                 risk_score += int(obj.confidence * 10)
 
         # No face detected (camera blocked/covered)
+        # Bobot dikurangi (25→12): bisa jadi siswa ke toilet, kamera tertutup sementara
         if not face_result.face_detected:
-            risk_score += 25
+            risk_score += 12
             detections.append("no_face")
 
         # Multiple faces (MediaPipe — supplements YOLO person count)
@@ -455,13 +456,15 @@ async def analyze_snapshot(image: UploadFile = File(...)):
                 detections.append(f"multi_face:{face_result.face_count}")
 
         # Head turned away
+        # Bobot dikurangi (15→7): gerakan kepala bisa fisiologis atau berpikir
         if face_result.is_looking_away:
-            risk_score += 15
+            risk_score += 7
             detections.append(f"head_turn:{face_result.looking_direction}")
 
         # Eye gaze deviation
+        # Bobot dikurangi (10→4): mudah false positive, threshold sudah dilonggarkan
         if face_result.is_gaze_deviated:
-            risk_score += 10
+            risk_score += 4
             detections.append("eye_gaze_deviated")
 
         risk_score = min(100, risk_score)

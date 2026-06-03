@@ -61,27 +61,44 @@ const THRESHOLDS = {
   RISK_CRITICAL: 30,
 };
 
-const TEMPORAL_CONFIRMATION_WINDOW_MS = 5000;
+const TEMPORAL_CONFIRMATION_WINDOW_MS = 10_000;
 
+// Jumlah konfirmasi minimum sebelum pelanggaran AI dilaporkan.
+// Interval deteksi = 1500ms, sehingga: no_face:5 ≈ wajah absen ~7.5 detik
+// Ini mencegah false positive dari gerakan sesaat atau toilet singkat.
 const AI_EVENT_MIN_CONFIRMATIONS: Record<ProctoringDetection['type'], number> = {
-  no_face: 1,
-  multi_face: 1,
-  head_turn: 1,
-  eye_gaze: 1,
-  identity_mismatch: 1,
-  suspect_phone_check: 1,
+  no_face: 5,               // ~7.5 detik wajah tidak terdeteksi
+  multi_face: 2,            // ~3 detik wajah ganda terdeteksi
+  head_turn: 3,             // ~4.5 detik kepala konsisten menoleh
+  eye_gaze: 3,              // ~4.5 detik pandangan konsisten menyimpang
+  identity_mismatch: 2,     // 2 konfirmasi identitas berbeda
+  suspect_phone_check: 1,   // pola HP tetap langsung dilaporkan
+};
+
+// Cooldown minimum antar laporan ke server untuk tipe yang sama.
+// Mencegah akumulasi pelanggaran berlebihan saat siswa ke toilet
+// atau kondisi fisiologis wajar lainnya.
+const VIOLATION_COOLDOWN_MS: Record<ProctoringDetection['type'], number> = {
+  no_face: 120_000,            // maks 1 laporan per 2 menit
+  multi_face: 60_000,           // maks 1 laporan per 1 menit
+  head_turn: 30_000,            // maks 1 laporan per 30 detik
+  eye_gaze: 30_000,             // maks 1 laporan per 30 detik
+  identity_mismatch: 300_000,   // maks 1 laporan per 5 menit
+  suspect_phone_check: 300_000, // maks 1 laporan per 5 menit
 };
 
 // Phone check pattern: face disappears briefly then reappears
 const PHONE_CHECK_PATTERN = {
-  // Face must disappear for at least this long (ms) to count as a "check"
-  MIN_ABSENCE_MS: 1000,
-  // But not longer than this (longer = left the seat, not a phone check)
-  MAX_ABSENCE_MS: 5000,
-  // Rolling window to count disappear/reappear cycles
-  WINDOW_MS: 60_000,
-  // Minimum cycles within window to flag as suspicious
-  MIN_CYCLES: 3,
+  // Wajah harus absen minimal ini (ms) untuk dihitung "cek HP"
+  // Dinaikkan ke 3 detik agar glitch kamera tidak terhitung
+  MIN_ABSENCE_MS: 3_000,
+  // Absen lebih lama dari ini = pergi ke toilet/keluar kursi, bukan cek HP
+  // Dinaikkan ke 20 detik agar perjalanan pendek ke depan ruang tidak terhitung
+  MAX_ABSENCE_MS: 20_000,
+  // Rolling window untuk menghitung siklus hilang-muncul
+  WINDOW_MS: 90_000,
+  // Minimum siklus dalam window untuk dianggap mencurigakan (dinaikkan 3→4)
+  MIN_CYCLES: 4,
 };
 
 function detectMobileDevice(): boolean {
@@ -124,6 +141,8 @@ export function useProctoring({
   const analyzingRef = useRef(false);
   const statsRef = useRef(stats);
   const temporalEventsRef = useRef<Record<string, number[]>>({});
+  // Waktu terakhir tiap tipe pelanggaran berhasil dilaporkan ke server (untuk cooldown)
+  const lastReportedRef = useRef<Record<string, number>>({});
   statsRef.current = stats;
 
   // Phone check pattern tracking
@@ -200,8 +219,23 @@ export function useProctoring({
     const next = [...prev.filter((ts) => now - ts <= TEMPORAL_CONFIRMATION_WINDOW_MS), now];
     temporalEventsRef.current[type] = next;
     const requiredCount = AI_EVENT_MIN_CONFIRMATIONS[type] ?? 1;
+    const meetsConfirmation = next.length >= requiredCount;
+
+    // Periksa cooldown — jangan lapor jika interval antar laporan terlalu pendek.
+    // Ini mencegah akumulasi pelanggaran (mis. siswa ke toilet 5 menit).
+    if (meetsConfirmation) {
+      const cooldown = VIOLATION_COOLDOWN_MS[type] ?? 0;
+      const lastReported = lastReportedRef.current[type] ?? 0;
+      if (now - lastReported < cooldown) {
+        // Masih dalam periode cooldown, tunda pelaporan ke server
+        return { confirmed: false, count: next.length };
+      }
+      // Perbarui timestamp laporan terakhir
+      lastReportedRef.current[type] = now;
+    }
+
     return {
-      confirmed: next.length >= requiredCount,
+      confirmed: meetsConfirmation,
       count: next.length,
     };
   }, []);
@@ -290,22 +324,26 @@ export function useProctoring({
       // ─── No Face Detected ──────────────────────────────────────
 
       if (detections.length === 0) {
-        // Track when face disappeared
+        // Catat waktu wajah mulai tidak terdeteksi (untuk phone check pattern)
         if (faceAbsentSinceRef.current === null) {
           faceAbsentSinceRef.current = Date.now();
         }
 
-        addDetection({
-          type: 'no_face',
-          confidence: 1.0,
-          description: 'Tidak ada wajah terdeteksi di kamera',
-          timestamp: now,
-        });
-
-        // Report to backend
+        // Gunakan temporal confirmation + cooldown sebelum melaporkan.
+        // Wajah harus absen ~7.5 detik berturut-turut, dan cooldown 2 menit
+        // antar laporan. Sehingga ke toilet 5 menit hanya menghasilkan
+        // 2-3 pelanggaran, bukan ratusan.
         try {
           const temporal = trackTemporalEvent('no_face');
           if (!temporal.confirmed) return;
+
+          // Tambahkan ke statistik lokal HANYA jika sudah confirmed + cooldown lewat
+          addDetection({
+            type: 'no_face',
+            confidence: 1.0,
+            description: 'Tidak ada wajah terdeteksi di kamera',
+            timestamp: now,
+          });
 
           await monitoringAPI.reportViolation({
             exam_id: examId,

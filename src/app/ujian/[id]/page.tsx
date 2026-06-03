@@ -140,7 +140,7 @@ export default function ExamTakingPage() {
   }, [refreshUser]);
 
   const hasNomorTes = authUser?.has_nomor_tes === true;
-  const canManualSubmit = timeRemaining <= 600;
+  const canManualSubmit = true; // Siswa bisa kumpul kapan saja setelah ujian dimulai
 
   // === FIX 1: Reliable answer saving with retry queue ===
   const answerQueue = useAnswerQueue({
@@ -1339,20 +1339,10 @@ export default function ExamTakingPage() {
   }, []);
 
   const handleSubmit = () => {
-    if (!canManualSubmit) {
-      const minutesLeft = Math.ceil((timeRemaining - 600) / 60);
-      toast.warning(`Tombol kumpulkan aktif 10 menit sebelum waktu habis. Tunggu sekitar ${Math.max(1, minutesLeft)} menit lagi.`);
-      return;
-    }
     setShowSubmitConfirm(true);
   };
 
   const confirmSubmit = async () => {
-    if (!canManualSubmit) {
-      setShowSubmitConfirm(false);
-      toast.warning('Kumpulkan belum tersedia. Tunggu hingga 10 menit terakhir.');
-      return;
-    }
     setSubmitting(true);
     setShowSubmitConfirm(false); // Close dialog immediately
     try {
@@ -1983,7 +1973,7 @@ export default function ExamTakingPage() {
               </Button>
               <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">{answeredCount}/{questions.length}</span>
               {currentQuestion === questions.length - 1 ? (
-                <Button onClick={handleSubmit} disabled={submitting || !canManualSubmit} className="text-xs sm:text-sm">
+                <Button onClick={handleSubmit} disabled={submitting} className="text-xs sm:text-sm">
                   {submitting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />}
                   Kumpulkan
                 </Button>
@@ -1995,11 +1985,7 @@ export default function ExamTakingPage() {
                 </Button>
               )}
             </div>
-            {!canManualSubmit && (
-              <p className="mt-2 text-right text-[11px] text-amber-600 dark:text-amber-300">
-                Kumpulkan aktif saat sisa waktu 10 menit terakhir. Tersedia dalam {formatMinutesSeconds(timeRemaining - 600)}.
-              </p>
-            )}
+
           </div>
           <div className="lg:col-span-1">
             <Card className="p-4 sticky top-20">
