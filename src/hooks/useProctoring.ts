@@ -46,13 +46,13 @@ interface UseProctoringReturn {
 // ─── Thresholds ─────────────────────────────────────────────────────────
 
 const THRESHOLDS = {
-  // Minimum face detection confidence
-  FACE_DETECTION_SCORE: 0.5,
-  // Head turn: angle thresholds (radians) — tightened to be more sensitive.
-  HEAD_YAW_THRESHOLD: 0.35,
-  HEAD_PITCH_THRESHOLD: 0.28,
+  // Minimum face detection confidence - lowered to be more robust
+  FACE_DETECTION_SCORE: 0.35,
+  // Head turn: angle thresholds (radians) — loosened to allow natural movement.
+  HEAD_YAW_THRESHOLD: 0.50,
+  HEAD_PITCH_THRESHOLD: 0.42,
   // Eye gaze: landmark position ratio threshold
-  EYE_GAZE_THRESHOLD: 0.38,
+  EYE_GAZE_THRESHOLD: 0.30,
   // Identity: face descriptor distance threshold (lower = stricter)
   IDENTITY_DISTANCE: 0.5,
   // Risk level thresholds (total detections)
@@ -64,13 +64,13 @@ const THRESHOLDS = {
 const TEMPORAL_CONFIRMATION_WINDOW_MS = 10_000;
 
 // Jumlah konfirmasi minimum sebelum pelanggaran AI dilaporkan.
-// Interval deteksi = 1500ms, sehingga: no_face:5 ≈ wajah absen ~7.5 detik
+// Interval deteksi = 1500ms, sehingga: no_face:7 ≈ wajah absen ~10.5 detik
 // Ini mencegah false positive dari gerakan sesaat atau toilet singkat.
 const AI_EVENT_MIN_CONFIRMATIONS: Record<ProctoringDetection['type'], number> = {
-  no_face: 5,               // ~7.5 detik wajah tidak terdeteksi
+  no_face: 7,               // ~10.5 detik wajah tidak terdeteksi
   multi_face: 2,            // ~3 detik wajah ganda terdeteksi
-  head_turn: 3,             // ~4.5 detik kepala konsisten menoleh
-  eye_gaze: 3,              // ~4.5 detik pandangan konsisten menyimpang
+  head_turn: 5,             // ~7.5 detik kepala konsisten menoleh
+  eye_gaze: 5,              // ~7.5 detik pandangan konsisten menyimpang
   identity_mismatch: 2,     // 2 konfirmasi identitas berbeda
   suspect_phone_check: 1,   // pola HP tetap langsung dilaporkan
 };
@@ -90,15 +90,15 @@ const VIOLATION_COOLDOWN_MS: Record<ProctoringDetection['type'], number> = {
 // Phone check pattern: face disappears briefly then reappears
 const PHONE_CHECK_PATTERN = {
   // Wajah harus absen minimal ini (ms) untuk dihitung "cek HP"
-  // Dinaikkan ke 3 detik agar glitch kamera tidak terhitung
-  MIN_ABSENCE_MS: 3_000,
+  // Dinaikkan ke 4 detik agar glitch kamera tidak terhitung
+  MIN_ABSENCE_MS: 4_000,
   // Absen lebih lama dari ini = pergi ke toilet/keluar kursi, bukan cek HP
   // Dinaikkan ke 20 detik agar perjalanan pendek ke depan ruang tidak terhitung
   MAX_ABSENCE_MS: 20_000,
   // Rolling window untuk menghitung siklus hilang-muncul
   WINDOW_MS: 90_000,
-  // Minimum siklus dalam window untuk dianggap mencurigakan (dinaikkan 3→4)
-  MIN_CYCLES: 4,
+  // Minimum siklus dalam window untuk dianggap mencurigakan (dinaikkan 4→5)
+  MIN_CYCLES: 5,
 };
 
 function detectMobileDevice(): boolean {

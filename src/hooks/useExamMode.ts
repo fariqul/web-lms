@@ -45,8 +45,8 @@ function detectIOS(): boolean {
   return /iPhone|iPad|iPod/i.test(ua);
 }
 
-const IOS_APP_LEAVE_THRESHOLD_MS = 1000;
-const DEFAULT_APP_LEAVE_THRESHOLD_MS = 800;
+const IOS_APP_LEAVE_THRESHOLD_MS = 3500;
+const DEFAULT_APP_LEAVE_THRESHOLD_MS = 3000;
 const VIRTUAL_CAMERA_PATTERNS = [
   'obs', 'virtual', 'droidcam', 'manycam', 'snap camera', 'xsplit',
   'camtwist', 'e2esoft', 'splitcam', 'youcam', 'epoccam', 'iriun',
@@ -93,7 +93,7 @@ export function useExamMode({
   const fullscreenTransitionRef = useRef(false);
   // Debounce rapid-fire violation reports on mobile
   const lastViolationTimeRef = useRef(0);
-  const VIOLATION_DEBOUNCE_MS = 500;
+  const VIOLATION_DEBOUNCE_MS = 3000;
   // Track consecutive snapshot failures for auto-restart
   const [consecutiveSnapshotFails, setConsecutiveSnapshotFails] = useState(0);
   const consecutiveFailsRef = useRef(0);
@@ -715,11 +715,13 @@ export function useExamMode({
         return;
       }
 
+      // Check if user is typing to avoid false positives from keyboard showing up
+      const activeTag = document.activeElement?.tagName || '';
+      const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable === true;
+
       if (isIOS) {
         const iosWidthRatio = currentWidth / initialWidth;
         const iosHeightRatio = currentHeight / initialHeight;
-        const activeTag = document.activeElement?.tagName || '';
-        const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
         if (!isTyping && iosHeightRatio < 0.9 && !splitScreenWarnedRef.current) {
           splitScreenWarnedRef.current = true;
           reportViolation('fullscreen_exit', 'Keluar dari mode fullscreen (iOS)');
@@ -727,7 +729,7 @@ export function useExamMode({
           lastResizeTimeRef.current = now;
           return;
         }
-        if (iosWidthRatio < 0.65 && !splitScreenWarnedRef.current) {
+        if (!isTyping && iosWidthRatio < 0.65 && !splitScreenWarnedRef.current) {
           splitScreenWarnedRef.current = true;
           reportViolation('split_screen', 'Mode split screen terdeteksi (iOS)');
           setTimeout(() => { splitScreenWarnedRef.current = false; }, 10000);
@@ -742,15 +744,15 @@ export function useExamMode({
       
       // Split screen detection: width reduced by more than 40% but height stays similar
       // or height reduced by more than 40% (horizontal split)
-      const isSplitScreen = (widthRatio < 0.6 && heightRatio > 0.8) || 
-                           (heightRatio < 0.6 && widthRatio > 0.8);
+      const isSplitScreen = !isTyping && ((widthRatio < 0.6 && heightRatio > 0.8) || 
+                           (heightRatio < 0.6 && widthRatio > 0.8));
       
       // Floating app detection: both dimensions significantly reduced (small window)
-      const isFloatingApp = widthRatio < 0.7 && heightRatio < 0.7;
+      const isFloatingApp = !isTyping && (widthRatio < 0.7 && heightRatio < 0.7);
       
       // Picture-in-Picture like mode: very small window
-      const isPiP = (currentWidth < 400 && currentHeight < 400) ||
-                   (currentWidth * currentHeight < initialWidth * initialHeight * 0.25);
+      const isPiP = !isTyping && ((currentWidth < 400 && currentHeight < 400) ||
+                   (currentWidth * currentHeight < initialWidth * initialHeight * 0.25));
       
       if ((isSplitScreen || isFloatingApp || isPiP) && !splitScreenWarnedRef.current) {
         // Debounce to avoid false positives during orientation change
@@ -935,8 +937,8 @@ export function useExamMode({
         const elapsed = now - iosTimerDriftRef.current;
         iosTimerDriftRef.current = now;
 
-        // If 2s timer took >4s, the page was definitely frozen (backgrounded)
-        if (elapsed > 4000) {
+        // If 2s timer took >5.5s, the page was definitely frozen (backgrounded)
+        if (elapsed > 5500) {
           console.warn(`[iOS] Timer drift detected: ${elapsed}ms (expected ~2000ms) — user left app`);
           reportViolation(
             'tab_switch',

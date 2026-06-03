@@ -3454,7 +3454,6 @@ class ExamController extends Controller
     public function finishExam(Request $request, Exam $exam)
     {
         $user = $request->user();
-        $forceSubmit = (bool) $request->boolean('force_submit', false);
 
         $request->validate([
             'answers' => 'nullable|array',
@@ -3463,43 +3462,8 @@ class ExamController extends Controller
             'force_submit' => 'nullable|boolean',
         ]);
 
-        if (!$forceSubmit) {
-            $resultForTimeCheck = ExamResult::where('exam_id', $exam->id)
-                ->where('student_id', $user->id)
-                ->where('status', 'in_progress')
-                ->first();
-
-            if ($resultForTimeCheck) {
-                $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-                $effectiveEndTime = $window['end_time'] ? Carbon::parse($window['end_time']) : null;
-                $personalDeadline = ($resultForTimeCheck->started_at && $exam->duration)
-                    ? Carbon::parse($resultForTimeCheck->started_at)->addMinutes((int) $exam->duration)
-                    : null;
-
-                $finalDeadline = null;
-                if ($personalDeadline && $effectiveEndTime) {
-                    $finalDeadline = $personalDeadline->lte($effectiveEndTime)
-                        ? $personalDeadline
-                        : $effectiveEndTime;
-                } elseif ($personalDeadline) {
-                    $finalDeadline = $personalDeadline;
-                } elseif ($effectiveEndTime) {
-                    $finalDeadline = $effectiveEndTime;
-                }
-
-                if ($finalDeadline) {
-                    $manualSubmitOpensAt = (clone $finalDeadline)->subMinutes(10);
-
-                    if (now()->lt($manualSubmitOpensAt)) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Tombol kumpulkan baru aktif 10 menit sebelum waktu ujian habis',
-                            'manual_submit_available_at' => $this->toSchoolIso8601($manualSubmitOpensAt),
-                        ], 422);
-                    }
-                }
-            }
-        }
+        // Siswa diperbolehkan mengumpulkan ujian kapan saja setelah dimulai.
+        // Pembatasan "10 menit sebelum berakhir" telah dihapus.
 
         // Use transaction with lock to prevent double-submit race condition
         $responseData = DB::transaction(function () use ($exam, $user, $request) {

@@ -35,11 +35,11 @@ DEVICE = os.getenv("DEVICE", "0")  # "0" for GPU, "cpu" for CPU
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Head pose thresholds (degrees) — dilonggarkan agar gerakan natural tidak terhitung
-HEAD_YAW_THRESHOLD = float(os.getenv("HEAD_YAW_THRESHOLD", "35"))    # left/right (was 28)
-HEAD_PITCH_THRESHOLD = float(os.getenv("HEAD_PITCH_THRESHOLD", "30"))  # up/down (was 24)
+HEAD_YAW_THRESHOLD = float(os.getenv("HEAD_YAW_THRESHOLD", "38"))    # left/right (was 35)
+HEAD_PITCH_THRESHOLD = float(os.getenv("HEAD_PITCH_THRESHOLD", "33"))  # up/down (was 30)
 
 # Eye gaze threshold — dinaikkan agar lebih toleran terhadap gerakan mata natural
-EYE_GAZE_THRESHOLD = float(os.getenv("EYE_GAZE_THRESHOLD", "0.45"))   # (was 0.35)
+EYE_GAZE_THRESHOLD = float(os.getenv("EYE_GAZE_THRESHOLD", "0.48"))   # (was 0.45)
 ALERT_DEDUP_WINDOW_SECONDS = int(os.getenv("ALERT_DEDUP_WINDOW_SECONDS", "15"))
 
 logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s [%(levelname)s] %(message)s")
