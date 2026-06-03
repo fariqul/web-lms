@@ -3471,9 +3471,9 @@ class ExamController extends Controller
                 ->first();
 
             if ($activeResult && $activeResult->started_at) {
-                $durationSeconds = $exam->duration * 60;
-                $elapsedSeconds  = now()->diffInSeconds($activeResult->started_at);
-                $remainingSeconds = max(0, $durationSeconds - $elapsedSeconds);
+                $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+                $effectiveEndTime = $window['end_time'] ?? null;
+                $remainingSeconds = $this->calculateRemainingSeconds($activeResult, $exam, $effectiveEndTime);
 
                 // Tolak jika sisa waktu masih lebih dari 10 menit
                 if ($remainingSeconds > 600) {

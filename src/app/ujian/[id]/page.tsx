@@ -1982,7 +1982,7 @@ export default function ExamTakingPage() {
               </Button>
               <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">{answeredCount}/{questions.length}</span>
               {currentQuestion === questions.length - 1 ? (
-                <div className="relative group">
+                <div className="relative group flex flex-col items-end">
                   <Button
                     onClick={handleSubmit}
                     disabled={submitting || !canManualSubmit}
@@ -1993,10 +1993,15 @@ export default function ExamTakingPage() {
                     Kumpulkan
                   </Button>
                   {!canManualSubmit && (
-                    <div className="absolute bottom-full right-0 mb-2 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 text-center">
-                      Ujian dapat dikumpulkan saat sisa waktu ≤ 10 menit
-                      <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-800" />
-                    </div>
+                    <>
+                      <div className="absolute bottom-full right-0 mb-2 w-52 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 text-center">
+                        Dapat dikumpulkan dalam {formatMinutesSeconds(timeRemaining - SUBMIT_UNLOCK_SECONDS)}
+                        <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-800" />
+                      </div>
+                      <span className="text-[10px] text-orange-600 dark:text-orange-400 mt-1 font-semibold animate-pulse whitespace-nowrap">
+                        Bisa kumpul dalam {formatMinutesSeconds(timeRemaining - SUBMIT_UNLOCK_SECONDS)}
+                      </span>
+                    </>
                   )}
                 </div>
               ) : (
