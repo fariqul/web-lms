@@ -21,7 +21,7 @@ import {
   MessageSquare,
   FileSpreadsheet,
 } from 'lucide-react';
-import api, { exportAPI } from '@/services/api';
+import api, { exportAPI, examSettingsAPI } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useExamSocket } from '@/hooks/useSocket';
 import { extractNomorTesNumber, matchesNomorTesQuery } from '@/utils/nomorTes';
@@ -107,6 +107,7 @@ export default function ExamResultsPage() {
   const toast = useToast();
   const userRole = user?.role;
   const isAdmin = user?.role === 'admin';
+  const isGuru = user?.role === 'guru';
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -122,6 +123,7 @@ export default function ExamResultsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterClass, setFilterClass] = useState<string>('');
   const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
+  const [teacherCanExport, setTeacherCanExport] = useState(false);
   const lockoutToastShownRef = useRef(false);
 
   const fetchResults = useCallback(async () => {
@@ -196,6 +198,17 @@ export default function ExamResultsPage() {
     if (!userRole) return;
     fetchResults();
   }, [fetchResults, userRole]);
+
+  // Fetch export permission for guru
+  useEffect(() => {
+    if (userRole !== 'guru') return;
+    examSettingsAPI.getResultsVisibility()
+      .then((res) => {
+        const hidden = res.data?.data?.teacher_exam_results_hidden;
+        setTeacherCanExport(hidden === false);
+      })
+      .catch(() => setTeacherCanExport(false));
+  }, [userRole]);
 
   // Real-time updates via WebSocket
   const examSocket = useExamSocket(examId);
@@ -281,6 +294,11 @@ export default function ExamResultsPage() {
 
     const unsubscribe = examSocket.onExamResultsVisibilityUpdated((payload: unknown) => {
       const data = payload as { teacher_exam_results_hidden?: boolean };
+      // Update export permission state in realtime
+      if (typeof data.teacher_exam_results_hidden === 'boolean') {
+        setTeacherCanExport(!data.teacher_exam_results_hidden);
+      }
+
       if (data.teacher_exam_results_hidden !== true || lockoutToastShownRef.current) return;
 
       lockoutToastShownRef.current = true;
@@ -633,13 +651,15 @@ export default function ExamResultsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            {isAdmin && (
+            {/* Tombol export: Admin selalu bisa, Guru hanya jika diizinkan admin */}
+            {(isAdmin || (isGuru && teacherCanExport)) && (
               <>
                 <Button
                   variant="outline"
                   onClick={() => handleExport('xlsx')}
                   disabled={exporting !== null}
                   className="print:hidden"
+                  title={isGuru ? 'Download hasil ujian sebagai Excel' : undefined}
                 >
                   {exporting === 'xlsx' ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -653,6 +673,7 @@ export default function ExamResultsPage() {
                   onClick={() => handleExport('pdf')}
                   disabled={exporting !== null}
                   className="print:hidden"
+                  title={isGuru ? 'Download hasil ujian sebagai PDF' : undefined}
                 >
                   {exporting === 'pdf' ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

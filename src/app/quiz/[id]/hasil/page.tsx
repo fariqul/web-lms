@@ -9,7 +9,7 @@ import {
   ArrowLeft, Users, TrendingUp, TrendingDown, Loader2, Search, Eye,
   BarChart3, FileText, MessageSquare, AlertCircle, Download, FileSpreadsheet,
 } from 'lucide-react';
-import { quizAPI, exportAPI } from '@/services/api';
+import { quizAPI, exportAPI, examSettingsAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
 
@@ -71,6 +71,7 @@ export default function QuizResultsPage() {
   const quizId = Number(params.id);
   const userRole = user?.role;
   const isAdmin = userRole === 'admin';
+  const isGuru = userRole === 'guru';
   const canAccessResults = userRole === 'admin' || userRole === 'guru';
 
   const [loading, setLoading] = useState(true);
@@ -82,6 +83,7 @@ export default function QuizResultsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterClass, setFilterClass] = useState<string>('');
   const [exporting, setExporting] = useState(false);
+  const [teacherCanExport, setTeacherCanExport] = useState(false);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -146,6 +148,17 @@ export default function QuizResultsPage() {
 
     fetchResults();
   }, [canAccessResults, fetchResults, isAuthLoading, router, toast, userRole]);
+
+  // Fetch export permission for guru
+  useEffect(() => {
+    if (userRole !== 'guru') return;
+    examSettingsAPI.getResultsVisibility()
+      .then((res) => {
+        const hidden = res.data?.data?.teacher_exam_results_hidden;
+        setTeacherCanExport(hidden === false);
+      })
+      .catch(() => setTeacherCanExport(false));
+  }, [userRole]);
 
   if (!isAuthLoading && !canAccessResults) {
     return null;
@@ -290,7 +303,8 @@ export default function QuizResultsPage() {
               </p>
             </div>
           </div>
-          {isAdmin && (
+          {/* Tombol export: Admin selalu bisa, Guru hanya jika diizinkan admin */}
+          {(isAdmin || (isGuru && teacherCanExport)) && (
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -316,6 +330,7 @@ export default function QuizResultsPage() {
                 }}
                 disabled={exporting || results.length === 0}
                 className="gap-1.5"
+                title={isGuru ? 'Download hasil quiz sebagai Excel' : undefined}
               >
                 {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
                 Excel
@@ -344,6 +359,7 @@ export default function QuizResultsPage() {
                 }}
                 disabled={exporting || results.length === 0}
                 className="gap-1.5"
+                title={isGuru ? 'Download hasil quiz sebagai PDF' : undefined}
               >
                 {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 PDF

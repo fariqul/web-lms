@@ -12,6 +12,7 @@ use App\Models\StudentEnrollment;
 use App\Models\User;
 use App\Support\NomorTes;
 use Carbon\Carbon;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -31,16 +32,23 @@ class ExportController extends Controller
     // =========================================
     public function examResults(Request $request, int $examId)
     {
+        $user = $request->user();
+        $isAdmin = $user?->role === 'admin';
+        $isGuru  = $user?->role === 'guru';
+
+        // Guru dapat download Excel hanya jika admin mengizinkan guru melihat hasil ujian
+        if (!$isAdmin) {
+            if (!$isGuru || SystemSetting::getTeacherExamResultsHidden()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk mengekspor hasil ujian. Hubungi admin untuk mengaktifkan visibilitas hasil ujian.',
+                ], 403);
+            }
+        }
+
         $request->validate([
             'format' => 'required|in:xlsx,pdf',
         ]);
-
-        if ($request->user()?->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hanya admin yang dapat mengekspor hasil ujian',
-            ], 403);
-        }
 
         try {
             $format = $request->input('format');
@@ -980,11 +988,18 @@ class ExportController extends Controller
     // =========================================
     public function quizResults(Request $request, int $quizId)
     {
-        if ($request->user()?->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hanya admin yang dapat mengekspor hasil quiz',
-            ], 403);
+        $user = $request->user();
+        $isAdmin = $user?->role === 'admin';
+        $isGuru  = $user?->role === 'guru';
+
+        // Guru dapat download Excel hanya jika admin mengizinkan guru melihat hasil ujian
+        if (!$isAdmin) {
+            if (!$isGuru || SystemSetting::getTeacherExamResultsHidden()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk mengekspor hasil quiz. Hubungi admin untuk mengaktifkan visibilitas hasil ujian.',
+                ], 403);
+            }
         }
 
         $request->validate([

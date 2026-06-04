@@ -614,9 +614,15 @@ export default function ExamTakingPage() {
             setIsStarted(true);
             toast.info('Ujian dilanjutkan setelah refresh.');
           }
-        } catch {
+        } catch (error) {
           // If start fails, the session was already finished or expired — clear flag
           sessionStorage.removeItem(sessionKey);
+          const err = error as { response?: { data?: { error_code?: string; message?: string } } };
+          if (err.response?.data?.error_code === 'LATE_ENTRY_DENIED') {
+            toast.error(err.response.data.message || 'Batas waktu masuk terlewat.');
+            isNavigatingAwayRef.current = true;
+            router.push('/ujian-siswa?reason=late_entry');
+          }
         } finally {
           setStartingExam(false);
         }
@@ -1083,12 +1089,19 @@ export default function ExamTakingPage() {
       setIsStarted(true);
     } catch (error) {
       console.error('Failed to start exam:', error);
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as { response?: { data?: { message?: string; error_code?: string } } };
+      const errorCode = err.response?.data?.error_code;
       const errMsg = err.response?.data?.message || 'Gagal memulai ujian. Silakan coba lagi.';
-      // Exit fullscreen on error so student can see the error and retry
+      
+      // Exit fullscreen on error so student can see the error
       exitFullscreen();
-      // Show nomor_tes error inline if relevant
-      if (errMsg.toLowerCase().includes('nomor tes')) {
+      
+      if (errorCode === 'LATE_ENTRY_DENIED') {
+        toast.error(errMsg);
+        isNavigatingAwayRef.current = true;
+        sessionStorage.removeItem(`exam_active_${examId}`);
+        router.push('/ujian-siswa?reason=late_entry');
+      } else if (errMsg.toLowerCase().includes('nomor tes')) {
         setNomorTesError(errMsg);
       } else {
         toast.error(errMsg);

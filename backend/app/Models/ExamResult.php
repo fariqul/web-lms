@@ -28,6 +28,10 @@ class ExamResult extends Model
         'reactivated_by',
         'reactivated_at',
         'reactivation_reason',
+        'late_entry_status',
+        'late_entry_requested_at',
+        'late_entry_approved_at',
+        'late_entry_approved_by',
     ];
 
     protected $casts = [
@@ -44,6 +48,8 @@ class ExamResult extends Model
         'finished_at' => 'datetime',
         'reactivation_count' => 'integer',
         'reactivated_at' => 'datetime',
+        'late_entry_requested_at' => 'datetime',
+        'late_entry_approved_at' => 'datetime',
     ];
 
     public function exam()

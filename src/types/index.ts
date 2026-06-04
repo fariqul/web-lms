@@ -133,6 +133,10 @@ export interface ExamResult {
   submitted_at?: string;
   finished_at?: string;
   completion_reason?: 'manual' | 'time_up' | 'violation';
+  late_entry_status?: 'none' | 'requested' | 'approved' | 'rejected';
+  late_entry_requested_at?: string;
+  late_entry_approved_at?: string;
+  late_entry_approved_by?: number;
   exam?: Exam;
   student?: User;
 }

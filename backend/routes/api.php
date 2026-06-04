@@ -127,7 +127,6 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/school-network-settings/test-ip', [SchoolNetworkController::class, 'testCurrentIp']);
         Route::get('/school-network-settings/snapshot-monitor', [SchoolNetworkController::class, 'getSnapshotMonitorSetting']);
         Route::put('/school-network-settings/snapshot-monitor', [SchoolNetworkController::class, 'updateSnapshotMonitorSetting']);
-        Route::get('/exam-results-visibility', [ExamResultVisibilityController::class, 'show']);
         Route::put('/exam-results-visibility', [ExamResultVisibilityController::class, 'update']);
         Route::get('/school-network-settings/live-sync-stats', [SchoolNetworkController::class, 'liveSyncStats']);
         Route::apiResource('school-network-settings', SchoolNetworkController::class);
@@ -234,6 +233,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         
         // Student Exam
         Route::post('/exams/{exam}/start', [ExamController::class, 'startExam']);
+        Route::post('/exams/{exam}/request-late-entry', [ExamController::class, 'requestLateEntry']);
         Route::post('/exams/{exam}/heartbeat', [ExamController::class, 'heartbeat']);
         Route::post('/exams/{exam}/answer', [ExamController::class, 'submitAnswer']);
         Route::post('/exams/{exam}/answers/batch', [ExamController::class, 'submitAnswersBatch']);
@@ -298,9 +298,17 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
 
         // Reactivate ALL violators for an exam (bulk)
         Route::post('/exams/{exam}/reactivate-all', [ExamController::class, 'reactivateAllViolators']);
+
+        // Late entry requests management
+        Route::get('/exams/{exam}/late-entry-requests', [ExamController::class, 'getLateEntryRequests']);
+        Route::post('/exam-results/{result}/approve-late-entry', [ExamController::class, 'approveLateEntry']);
+        Route::post('/exam-results/{result}/reject-late-entry', [ExamController::class, 'rejectLateEntry']);
         
         // End exam (force finish all students)
         Route::post('/exams/{exam}/end', [ExamController::class, 'endExam']);
+
+        // Exam results visibility (read-only for guru, update admin-only via separate route above)
+        Route::get('/exam-results-visibility', [ExamResultVisibilityController::class, 'show']);
     });
 
     // ============================================
@@ -358,8 +366,8 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/export/grades', [ExportController::class, 'grades']);
         Route::get('/export/attendance', [ExportController::class, 'attendance'])->middleware('role:admin');
         Route::get('/export/student/{studentId}', [ExportController::class, 'studentReport']);
-        Route::get('/export/exam-results/{examId}', [ExportController::class, 'examResults'])->middleware('role:admin');
-        Route::get('/export/quiz-results/{quizId}', [ExportController::class, 'quizResults'])->middleware('role:admin');
+        Route::get('/export/exam-results/{examId}', [ExportController::class, 'examResults']);
+        Route::get('/export/quiz-results/{quizId}', [ExportController::class, 'quizResults']);
     });
 
     // ============================================

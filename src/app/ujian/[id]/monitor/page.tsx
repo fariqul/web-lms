@@ -25,10 +25,13 @@ import {
   List,
   RotateCcw,
   UserX,
+  Check,
+  Ban,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface Student {
   id: number;
@@ -108,6 +111,7 @@ export default function MonitorUjianPage() {
   const params = useParams();
   const examId = Number(params.id);
   const { user } = useAuth();
+  const toast = useToast();
   const defaultKickMessage = 'Jangan tidur saat ujian. Anda dikeluarkan sementara oleh admin. Silakan login kembali untuk melanjutkan.';
   const kickConfirmKeyword = 'KELUARKAN';
   const kickRecentWindowMs = 2 * 60 * 1000;
@@ -148,6 +152,50 @@ export default function MonitorUjianPage() {
   const [kickConfirmText, setKickConfirmText] = useState('');
   const [isKicking, setIsKicking] = useState(false);
   const [recentKickedAt, setRecentKickedAt] = useState<Record<number, string>>({});
+  
+  // Late entry requests states
+  const [lateEntryRequests, setLateEntryRequests] = useState<any[]>([]);
+  const [processingLateEntry, setProcessingLateEntry] = useState<number | null>(null);
+
+  const fetchLateEntryRequests = useCallback(async () => {
+    try {
+      const res = await api.get(`/exams/${examId}/late-entry-requests`);
+      setLateEntryRequests(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to fetch late entry requests:', err);
+    }
+  }, [examId]);
+
+  const handleApproveLateEntry = async (resultId: number, studentName: string) => {
+    setProcessingLateEntry(resultId);
+    try {
+      const response = await api.post(`/exam-results/${resultId}/approve-late-entry`);
+      toast.success(response.data?.message || `Akses terlambat untuk ${studentName} disetujui.`);
+      await fetchLateEntryRequests();
+      void fetchData();
+    } catch (error) {
+      console.error('Failed to approve late entry:', error);
+      toast.error('Gagal menyetujui permintaan.');
+    } finally {
+      setProcessingLateEntry(null);
+    }
+  };
+
+  const handleRejectLateEntry = async (resultId: number, studentName: string) => {
+    setProcessingLateEntry(resultId);
+    try {
+      const response = await api.post(`/exam-results/${resultId}/reject-late-entry`);
+      toast.success(response.data?.message || `Akses terlambat untuk ${studentName} ditolak.`);
+      await fetchLateEntryRequests();
+      void fetchData();
+    } catch (error) {
+      console.error('Failed to reject late entry:', error);
+      toast.error('Gagal menolak permintaan.');
+    } finally {
+      setProcessingLateEntry(null);
+    }
+  };
+
   const [violationModal, setViolationModal] = useState<{ studentName: string; violations: Participant['violation_details'] } | null>(null);
   const [violationFilter, setViolationFilter] = useState<'all' | 'ios_risky'>('all');
   const lastRealtimeRefreshAtRef = useRef(0);
@@ -198,11 +246,12 @@ export default function MonitorUjianPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [examRes, monitorRes] = await Promise.all([
+      const [examRes, monitorRes, lateEntryRes] = await Promise.all([
         api.get(`/exams/${examId}`),
         api.get(`/exams/${examId}/monitoring`, {
           params: classFilter !== 'all' ? { class_id: Number(classFilter) } : undefined,
         }),
+        api.get(`/exams/${examId}/late-entry-requests`),
       ]);
       setExamDetail(examRes.data?.data);
       const monitorData = monitorRes.data?.data;
@@ -214,6 +263,7 @@ export default function MonitorUjianPage() {
         setParticipants(monitorData.participants || []);
         setSummary(monitorData.summary);
       }
+      setLateEntryRequests(lateEntryRes.data?.data || []);
 
       setLastRefresh(new Date());
     } catch (error) {
@@ -376,8 +426,16 @@ export default function MonitorUjianPage() {
       requestMonitorRefresh();
     });
 
+    // Late entry requested
+    examSocket.on(`exam.${examId}.late-entry-requested`, (data: unknown) => {
+      const d = data as { student_name?: string };
+      addEvent('late-entry', `🚪 ${d.student_name || 'Siswa'} meminta izin masuk terlambat`);
+      void fetchLateEntryRequests();
+    });
+
     return () => {
       examSocket.off(`exam.${examId}.student-joined`);
+      examSocket.off(`exam.${examId}.late-entry-requested`);
       examSocket.off(`exam.${examId}.student-submitted`);
       examSocket.off(`exam.${examId}.violation`);
       examSocket.off(`exam.${examId}.answer-progress`);
@@ -828,6 +886,64 @@ export default function MonitorUjianPage() {
             </div>
           </Card>
         </div>
+
+        {/* Permintaan Masuk Terlambat */}
+        {lateEntryRequests.some(r => r.late_entry_status === 'requested') && (
+          <Card className="p-4 border-amber-300 bg-amber-50/50 dark:bg-amber-950/20">
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400 flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500 animate-pulse" />
+              Permintaan Masuk Terlambat Menunggu Persetujuan
+            </h3>
+            <div className="divide-y divide-amber-200/50 dark:divide-amber-800/30">
+              {lateEntryRequests.filter(r => r.late_entry_status === 'requested').map((req) => (
+                <div key={req.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">
+                      {req.student?.name || 'Siswa'}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                      Kelas: {req.student?.class_room?.name || '-'} • Waktu minta: {req.late_entry_requested_at ? getRelativeTime(req.late_entry_requested_at) : '-'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {user?.role === 'admin' ? (
+                      <>
+                        <button
+                          onClick={() => handleRejectLateEntry(req.id, req.student?.name)}
+                          disabled={processingLateEntry === req.id}
+                          className="inline-flex items-center justify-center p-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
+                          title="Tolak"
+                        >
+                          {processingLateEntry === req.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleApproveLateEntry(req.id, req.student?.name)}
+                          disabled={processingLateEntry === req.id}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+                        >
+                          {processingLateEntry === req.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          Setujui Masuk
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                        Menunggu Persetujuan Admin
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Filter Tabs */}
         <div className="flex gap-2 flex-wrap items-center">

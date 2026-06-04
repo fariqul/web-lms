@@ -355,6 +355,17 @@ export function useExamsListSocket(examIds: number[]) {
     };
   }, [on, off, examIds]);
 
+  const onAnyLateEntryHandled = useCallback((callback: (data: unknown) => void) => {
+    for (const id of examIds) {
+      on(`exam.${id}.late-entry-handled`, callback);
+    }
+    return () => {
+      for (const id of examIds) {
+        off(`exam.${id}.late-entry-handled`);
+      }
+    };
+  }, [on, off, examIds]);
+
   return useMemo(() => ({
     isConnected,
     emit,
@@ -370,7 +381,8 @@ export function useExamsListSocket(examIds: number[]) {
     onAnyExamUnlocked,
     onAnyStudentJoined,
     onAnyStudentSubmitted,
-  }), [isConnected, emit, on, off, connect, disconnect, onAnyExamUpdated, onAnyExamPublished, onAnyExamDeleted, onAnyExamEnded, onAnyExamLocked, onAnyExamUnlocked, onAnyStudentJoined, onAnyStudentSubmitted]);
+    onAnyLateEntryHandled,
+  }), [isConnected, emit, on, off, connect, disconnect, onAnyExamUpdated, onAnyExamPublished, onAnyExamDeleted, onAnyExamEnded, onAnyExamLocked, onAnyExamUnlocked, onAnyStudentJoined, onAnyStudentSubmitted, onAnyLateEntryHandled]);
 }
 
 // Specialized hook for attendance monitoring

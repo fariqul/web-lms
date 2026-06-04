@@ -4,11 +4,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button } from '@/components/ui';
-import { examAPI } from '@/services/api';
+import api, { examAPI } from '@/services/api';
 import { Exam } from '@/types';
-import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield, Download } from 'lucide-react';
+import { GraduationCap, Clock, Calendar, PlayCircle, CheckCircle, AlertCircle, Timer, Shield, Download, Ban, Loader2 } from 'lucide-react';
 import { downloadSEBConfig } from '@/utils/seb';
 import { useExamsListSocket } from '@/hooks/useSocket';
+import { useToast } from '@/components/ui/Toast';
+
+/** Batas menit masuk ujian setelah ujian dimulai */
+const LATE_ENTRY_MINUTES = 10;
 
 // Live countdown hook
 function useCountdown(targetDate: string) {
@@ -72,8 +76,29 @@ function CountdownDisplay({ startTime }: { startTime: string }) {
 
 export default function UjianSiswaPage() {
   const router = useRouter();
+  const toast = useToast();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Check for redirect query parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const reason = params.get('reason');
+      if (reason === 'late_entry') {
+        toast.error('Anda tidak dapat masuk ke ujian karena batas waktu masuk (10 menit) telah terlewat.');
+      } else if (reason === 'force_submit') {
+        toast.warning('Ujian Anda telah dikumpulkan otomatis oleh sistem.');
+      } else if (reason === 'admin_ended') {
+        toast.warning('Ujian telah diselesaikan oleh guru/admin.');
+      }
+      
+      // Clean query parameters to avoid showing toast on refresh
+      if (reason) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [toast]);
 
   const getCompletionInfo = (exam: Exam) => {
     const reason = exam.my_result?.completion_reason;
@@ -110,6 +135,23 @@ export default function UjianSiswaPage() {
     };
   };
 
+  const [requestingLateEntry, setRequestingLateEntry] = useState<number | null>(null);
+
+  const handleRequestLateEntry = async (examId: number) => {
+    setRequestingLateEntry(examId);
+    try {
+      const response = await api.post(`/exams/${examId}/request-late-entry`);
+      toast.success(response.data?.message || 'Permintaan masuk terlambat berhasil dikirim.');
+      await fetchExams();
+    } catch (error) {
+      console.error('Failed to request late entry:', error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Gagal mengirimkan permintaan.');
+    } finally {
+      setRequestingLateEntry(null);
+    }
+  };
+
   // Real-time updates via WebSocket
   const examIds = useMemo(() => exams.map(e => e.id), [exams]);
   const listSocket = useExamsListSocket(examIds);
@@ -129,11 +171,15 @@ export default function UjianSiswaPage() {
       const d = data as { exam_id?: number };
       if (d.exam_id) setExams(prev => prev.map(e => e.id === d.exam_id ? { ...e, status: 'completed' } : e));
     };
+    const handleLateEntryHandled = () => {
+      fetchExams();
+    };
 
     const cleanups = [
       listSocket.onAnyExamUpdated(handleUpdated),
       listSocket.onAnyExamDeleted(handleDeleted),
       listSocket.onAnyExamEnded(handleEnded),
+      listSocket.onAnyLateEntryHandled(handleLateEntryHandled),
     ];
     return () => { cleanups.forEach(c => c && c()); };
   }, [listSocket, examIds]);
@@ -174,6 +220,33 @@ export default function UjianSiswaPage() {
     return { label: 'Tersedia', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: PlayCircle };
   };
 
+  const isLateEntry = (exam: any) => {
+    const now = new Date();
+    const startTime = new Date(exam.start_time);
+    const endTime = new Date(exam.end_time);
+    const resultStatus = exam.my_result?.status;
+    const lateEntryStatus = exam.my_result?.late_entry_status;
+
+    // Jika disetujui masuk terlambat oleh admin, bukan late entry
+    if (lateEntryStatus === 'approved') return false;
+    
+    // Jika sedang meminta persetujuan atau ditolak, tetap anggap late entry
+    if (lateEntryStatus === 'requested' || lateEntryStatus === 'rejected') return true;
+
+    // Kalau sudah pernah masuk (in_progress) dan tidak sedang request/reject terlambat, tidak dianggap late entry
+    if (resultStatus === 'in_progress') return false;
+    // Kalau sudah selesai, bukan late entry
+    if (['completed', 'graded', 'submitted'].includes(resultStatus || '')) return false;
+    // Kalau ujian belum mulai, bukan late entry
+    if (now < startTime) return false;
+    // Kalau ujian sudah berakhir, bukan late entry (sudah "Waktu Habis")
+    if (now > endTime) return false;
+
+    // Late entry: ujian sudah lewat LATE_ENTRY_MINUTES menit dari start_time
+    const lateDeadline = new Date(startTime.getTime() + LATE_ENTRY_MINUTES * 60 * 1000);
+    return now > lateDeadline;
+  };
+
   const canStartExam = (exam: Exam) => {
     const now = new Date();
     const startTime = new Date(exam.start_time);
@@ -184,6 +257,8 @@ export default function UjianSiswaPage() {
     if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
       return false;
     }
+    // Block if batas masuk sudah terlewat (dan belum pernah masuk)
+    if (isLateEntry(exam)) return false;
     
     return now >= startTime && now <= endTime;
   };
@@ -292,6 +367,66 @@ export default function UjianSiswaPage() {
                       <PlayCircle className="w-4 h-4 mr-2" />
                       {exam.my_result?.status === 'in_progress' ? 'Lanjutkan Ujian' : 'Mulai Ujian'}
                     </Button>
+                  ) : isLateEntry(exam) ? (
+                    <div className="space-y-2">
+                      {exam.my_result?.late_entry_status === 'requested' ? (
+                        <>
+                          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-3 flex items-start gap-2">
+                            <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                            <div>
+                              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Menunggu Persetujuan Masuk</p>
+                              <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+                                Permintaan masuk terlambat Anda sedang menunggu persetujuan dari admin.
+                              </p>
+                            </div>
+                          </div>
+                          <Button className="w-full" variant="outline" disabled>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin text-amber-500" />
+                            Menunggu Persetujuan...
+                          </Button>
+                        </>
+                      ) : exam.my_result?.late_entry_status === 'rejected' ? (
+                        <>
+                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-3 flex items-start gap-2">
+                            <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-semibold text-red-700 dark:text-red-400">Permintaan Masuk Ditolak</p>
+                              <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+                                Admin menolak permintaan masuk terlambat Anda untuk ujian ini.
+                              </p>
+                            </div>
+                          </div>
+                          <Button className="w-full" variant="outline" disabled>
+                            <Ban className="w-4 h-4 mr-2" />
+                            Akses Ditolak
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-3 flex items-start gap-2">
+                            <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-semibold text-red-700 dark:text-red-400">Batas Waktu Masuk Terlewat</p>
+                              <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+                                Siswa hanya bisa masuk dalam {LATE_ENTRY_MINUTES} menit pertama setelah ujian dimulai.
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                            onClick={() => handleRequestLateEntry(exam.id)}
+                            disabled={requestingLateEntry === exam.id}
+                          >
+                            {requestingLateEntry === exam.id ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Clock className="w-4 h-4 mr-2" />
+                            )}
+                            Minta Izin Masuk Ujian
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   ) : new Date() < new Date(exam.start_time) ? (
                     <>
                       <CountdownDisplay startTime={exam.start_time} />

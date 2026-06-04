@@ -284,6 +284,30 @@ class SocketBroadcastService
         );
     }
 
+    /**
+     * Late entry requested by student.
+     */
+    public function examLateEntryRequested(int $examId, array $requestData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.late-entry-requested",
+            $requestData,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
+     * Late entry request approved/rejected by admin.
+     */
+    public function examLateEntryHandled(int $examId, array $handleData): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.late-entry-handled",
+            $handleData,
+            "exam.{$examId}"
+        );
+    }
+
     // ─── Attendance Events ──────────────────────────────────────
 
     /**

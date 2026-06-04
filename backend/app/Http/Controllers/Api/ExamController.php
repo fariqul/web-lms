@@ -33,6 +33,8 @@ class ExamController extends Controller
     private const VIOLATION_CONSENSUS_WINDOW_SECONDS_DEFAULT = 20;
     private const VIOLATION_COOLDOWN_SECONDS_DEFAULT = 8;
     private const SCHOOL_TIMEZONE = 'Asia/Makassar';
+    /** Batas waktu masuk ujian setelah ujian dimulai (dalam menit) */
+    private const LATE_ENTRY_LIMIT_MINUTES = 10;
 
     private function parseSchoolTimeToUtc(string $value): Carbon
     {
@@ -2878,6 +2880,35 @@ class ExamController extends Controller
             ], 422);
         }
 
+        // -------------------------------------------------------
+        // Cek batas waktu masuk ujian (hanya untuk siswa baru)
+        // Siswa yang sudah pernah masuk (started_at tidak null) tetap bisa lanjut.
+        // Siswa yang minta persetujuan terlambat (late_entry_status = approved) juga bisa masuk.
+        // -------------------------------------------------------
+        $existingResult = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->first();
+
+        if (!$existingResult || $existingResult->started_at === null) {
+            $lateEntryDeadline = $effectiveStartTime->copy()->addMinutes(self::LATE_ENTRY_LIMIT_MINUTES);
+            if ($now > $lateEntryDeadline) {
+                $isApproved = $existingResult && $existingResult->late_entry_status === 'approved';
+                if (!$isApproved) {
+                    $minutesLate = (int) $effectiveStartTime->diffInMinutes($now);
+                    $approvalStatus = $existingResult ? $existingResult->late_entry_status : 'none';
+                    return response()->json([
+                        'success'       => false,
+                        'message'       => 'Batas waktu masuk ujian sudah terlewat. Ujian dimulai ' . $minutesLate . ' menit yang lalu. Siswa hanya diperbolehkan masuk dalam ' . self::LATE_ENTRY_LIMIT_MINUTES . ' menit pertama setelah ujian dimulai.',
+                        'error_code'    => 'LATE_ENTRY_DENIED',
+                        'late_by_minutes'  => $minutesLate,
+                        'limit_minutes'    => self::LATE_ENTRY_LIMIT_MINUTES,
+                        'deadline'         => $this->toSchoolIso8601($lateEntryDeadline),
+                        'late_entry_status' => $approvalStatus,
+                    ], 422);
+                }
+            }
+        }
+
         // Check existing result (with lock to prevent race condition on double-click)
         $result = DB::transaction(function () use ($exam, $user) {
             $result = ExamResult::where('exam_id', $exam->id)
@@ -2897,6 +2928,16 @@ class ExamController extends Controller
                     'started_at' => now(),
                     'status' => 'in_progress',
                 ]);
+
+                // Broadcast: student joined exam
+                app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
+                    'student_id' => $user->id,
+                    'student_name' => $user->name,
+                    'started_at' => $this->toSchoolIso8601(now()),
+                ]);
+            } else if ($result->started_at === null) {
+                $result->started_at = now();
+                $result->save();
 
                 // Broadcast: student joined exam
                 app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
@@ -5159,6 +5200,219 @@ class ExamController extends Controller
                 'reactivated_students' => $reactivatedStudents,
                 'errors' => $errors,
             ],
+        ]);
+    }
+
+    /**
+     * Request late entry approval (for students past the 10-minute limit)
+     */
+    public function requestLateEntry(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        // Check if student belongs to one of the exam's classes
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+        if (!in_array($user->class_id, $examClassIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak terdaftar di kelas ini',
+            ], 422);
+        }
+
+        // Validate exam status
+        if (!in_array($exam->status, ['scheduled', 'active'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian tidak tersedia',
+            ], 422);
+        }
+
+        // Get effective exam window
+        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+        $effectiveStartTime = $window['start_time'];
+        $lateEntryDeadline = $effectiveStartTime->copy()->addMinutes(self::LATE_ENTRY_LIMIT_MINUTES);
+
+        if (now() <= $lateEntryDeadline) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian masih dalam waktu masuk normal. Anda dapat langsung masuk tanpa persetujuan.',
+            ], 422);
+        }
+
+        // Check if result already exists
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->first();
+
+        if ($result) {
+            if ($result->started_at !== null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah memulai ujian ini.',
+                ], 422);
+            }
+            if ($result->late_entry_status === 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan Anda sudah disetujui. Silakan masuk ke ujian.',
+                ], 422);
+            }
+            if ($result->late_entry_status === 'requested') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Permintaan masuk terlambat Anda sedang menunggu persetujuan admin.',
+                    'data' => [
+                        'status' => 'requested',
+                    ],
+                ]);
+            }
+        }
+
+        // Create or update result to 'requested'
+        if (!$result) {
+            $result = ExamResult::create([
+                'exam_id' => $exam->id,
+                'student_id' => $user->id,
+                'started_at' => null, // hasn't started yet
+                'status' => 'in_progress', // set to in_progress but late_entry_status restricts actual start
+                'late_entry_status' => 'requested',
+                'late_entry_requested_at' => now(),
+            ]);
+        } else {
+            $result->late_entry_status = 'requested';
+            $result->late_entry_requested_at = now();
+            $result->save();
+        }
+
+        // Broadcast to exam's admin/guru monitoring room
+        try {
+            app(SocketBroadcastService::class)->examLateEntryRequested($exam->id, [
+                'exam_id' => $exam->id,
+                'result_id' => $result->id,
+                'student_id' => $user->id,
+                'student_name' => $user->name,
+                'class_name' => $user->classRoom->name ?? 'Kelas',
+                'requested_at' => $this->toSchoolIso8601(now()),
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast late entry request failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berhasil mengirimkan permintaan masuk terlambat ke admin.',
+            'data' => [
+                'status' => 'requested',
+            ],
+        ]);
+    }
+
+    /**
+     * Get all late entry requests for a specific exam (Admin/Guru)
+     */
+    public function getLateEntryRequests(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        // Check if admin or owner guru
+        $isAdmin = $user->role === 'admin';
+        $isGuru = $user->role === 'guru' && $exam->teacher_id === $user->id;
+
+        if (!$isAdmin && !$isGuru) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melihat permintaan masuk terlambat.',
+            ], 403);
+        }
+
+        $requests = ExamResult::with('student:id,name,class_id', 'student.classRoom:id,name')
+            ->where('exam_id', $exam->id)
+            ->whereIn('late_entry_status', ['requested', 'approved', 'rejected'])
+            ->orderBy('late_entry_requested_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $requests,
+        ]);
+    }
+
+    /**
+     * Approve late entry request (Admin Only)
+     */
+    public function approveLateEntry(Request $request, ExamResult $result)
+    {
+        $user = $request->user();
+
+        // Only admin can approve
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang memiliki akses untuk menyetujui permintaan masuk terlambat.',
+            ], 403);
+        }
+
+        $result->late_entry_status = 'approved';
+        $result->late_entry_approved_at = now();
+        $result->late_entry_approved_by = $user->id;
+        $result->save();
+
+        // Broadcast to student
+        try {
+            app(SocketBroadcastService::class)->examLateEntryHandled($result->exam_id, [
+                'exam_id' => $result->exam_id,
+                'student_id' => $result->student_id,
+                'status' => 'approved',
+                'message' => 'Permintaan masuk terlambat Anda telah disetujui oleh admin. Silakan masuk ke ujian.',
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast late entry approved failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berhasil menyetujui siswa ' . $result->student->name . ' untuk masuk ujian terlambat.',
+            'data' => $result,
+        ]);
+    }
+
+    /**
+     * Reject late entry request (Admin Only)
+     */
+    public function rejectLateEntry(Request $request, ExamResult $result)
+    {
+        $user = $request->user();
+
+        // Only admin can reject
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya admin yang memiliki akses untuk menolak permintaan masuk terlambat.',
+            ], 403);
+        }
+
+        $result->late_entry_status = 'rejected';
+        $result->save();
+
+        // Broadcast to student
+        try {
+            app(SocketBroadcastService::class)->examLateEntryHandled($result->exam_id, [
+                'exam_id' => $result->exam_id,
+                'student_id' => $result->student_id,
+                'status' => 'rejected',
+                'message' => 'Permintaan masuk terlambat Anda ditolak oleh admin.',
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast late entry rejected failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berhasil menolak siswa ' . $result->student->name . ' untuk masuk ujian terlambat.',
+            'data' => $result,
         ]);
     }
 }
