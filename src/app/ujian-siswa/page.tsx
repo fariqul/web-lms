@@ -142,7 +142,20 @@ export default function UjianSiswaPage() {
     try {
       const response = await api.post(`/exams/${examId}/request-late-entry`);
       toast.success(response.data?.message || 'Permintaan masuk terlambat berhasil dikirim.');
-      await fetchExams();
+      // Optimistic update: langsung ubah state lokal agar UI berubah instan
+      setExams(prev => prev.map(e => {
+        if (e.id !== examId) return e;
+        return {
+          ...e,
+          my_result: {
+            ...e.my_result,
+            status: e.my_result?.status || 'in_progress',
+            late_entry_status: 'requested',
+          } as Exam['my_result'],
+        };
+      }));
+      // Background refresh dari server untuk sinkronisasi data lengkap
+      fetchExams();
     } catch (error) {
       console.error('Failed to request late entry:', error);
       const err = error as { response?: { data?: { message?: string } } };
@@ -204,6 +217,7 @@ export default function UjianSiswaPage() {
     const startTime = new Date(exam.start_time);
     const endTime = new Date(exam.end_time);
     const resultStatus = exam.my_result?.status;
+    const lateEntryStatus = exam.my_result?.late_entry_status;
 
     if (resultStatus === 'completed' || resultStatus === 'graded' || resultStatus === 'submitted') {
       return { label: 'Selesai', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', icon: CheckCircle };
@@ -213,6 +227,13 @@ export default function UjianSiswaPage() {
     }
     if (now > endTime) {
       return { label: 'Berakhir', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: AlertCircle };
+    }
+    // Jika status in_progress tapi late_entry masih pending/rejected, jangan tampilkan "Sedang Dikerjakan"
+    if (resultStatus === 'in_progress' && lateEntryStatus === 'requested') {
+      return { label: 'Menunggu Persetujuan', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400', icon: Clock };
+    }
+    if (resultStatus === 'in_progress' && lateEntryStatus === 'rejected') {
+      return { label: 'Akses Ditolak', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', icon: Ban };
     }
     if (resultStatus === 'in_progress') {
       return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', icon: PlayCircle };

@@ -785,7 +785,7 @@ class ExamController extends Controller
             $examIds = $exams->pluck('id');
             $myResults = ExamResult::where('student_id', $user->id)
                 ->whereIn('exam_id', $examIds)
-                ->get(['id', 'exam_id', 'status', 'submitted_at', 'finished_at', 'violation_count'])
+                ->get(['id', 'exam_id', 'status', 'submitted_at', 'finished_at', 'violation_count', 'late_entry_status', 'started_at'])
                 ->keyBy('exam_id');
 
             $exams->getCollection()->transform(function ($exam) use ($myResults, $user) {
@@ -1014,7 +1014,7 @@ class ExamController extends Controller
 
             $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
-                ->first(['id', 'status', 'started_at', 'submitted_at']);
+                ->first(['id', 'status', 'started_at', 'submitted_at', 'late_entry_status']);
             $exam->my_result = $result;
 
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);

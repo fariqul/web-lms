@@ -611,7 +611,7 @@ class DashboardController extends Controller
         // Get results in batch
         $myResults = ExamResult::where('student_id', $user->id)
             ->whereIn('exam_id', $activeExamIds)
-            ->get(['id', 'exam_id', 'status', 'total_score'])
+            ->get(['id', 'exam_id', 'status', 'total_score', 'late_entry_status'])
             ->keyBy('exam_id');
 
         $activeExams = Exam::with(['teacher:id,name', 'class:id,name'])
