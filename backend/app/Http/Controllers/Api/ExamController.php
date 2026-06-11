@@ -10,6 +10,7 @@ use App\Models\ExamResult;
 use App\Models\Violation;
 use App\Models\MonitoringSnapshot;
 use App\Models\ProctoringAlert;
+use App\Models\ProctoringScore;
 use App\Models\AuditLog;
 use App\Models\Notification;
 use App\Models\ExamClassSchedule;
@@ -143,6 +144,85 @@ class ExamController extends Controller
         }
 
         return $evaluate();
+    }
+
+    /**
+     * Update ProctoringScore when a violation is reported from the frontend.
+     * This bridges the gap between client-side violations (tab_switch, identity_mismatch)
+     * and the score calculation system used by AI snapshot analysis.
+     */
+    private function updateProctoringScoreFromViolation(int $examResultId, string $violationType): void
+    {
+        try {
+            $score = ProctoringScore::firstOrCreate(
+                ['exam_result_id' => $examResultId],
+                function ($model) use ($examResultId) {
+                    $result = ExamResult::find($examResultId);
+                    if ($result) {
+                        $model->student_id = $result->student_id;
+                        $model->exam_id = $result->exam_id;
+                    }
+                }
+            );
+
+            // Map violation types to proctoring score fields and increment amounts
+            $scoreUpdates = [
+                'tab_switch' => ['tab_switch_score', 8],  // Weight: 0.10 in total score
+                'window_blur' => ['tab_switch_score', 6], // Also counts as context switch
+                'fullscreen_exit' => ['tab_switch_score', 10], // More severe
+                'identity_mismatch' => ['identity_mismatch_score', 15], // Weight: 0.20 in total score (high priority)
+            ];
+
+            if (!isset($scoreUpdates[$violationType])) {
+                return; // No proctoring score update needed for this violation type
+            }
+
+            [$scoreField, $increment] = $scoreUpdates[$violationType];
+            
+            // Increment the specific score field (capped at 100)
+            $currentValue = $score->$scoreField ?? 0;
+            $score->$scoreField = min(100, $currentValue + $increment);
+
+            // Recalculate total score using the same weighted formula from AnalyzeSnapshotJob
+            $weights = [
+                'object_detection' => 0.25,
+                'identity_mismatch' => 0.20,
+                'multi_face' => 0.20,
+                'no_face' => 0.10,
+                'head_turn' => 0.10,
+                'eye_gaze' => 0.05,
+                'tab_switch' => 0.10,
+            ];
+
+            $total = 0;
+            $total += ($score->object_detection_score ?? 0) * $weights['object_detection'];
+            $total += ($score->identity_mismatch_score ?? 0) * $weights['identity_mismatch'];
+            $total += ($score->multi_face_score ?? 0) * $weights['multi_face'];
+            $total += ($score->no_face_score ?? 0) * $weights['no_face'];
+            $total += ($score->head_turn_score ?? 0) * $weights['head_turn'];
+            $total += ($score->eye_gaze_score ?? 0) * $weights['eye_gaze'];
+            $total += ($score->tab_switch_score ?? 0) * $weights['tab_switch'];
+
+            $score->total_score = min(100, (int) round($total));
+
+            // Update risk level
+            if ($score->total_score >= 75) {
+                $score->risk_level = 'critical';
+            } elseif ($score->total_score >= 50) {
+                $score->risk_level = 'high';
+            } elseif ($score->total_score >= 25) {
+                $score->risk_level = 'medium';
+            } else {
+                $score->risk_level = 'low';
+            }
+
+            $score->save();
+        } catch (\Throwable $e) {
+            Log::warning("Failed to update proctoring score from violation: {$e->getMessage()}", [
+                'exam_result_id' => $examResultId,
+                'violation_type' => $violationType,
+            ]);
+        }
     }
 
     private function forgetExamShowCache(int $examId): void
@@ -3896,6 +3976,10 @@ class ExamController extends Controller
         // Update violation count
         $result->violation_count = $result->violations()->count();
         $result->save();
+        
+        // Update proctoring score for score-weighted violation types
+        $this->updateProctoringScoreFromViolation($result->id, $violationType);
+        
         $policy = $this->getViolationPolicyData($exam, (int) ($result->violation_count ?? 0));
 
         // Broadcast: violation reported
