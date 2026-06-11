@@ -1,0 +1,16 @@
+# Optional: Face recognition for identity verification
+# Install these AFTER requirements.txt if you want face embedding extraction
+# Requires CMake and C++ compiler
+#
+# Linux installation:
+#   apt-get install cmake build-essential
+#   pip install -r requirements-face-recognition.txt
+#
+# Windows installation:
+#   Install Visual Studio Build Tools
+#   pip install -r requirements-face-recognition.txt
+#
+# If installation fails, the service will still work but face_embedding will be None
+
+face_recognition>=1.3.0
+dlib>=19.24.0

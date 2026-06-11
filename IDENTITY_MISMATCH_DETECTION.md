@@ -180,18 +180,61 @@ FACE_SIMILARITY_THRESHOLD=0.6
 
 ## Installation & Setup
 
-### 1. Install Dependencies
+### Option 1: Docker Build (Recommended - Auto-Install)
+
+The Dockerfile will automatically attempt to install face_recognition. If it fails, the service will still work but without identity verification.
+
+```bash
+# Build akan otomatis install dependencies (termasuk cmake & build-essential)
+docker-compose build proctoring
+
+# Jika build berhasil, cek health endpoint
+docker-compose up -d proctoring
+curl http://localhost:8001/health
+
+# Expected response:
+{
+  "status": "ok",
+  "yolo_loaded": true,
+  "mediapipe_loaded": true,
+  "face_recognition_loaded": true,  # true jika berhasil install
+  "device": "0"
+}
+```
+
+### Option 2: Manual Installation (If Docker Build Fails)
+
+Jika build Docker gagal karena dlib, gunakan approach ini:
 
 ```bash
 cd backend/proctoring-service
 
-# Install face_recognition and dlib
+# Install core dependencies dulu
 pip install -r requirements.txt
 
-# Note: dlib requires CMake and C++ compiler
-# On Windows: Install Visual Studio Build Tools
-# On Linux: sudo apt-get install cmake build-essential
+# Test service (tanpa face recognition)
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
+
+# Jika ingin face recognition, install terpisah:
+# Linux:
+sudo apt-get install cmake build-essential
+pip install -r requirements-face-recognition.txt
+
+# Windows:
+# 1. Install Visual Studio Build Tools
+# 2. pip install -r requirements-face-recognition.txt
 ```
+
+### Option 3: Skip Face Recognition (Fallback Mode)
+
+Jika dlib tetap gagal install, sistem akan tetap berjalan tanpa identity verification:
+
+- ✅ YOLO object detection masih jalan
+- ✅ MediaPipe head pose & eye gaze masih jalan
+- ✅ Tab switch, fullscreen violations masih jalan
+- ❌ Identity mismatch detection akan disabled (`face_embedding` = `None`)
+
+**No action needed** - service akan graceful degradation otomatis.
 
 ### 2. Run Migrations
 
