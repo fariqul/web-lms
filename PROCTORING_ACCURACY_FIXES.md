@@ -158,7 +158,42 @@ mysql> SELECT exam_result_id, tab_switch_score, total_score, risk_level
 
 ## Future Work (Optional)
 
-### 1. Identity Mismatch Detection
+### 1. ✅ Identity Mismatch Detection (IMPLEMENTED!)
+
+**Status**: ✅ COMPLETED
+
+Implementasi "First Face Baseline Verification" untuk mendeteksi pergantian identitas siswa selama ujian.
+
+**Konsep**:
+- Snapshot pertama dengan wajah terdeteksi = baseline
+- Setiap snapshot berikutnya dibandingkan dengan baseline
+- Jika similarity < 0.6 → Identity mismatch alert!
+
+**Benefits**:
+- ✅ Tidak bergantung pada foto profil (yang mungkin tidak valid)
+- ✅ Baseline dari kondisi ujian real (same lighting, position)
+- ✅ Deteksi pergantian orang (joki) selama ujian
+- ✅ Score weight 0.20 (high priority, second only to object detection)
+
+**Implementation**:
+- Database: Added `baseline_face_embedding` + `baseline_captured_at` to `exam_results`
+- Proctoring Service: Face embedding extraction using `face_recognition` library (128-dim)
+- Backend: Cosine similarity comparison with configurable threshold
+- Alert: `identity_mismatch` violation with confidence score
+
+**Files Modified**:
+- `backend/database/migrations/2026_06_11_000001_add_baseline_face_embedding_to_exam_results.php` (NEW)
+- `backend/proctoring-service/main.py` (added face embedding extraction)
+- `backend/proctoring-service/requirements.txt` (added face_recognition + dlib)
+- `backend/app/Jobs/AnalyzeSnapshotJob.php` (added checkBaselineFaceMatch)
+- `backend/app/Models/ExamResult.php` (added baseline fields)
+- `backend/.env.example` (added FACE_SIMILARITY_THRESHOLD=0.6)
+
+**Documentation**: See `IDENTITY_MISMATCH_DETECTION.md` for complete setup guide.
+
+---
+
+### 2. Enhanced Monitoring Dashboard
 Saat ini `identity_mismatch_score` field sudah siap, tapi belum ada mekanisme untuk:
 - Face comparison antara work photo vs monitoring snapshots
 - Trigger `identity_mismatch` violation dari AI service

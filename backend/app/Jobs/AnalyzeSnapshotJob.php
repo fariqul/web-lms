@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\MonitoringSnapshot;
 use App\Models\ProctoringAlert;
 use App\Models\ProctoringScore;
+use App\Models\ExamResult;
 use App\Services\SocketBroadcastService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -174,6 +175,9 @@ class AnalyzeSnapshotJob implements ShouldQueue
             // Update proctoring score
             $this->updateProctoringScore($result);
 
+            // Check baseline face for identity mismatch detection
+            $this->checkBaselineFaceMatch($result);
+
             // Broadcast alert to monitoring page if risk is notable
             $riskScore = $result['risk_score'] ?? 0;
             $detections = $result['detections'] ?? [];
@@ -318,5 +322,107 @@ class AnalyzeSnapshotJob implements ShouldQueue
         }
 
         ProctoringAlert::create($payload);
+    }
+
+    /**
+     * Check if current snapshot's face matches the baseline face (first snapshot).
+     * Implements "First Face Baseline Verification" to detect person substitution.
+     */
+    private function checkBaselineFaceMatch(array $result): void
+    {
+        $faceAnalysis = $result['face_analysis'] ?? null;
+        
+        // Skip if no face detected or no embedding extracted
+        if (!$faceAnalysis || !($faceAnalysis['face_detected'] ?? false)) {
+            return;
+        }
+
+        $currentEmbedding = $faceAnalysis['face_embedding'] ?? null;
+        if (!$currentEmbedding || !is_array($currentEmbedding)) {
+            return;
+        }
+
+        $examResult = ExamResult::find($this->examResultId);
+        if (!$examResult) {
+            return;
+        }
+
+        // If no baseline exists, this is the first snapshot with a face — set as baseline
+        if (!$examResult->baseline_face_embedding) {
+            $examResult->baseline_face_embedding = json_encode($currentEmbedding);
+            $examResult->baseline_captured_at = now();
+            $examResult->save();
+            
+            Log::info("[Proctoring] Baseline face captured for exam result {$this->examResultId}");
+            return;
+        }
+
+        // Compare current face with baseline
+        $baselineEmbedding = json_decode($examResult->baseline_face_embedding, true);
+        if (!is_array($baselineEmbedding)) {
+            Log::warning("[Proctoring] Invalid baseline embedding format for exam result {$this->examResultId}");
+            return;
+        }
+
+        $similarity = $this->calculateCosineSimilarity($baselineEmbedding, $currentEmbedding);
+        
+        // Similarity threshold: 0.6 (typical threshold for face_recognition library)
+        // Values closer to 1.0 = more similar
+        // Below 0.6 = likely different person
+        $threshold = (float) env('FACE_SIMILARITY_THRESHOLD', 0.6);
+        
+        if ($similarity < $threshold) {
+            // Different person detected!
+            $confidencePercentage = round((1 - $similarity) * 100, 1);
+            
+            $this->createAlertIfNotDuplicate('identity_mismatch', [
+                'exam_id' => $this->examId,
+                'student_id' => $this->studentId,
+                'snapshot_id' => $this->snapshotId,
+                'type' => 'identity_mismatch',
+                'severity' => 'critical',
+                'description' => "Wajah tidak cocok dengan baseline — kemungkinan pergantian orang ({$confidencePercentage}% berbeda)",
+                'confidence' => 1 - $similarity, // Higher value = more confident it's different
+                'details' => [
+                    'similarity' => round($similarity, 4),
+                    'threshold' => $threshold,
+                    'baseline_captured_at' => $examResult->baseline_captured_at?->toIso8601String(),
+                ],
+            ], 'identity_' . date('YmdHi')); // Fingerprint per minute to avoid spam
+
+            Log::warning("[Proctoring] Identity mismatch detected for exam result {$this->examResultId}: similarity={$similarity}, threshold={$threshold}");
+        }
+    }
+
+    /**
+     * Calculate cosine similarity between two face embeddings.
+     * Returns a value between -1 and 1 (typically 0 to 1 for face embeddings).
+     * Higher value = more similar.
+     */
+    private function calculateCosineSimilarity(array $embedding1, array $embedding2): float
+    {
+        if (count($embedding1) !== count($embedding2)) {
+            Log::warning("[Proctoring] Embedding dimension mismatch: " . count($embedding1) . " vs " . count($embedding2));
+            return 0.0;
+        }
+
+        $dotProduct = 0.0;
+        $magnitude1 = 0.0;
+        $magnitude2 = 0.0;
+
+        for ($i = 0; $i < count($embedding1); $i++) {
+            $dotProduct += $embedding1[$i] * $embedding2[$i];
+            $magnitude1 += $embedding1[$i] ** 2;
+            $magnitude2 += $embedding2[$i] ** 2;
+        }
+
+        $magnitude1 = sqrt($magnitude1);
+        $magnitude2 = sqrt($magnitude2);
+
+        if ($magnitude1 == 0 || $magnitude2 == 0) {
+            return 0.0;
+        }
+
+        return $dotProduct / ($magnitude1 * $magnitude2);
     }
 }

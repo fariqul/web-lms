@@ -70,12 +70,13 @@ PROHIBITED_CLASSES = {
 yolo_model = None
 face_detection = None
 face_mesh = None
+face_recognition = None  # For face embedding extraction
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load models on startup."""
-    global yolo_model, face_detection, face_mesh
+    global yolo_model, face_detection, face_mesh, face_recognition
 
     # Load YOLO
     try:
@@ -112,6 +113,15 @@ async def lifespan(app: FastAPI):
         face_detection = None
         face_mesh = None
 
+    # Load Face Recognition (for face embeddings)
+    try:
+        import face_recognition as fr
+        face_recognition = fr
+        logger.info("Face Recognition library loaded for embeddings")
+    except Exception as e:
+        logger.warning(f"Face Recognition library not available: {e}")
+        face_recognition = None
+
     yield
 
     yolo_model = None
@@ -121,6 +131,7 @@ async def lifespan(app: FastAPI):
         face_mesh.close()
     face_detection = None
     face_mesh = None
+    face_recognition = None
 
 
 app = FastAPI(
@@ -151,6 +162,7 @@ class FaceAnalysis(BaseModel):
     looking_direction: str = "center"
     eye_gaze_ratio: Optional[float] = None
     is_gaze_deviated: bool = False
+    face_embedding: Optional[list[float]] = None  # 128-dim face embedding for identity verification
 
 
 class AnalysisResult(BaseModel):
@@ -270,10 +282,40 @@ def estimate_eye_gaze(landmarks, img_w: int, img_h: int) -> dict:
         return {"gaze_ratio": 0, "is_deviated": False}
 
 
+def extract_face_embedding(img_rgb: np.ndarray) -> Optional[list[float]]:
+    """
+    Extract 128-dimensional face embedding using face_recognition library.
+    Returns None if no face found or library not available.
+    """
+    if face_recognition is None:
+        return None
+    
+    try:
+        # face_recognition expects RGB format
+        face_locations = face_recognition.face_locations(img_rgb, model="hog")  # Use HOG for speed
+        
+        if not face_locations:
+            return None
+        
+        # Get encoding for the first detected face
+        face_encodings = face_recognition.face_encodings(img_rgb, face_locations, num_jitters=1)
+        
+        if not face_encodings:
+            return None
+        
+        # Convert numpy array to list for JSON serialization
+        embedding = face_encodings[0].tolist()
+        
+        return embedding
+    except Exception as e:
+        logger.warning(f"Failed to extract face embedding: {e}")
+        return None
+
+
 def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
     """
-    Run MediaPipe face detection + face mesh.
-    Returns face count, head pose, and eye gaze info.
+    Run MediaPipe face detection + face mesh + face embedding extraction.
+    Returns face count, head pose, eye gaze info, and face embedding for identity verification.
     """
     if face_detection is None or face_mesh is None:
         return FaceAnalysis(face_detected=False, face_count=0, face_confidence=0)
@@ -296,6 +338,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
             face_confidence=0,
             is_looking_away=False,
             looking_direction="no_face",
+            face_embedding=None,
         )
 
     # Step 2: Face Mesh — head pose + eye gaze
@@ -333,6 +376,9 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         gaze_ratio = gaze["gaze_ratio"]
         is_gaze_deviated = gaze["is_deviated"]
 
+    # Step 3: Extract face embedding for identity verification
+    face_embedding = extract_face_embedding(img_rgb)
+
     return FaceAnalysis(
         face_detected=True,
         face_count=face_count,
@@ -344,6 +390,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         looking_direction=looking_direction,
         eye_gaze_ratio=gaze_ratio,
         is_gaze_deviated=is_gaze_deviated,
+        face_embedding=face_embedding,
     )
 
 
@@ -356,6 +403,7 @@ async def health():
         "status": "ok",
         "yolo_loaded": yolo_model is not None,
         "mediapipe_loaded": face_detection is not None and face_mesh is not None,
+        "face_recognition_loaded": face_recognition is not None,
         "device": DEVICE,
     }
 
