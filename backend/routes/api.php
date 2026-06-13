@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\GraduationController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\NewsController;
+use App\Http\Controllers\Api\ProctoringDiagnosticController;
 
 /*
 |--------------------------------------------------------------------------
@@ -164,6 +165,28 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/graduations/announcement-settings', [GraduationController::class, 'updateAnnouncementSettings']);
         // Wildcard route last — would catch 'bulk' and 'class' if placed first
         Route::post('/graduations/{studentId}/{classId}', [GraduationController::class, 'setGraduationStatus']);
+
+        // ============================================
+        // PROCTORING DIAGNOSTIC TOOL (Admin only)
+        // ============================================
+        Route::prefix('proctoring-diagnostic')->group(function () {
+            // Analyze captured frame
+            Route::post('/analyze', [ProctoringDiagnosticController::class, 'analyzeCapture']);
+            
+            // Test history
+            Route::get('/tests', [ProctoringDiagnosticController::class, 'getTestHistory']);
+            Route::get('/tests/{id}', [ProctoringDiagnosticController::class, 'getTestResult']);
+            Route::get('/tests/compare', [ProctoringDiagnosticController::class, 'compareTests']);
+            
+            // Reports
+            Route::get('/tests/{id}/report', [ProctoringDiagnosticController::class, 'downloadReport']);
+            
+            // System health
+            Route::get('/health', [ProctoringDiagnosticController::class, 'getHealthStatus']);
+            
+            // Scenario testing
+            Route::post('/scenarios/{scenario}/run', [ProctoringDiagnosticController::class, 'runScenario']);
+        });
     });
 
     // ============================================
