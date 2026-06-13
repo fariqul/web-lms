@@ -28,6 +28,7 @@ import {
   TrendingUp,
   ImagePlus,
   Newspaper,
+  Activity,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
@@ -77,6 +78,7 @@ const navigation: NavItem[] = [
   { name: 'Manajemen Jadwal', href: '/admin/jadwal', icon: Calendar, roles: ['admin'] },
   { name: 'Jaringan Sekolah', href: '/admin/jaringan', icon: Wifi, roles: ['admin'] },
   { name: 'Statistik', href: '/admin/statistik', icon: BarChart3, roles: ['admin'] },
+  { name: 'Diagnostic Tool', href: '/admin/proctoring-diagnostic', icon: Activity, roles: ['admin'] },
   { name: 'Export Data', href: '/admin/export', icon: Download, roles: ['admin'] },
   { name: 'Audit Log', href: '/admin/audit-log', icon: Shield, roles: ['admin'] },
   // Common
