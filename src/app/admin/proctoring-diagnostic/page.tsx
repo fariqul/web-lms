@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useCallback, useEffect } from 'react';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { CameraPreview } from '@/components/diagnostic/CameraPreview';
 import { AnalysisResults } from '@/components/diagnostic/AnalysisResults';
 import { DetectionOverlay } from '@/components/diagnostic/DetectionOverlay';
@@ -13,7 +13,6 @@ import type {
   DiagnosticPageState,
   AnalysisResult,
   HistoricalTest,
-  SystemHealth,
   TestScenario,
   ScenarioResult,
   ApiResponse,
@@ -33,10 +32,6 @@ import { AlertCircle, Activity, Loader2 } from 'lucide-react';
  *               7.1 (Health check frequency), 8.1 (Scenario validation)
  */
 export default function DiagnosticPage() {
-  const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
-
   const [pageState, setPageState] = useState<DiagnosticPageState>({
     testStatus: 'idle',
     currentTest: null,
@@ -49,51 +44,11 @@ export default function DiagnosticPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   /**
-   * Check admin authorization on mount
-   * Requirement: 1.1 (Admin-only access)
+   * Load test history on mount
    */
   useEffect(() => {
-    const checkAuthorization = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/login');
-          return;
-        }
-
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Authorization failed');
-        }
-
-        const data = await response.json();
-        
-        if (data.role !== 'admin') {
-          setErrorMessage('Access denied. Admin role required.');
-          setTimeout(() => router.push('/dashboard'), 2000);
-          return;
-        }
-
-        setIsAuthorized(true);
-        // Load initial test history
-        await loadTestHistory();
-      } catch (error) {
-        console.error('Authorization check failed:', error);
-        setErrorMessage('Failed to verify authorization');
-        setTimeout(() => router.push('/login'), 2000);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    checkAuthorization();
-  }, [router]);
+    loadTestHistory();
+  }, []);
 
   /**
    * Load test history from backend
@@ -333,37 +288,8 @@ ${comparison.regressions.map(r => `- ${r.component}: ${r.regression}`).join('\n'
     });
   };
 
-  // Show loading state while checking authorization
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Verifying authorization...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if not authorized
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
-            Access Denied
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 text-center">
-            {errorMessage || 'You do not have permission to access this page.'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+    <DashboardLayout>
       <div className="max-w-[1920px] mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -482,6 +408,6 @@ ${comparison.regressions.map(r => `- ${r.component}: ${r.regression}`).join('\n'
           <TestHistory tests={pageState.testHistory} onCompare={handleCompareTests} />
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
