@@ -25,18 +25,12 @@ export function CameraPreview({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Request camera permission and start video stream
    */
   const handleStartCamera = async () => {
     setCameraState((prev) => ({ ...prev, status: 'requesting' }));
-
-    // Clear any existing fallback timeout
-    if (fallbackTimeoutRef.current) {
-      clearTimeout(fallbackTimeoutRef.current);
-    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -47,52 +41,12 @@ export function CameraPreview({
         },
       });
 
-      if (videoRef.current) {
-        const video = videoRef.current;
-        video.srcObject = stream;
-        
-        // Force video to load and play
-        video.onloadedmetadata = () => {
-          video.play().then(() => {
-            const width = video.videoWidth || 1280;
-            const height = video.videoHeight || 720;
-
-            setCameraState({
-              status: 'active',
-              stream,
-              resolution: { width, height },
-              errorMessage: null,
-            });
-          }).catch((playError) => {
-            console.error('Play error:', playError);
-            // Even if play fails, try to set active if we have dimensions
-            const width = video.videoWidth || 1280;
-            const height = video.videoHeight || 720;
-            
-            setCameraState({
-              status: 'active',
-              stream,
-              resolution: { width, height },
-              errorMessage: null,
-            });
-          });
-        };
-
-        // Fallback: if onloadedmetadata doesn't fire within 2 seconds
-        fallbackTimeoutRef.current = setTimeout(() => {
-          if (video.readyState >= 1) { // HAVE_METADATA or higher
-            const width = video.videoWidth || 1280;
-            const height = video.videoHeight || 720;
-            
-            setCameraState({
-              status: 'active',
-              stream,
-              resolution: { width, height },
-              errorMessage: null,
-            });
-          }
-        }, 2000);
-      }
+      setCameraState({
+        status: 'active',
+        stream,
+        resolution: { width: 1280, height: 720 },
+        errorMessage: null,
+      });
     } catch (error) {
       const err = error as Error;
       
@@ -121,6 +75,38 @@ export function CameraPreview({
         });
         onError(err.message);
       }
+    }
+  };
+
+  /**
+   * Bind video stream to video element when it becomes available
+   */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && cameraState.stream) {
+      video.srcObject = cameraState.stream;
+      video.play().catch((playError) => {
+        console.error('Error playing camera video stream:', playError);
+      });
+    }
+  }, [cameraState.stream, cameraState.status]);
+
+  /**
+   * Dynamically update video resolution once metadata is loaded
+   */
+  const handleVideoMetadata = () => {
+    if (videoRef.current) {
+      const width = videoRef.current.videoWidth || 1280;
+      const height = videoRef.current.videoHeight || 720;
+      setCameraState((prev) => {
+        if (prev.status === 'active') {
+          return {
+            ...prev,
+            resolution: { width, height },
+          };
+        }
+        return prev;
+      });
     }
   };
 
@@ -203,9 +189,6 @@ export function CameraPreview({
       if (cameraState.stream) {
         cameraState.stream.getTracks().forEach((track) => track.stop());
       }
-      if (fallbackTimeoutRef.current) {
-        clearTimeout(fallbackTimeoutRef.current);
-      }
     };
   }, [cameraState.stream]);
 
@@ -245,6 +228,7 @@ export function CameraPreview({
               autoPlay
               playsInline
               muted
+              onLoadedMetadata={handleVideoMetadata}
               className="w-full h-full object-cover"
             />
             <canvas ref={canvasRef} className="hidden" />
