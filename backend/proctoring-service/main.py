@@ -334,24 +334,61 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         face_count = len(det_results.detections)
         max_confidence = max(d.score[0] for d in det_results.detections)
 
-    # Fallback 1: If no face detected, try to enhance brightness (gamma correction) and detect again.
-    # This helps significantly in low-light conditions on mobile front cameras.
+    # Fallback pipeline for low-light or backlit images
     img_enhanced = None
+    img_clahe = None
     if face_count == 0:
-        logger.info("No face detected on original image. Trying with gamma correction...")
+        logger.info("No face detected on original image. Trying CLAHE (contrast enhancement)...")
         try:
-            gamma = 1.6
-            invGamma = 1.0 / gamma
-            table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-            img_enhanced = cv2.LUT(img_rgb, table)
+            # Convert RGB to LAB, apply CLAHE on L channel
+            lab = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)
+            l_channel, a_channel, b_channel = cv2.split(lab)
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            cl = clahe.apply(l_channel)
+            img_clahe = cv2.cvtColor(cv2.merge((cl, a_channel, b_channel)), cv2.COLOR_LAB2RGB)
             
-            det_results = face_detection.process(img_enhanced)
+            det_results = face_detection.process(img_clahe)
             if det_results.detections:
                 face_count = len(det_results.detections)
                 max_confidence = max(d.score[0] for d in det_results.detections)
-                logger.info(f"Face detected after gamma correction! Confidence: {max_confidence}")
+                img_enhanced = img_clahe
+                logger.info(f"Face detected after CLAHE contrast enhancement! Confidence: {max_confidence}")
         except Exception as e:
-            logger.warning(f"Gamma correction fallback failed: {e}")
+            logger.warning(f"CLAHE fallback failed: {e}")
+
+    if face_count == 0:
+        logger.info("Still no face detected. Trying Gamma Correction (brightness boost)...")
+        try:
+            gamma = 1.8
+            invGamma = 1.0 / gamma
+            table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+            img_gamma = cv2.LUT(img_rgb, table)
+            
+            det_results = face_detection.process(img_gamma)
+            if det_results.detections:
+                face_count = len(det_results.detections)
+                max_confidence = max(d.score[0] for d in det_results.detections)
+                img_enhanced = img_gamma
+                logger.info(f"Face detected after Gamma Correction! Confidence: {max_confidence}")
+        except Exception as e:
+            logger.warning(f"Gamma Correction fallback failed: {e}")
+
+    if face_count == 0 and img_clahe is not None:
+        logger.info("Still no face. Trying CLAHE + Gamma Correction combined...")
+        try:
+            gamma = 1.5
+            invGamma = 1.0 / gamma
+            table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+            img_combined = cv2.LUT(img_clahe, table)
+            
+            det_results = face_detection.process(img_combined)
+            if det_results.detections:
+                face_count = len(det_results.detections)
+                max_confidence = max(d.score[0] for d in det_results.detections)
+                img_enhanced = img_combined
+                logger.info(f"Face detected after CLAHE + Gamma Correction! Confidence: {max_confidence}")
+        except Exception as e:
+            logger.warning(f"Combined CLAHE + Gamma fallback failed: {e}")
 
     # Step 2: Face Mesh — head pose + eye gaze
     mesh_img = img_enhanced if img_enhanced is not None else img_rgb
