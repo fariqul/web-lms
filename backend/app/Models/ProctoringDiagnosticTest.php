@@ -11,6 +11,8 @@ class ProctoringDiagnosticTest extends Model
 {
     use HasFactory;
 
+    public const UPDATED_AT = null;
+
     protected $fillable = [
         'admin_id',
         'overall_health_score',
