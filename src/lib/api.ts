@@ -9,12 +9,22 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 /**
  * Get full API URL for a given endpoint
- * @param endpoint - API endpoint (e.g., '/api/health' or 'api/health')
+ * @param endpoint - API endpoint (e.g., '/api/health' or 'api/health' or '/login')
  * @returns Full URL to API endpoint
+ * 
+ * Examples:
+ * - getApiUrl('/api/health') → 'https://api.libelslms.my.id/api/health'
+ * - getApiUrl('/login') → 'https://api.libelslms.my.id/api/login' (auto-adds /api)
+ * - getApiUrl('health') → 'https://api.libelslms.my.id/api/health'
  */
 export function getApiUrl(endpoint: string): string {
   // Ensure endpoint starts with /
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  // If endpoint doesn't start with /api, prepend it
+  if (!cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = `/api${cleanEndpoint}`;
+  }
   
   // If no base URL configured, return endpoint as-is (same-origin request)
   if (!API_BASE_URL) {
