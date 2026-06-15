@@ -60,13 +60,22 @@ class ProctoringDiagnosticController extends Controller
             // Calculate image size (approximate from base64)
             $imageSizeKb = $this->calculateImageSize($imageData);
 
+            // Extract binary contents and mime type from base64 for multipart upload
+            $mimeType = 'image/jpeg';
+            $base64Data = $imageData;
+            if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+                $base64Data = substr($imageData, strpos($imageData, ',') + 1);
+                $mimeType = 'image/' . $type[1];
+            }
+            $imageContents = base64_decode($base64Data);
+
             // 2. Forward image to proctoring service
             $proctoringServiceUrl = env('PROCTORING_SERVICE_URL', 'http://proctoring:8001');
             $startTime = microtime(true);
 
-            $response = Http::timeout(60)->post("{$proctoringServiceUrl}/analyze", [
-                'image' => $imageData,
-            ]);
+            $response = Http::timeout(60)
+                ->attach('image', $imageContents, 'capture.jpg', ['Content-Type' => $mimeType])
+                ->post("{$proctoringServiceUrl}/analyze");
 
             if (!$response->successful()) {
                 throw new Exception("Proctoring service error: " . $response->body());
