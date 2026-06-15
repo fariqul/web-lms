@@ -9,6 +9,7 @@ import { TroubleshootingSuggestions } from '@/components/diagnostic/Troubleshoot
 import { TestHistory } from '@/components/diagnostic/TestHistory';
 import { LiveHealthMonitor } from '@/components/diagnostic/LiveHealthMonitor';
 import { InteractiveScenarioTester } from '@/components/diagnostic/InteractiveScenarioTester';
+import { apiGet, apiPost } from '@/lib/api';
 import type {
   DiagnosticPageState,
   AnalysisResult,
@@ -52,12 +53,7 @@ export default function DiagnosticPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('/api/proctoring-diagnostic/tests', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiGet('/api/proctoring-diagnostic/tests');
 
       if (!response.ok) {
         // Silently fail if backend not deployed yet (404)
@@ -113,14 +109,7 @@ export default function DiagnosticPage() {
         test_type: 'manual',
       };
 
-      const response = await fetch('/api/proctoring-diagnostic/analyze', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await apiPost('/api/proctoring-diagnostic/analyze', requestBody);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -174,11 +163,7 @@ export default function DiagnosticPage() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`/api/proctoring-diagnostic/tests/${testId}/report`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/proctoring-diagnostic/tests/${testId}/report`);
 
       if (!response.ok) {
         throw new Error('Failed to download report');

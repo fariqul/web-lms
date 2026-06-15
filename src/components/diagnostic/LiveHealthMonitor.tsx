@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Server, Database, Cpu, CheckCircle, AlertTriangle, XCircle, Activity } from 'lucide-react';
+import { apiGet } from '@/lib/api';
 import type { LiveHealthProps, SystemHealth } from '@/types/diagnostic';
 
 export function LiveHealthMonitor({ autoRefresh, refreshInterval }: LiveHealthProps) {
@@ -11,9 +12,7 @@ export function LiveHealthMonitor({ autoRefresh, refreshInterval }: LiveHealthPr
   const fetchHealth = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/proctoring-diagnostic/health', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiGet('/api/proctoring-diagnostic/health');
       
       // Silently fail if backend not deployed yet (404)
       if (!res.ok) {
