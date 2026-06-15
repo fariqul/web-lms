@@ -5,7 +5,9 @@
 
 // Get API base URL from environment variable
 // Defaults to empty string for same-origin requests (fallback)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Strip trailing /api if present — we'll add it ourselves in getApiUrl
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE_URL = RAW_API_BASE_URL.replace(/\/api\/?$/, '');
 
 /**
  * Get full API URL for a given endpoint
@@ -31,7 +33,7 @@ export function getApiUrl(endpoint: string): string {
     return cleanEndpoint;
   }
   
-  // Return full URL with base
+  // Return full URL with base (API_BASE_URL already has trailing /api stripped)
   return `${API_BASE_URL}${cleanEndpoint}`;
 }
 

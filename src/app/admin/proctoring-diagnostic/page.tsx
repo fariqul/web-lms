@@ -202,14 +202,8 @@ export default function DiagnosticPage() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(
+      const response = await apiGet(
         `/api/proctoring-diagnostic/tests/compare?ids=${testId1},${testId2}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
       );
 
       if (!response.ok) {
