@@ -42,12 +42,13 @@ export function CameraPreview({
       });
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        const video = videoRef.current;
+        video.srcObject = stream;
 
         // Wait for video metadata to load
-        videoRef.current.onloadedmetadata = () => {
-          const width = videoRef.current?.videoWidth || 0;
-          const height = videoRef.current?.videoHeight || 0;
+        const handleMetadataLoaded = () => {
+          const width = video.videoWidth || 0;
+          const height = video.videoHeight || 0;
 
           setCameraState({
             status: 'active',
@@ -56,6 +57,39 @@ export function CameraPreview({
             errorMessage: null,
           });
         };
+
+        // Set event handler before playing
+        video.onloadedmetadata = handleMetadataLoaded;
+
+        // Try to play the video
+        try {
+          await video.play();
+          
+          // If metadata already loaded, call handler manually
+          if (video.videoWidth > 0) {
+            handleMetadataLoaded();
+          } else {
+            // Fallback: wait a bit and check again
+            setTimeout(() => {
+              if (video.videoWidth > 0 && cameraState.status === 'requesting') {
+                handleMetadataLoaded();
+              }
+            }, 500);
+          }
+        } catch (playError) {
+          console.error('Error playing video:', playError);
+          // If play fails, still try to show the video
+          if (video.videoWidth > 0) {
+            handleMetadataLoaded();
+          } else {
+            // Fallback: wait a bit and check again
+            setTimeout(() => {
+              if (video.videoWidth > 0) {
+                handleMetadataLoaded();
+              }
+            }, 500);
+          }
+        }
       }
     } catch (error) {
       const err = error as Error;
