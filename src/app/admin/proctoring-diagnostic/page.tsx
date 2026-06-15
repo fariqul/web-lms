@@ -44,13 +44,6 @@ export default function DiagnosticPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   /**
-   * Load test history on mount
-   */
-  useEffect(() => {
-    loadTestHistory();
-  }, [loadTestHistory]);
-
-  /**
    * Load test history from backend
    * Requirement: 6.1 (Test persistence)
    */
@@ -85,6 +78,13 @@ export default function DiagnosticPage() {
       console.log('Test history not available:', error);
     }
   }, []);
+
+  /**
+   * Load test history on mount
+   */
+  useEffect(() => {
+    loadTestHistory();
+  }, [loadTestHistory]);
 
   /**
    * Handle camera frame capture and analysis
