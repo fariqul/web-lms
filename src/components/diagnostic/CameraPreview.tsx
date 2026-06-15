@@ -25,12 +25,18 @@ export function CameraPreview({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Request camera permission and start video stream
    */
   const handleStartCamera = async () => {
     setCameraState((prev) => ({ ...prev, status: 'requesting' }));
+
+    // Clear any existing fallback timeout
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -44,52 +50,48 @@ export function CameraPreview({
       if (videoRef.current) {
         const video = videoRef.current;
         video.srcObject = stream;
+        
+        // Force video to load and play
+        video.onloadedmetadata = () => {
+          video.play().then(() => {
+            const width = video.videoWidth || 1280;
+            const height = video.videoHeight || 720;
 
-        // Wait for video metadata to load
-        const handleMetadataLoaded = () => {
-          const width = video.videoWidth || 0;
-          const height = video.videoHeight || 0;
-
-          setCameraState({
-            status: 'active',
-            stream,
-            resolution: { width, height },
-            errorMessage: null,
+            setCameraState({
+              status: 'active',
+              stream,
+              resolution: { width, height },
+              errorMessage: null,
+            });
+          }).catch((playError) => {
+            console.error('Play error:', playError);
+            // Even if play fails, try to set active if we have dimensions
+            const width = video.videoWidth || 1280;
+            const height = video.videoHeight || 720;
+            
+            setCameraState({
+              status: 'active',
+              stream,
+              resolution: { width, height },
+              errorMessage: null,
+            });
           });
         };
 
-        // Set event handler before playing
-        video.onloadedmetadata = handleMetadataLoaded;
-
-        // Try to play the video
-        try {
-          await video.play();
-          
-          // If metadata already loaded, call handler manually
-          if (video.videoWidth > 0) {
-            handleMetadataLoaded();
-          } else {
-            // Fallback: wait a bit and check again
-            setTimeout(() => {
-              if (video.videoWidth > 0 && cameraState.status === 'requesting') {
-                handleMetadataLoaded();
-              }
-            }, 500);
+        // Fallback: if onloadedmetadata doesn't fire within 2 seconds
+        fallbackTimeoutRef.current = setTimeout(() => {
+          if (video.readyState >= 1) { // HAVE_METADATA or higher
+            const width = video.videoWidth || 1280;
+            const height = video.videoHeight || 720;
+            
+            setCameraState({
+              status: 'active',
+              stream,
+              resolution: { width, height },
+              errorMessage: null,
+            });
           }
-        } catch (playError) {
-          console.error('Error playing video:', playError);
-          // If play fails, still try to show the video
-          if (video.videoWidth > 0) {
-            handleMetadataLoaded();
-          } else {
-            // Fallback: wait a bit and check again
-            setTimeout(() => {
-              if (video.videoWidth > 0) {
-                handleMetadataLoaded();
-              }
-            }, 500);
-          }
-        }
+        }, 2000);
       }
     } catch (error) {
       const err = error as Error;
@@ -200,6 +202,9 @@ export function CameraPreview({
     return () => {
       if (cameraState.stream) {
         cameraState.stream.getTracks().forEach((track) => track.stop());
+      }
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
       }
     };
   }, [cameraState.stream]);

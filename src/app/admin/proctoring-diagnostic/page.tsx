@@ -48,7 +48,7 @@ export default function DiagnosticPage() {
    */
   useEffect(() => {
     loadTestHistory();
-  }, []);
+  }, [loadTestHistory]);
 
   /**
    * Load test history from backend
@@ -67,6 +67,11 @@ export default function DiagnosticPage() {
       });
 
       if (!response.ok) {
+        // Silently fail if backend not deployed yet (404)
+        if (response.status === 404) {
+          console.log('Backend diagnostic API not deployed yet');
+          return;
+        }
         throw new Error('Failed to load test history');
       }
 
@@ -76,7 +81,8 @@ export default function DiagnosticPage() {
         setPageState((prev) => ({ ...prev, testHistory: data.data! }));
       }
     } catch (error) {
-      console.error('Error loading test history:', error);
+      // Silently log error, don't show to user (backend may not be deployed)
+      console.log('Test history not available:', error);
     }
   }, []);
 

@@ -14,10 +14,22 @@ export function LiveHealthMonitor({ autoRefresh, refreshInterval }: LiveHealthPr
       const res = await fetch('/api/proctoring-diagnostic/health', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      // Silently fail if backend not deployed yet (404)
+      if (!res.ok) {
+        if (res.status === 404) {
+          console.log('Backend diagnostic API not deployed yet');
+          setLoading(false);
+          return;
+        }
+        throw new Error('Health check failed');
+      }
+      
       const data = await res.json();
       setHealth(data.data);
     } catch (error) {
-      console.error('Failed to fetch health:', error);
+      // Silently log error, don't spam console
+      console.log('Health monitoring not available');
     } finally {
       setLoading(false);
     }
@@ -32,7 +44,14 @@ export function LiveHealthMonitor({ autoRefresh, refreshInterval }: LiveHealthPr
   }, [autoRefresh, refreshInterval]);
 
   if (loading || !health) {
-    return <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-pulse h-48" />;
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-center text-gray-500 dark:text-gray-400">
+          <Activity className="w-5 h-5 mr-2" />
+          <span className="text-sm">System health monitoring will be available after backend deployment</span>
+        </div>
+      </div>
+    );
   }
 
   return (
