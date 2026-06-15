@@ -95,16 +95,16 @@ async def lifespan(app: FastAPI):
         import mediapipe as mp
 
         face_detection = mp.solutions.face_detection.FaceDetection(
-            model_selection=1,  # 1 = full-range (up to 5m, more robust for varied webcam positions)
-            min_detection_confidence=0.3,
+            model_selection=0,  # 0 = short-range (up to 2m, optimized for webcam/selfie closeups)
+            min_detection_confidence=0.2,
         )
 
         face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
             refine_landmarks=True,  # Enables iris landmarks (468-477)
-            min_detection_confidence=0.3,
-            min_tracking_confidence=0.3,
+            min_detection_confidence=0.2,
+            min_tracking_confidence=0.2,
         )
 
         logger.info("MediaPipe Face Detection + Face Mesh loaded")
@@ -282,17 +282,20 @@ def estimate_eye_gaze(landmarks, img_w: int, img_h: int) -> dict:
         return {"gaze_ratio": 0, "is_deviated": False}
 
 
-def extract_face_embedding(img_rgb: np.ndarray) -> Optional[list[float]]:
+def extract_face_embedding(img_rgb: np.ndarray, face_location: Optional[tuple] = None) -> Optional[list[float]]:
     """
-    Extract 128-dimensional face embedding using face_recognition library.
-    Returns None if no face found or library not available.
+    Extract face embedding using face_recognition library.
+    Optionally accepts a pre-detected face location tuple (top, right, bottom, left) to bypass HOG detector.
     """
     if face_recognition is None:
         return None
     
     try:
         # face_recognition expects RGB format
-        face_locations = face_recognition.face_locations(img_rgb, model="hog")  # Use HOG for speed
+        if face_location is not None:
+            face_locations = [face_location]
+        else:
+            face_locations = face_recognition.face_locations(img_rgb, model="hog")  # Use HOG for speed
         
         if not face_locations:
             return None
@@ -331,6 +334,36 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         face_count = len(det_results.detections)
         max_confidence = max(d.score[0] for d in det_results.detections)
 
+    # Fallback 1: If no face detected, try to enhance brightness (gamma correction) and detect again.
+    # This helps significantly in low-light conditions on mobile front cameras.
+    img_enhanced = None
+    if face_count == 0:
+        logger.info("No face detected on original image. Trying with gamma correction...")
+        try:
+            gamma = 1.6
+            invGamma = 1.0 / gamma
+            table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+            img_enhanced = cv2.LUT(img_rgb, table)
+            
+            det_results = face_detection.process(img_enhanced)
+            if det_results.detections:
+                face_count = len(det_results.detections)
+                max_confidence = max(d.score[0] for d in det_results.detections)
+                logger.info(f"Face detected after gamma correction! Confidence: {max_confidence}")
+        except Exception as e:
+            logger.warning(f"Gamma correction fallback failed: {e}")
+
+    # Step 2: Face Mesh — head pose + eye gaze
+    mesh_img = img_enhanced if img_enhanced is not None else img_rgb
+    mesh_results = face_mesh.process(mesh_img)
+
+    # Fallback 2: If face detector failed but Face Mesh found landmarks, trust Face Mesh.
+    # Face Mesh has its own internal localization model that can be more robust.
+    if face_count == 0 and mesh_results.multi_face_landmarks:
+        face_count = len(mesh_results.multi_face_landmarks)
+        max_confidence = 0.5
+        logger.info("Face detected via Face Mesh fallback!")
+
     if face_count == 0:
         return FaceAnalysis(
             face_detected=False,
@@ -341,9 +374,6 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
             face_embedding=None,
         )
 
-    # Step 2: Face Mesh — head pose + eye gaze
-    mesh_results = face_mesh.process(img_rgb)
-
     head_yaw = 0.0
     head_pitch = 0.0
     head_roll = 0.0
@@ -351,6 +381,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
     looking_direction = "center"
     gaze_ratio = 0.0
     is_gaze_deviated = False
+    face_location = None
 
     if mesh_results.multi_face_landmarks:
         landmarks = mesh_results.multi_face_landmarks[0].landmark
@@ -376,8 +407,36 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         gaze_ratio = gaze["gaze_ratio"]
         is_gaze_deviated = gaze["is_deviated"]
 
+        # Calculate absolute face location tuple (top, right, bottom, left) from landmarks
+        # This is passed to face_recognition to guarantee accurate embedding extraction.
+        try:
+            x_coords = [lm.x for lm in landmarks]
+            y_coords = [lm.y for lm in landmarks]
+            ymin_px = max(0, min(int(min(y_coords) * h), h - 1))
+            xmin_px = max(0, min(int(min(x_coords) * w), w - 1))
+            ymax_px = max(0, min(int(max(y_coords) * h), h - 1))
+            xmax_px = max(0, min(int(max(x_coords) * w), w - 1))
+            face_location = (ymin_px, xmax_px, ymax_px, xmin_px)
+        except Exception as e:
+            logger.warning(f"Failed to calculate face bounding box: {e}")
+
+    # If we have a pre-calculated face bounding box, use it
+    if face_location is None and det_results.detections:
+        try:
+            bbox = det_results.detections[0].location_data.relative_bounding_box
+            ymin_px = max(0, min(int(bbox.ymin * h), h - 1))
+            xmin_px = max(0, min(int(bbox.xmin * w), w - 1))
+            ymax_px = max(0, min(int((bbox.ymin + bbox.height) * h), h - 1))
+            xmax_px = max(0, min(int((bbox.xmin + bbox.width) * w), w - 1))
+            face_location = (ymin_px, xmax_px, ymax_px, xmin_px)
+        except Exception as e:
+            logger.warning(f"Failed to extract BlazeFace bounding box: {e}")
+
     # Step 3: Extract face embedding for identity verification
-    face_embedding = extract_face_embedding(img_rgb)
+    face_embedding = extract_face_embedding(mesh_img, face_location)
+    if face_embedding is None:
+        # Fallback to HOG scan of the entire image if targeted crop failed
+        face_embedding = extract_face_embedding(mesh_img)
 
     return FaceAnalysis(
         face_detected=True,
