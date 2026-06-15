@@ -24,9 +24,6 @@ class ProctoringDiagnosticController extends Controller
 
     public function __construct(TroubleshootingEngine $troubleshootingEngine)
     {
-        // Apply admin authorization middleware to all methods
-        $this->middleware(['auth:sanctum', 'role:admin']);
-        
         $this->troubleshootingEngine = $troubleshootingEngine;
     }
 
@@ -166,6 +163,15 @@ class ProctoringDiagnosticController extends Controller
     public function getTestHistory(Request $request): JsonResponse
     {
         try {
+            // Check if migration has been run
+            if (!\Schema::hasTable('proctoring_diagnostic_tests')) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'Diagnostic tables not yet migrated. Run php artisan migrate.',
+                ]);
+            }
+
             // Retrieve last 10 tests with admin relationship
             $tests = ProctoringDiagnosticTest::query()
                 ->with('admin:id,name')
@@ -198,7 +204,7 @@ class ProctoringDiagnosticController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve test history',
+                'message' => 'Failed to retrieve test history: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -321,26 +327,38 @@ class ProctoringDiagnosticController extends Controller
      */
     public function getHealthStatus(): JsonResponse
     {
-        // Cache results for 10 seconds
-        $healthStatus = Cache::remember('proctoring_diagnostic_health', 10, function () {
-            $backendApi = $this->checkBackendApi();
-            $proctoringService = $this->checkProctoringService();
-            $database = $this->checkDatabase();
-            $queueWorkers = $this->checkQueueWorkers();
+        try {
+            // Cache results for 10 seconds
+            $healthStatus = Cache::remember('proctoring_diagnostic_health', 10, function () {
+                $backendApi = $this->checkBackendApi();
+                $proctoringService = $this->checkProctoringService();
+                $database = $this->checkDatabase();
+                $queueWorkers = $this->checkQueueWorkers();
 
-            return [
-                'backend_api' => $backendApi,
-                'proctoring_service' => $proctoringService,
-                'database' => $database,
-                'queue_workers' => $queueWorkers,
-                'last_check' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s T'),
-            ];
-        });
+                return [
+                    'backend_api' => $backendApi,
+                    'proctoring_service' => $proctoringService,
+                    'database' => $database,
+                    'queue_workers' => $queueWorkers,
+                    'last_check' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s T'),
+                ];
+            });
 
-        return response()->json([
-            'success' => true,
-            'data' => $healthStatus,
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $healthStatus,
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Proctoring diagnostic health check error', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Health check failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
