@@ -96,15 +96,15 @@ async def lifespan(app: FastAPI):
 
         face_detection = mp.solutions.face_detection.FaceDetection(
             model_selection=0,  # 0 = short-range (up to 2m, optimized for webcam/selfie closeups)
-            min_detection_confidence=0.2,
+            min_detection_confidence=0.1,
         )
 
         face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
             refine_landmarks=True,  # Enables iris landmarks (468-477)
-            min_detection_confidence=0.2,
-            min_tracking_confidence=0.2,
+            min_detection_confidence=0.1,
+            min_tracking_confidence=0.1,
         )
 
         logger.info("MediaPipe Face Detection + Face Mesh loaded")

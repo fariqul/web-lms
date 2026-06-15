@@ -88,9 +88,37 @@ class ProctoringDiagnosticController extends Controller
             // Override processing_time_ms from service with actual measured time
             $analysisResult['processing_time_ms'] = $processingTimeMs;
 
+            // Map the Python proctoring service detections to the format expected by the Laravel backend
+            $allDetections = $analysisResult['all_detections'] ?? [];
+            $suspiciousObjs = $analysisResult['suspicious_objects'] ?? [];
+            $prohibitedObjs = $analysisResult['prohibited_objects'] ?? [];
+
+            $detectedObjects = array_map(function ($det) {
+                return [
+                    'class' => $det['class_name'] ?? 'unknown',
+                    'confidence' => $det['confidence'] ?? 0,
+                    'bbox' => $det['bbox'] ?? [0, 0, 0, 0],
+                ];
+            }, $allDetections);
+
+            $suspiciousNames = array_map(function ($det) {
+                return $det['class_name'] ?? '';
+            }, $suspiciousObjs);
+
+            $prohibitedNames = array_map(function ($det) {
+                return $det['class_name'] ?? '';
+            }, $prohibitedObjs);
+
+            $objectDetection = [
+                'detected_objects' => $detectedObjects,
+                'suspicious_objects' => $suspiciousNames,
+                'prohibited_objects' => $prohibitedNames,
+            ];
+
+            $analysisResult['object_detection'] = $objectDetection;
+
             // 3. Parse proctoring service response
             $faceAnalysis = $analysisResult['face_analysis'] ?? [];
-            $objectDetection = $analysisResult['object_detection'] ?? [];
             $multiFaceDetection = $analysisResult['multi_face_detection'] ?? [];
 
             // 4. Calculate component scores (0-100 scale)
