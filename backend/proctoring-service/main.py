@@ -30,7 +30,7 @@ from pydantic import BaseModel
 # ─── Config ──────────────────────────────────────────────────────────────
 
 MODEL_PATH = os.getenv("YOLO_MODEL", "yolov8n.pt")
-CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.45"))
+CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.25"))
 DEVICE = os.getenv("DEVICE", "0")  # "0" for GPU, "cpu" for CPU
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
@@ -528,7 +528,7 @@ async def analyze_snapshot(image: UploadFile = File(...)):
             device=DEVICE,
             conf=CONFIDENCE_THRESHOLD,
             verbose=False,
-            imgsz=320,
+            imgsz=640,
         )
 
         all_detections: list[DetectedObject] = []
@@ -678,7 +678,7 @@ async def analyze_batch(images: list[UploadFile] = File(...)):
                 device=DEVICE,
                 conf=CONFIDENCE_THRESHOLD,
                 verbose=False,
-                imgsz=320,
+                imgsz=640,
             )
 
             person_count = 0
