@@ -652,7 +652,7 @@ class ProctoringDiagnosticController extends Controller
     private function calculateFaceDetectionScore(array $faceAnalysis): array
     {
         $faceDetected = $faceAnalysis['face_detected'] ?? false;
-        $confidence = $faceAnalysis['confidence'] ?? 0;
+        $confidence = $faceAnalysis['face_confidence'] ?? $faceAnalysis['confidence'] ?? 0;
         
         return [
             'status' => $faceDetected ? 'success' : 'failure',
@@ -666,9 +666,11 @@ class ProctoringDiagnosticController extends Controller
 
     private function calculateHeadPoseScore(array $faceAnalysis): array
     {
-        $headPose = $faceAnalysis['head_pose'] ?? null;
+        $yaw = $faceAnalysis['head_yaw'] ?? null;
+        $pitch = $faceAnalysis['head_pitch'] ?? null;
+        $roll = $faceAnalysis['head_roll'] ?? null;
         
-        if (!$headPose) {
+        if ($yaw === null || $pitch === null || $roll === null) {
             return [
                 'status' => 'failure',
                 'score' => 0,
@@ -677,35 +679,34 @@ class ProctoringDiagnosticController extends Controller
             ];
         }
 
-        $yaw = abs($headPose['yaw'] ?? 0);
-        $pitch = abs($headPose['pitch'] ?? 0);
-        $roll = abs($headPose['roll'] ?? 0);
+        $absYaw = abs($yaw);
+        $absPitch = abs($pitch);
 
         // Score based on how close to center (0,0,0) the head pose is
         $yawThreshold = config('proctoring.head_yaw_threshold', 38);
         $pitchThreshold = config('proctoring.head_pitch_threshold', 33);
 
-        $yawScore = max(0, 100 - ($yaw / $yawThreshold * 100));
-        $pitchScore = max(0, 100 - ($pitch / $pitchThreshold * 100));
+        $yawScore = max(0, 100 - ($absYaw / $yawThreshold * 100));
+        $pitchScore = max(0, 100 - ($absPitch / $pitchThreshold * 100));
         $overallScore = intval(($yawScore + $pitchScore) / 2);
 
         return [
-            'status' => ($yaw < $yawThreshold && $pitch < $pitchThreshold) ? 'success' : 'degraded',
+            'status' => ($absYaw < $yawThreshold && $absPitch < $pitchThreshold) ? 'success' : 'degraded',
             'score' => $overallScore,
             'confidence' => 1.0,
             'details' => [
-                'yaw' => $headPose['yaw'],
-                'pitch' => $headPose['pitch'],
-                'roll' => $headPose['roll'],
+                'yaw' => $yaw,
+                'pitch' => $pitch,
+                'roll' => $roll,
             ],
         ];
     }
 
     private function calculateEyeGazeScore(array $faceAnalysis): array
     {
-        $eyeGaze = $faceAnalysis['eye_gaze'] ?? null;
+        $gazeRatio = $faceAnalysis['eye_gaze_ratio'] ?? null;
         
-        if (!$eyeGaze) {
+        if ($gazeRatio === null) {
             return [
                 'status' => 'failure',
                 'score' => 0,
@@ -714,22 +715,18 @@ class ProctoringDiagnosticController extends Controller
             ];
         }
 
-        $leftRatio = $eyeGaze['left_ratio'] ?? 0;
-        $rightRatio = $eyeGaze['right_ratio'] ?? 0;
         $threshold = config('proctoring.eye_gaze_threshold', 0.48);
 
-        // Score based on how normal the eye gaze is
-        $avgRatio = ($leftRatio + $rightRatio) / 2;
-        $score = intval((1 - abs($avgRatio - 0.35) / 0.35) * 100);
+        // Score based on how normal the eye gaze is (0 = center -> 100 score, 1 = extreme -> 0 score)
+        $score = intval((1 - min(1.0, $gazeRatio)) * 100);
         $score = max(0, min(100, $score));
 
         return [
-            'status' => ($leftRatio < $threshold && $rightRatio < $threshold) ? 'success' : 'degraded',
+            'status' => ($gazeRatio < $threshold) ? 'success' : 'degraded',
             'score' => $score,
             'confidence' => 1.0,
             'details' => [
-                'left_ratio' => $leftRatio,
-                'right_ratio' => $rightRatio,
+                'ratio' => $gazeRatio,
             ],
         ];
     }
@@ -849,8 +846,14 @@ class ProctoringDiagnosticController extends Controller
         if ($faceAnalysis['face_detected'] ?? false) {
             $face = [
                 'bbox' => $faceAnalysis['face_bbox'] ?? [0, 0, 0, 0],
-                'head_pose' => $faceAnalysis['head_pose'] ?? ['yaw' => 0, 'pitch' => 0, 'roll' => 0],
-                'eye_gaze' => $faceAnalysis['eye_gaze'] ?? ['left_ratio' => 0, 'right_ratio' => 0],
+                'head_pose' => [
+                    'yaw' => $faceAnalysis['head_yaw'] ?? 0,
+                    'pitch' => $faceAnalysis['head_pitch'] ?? 0,
+                    'roll' => $faceAnalysis['head_roll'] ?? 0,
+                ],
+                'eye_gaze' => [
+                    'ratio' => $faceAnalysis['eye_gaze_ratio'] ?? 0,
+                ],
                 'embedding_present' => isset($faceAnalysis['face_embedding']) && $faceAnalysis['face_embedding'] !== null,
             ];
 

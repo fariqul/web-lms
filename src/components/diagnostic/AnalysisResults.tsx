@@ -198,15 +198,9 @@ export function AnalysisResults({ result, onDownloadReport }: AnalysisResultsPro
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Eye L:</span>
+                      <span className="text-gray-500">Eye Gaze:</span>
                       <span className="ml-1 text-gray-900 dark:text-white font-mono">
-                        {face.eye_gaze.left_ratio.toFixed(2)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Eye R:</span>
-                      <span className="ml-1 text-gray-900 dark:text-white font-mono">
-                        {face.eye_gaze.right_ratio.toFixed(2)}
+                        {face.eye_gaze.ratio.toFixed(2)}
                       </span>
                     </div>
                   </div>

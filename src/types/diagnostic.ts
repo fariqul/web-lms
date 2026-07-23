@@ -67,8 +67,7 @@ export interface DetectedFace {
     roll: number;
   };
   eye_gaze: {
-    left_ratio: number;
-    right_ratio: number;
+    ratio: number;
   };
   embedding_present: boolean;
   embedding_dimensions?: number;

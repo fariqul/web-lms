@@ -155,6 +155,7 @@ class FaceAnalysis(BaseModel):
     face_detected: bool
     face_count: int
     face_confidence: float
+    face_bbox: Optional[list[int]] = None
     head_yaw: Optional[float] = None
     head_pitch: Optional[float] = None
     head_roll: Optional[float] = None
@@ -479,6 +480,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         face_detected=True,
         face_count=face_count,
         face_confidence=round(max_confidence, 3),
+        face_bbox=list(face_location) if face_location else None,
         head_yaw=head_yaw,
         head_pitch=head_pitch,
         head_roll=head_roll,
@@ -523,6 +525,23 @@ async def analyze_snapshot(image: UploadFile = File(...)):
         img_array = np.array(img)
 
         # ── YOLO Object Detection ──
+        # Predict with low threshold (0.01) to log raw detections for debugging/analysis
+        raw_results = yolo_model.predict(
+            img_array,
+            device=DEVICE,
+            conf=0.01,
+            verbose=False,
+            imgsz=640,
+        )
+
+        if raw_results and len(raw_results) > 0 and raw_results[0].boxes is not None:
+            raw_boxes = raw_results[0].boxes
+            raw_items = [
+                f"{raw_results[0].names.get(int(b.cls[0]), f'class_{int(b.cls[0])}')}:{float(b.conf[0]):.3f}"
+                for b in raw_boxes
+            ]
+            logger.info(f"[YOLO RAW DETECTIONS before threshold {CONFIDENCE_THRESHOLD}]: {', '.join(raw_items) if raw_items else 'None'}")
+
         results = yolo_model.predict(
             img_array,
             device=DEVICE,

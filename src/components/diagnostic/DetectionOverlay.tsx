@@ -253,7 +253,7 @@ function drawEyeGazeIndicators(
   width: number,
   height: number
 ) {
-  const { left_ratio, right_ratio } = face.eye_gaze;
+  const ratio = face.eye_gaze.ratio ?? 0;
 
   // Approximate eye positions (1/3 from top, 1/4 and 3/4 from left)
   const eyeY = y + height * 0.33;
@@ -264,10 +264,10 @@ function drawEyeGazeIndicators(
   const pupilRadius = 4;
 
   // Draw left eye
-  drawEye(ctx, leftEyeX, eyeY, eyeRadius, pupilRadius, left_ratio);
+  drawEye(ctx, leftEyeX, eyeY, eyeRadius, pupilRadius, ratio);
 
   // Draw right eye
-  drawEye(ctx, rightEyeX, eyeY, eyeRadius, pupilRadius, right_ratio);
+  drawEye(ctx, rightEyeX, eyeY, eyeRadius, pupilRadius, ratio);
 }
 
 /**

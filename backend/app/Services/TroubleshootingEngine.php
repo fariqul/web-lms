@@ -260,8 +260,8 @@ class TroubleshootingEngine
         $confidenceThreshold = 0.7;
 
         // Face detection
-        if (isset($analysisResult['face_analysis']['confidence']) && 
-            $analysisResult['face_analysis']['confidence'] < $confidenceThreshold) {
+        $faceConf = $analysisResult['face_analysis']['face_confidence'] ?? $analysisResult['face_analysis']['confidence'] ?? null;
+        if ($faceConf !== null && $faceConf < $confidenceThreshold) {
             $lowConfidenceComponents[] = 'face_detection';
         }
 
@@ -279,15 +279,13 @@ class TroubleshootingEngine
             }
         }
 
-        // Head pose (if confidence available)
-        if (isset($analysisResult['face_analysis']['head_pose']['confidence']) && 
-            $analysisResult['face_analysis']['head_pose']['confidence'] < $confidenceThreshold) {
+        // Head pose (if missing or unavailable)
+        if (isset($analysisResult['face_analysis']) && !isset($analysisResult['face_analysis']['head_yaw'])) {
             $lowConfidenceComponents[] = 'head_pose';
         }
 
-        // Eye gaze (if confidence available)
-        if (isset($analysisResult['face_analysis']['eye_gaze']['confidence']) && 
-            $analysisResult['face_analysis']['eye_gaze']['confidence'] < $confidenceThreshold) {
+        // Eye gaze (if missing or unavailable)
+        if (isset($analysisResult['face_analysis']) && !isset($analysisResult['face_analysis']['eye_gaze_ratio'])) {
             $lowConfidenceComponents[] = 'eye_gaze';
         }
 
