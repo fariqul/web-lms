@@ -936,4 +936,33 @@ class AttendanceController extends Controller
             'message' => 'Status kehadiran berhasil diupdate',
         ]);
     }
+
+    /**
+     * Delete an attendance session.
+     * Admin can delete any session; teacher can only delete their own session.
+     * Also removes all attendance records linked to this session.
+     */
+    public function destroy(Request $request, AttendanceSession $attendanceSession)
+    {
+        $user = $request->user();
+
+        // Admin can delete any session; teacher can only delete their own
+        if ($user->role !== 'admin' && $attendanceSession->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus sesi ini',
+            ], 403);
+        }
+
+        // Delete all attendance records for this session first
+        Attendance::where('session_id', $attendanceSession->id)->delete();
+
+        // Delete the session itself
+        $attendanceSession->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesi absensi berhasil dihapus',
+        ]);
+    }
 }

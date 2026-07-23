@@ -7,7 +7,7 @@ import { Card, CardHeader, Button, ConfirmDialog } from '@/components/ui';
 import {
   GraduationCap, FileEdit, Clock, Calendar, CheckCircle, PlayCircle,
   AlertCircle, Loader2, Users, Shield, Download, Send,
-  Search, Monitor, BarChart3, StopCircle, Lock, Unlock, RotateCcw, Trash2,
+  Search, Monitor, BarChart3, StopCircle, Lock, Unlock, RotateCcw, Trash2, Archive, ArchiveRestore,
 } from 'lucide-react';
 import api from '@/services/api';
 import { classAPI, examAPI, examSettingsAPI } from '@/services/api';
@@ -104,6 +104,12 @@ export default function AdminUjianPage() {
   const [resultsVisibilitySaving, setResultsVisibilitySaving] = useState(false);
   const [teacherExamResultsHidden, setTeacherExamResultsHidden] = useState(true);
 
+  // Archive states
+  const [archivedExams, setArchivedExams] = useState<Exam[]>([]);
+  const [showArchivedTab, setShowArchivedTab] = useState(false);
+  const [selectedCompletedExams, setSelectedCompletedExams] = useState<Set<number>>(new Set());
+  const [isArchiving, setIsArchiving] = useState(false);
+
   const toDateTimeLocalInputValue = (dateStr?: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -191,9 +197,10 @@ export default function AdminUjianPage() {
 
   const fetchData = async () => {
     try {
-      const [classesRes, examsRes] = await Promise.all([
+      const [classesRes, examsRes, archivedRes] = await Promise.all([
         classAPI.getAll(),
         api.get('/exams', { params: { per_page: 100 } }),
+        api.get('/exams', { params: { per_page: 100, archived: 1 } }),
       ]);
 
       const classesData = classesRes.data?.data || [];
@@ -208,6 +215,10 @@ export default function AdminUjianPage() {
       const examsRaw = examsRes.data?.data;
       const examsList = Array.isArray(examsRaw) ? examsRaw : (examsRaw?.data || []);
       setExams(examsList);
+
+      const archivedRaw = archivedRes.data?.data;
+      const archivedList = Array.isArray(archivedRaw) ? archivedRaw : (archivedRaw?.data || []);
+      setArchivedExams(archivedList);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -476,12 +487,44 @@ export default function AdminUjianPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       toast.error(axiosError.response?.data?.message || 'Gagal mengubah status kunci');
-    } finally {
+} finally {
       setLockingExamId(null);
     }
   };
 
-  const handleDeleteExam = async (examId: number) => {
+  const handleArchiveExams = async (examIds: number[]) => {
+    if (examIds.length === 0) return;
+    setIsArchiving(true);
+    try {
+      const response = await api.post('/exams/archive', { exam_ids: examIds });
+      toast.success(response.data?.message || `${examIds.length} ujian berhasil diarsipkan`);
+      setSelectedCompletedExams(new Set());
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mengarsipkan ujian');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleUnarchiveExams = async (examIds: number[]) => {
+    if (examIds.length === 0) return;
+    setIsArchiving(true);
+    try {
+      const response = await api.post('/exams/unarchive', { exam_ids: examIds });
+      toast.success(response.data?.message || `${examIds.length} ujian berhasil dikembalikan`);
+      setSelectedCompletedExams(new Set());
+      fetchData();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Gagal mengembalikan ujian dari arsip');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const confirmDeleteExam = async (examId: number) => {
     setDeletingExamId(examId);
     try {
       await api.delete(`/exams/${examId}`);
@@ -963,6 +1006,29 @@ export default function AdminUjianPage() {
                   Lihat Hasil
                 </Button>
               </Link>
+              {!showArchivedTab ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleArchiveExams([exam.id])}
+                  disabled={isArchiving}
+                  className="text-amber-600 border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  <Archive className="w-3.5 h-3.5 mr-1.5" />
+                  Arsip
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleUnarchiveExams([exam.id])}
+                  disabled={isArchiving}
+                  className="text-emerald-600 border-emerald-200 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                >
+                  <ArchiveRestore className="w-3.5 h-3.5 mr-1.5" />
+                  Kembalikan
+                </Button>
+              )}
             </>
           )}
 
@@ -1218,20 +1284,159 @@ export default function AdminUjianPage() {
           </Card>
         )}
 
-        {/* Completed Exams */}
-        {completedExams.length > 0 && (
-          <Card>
-            <CardHeader
-              title="Riwayat Ujian"
-              subtitle={`${completedExams.length} ujian selesai`}
-            />
-            <div className="space-y-3">
-              {completedExams.map(exam => (
-                <ExamCard key={exam.id} exam={exam} />
-              ))}
-            </div>
-          </Card>
-        )}
+        {/* Completed or Archived Exams Section */}
+        {(() => {
+          const displayExams = showArchivedTab ? archivedExams : completedExams;
+          const displayIds = displayExams.map((e) => e.id);
+          const isAllSelected = displayIds.length > 0 && displayIds.every((id) => selectedCompletedExams.has(id));
+
+          return (
+            <Card>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-700/60 mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
+                    {showArchivedTab ? 'Arsip Ujian' : 'Riwayat Ujian'}
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {showArchivedTab
+                      ? `${archivedExams.length} ujian yang diarsipkan`
+                      : `${completedExams.length} ujian yang telah selesai`}
+                  </p>
+                </div>
+
+                {/* Toggle Tabs */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowArchivedTab(false);
+                      setSelectedCompletedExams(new Set());
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      !showArchivedTab
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Selesai ({completedExams.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowArchivedTab(true);
+                      setSelectedCompletedExams(new Set());
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      showArchivedTab
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Archive className="w-3.5 h-3.5 text-amber-500" />
+                    Arsip ({archivedExams.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Bulk Action Bar */}
+              {displayExams.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={() => {
+                        if (isAllSelected) {
+                          setSelectedCompletedExams(new Set());
+                        } else {
+                          setSelectedCompletedExams(new Set(displayIds));
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600"
+                    />
+                    <span>
+                      {isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua'} ({displayIds.length})
+                    </span>
+                  </label>
+
+                  {selectedCompletedExams.size > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        {selectedCompletedExams.size} dipilih
+                      </span>
+                      {!showArchivedTab ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleArchiveExams(Array.from(selectedCompletedExams))}
+                          disabled={isArchiving}
+                          className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                        >
+                          {isArchiving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Archive className="w-3.5 h-3.5 mr-1" />}
+                          Arsipkan Terpilih ({selectedCompletedExams.size})
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleUnarchiveExams(Array.from(selectedCompletedExams))}
+                          disabled={isArchiving}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                        >
+                          {isArchiving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <ArchiveRestore className="w-3.5 h-3.5 mr-1" />}
+                          Kembalikan Terpilih ({selectedCompletedExams.size})
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {displayExams.length > 0 ? (
+                  displayExams.map((exam) => {
+                    const isSelected = selectedCompletedExams.has(exam.id);
+                    return (
+                      <div key={exam.id} className="relative">
+                        <div className="absolute top-4 left-4 z-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              setSelectedCompletedExams((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(exam.id)) next.delete(exam.id);
+                                else next.add(exam.id);
+                                return next;
+                              });
+                            }}
+                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer"
+                          />
+                        </div>
+                        <div className={isSelected ? 'pl-8' : ''}>
+                          <ExamCard exam={exam} />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    {showArchivedTab ? (
+                      <>
+                        <Archive className="w-12 h-12 mx-auto mb-2 text-slate-400 opacity-40" />
+                        <p>Belum ada ujian di dalam arsip</p>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-12 h-12 mx-auto mb-2 text-slate-400 opacity-40" />
+                        <p>Belum ada riwayat ujian yang selesai</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Empty state */}
         {filteredExams.length === 0 && (
@@ -1346,7 +1551,7 @@ export default function AdminUjianPage() {
       <ConfirmDialog
         isOpen={!!showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(null)}
-        onConfirm={() => showDeleteConfirm && handleDeleteExam(showDeleteConfirm.id)}
+        onConfirm={() => showDeleteConfirm && confirmDeleteExam(showDeleteConfirm.id)}
         title="Hapus Ujian"
         message={showDeleteConfirm && showDeleteConfirm.resultsCount > 0
           ? `Apakah Anda yakin ingin menghapus ujian "${showDeleteConfirm.title}"? Ujian ini memiliki ${showDeleteConfirm.resultsCount} hasil siswa dan semua data hasil akan ikut terhapus permanen.`

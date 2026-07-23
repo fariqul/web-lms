@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardHeader, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { History, Eye, Users, Edit2, Save, X, Download, Loader2, RefreshCw, Filter, ChevronDown, FileSpreadsheet, ClipboardList, Printer, AlertTriangle } from 'lucide-react';
+import { History, Eye, Users, Edit2, Save, X, Download, Loader2, RefreshCw, Filter, ChevronDown, FileSpreadsheet, ClipboardList, Printer, AlertTriangle, Trash2 } from 'lucide-react';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { AttendancePrintSheet, AttendancePrintProps } from './AttendancePrintSheet';
@@ -61,6 +61,8 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
   const [printPayload, setPrintPayload] = useState<AttendancePrintProps | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [missingNis, setMissingNis] = useState<MissingNisItem[]>([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null);
 
   // Close download menu on outside click
   useEffect(() => {
@@ -294,6 +296,22 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
     setEditedStatuses({});
     setMissingNis([]);
   };
+
+  const handleDeleteSession = useCallback(async (sessionId: number) => {
+    setDeletingSessionId(sessionId);
+    try {
+      await api.delete(`/attendance-sessions/${sessionId}`);
+      toast.success('Sesi absensi berhasil dihapus');
+      if (selectedSession === sessionId) closeDetail();
+      onRefresh();
+    } catch {
+      toast.error('Gagal menghapus sesi absensi');
+    } finally {
+      setDeletingSessionId(null);
+      setDeleteConfirmId(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSession, onRefresh, toast]);
 
   const selectedSessionData = useMemo(
     () => (selectedSession ? sessions.find((s) => s.id === selectedSession) : null),
@@ -529,9 +547,41 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                       </span>
                     </td>
                     <td className="py-3 px-4 print:hidden">
-                      <Button size="sm" variant="outline" leftIcon={<Eye className="w-4 h-4" />} onClick={() => handleViewSession(session.id)}>
-                        Lihat
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" leftIcon={<Eye className="w-4 h-4" />} onClick={() => handleViewSession(session.id)}>
+                          Lihat
+                        </Button>
+                        {(user?.role === 'admin' || user?.role === 'guru') && (
+                          deleteConfirmId === session.id ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="text-xs text-red-600 dark:text-red-400 font-medium whitespace-nowrap">Hapus sesi ini?</span>
+                              <button
+                                onClick={() => handleDeleteSession(session.id)}
+                                disabled={deletingSessionId === session.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {deletingSessionId === session.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                Ya, Hapus
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirmId(null)}
+                                disabled={deletingSessionId === session.id}
+                                className="inline-flex items-center px-2 py-1 rounded text-xs font-medium border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setDeleteConfirmId(session.id)}
+                              title="Hapus sesi ini"
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

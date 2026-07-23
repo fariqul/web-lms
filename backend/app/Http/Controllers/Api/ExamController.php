@@ -857,6 +857,16 @@ class ExamController extends Controller
             });
         }
 
+        // Filter by archived status
+        if ($request->has('archived') && $request->archived) {
+            $query->where('is_archived', true);
+        } else {
+            $query->where(function ($q) {
+                $q->where('is_archived', false)
+                  ->orWhereNull('is_archived');
+            });
+        }
+
         $exams = $query->orderBy('start_time', 'desc')
             ->paginate(min($request->per_page ?? 15, 100));
 
@@ -5497,6 +5507,60 @@ class ExamController extends Controller
             'success' => true,
             'message' => 'Berhasil menolak siswa ' . $result->student->name . ' untuk masuk ujian terlambat.',
             'data' => $result,
+        ]);
+    }
+
+    /**
+     * Archive multiple exams (admin or owning teacher).
+     */
+    public function archiveExams(Request $request)
+    {
+        $request->validate([
+            'exam_ids' => 'required|array|min:1',
+            'exam_ids.*' => 'integer|exists:exams,id',
+        ]);
+
+        $user = $request->user();
+        $query = Exam::whereIn('id', $request->exam_ids);
+
+        // Guru can only archive their own exams
+        if ($user->role !== 'admin') {
+            $query->where('teacher_id', $user->id);
+        }
+
+        $count = $query->update(['is_archived' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $count . ' ujian berhasil diarsipkan',
+            'archived_count' => $count,
+        ]);
+    }
+
+    /**
+     * Unarchive multiple exams (admin or owning teacher).
+     */
+    public function unarchiveExams(Request $request)
+    {
+        $request->validate([
+            'exam_ids' => 'required|array|min:1',
+            'exam_ids.*' => 'integer|exists:exams,id',
+        ]);
+
+        $user = $request->user();
+        $query = Exam::whereIn('id', $request->exam_ids);
+
+        // Guru can only unarchive their own exams
+        if ($user->role !== 'admin') {
+            $query->where('teacher_id', $user->id);
+        }
+
+        $count = $query->update(['is_archived' => false]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $count . ' ujian berhasil dikembalikan dari arsip',
+            'unarchived_count' => $count,
         ]);
     }
 }

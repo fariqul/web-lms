@@ -22,6 +22,7 @@ class Exam extends Model
         'total_questions',
         'status',
         'is_locked',
+        'is_archived',
         'locked_by',
         'locked_at',
         'max_violations',
@@ -42,6 +43,7 @@ class Exam extends Model
         'seb_required' => 'boolean',
         'seb_config' => 'array',
         'is_locked' => 'boolean',
+        'is_archived' => 'boolean',
         'locked_at' => 'datetime',
     ];
 

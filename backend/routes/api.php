@@ -302,6 +302,11 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Exam update (guru edits content, admin can edit schedule)
         Route::put('/exams/{exam}', [ExamController::class, 'update']);
         Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
+
+        // Exam archive/unarchive (bulk)
+        Route::post('/exams/archive', [ExamController::class, 'archiveExams']);
+        Route::post('/exams/unarchive', [ExamController::class, 'unarchiveExams']);
+
         // Exam results (admin + exam owner guru)
         Route::get('/exams/{exam}/results', [ExamController::class, 'results'])->middleware('role:admin,guru');
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult'])->middleware('role:admin,guru');
