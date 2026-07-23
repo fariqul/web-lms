@@ -420,6 +420,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
     gaze_ratio = 0.0
     is_gaze_deviated = False
     face_location = None
+    face_bbox_xyxy = None
 
     if mesh_results.multi_face_landmarks:
         landmarks = mesh_results.multi_face_landmarks[0].landmark
@@ -455,6 +456,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
             ymax_px = max(0, min(int(max(y_coords) * h), h - 1))
             xmax_px = max(0, min(int(max(x_coords) * w), w - 1))
             face_location = (ymin_px, xmax_px, ymax_px, xmin_px)
+            face_bbox_xyxy = [xmin_px, ymin_px, xmax_px, ymax_px]
         except Exception as e:
             logger.warning(f"Failed to calculate face bounding box: {e}")
 
@@ -467,6 +469,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
             ymax_px = max(0, min(int((bbox.ymin + bbox.height) * h), h - 1))
             xmax_px = max(0, min(int((bbox.xmin + bbox.width) * w), w - 1))
             face_location = (ymin_px, xmax_px, ymax_px, xmin_px)
+            face_bbox_xyxy = [xmin_px, ymin_px, xmax_px, ymax_px]
         except Exception as e:
             logger.warning(f"Failed to extract BlazeFace bounding box: {e}")
 
@@ -480,7 +483,7 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         face_detected=True,
         face_count=face_count,
         face_confidence=round(max_confidence, 3),
-        face_bbox=list(face_location) if face_location else None,
+        face_bbox=face_bbox_xyxy if face_location else None,
         head_yaw=head_yaw,
         head_pitch=head_pitch,
         head_roll=head_roll,
