@@ -352,6 +352,41 @@ export const classAPI = {
     mappings: Array<{ from_class_id: number; to_class_id: number | null }>;
   }) =>
     api.post('/classes/promote', data),
+
+  getRollingTemplate: (fromAcademicYear: string) =>
+    api.get('/classes/rolling-template', {
+      params: { from_academic_year: fromAcademicYear },
+      responseType: 'blob',
+    }),
+
+  rollingPreview: (file: File, fromYear: string, toYear: string) => {
+    const formData = new FormData();
+    formData.append('import_file', file);
+    formData.append('from_academic_year', fromYear);
+    formData.append('to_academic_year', toYear);
+    return api.post('/classes/rolling-preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+  },
+
+  rollingConfirm: (previewToken: string, effectiveDate?: string) =>
+    api.post('/classes/rolling-confirm', {
+      preview_token: previewToken,
+      effective_date: effectiveDate,
+    }),
+
+  getRollingStudents: (fromAcademicYear: string) =>
+    api.get('/classes/rolling-students', {
+      params: { from_academic_year: fromAcademicYear },
+    }),
+
+  rollingManualSubmit: (data: {
+    from_academic_year: string;
+    to_academic_year: string;
+    effective_date?: string;
+    assignments: Array<{ student_id: number; to_class_id: number | null }>;
+  }) => api.post('/classes/rolling-manual', data),
 };
 
 const buildFacilityFormData = (

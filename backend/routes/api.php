@@ -118,6 +118,11 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/classes/import/preview', [ClassController::class, 'importPreview']);
         Route::post('/classes/import/confirm', [ClassController::class, 'importConfirm']);
         Route::post('/classes/promote', [ClassController::class, 'promote']);
+        Route::get('/classes/rolling-template', [ClassController::class, 'rollingTemplate']);
+        Route::post('/classes/rolling-preview', [ClassController::class, 'rollingPreview']);
+        Route::post('/classes/rolling-confirm', [ClassController::class, 'rollingConfirm']);
+        Route::get('/classes/rolling-students', [ClassController::class, 'rollingStudents']);
+        Route::post('/classes/rolling-manual', [ClassController::class, 'rollingManual']);
         Route::get('/classes/export', [ClassController::class, 'export']);
         Route::apiResource('classes', ClassController::class)->except(['index', 'show']);
         

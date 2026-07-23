@@ -457,6 +457,447 @@ class ClassController extends Controller
         ]);
     }
 
+    /**
+     * Shared logic for executing student class promotions/rolling (used by rollingConfirm and rollingManual).
+     *
+     * @param array<int, array{student_id: int, to_class_id: int|null}> $assignments
+     * @param string $fromAcademicYear
+     * @param string $toAcademicYear
+     * @param string|null $effectiveDate
+     * @return array{from_academic_year: string, to_academic_year: string, effective_date: string, students_moved: int, students_graduated: int, skipped: int, errors: array<int, string>}
+     */
+    private function executeStudentPromotions(array $assignments, string $fromAcademicYear, string $toAcademicYear, ?string $effectiveDate = null): array
+    {
+        $effectiveCarbon = Carbon::parse($effectiveDate ?? now()->toDateString())->startOfDay();
+        $startDate = $effectiveCarbon->toDateString();
+        $endDate = $effectiveCarbon->copy()->subDay()->toDateString();
+        $semester = $this->resolveSemester($effectiveCarbon);
+
+        $summary = [
+            'from_academic_year' => $fromAcademicYear,
+            'to_academic_year' => $toAcademicYear,
+            'effective_date' => $startDate,
+            'students_moved' => 0,
+            'students_graduated' => 0,
+            'skipped' => 0,
+            'errors' => [],
+        ];
+
+        DB::transaction(function () use ($assignments, $fromAcademicYear, $toAcademicYear, $startDate, $endDate, $semester, &$summary) {
+            $studentIds = collect($assignments)->pluck('student_id')->unique()->filter()->values()->all();
+
+            if (empty($studentIds)) {
+                return;
+            }
+
+            // Get active enrollments for these students in classes of $fromAcademicYear
+            $activeEnrollments = StudentEnrollment::query()
+                ->whereIn('student_id', $studentIds)
+                ->where('is_active', true)
+                ->whereHas('class', fn ($q) => $q->where('academic_year', $fromAcademicYear))
+                ->get(['id', 'student_id', 'class_id'])
+                ->keyBy('student_id');
+
+            // Pre-fetch target classes to validate they belong to $toAcademicYear
+            $targetClassIds = collect($assignments)->pluck('to_class_id')->unique()->filter()->values()->all();
+            $targetClasses = ClassRoom::query()
+                ->whereIn('id', $targetClassIds)
+                ->where('academic_year', $toAcademicYear)
+                ->get(['id', 'name', 'academic_year'])
+                ->keyBy('id');
+
+            $toMoveStudentIds = [];
+            $toGraduateStudentIds = [];
+            $newEnrollmentRows = [];
+
+            foreach ($assignments as $assignment) {
+                $studentId = (int) $assignment['student_id'];
+                $toClassId = isset($assignment['to_class_id']) && $assignment['to_class_id'] !== null ? (int) $assignment['to_class_id'] : null;
+
+                $currentEnrollment = $activeEnrollments->get($studentId);
+                if (!$currentEnrollment) {
+                    $summary['skipped']++;
+                    $summary['errors'][] = "Siswa (ID: {$studentId}) tidak memiliki enrollment aktif di Tahun Ajaran {$fromAcademicYear}";
+                    continue;
+                }
+
+                if ($toClassId !== null) {
+                    $targetClass = $targetClasses->get($toClassId);
+                    if (!$targetClass) {
+                        $summary['skipped']++;
+                        $summary['errors'][] = "Kelas tujuan (ID: {$toClassId}) tidak ditemukan atau bukan bagian dari Tahun Ajaran {$toAcademicYear}";
+                        continue;
+                    }
+
+                    $toMoveStudentIds[] = $studentId;
+                    $newEnrollmentRows[] = [
+                        'student_id' => $studentId,
+                        'class_id' => $toClassId,
+                        'academic_year' => $toAcademicYear,
+                        'semester' => $semester,
+                        'start_date' => $startDate,
+                        'end_date' => null,
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                } else {
+                    $toGraduateStudentIds[] = $studentId;
+                }
+            }
+
+            $allProcessedStudentIds = array_merge($toMoveStudentIds, $toGraduateStudentIds);
+
+            if (!empty($allProcessedStudentIds)) {
+                // Deactivate old enrollments for processed students
+                StudentEnrollment::query()
+                    ->whereIn('student_id', $allProcessedStudentIds)
+                    ->where('is_active', true)
+                    ->update([
+                        'is_active' => false,
+                        'end_date' => $endDate,
+                    ]);
+            }
+
+            // Insert new active enrollments & update users.class_id
+            if (!empty($newEnrollmentRows)) {
+                StudentEnrollment::query()->insert($newEnrollmentRows);
+
+                // Group by target class ID for batch updating users.class_id
+                $groupedByClass = collect($newEnrollmentRows)->groupBy('class_id');
+                foreach ($groupedByClass as $cId => $rows) {
+                    $sIds = collect($rows)->pluck('student_id')->all();
+                    User::query()->whereIn('id', $sIds)->update(['class_id' => $cId]);
+                }
+
+                $summary['students_moved'] = count($toMoveStudentIds);
+            }
+
+            // Graduate students: set users.class_id to null
+            if (!empty($toGraduateStudentIds)) {
+                User::query()->whereIn('id', $toGraduateStudentIds)->update(['class_id' => null]);
+                $summary['students_graduated'] = count($toGraduateStudentIds);
+            }
+        });
+
+        return $summary;
+    }
+
+    /**
+     * Download Excel template for individual student rolling.
+     */
+    public function rollingTemplate(Request $request)
+    {
+        $request->validate([
+            'from_academic_year' => 'required|string',
+        ]);
+
+        $fromYear = $request->query('from_academic_year');
+
+        $enrollments = StudentEnrollment::query()
+            ->where('is_active', true)
+            ->whereHas('class', fn ($q) => $q->where('academic_year', $fromYear))
+            ->with(['student:id,name,nisn', 'class:id,name,grade_level'])
+            ->get();
+
+        $headers = ['NISN', 'Nama Siswa', 'Kelas Asal', 'Kelas Tujuan'];
+        $rows = [];
+
+        foreach ($enrollments as $enrollment) {
+            $student = $enrollment->student;
+            $class = $enrollment->class;
+            if (!$student) continue;
+
+            $rows[] = [
+                $student->nisn ?? '',
+                $student->name ?? '',
+                $class ? $class->name : '',
+                '', // Left blank for admin to fill in
+            ];
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Rolling');
+
+        foreach ($headers as $index => $header) {
+            $sheet->setCellValue([$index + 1, 1], $header);
+        }
+
+        foreach ($rows as $rowIndex => $rowValues) {
+            foreach ($rowValues as $columnIndex => $value) {
+                $sheet->setCellValue([$columnIndex + 1, $rowIndex + 2], $value);
+            }
+        }
+
+        foreach (range(1, count($headers)) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+
+        $safeYear = str_replace('/', '-', $fromYear);
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, "template_rolling_siswa_{$safeYear}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Upload & Preview Excel for individual student rolling.
+     */
+    public function rollingPreview(Request $request)
+    {
+        $request->validate([
+            'import_file' => ['required', File::types(['xlsx', 'csv'])->max(10 * 1024)],
+            'from_academic_year' => 'required|string',
+            'to_academic_year' => 'required|string',
+        ]);
+
+        $file = $request->file('import_file');
+        $fromYear = $request->input('from_academic_year');
+        $toYear = $request->input('to_academic_year');
+
+        $rows = $this->readSpreadsheetRows($file);
+        if (empty($rows)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File Excel kosong atau header tidak valid',
+            ], 422);
+        }
+
+        // Pre-fetch active student enrollments for $fromYear keyed by NISN
+        $activeEnrollments = StudentEnrollment::query()
+            ->where('is_active', true)
+            ->whereHas('class', fn ($q) => $q->where('academic_year', $fromYear))
+            ->with(['student:id,name,nisn', 'class:id,name'])
+            ->get()
+            ->keyBy(fn ($e) => trim((string) ($e->student?->nisn ?? '')));
+
+        // Pre-fetch target classes for $toYear keyed by lowercased name
+        $targetClasses = ClassRoom::query()
+            ->where('academic_year', $toYear)
+            ->get(['id', 'name', 'academic_year', 'grade_level'])
+            ->keyBy(fn ($c) => mb_strtolower(trim($c->name), 'UTF-8'));
+
+        $validAssignments = [];
+        $errors = [];
+        $previewRows = [];
+        $seenNisns = [];
+        $graduateCount = 0;
+
+        foreach ($rows as $row) {
+            $rowNumber = (int) $row['row_number'];
+            $data = $row['data'];
+
+            $nisn = $this->pickRowValue($data, ['nisn', 'nomor_induk_siswa_nasional']);
+            $toClassName = $this->pickRowValue($data, ['kelas_tujuan', 'tujuan', 'target_class']);
+
+            if ($nisn === '') {
+                $errors[] = ['row' => $rowNumber, 'message' => 'NISN wajib diisi'];
+                continue;
+            }
+
+            if (isset($seenNisns[$nisn])) {
+                $errors[] = ['row' => $rowNumber, 'message' => "NISN '{$nisn}' duplikat dalam file import"];
+                continue;
+            }
+            $seenNisns[$nisn] = true;
+
+            $enrollment = $activeEnrollments->get($nisn);
+            if (!$enrollment || !$enrollment->student) {
+                $errors[] = ['row' => $rowNumber, 'message' => "Siswa dengan NISN '{$nisn}' tidak ditemukan atau tidak aktif di Tahun Ajaran {$fromYear}"];
+                continue;
+            }
+
+            $student = $enrollment->student;
+            $currentClass = $enrollment->class;
+            $toClassId = null;
+            $targetClassLabel = 'LULUS';
+            $isGraduate = false;
+
+            $trimmedToName = mb_strtolower(trim($toClassName), 'UTF-8');
+
+            if ($trimmedToName === '' || $trimmedToName === 'lulus' || $trimmedToName === '__graduate__') {
+                $isGraduate = true;
+                $graduateCount++;
+            } else {
+                $targetClass = $targetClasses->get($trimmedToName);
+                if (!$targetClass) {
+                    $errors[] = ['row' => $rowNumber, 'message' => "Kelas tujuan '{$toClassName}' tidak ditemukan di Tahun Ajaran {$toYear}"];
+                    continue;
+                }
+                $toClassId = $targetClass->id;
+                $targetClassLabel = $targetClass->name;
+            }
+
+            $assignmentPayload = [
+                'student_id' => $student->id,
+                'student_name' => $student->name,
+                'nisn' => $student->nisn,
+                'from_class_id' => $currentClass?->id,
+                'from_class_name' => $currentClass?->name ?? '-',
+                'to_class_id' => $toClassId,
+                'to_class_name' => $targetClassLabel,
+                'is_graduate' => $isGraduate,
+            ];
+
+            $validAssignments[] = $assignmentPayload;
+
+            if (count($previewRows) < 50) {
+                $previewRows[] = [
+                    'row' => $rowNumber,
+                    'student_name' => $student->name,
+                    'nisn' => $student->nisn,
+                    'from_class_name' => $currentClass?->name ?? '-',
+                    'to_class_name' => $targetClassLabel,
+                    'is_graduate' => $isGraduate,
+                    'status' => 'valid',
+                ];
+            }
+        }
+
+        $token = (string) Str::uuid();
+        $cacheKey = 'rolling_preview:' . $token;
+
+        Cache::put($cacheKey, [
+            'from_academic_year' => $fromYear,
+            'to_academic_year' => $toYear,
+            'valid_assignments' => $validAssignments,
+            'summary' => [
+                'total_rows' => count($rows),
+                'valid_count' => count($validAssignments),
+                'error_count' => count($errors),
+                'graduate_count' => $graduateCount,
+            ],
+        ], self::CLASS_IMPORT_PREVIEW_TTL_SECONDS);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'preview_token' => $token,
+                'summary' => [
+                    'total_rows' => count($rows),
+                    'valid_count' => count($validAssignments),
+                    'error_count' => count($errors),
+                    'graduate_count' => $graduateCount,
+                ],
+                'preview_rows' => $previewRows,
+                'errors' => $errors,
+            ],
+        ]);
+    }
+
+    /**
+     * Confirm Excel rolling from cached token.
+     */
+    public function rollingConfirm(Request $request)
+    {
+        $request->validate([
+            'preview_token' => 'required|string',
+            'effective_date' => 'nullable|date',
+        ]);
+
+        $token = $request->input('preview_token');
+        $cacheKey = 'rolling_preview:' . $token;
+        $previewData = Cache::get($cacheKey);
+
+        if (!$previewData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token preview rolling tidak valid atau sudah kadaluarsa. Silakan upload ulang file Excel.',
+            ], 422);
+        }
+
+        $fromYear = $previewData['from_academic_year'];
+        $toYear = $previewData['to_academic_year'];
+        $assignments = $previewData['valid_assignments'] ?? [];
+        $effectiveDate = $request->input('effective_date');
+
+        if (empty($assignments)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada data siswa valid untuk di-rolling',
+            ], 422);
+        }
+
+        $summary = $this->executeStudentPromotions($assignments, $fromYear, $toYear, $effectiveDate);
+
+        Cache::forget($cacheKey);
+
+        return response()->json([
+            'success' => true,
+            'data' => $summary,
+            'message' => "Rolling siswa via Excel berhasil diproses: {$summary['students_moved']} siswa dipindah, {$summary['students_graduated']} siswa lulus",
+        ]);
+    }
+
+    /**
+     * Get active students for manual rolling UI.
+     */
+    public function rollingStudents(Request $request)
+    {
+        $request->validate([
+            'from_academic_year' => 'required|string',
+        ]);
+
+        $fromYear = $request->query('from_academic_year');
+
+        $enrollments = StudentEnrollment::query()
+            ->where('is_active', true)
+            ->whereHas('class', fn ($q) => $q->where('academic_year', $fromYear))
+            ->with(['student:id,name,nisn,email', 'class:id,name,grade_level,academic_year'])
+            ->get();
+
+        $students = $enrollments->map(function ($enrollment) {
+            $student = $enrollment->student;
+            $class = $enrollment->class;
+            return [
+                'id' => $student?->id,
+                'name' => $student?->name ?? 'Tanpa Nama',
+                'nisn' => $student?->nisn ?? '-',
+                'email' => $student?->email ?? '',
+                'current_class_id' => $class?->id,
+                'current_class_name' => $class?->name ?? 'Tanpa Kelas',
+                'grade_level' => $class?->grade_level ?? '',
+            ];
+        })->filter(fn ($item) => $item['id'] !== null)->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $students,
+        ]);
+    }
+
+    /**
+     * Submit manual student rolling assignments.
+     */
+    public function rollingManual(Request $request)
+    {
+        $request->validate([
+            'from_academic_year' => 'required|string',
+            'to_academic_year' => 'required|string',
+            'effective_date' => 'nullable|date',
+            'assignments' => 'required|array|min:1',
+            'assignments.*.student_id' => 'required|integer|exists:users,id',
+            'assignments.*.to_class_id' => 'nullable|integer|exists:classes,id',
+        ]);
+
+        $fromYear = $request->input('from_academic_year');
+        $toYear = $request->input('to_academic_year');
+        $effectiveDate = $request->input('effective_date');
+        $assignments = $request->input('assignments');
+
+        $summary = $this->executeStudentPromotions($assignments, $fromYear, $toYear, $effectiveDate);
+
+        return response()->json([
+            'success' => true,
+            'data' => $summary,
+            'message' => "Rolling manual siswa berhasil diproses: {$summary['students_moved']} siswa dipindah, {$summary['students_graduated']} siswa lulus",
+        ]);
+    }
+
     public function export(Request $request)
     {
         $request->validate([
