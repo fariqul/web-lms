@@ -87,15 +87,27 @@ export default function AdminKelasPage() {
   const [yearFilter, setYearFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
 
-  // academicYearOptions derived from classes state
-  const academicYearOptions = Array.from(new Set(classes.map((c) => c.academic_year)))
+  const currentYearNum = new Date().getFullYear();
+  const defaultYears = [
+    `${currentYearNum - 1}/${currentYearNum}`,
+    `${currentYearNum}/${currentYearNum + 1}`,
+    `${currentYearNum + 1}/${currentYearNum + 2}`,
+  ];
+
+  const modalYearList = Array.from(
+    new Set([...defaultYears, ...classes.map((c) => c.academic_year)])
+  )
     .filter(Boolean)
-    .sort((a, b) => parseAcademicYearStart(a) - parseAcademicYearStart(b))
-    .map((year) => ({ value: year, label: year }));
+    .sort((a, b) => parseAcademicYearStart(a) - parseAcademicYearStart(b));
+
+  const [isCustomAcademicYear, setIsCustomAcademicYear] = useState(false);
+  const [customAcademicYear, setCustomAcademicYear] = useState('');
+
+  const academicYearSelectOptions = modalYearList.map((year) => ({ value: year, label: year }));
 
   const filterYearOptions = [
     { value: '', label: 'Semua Tahun Ajaran' },
-    ...academicYearOptions,
+    ...academicYearSelectOptions,
   ];
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -221,6 +233,9 @@ export default function AdminKelasPage() {
   const handleOpenModal = (cls?: ClassRoom) => {
     if (cls) {
       setSelectedClass(cls);
+      const isKnown = modalYearList.includes(cls.academic_year);
+      setIsCustomAcademicYear(!isKnown);
+      setCustomAcademicYear(isKnown ? '' : cls.academic_year);
       setFormData({
         name: cls.name,
         grade_level: cls.grade_level,
@@ -229,11 +244,16 @@ export default function AdminKelasPage() {
         wali_kelas_id: cls.wali_kelas_id?.toString() || cls.wali_kelas?.id?.toString() || '',
       });
     } else {
+      const defaultYear = modalYearList.length > 0
+        ? (modalYearList.includes('2025/2026') ? '2025/2026' : modalYearList[modalYearList.length - 1])
+        : '2025/2026';
       setSelectedClass(null);
+      setIsCustomAcademicYear(false);
+      setCustomAcademicYear('');
       setFormData({
         name: '',
         grade_level: '',
-        academic_year: '2025/2026',
+        academic_year: defaultYear,
         is_active: true,
         wali_kelas_id: '',
       });
@@ -419,8 +439,8 @@ export default function AdminKelasPage() {
   };
 
   const openPromoteModal = () => {
-    const latestYear = academicYearOptions.length > 0
-      ? academicYearOptions[academicYearOptions.length - 1].value
+    const latestYear = modalYearList.length > 0
+      ? modalYearList[modalYearList.length - 1]
       : '';
     const nextYear = latestYear ? getNextAcademicYear(latestYear) : '';
     setPromoteMode('bulk');
@@ -963,13 +983,37 @@ export default function AdminKelasPage() {
             value={formData.grade_level}
             onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
           />
-          <Input
-            label="Tahun Ajaran"
-            value={formData.academic_year}
-            onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
-            placeholder="Contoh: 2025/2026"
-            required
-          />
+          <div className="space-y-1.5">
+            <Select
+              label="Tahun Ajaran"
+              options={[
+                ...modalYearList.map((y) => ({ value: y, label: y })),
+                { value: '__custom__', label: '+ Ketik Tahun Ajaran Baru…' },
+              ]}
+              value={isCustomAcademicYear ? '__custom__' : formData.academic_year}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '__custom__') {
+                  setIsCustomAcademicYear(true);
+                  setFormData({ ...formData, academic_year: customAcademicYear || '' });
+                } else {
+                  setIsCustomAcademicYear(false);
+                  setFormData({ ...formData, academic_year: val });
+                }
+              }}
+            />
+            {isCustomAcademicYear && (
+              <Input
+                placeholder="Ketik Tahun Ajaran baru (Contoh: 2026/2027)"
+                value={formData.academic_year}
+                onChange={(e) => {
+                  setCustomAcademicYear(e.target.value);
+                  setFormData({ ...formData, academic_year: e.target.value });
+                }}
+                required
+              />
+            )}
+          </div>
           <Checkbox
             label="Kelas aktif (tampil di daftar)"
             checked={formData.is_active}
@@ -1153,7 +1197,7 @@ export default function AdminKelasPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Select
               label="Tahun Ajaran Asal"
-              options={academicYearOptions}
+              options={academicYearSelectOptions}
               value={promoteFromYear}
               onChange={(e) => {
                 const nextValue = e.target.value;
