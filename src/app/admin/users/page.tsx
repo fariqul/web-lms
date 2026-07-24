@@ -96,6 +96,7 @@ function AdminUsersPageContent() {
   const [bulkBlockScope, setBulkBlockScope] = useState<string>('all');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [importAcademicYear, setImportAcademicYear] = useState<string>('2026/2027');
   const [importPreviewToken, setImportPreviewToken] = useState('');
   const [importSummary, setImportSummary] = useState<{ total_rows: number; to_create: number; to_update: number; to_skip: number } | null>(null);
   const [importPreviewRows, setImportPreviewRows] = useState<ImportPreviewRow[]>([]);
@@ -584,6 +585,7 @@ function AdminUsersPageContent() {
 
   const resetImportState = () => {
     setImportFile(null);
+    setImportAcademicYear('2026/2027');
     setImportPreviewToken('');
     setImportSummary(null);
     setImportPreviewRows([]);
@@ -643,7 +645,7 @@ function AdminUsersPageContent() {
     }
     try {
       setIsImportProcessing(true);
-      const res = await userAPI.importPreview(importFile);
+      const res = await userAPI.importPreview(importFile, importAcademicYear);
       const data = res.data?.data;
       setImportPreviewToken(data?.preview_token || '');
       setImportSummary(data?.summary || null);
@@ -1504,6 +1506,20 @@ function AdminUsersPageContent() {
               onChange={(e) => setImportFile(e.target.files?.[0] || null)}
               className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-sky-600 file:text-white hover:file:bg-sky-700"
             />
+            <div className="pt-2">
+              <Select
+                label="Tahun Ajaran (Opsional, untuk mode Absen Mentah)"
+                options={[
+                  { value: '', label: 'Deteksi Otomatis / Sesuai File' },
+                  { value: '2025/2026', label: '2025/2026' },
+                  { value: '2026/2027', label: '2026/2027' },
+                  { value: '2027/2028', label: '2027/2028' },
+                  { value: '2028/2029', label: '2028/2029' },
+                ]}
+                value={importAcademicYear}
+                onChange={(e) => setImportAcademicYear(e.target.value)}
+              />
+            </div>
           </div>
 
           {importSummary && (

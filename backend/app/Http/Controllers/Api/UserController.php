@@ -419,10 +419,11 @@ class UserController extends Controller
     {
         $request->validate([
             'import_file' => ['required', File::types(['xlsx', 'csv'])->max(10 * 1024)],
+            'academic_year' => ['nullable', 'string'],
         ]);
 
         try {
-            $rows = $this->readSpreadsheetRows($request->file('import_file'));
+            $rows = $this->readSpreadsheetRows($request->file('import_file'), $request->academic_year);
             if (count($rows) === 0) {
                 return response()->json([
                     'success' => false,
@@ -1019,9 +1020,22 @@ class UserController extends Controller
     /**
      * @return array<int, array{row_number:int,data:array<string,mixed>}>
      */
-    private function readSpreadsheetRows(UploadedFile $file): array
+    private function readSpreadsheetRows(UploadedFile $file, ?string $academicYear = null): array
     {
         $spreadsheet = IOFactory::load($file->getRealPath());
+        
+        // --- DETEKSI MODE ABSEN MENTAH ---
+        $sheetNames = $spreadsheet->getSheetNames();
+        $classSheets = array_filter($sheetNames, function ($name) {
+            return preg_match('/^(X|XI|XII)/i', trim($name));
+        });
+
+        // Jika terdapat banyak sheet berawalan X, XI, XII (misal lebih dari 2), kita asumsikan ini format Absen Mentah
+        if (count($classSheets) >= 2) {
+            return $this->readRawAbsenSpreadsheet($spreadsheet, $classSheets, $academicYear);
+        }
+
+        // --- MODE TEMPLATE STANDAR ---
         $sheet = $spreadsheet->getActiveSheet();
         $rawRows = $sheet->toArray(null, true, true, false);
 
@@ -1046,10 +1060,94 @@ class UserController extends Controller
             if (count(array_filter($normalized, fn ($value) => $value !== '')) === 0) {
                 continue;
             }
+            // Jika ada academic_year dari UI (untuk standar), opsional bisa ditimpa
+            if ($academicYear && !isset($normalized['tahun_ajaran'])) {
+                $normalized['tahun_ajaran'] = $academicYear;
+            }
+
             $rows[] = [
                 'row_number' => $i + 1,
                 'data' => $normalized,
             ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Membaca format Absen Mentah yang memiliki banyak sheet (satu sheet per kelas)
+     */
+    private function readRawAbsenSpreadsheet($spreadsheet, array $classSheets, ?string $academicYear): array
+    {
+        $rows = [];
+        $rowCounter = 1;
+        $tp = $academicYear ?: '2026/2027';
+
+        foreach ($classSheets as $sheetName) {
+            $sheet = $spreadsheet->getSheetByName($sheetName);
+            if (!$sheet) continue;
+
+            $rawRows = $sheet->toArray(null, true, true, false);
+            
+            // Cari baris header yang mengandung 'NAMA' dan 'L/P' di 15 baris pertama
+            $headerRowIdx = -1;
+            for ($i = 0; $i < min(15, count($rawRows)); $i++) {
+                $rowStr = strtoupper(implode(' ', array_map(fn($v) => (string)$v, $rawRows[$i])));
+                if (str_contains($rowStr, 'NAMA') && (str_contains($rowStr, 'L/P') || str_contains($rowStr, 'L / P') || str_contains($rowStr, 'LP'))) {
+                    $headerRowIdx = $i;
+                    break;
+                }
+            }
+
+            // Jika tidak ketemu header standar, lewati sheet ini
+            if ($headerRowIdx === -1) {
+                continue;
+            }
+
+            // Ekstrak nama kelas dari sheet name (ubah underscore/strip jadi titik)
+            $lmsClassName = str_replace(['_', '-'], '.', trim($sheetName));
+
+            // Mulai baca data dari baris setelah header
+            for ($i = $headerRowIdx + 1; $i < count($rawRows); $i++) {
+                $r = $rawRows[$i];
+                
+                // Biasanya format absen: index 2 (C) = NISN, 3 (D) = NIS, 4 (E) = NAMA, 5 (F) = L/P
+                // Karena kita pakai toArray dengan null true, indeksnya berurutan numerik mulai dari 0 (A=0, B=1, C=2, D=3, E=4, F=5)
+                // Kita pastikan baris punya cukup kolom
+                if (count($r) > 5) {
+                    $nisn = trim((string)($r[2] ?? ''));
+                    $nis = trim((string)($r[3] ?? ''));
+                    $nama = trim((string)($r[4] ?? ''));
+                    $jk = strtoupper(trim((string)($r[5] ?? '')));
+
+                    if ($nama !== '' && strtoupper($nama) !== 'NAMA' && strtoupper($nama) !== 'NAMA S' && strtoupper($nama) !== 'NONE') {
+                        $rowCounter++;
+                        
+                        // Generate auto data
+                        $safeId = $nisn ?: ($nis ?: "siswa_{$rowCounter}");
+                        $email = "{$safeId}@siswa.belajar.id";
+                        $passwordSuffix = strlen($safeId) >= 4 ? substr($safeId, -4) : '1234';
+                        $password = "Siswa{$passwordSuffix}";
+
+                        $normalized = [
+                            'name' => $nama,
+                            'email' => $email,
+                            'password' => $password,
+                            'role' => 'siswa',
+                            'nisn' => $nisn,
+                            'nis' => $nis,
+                            'jenis_kelamin' => $jk,
+                            'kelas' => $lmsClassName,
+                            'tahun_ajaran' => $tp,
+                        ];
+
+                        $rows[] = [
+                            'row_number' => $rowCounter,
+                            'data' => $normalized,
+                        ];
+                    }
+                }
+            }
         }
 
         return $rows;

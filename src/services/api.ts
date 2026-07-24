@@ -293,9 +293,12 @@ export const userAPI = {
   toggleBlockStudentsByGrade: (gradeLevel: string, isBlocked: boolean, reason?: string) =>
     api.post('/students/toggle-block-by-grade', { grade_level: gradeLevel, is_blocked: isBlocked, reason }),
 
-  importPreview: (file: File) => {
+  importPreview: (file: File, academic_year?: string) => {
     const formData = new FormData();
     formData.append('import_file', file);
+    if (academic_year) {
+      formData.append('academic_year', academic_year);
+    }
     return api.post('/users/import/preview', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 120000,
