@@ -67,7 +67,19 @@ export default function AdminKelasPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
+
+  // academicYearOptions derived from classes state
+  const academicYearOptions = Array.from(new Set(classes.map((c) => c.academic_year)))
+    .filter(Boolean)
+    .sort((a, b) => parseAcademicYearStart(a) - parseAcademicYearStart(b))
+    .map((year) => ({ value: year, label: year }));
+
+  const filterYearOptions = [
+    { value: '', label: 'Semua Tahun Ajaran' },
+    ...academicYearOptions,
+  ];
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassRoom | null>(null);
@@ -151,7 +163,7 @@ export default function AdminKelasPage() {
           ? { only_inactive: true }
           : status === 'all'
             ? { include_inactive: true }
-            : undefined;
+            : { include_inactive: true }; // fetch all so we can filter by archived + year smoothly
       const [classesRes, teachersRes] = await Promise.all([
         classAPI.getAll(classParams),
         userAPI.getAll({ role: 'guru', per_page: 1000 }),
@@ -174,13 +186,14 @@ export default function AdminKelasPage() {
   const filteredClasses = classes.filter((cls) => {
     const matchesSearch = cls.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGrade = !gradeFilter || cls.grade_level === gradeFilter;
+    const matchesYear = !yearFilter || cls.academic_year === yearFilter;
     const isActive = cls.is_active !== false;
     const matchesStatus = statusFilter === 'all'
       ? true
       : statusFilter === 'archived'
         ? !isActive
         : isActive;
-    return matchesSearch && matchesGrade && matchesStatus;
+    return matchesSearch && matchesGrade && matchesYear && matchesStatus;
   });
 
   const parseAcademicYearStart = (value: string) => {
@@ -199,11 +212,6 @@ export default function AdminKelasPage() {
     const nextStart = start + 1;
     return `${nextStart}-07-01`;
   };
-
-  const academicYearOptions = Array.from(new Set(classes.map((c) => c.academic_year)))
-    .filter(Boolean)
-    .sort((a, b) => parseAcademicYearStart(a) - parseAcademicYearStart(b))
-    .map((year) => ({ value: year, label: year }));
 
   const promoteFromClasses = classes.filter((cls) => cls.academic_year === promoteFromYear);
   const promoteTargetClasses = classes.filter((cls) => cls.academic_year === promoteToYear);
@@ -562,6 +570,16 @@ export default function AdminKelasPage() {
           }
         }
 
+        // Auto-correct grade_level if it doesn't match the expected target grade
+        if (existingTarget && targetGrade && existingTarget.grade_level !== targetGrade) {
+          try {
+            await classAPI.update(existingTarget.id, { grade_level: targetGrade });
+            existingTarget.grade_level = targetGrade;
+          } catch (err) {
+            console.error(`Gagal update tingkat kelas ${existingTarget.name}:`, err);
+          }
+        }
+
         if (existingTarget) {
           newMappings[fromCls.id] = existingTarget.id.toString();
         }
@@ -885,6 +903,13 @@ export default function AdminKelasPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="w-4 h-4" />}
+              />
+            </div>
+            <div className="w-full md:w-48">
+              <Select
+                options={filterYearOptions}
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
               />
             </div>
             <div className="w-full md:w-48">

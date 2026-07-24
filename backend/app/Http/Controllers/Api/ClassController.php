@@ -48,6 +48,11 @@ class ClassController extends Controller
             $query->where('grade_level', $request->grade_level);
         }
 
+        // Filter by academic year
+        if ($request->filled('academic_year')) {
+            $query->where('academic_year', $request->academic_year);
+        }
+
         // Search
         if ($request->has('search')) {
             $query->where('name', 'like', "%{$request->search}%");

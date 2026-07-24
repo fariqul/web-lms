@@ -311,7 +311,7 @@ export const userAPI = {
 
 // Class API
 export const classAPI = {
-  getAll: (params?: { include_inactive?: boolean; only_inactive?: boolean }) =>
+  getAll: (params?: { include_inactive?: boolean; only_inactive?: boolean; academic_year?: string; grade_level?: string }) =>
     api.get('/classes', { params }),
   
   getById: (id: number) =>
