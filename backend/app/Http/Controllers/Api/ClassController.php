@@ -447,7 +447,7 @@ class ClassController extends Controller
                         'to_class_name' => $toClass?->name,
                     ];
                 } else {
-                    User::query()->whereIn('id', $studentIds)->update(['class_id' => null]);
+                    User::query()->whereIn('id', $studentIds)->delete();
                     $summary['students_graduated'] += $studentIds->count();
                     $summary['details'][] = [
                         'from_class_id' => $fromClassId,
@@ -592,9 +592,9 @@ class ClassController extends Controller
                 $summary['students_moved'] = count($toMoveStudentIds);
             }
 
-            // Graduate students: set users.class_id to null
+            // Graduate students: delete user accounts directly
             if (!empty($toGraduateStudentIds)) {
-                User::query()->whereIn('id', $toGraduateStudentIds)->update(['class_id' => null]);
+                User::query()->whereIn('id', $toGraduateStudentIds)->delete();
                 $summary['students_graduated'] = count($toGraduateStudentIds);
             }
         });
