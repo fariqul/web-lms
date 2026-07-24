@@ -494,7 +494,7 @@ class ClassController extends Controller
             $activeEnrollments = StudentEnrollment::query()
                 ->whereIn('student_id', $studentIds)
                 ->where('is_active', true)
-                ->whereHas('class', fn ($q) => $q->where('academic_year', $fromAcademicYear))
+                ->whereHas('classRoom', fn ($q) => $q->where('academic_year', $fromAcademicYear))
                 ->get(['id', 'student_id', 'class_id'])
                 ->keyBy('student_id');
 
@@ -596,8 +596,8 @@ class ClassController extends Controller
 
         $enrollments = StudentEnrollment::query()
             ->where('is_active', true)
-            ->whereHas('class', fn ($q) => $q->where('academic_year', $fromYear))
-            ->with(['student:id,name,nisn', 'class:id,name,grade_level'])
+            ->whereHas('classRoom', fn ($q) => $q->where('academic_year', $fromYear))
+            ->with(['student:id,name,nisn', 'classRoom:id,name,grade_level'])
             ->get();
 
         $headers = ['NISN', 'Nama Siswa', 'Kelas Asal', 'Kelas Tujuan'];
@@ -605,7 +605,7 @@ class ClassController extends Controller
 
         foreach ($enrollments as $enrollment) {
             $student = $enrollment->student;
-            $class = $enrollment->class;
+            $class = $enrollment->classRoom;
             if (!$student) continue;
 
             $rows[] = [
@@ -670,8 +670,8 @@ class ClassController extends Controller
         // Pre-fetch active student enrollments for $fromYear keyed by NISN
         $activeEnrollments = StudentEnrollment::query()
             ->where('is_active', true)
-            ->whereHas('class', fn ($q) => $q->where('academic_year', $fromYear))
-            ->with(['student:id,name,nisn', 'class:id,name'])
+            ->whereHas('classRoom', fn ($q) => $q->where('academic_year', $fromYear))
+            ->with(['student:id,name,nisn', 'classRoom:id,name'])
             ->get()
             ->keyBy(fn ($e) => trim((string) ($e->student?->nisn ?? '')));
 
@@ -712,7 +712,7 @@ class ClassController extends Controller
             }
 
             $student = $enrollment->student;
-            $currentClass = $enrollment->class;
+            $currentClass = $enrollment->classRoom;
             $toClassId = null;
             $targetClassLabel = 'LULUS';
             $isGraduate = false;
@@ -846,13 +846,13 @@ class ClassController extends Controller
 
         $enrollments = StudentEnrollment::query()
             ->where('is_active', true)
-            ->whereHas('class', fn ($q) => $q->where('academic_year', $fromYear))
-            ->with(['student:id,name,nisn,email', 'class:id,name,grade_level,academic_year'])
+            ->whereHas('classRoom', fn ($q) => $q->where('academic_year', $fromYear))
+            ->with(['student:id,name,nisn,email', 'classRoom:id,name,grade_level,academic_year'])
             ->get();
 
         $students = $enrollments->map(function ($enrollment) {
             $student = $enrollment->student;
-            $class = $enrollment->class;
+            $class = $enrollment->classRoom;
             return [
                 'id' => $student?->id,
                 'name' => $student?->name ?? 'Tanpa Nama',

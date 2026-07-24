@@ -476,22 +476,27 @@ export default function AdminKelasPage() {
     }
 
     // Grade X / 10 -> XI / 11
+    // IMPORTANT: Only replace the leading grade prefix ONCE to avoid corrupting the class number suffix.
+    // e.g. "X.10" should become "XI.10", NOT "XI.11"
     if (grade === 'X' || grade === '10' || /^X[\.\s\-_]/i.test(name) || /^10[\.\s\-_]/i.test(name)) {
-      const targetName = name
-        .replace(/^X([\.\s\-_])/i, 'XI$1')
-        .replace(/^10([\.\s\-_])/i, '11$1')
-        .replace(/\bX\b/gi, 'XI')
-        .replace(/\b10\b/g, '11');
+      let targetName = name;
+      // Try replacing Roman numeral prefix first (must check XI won't match — it won't since we already excluded XII above and XI is handled below)
+      if (/^X([\.\s\-_])/i.test(targetName)) {
+        targetName = targetName.replace(/^X([\.\s\-_])/i, 'XI$1');
+      } else if (/^10([\.\s\-_])/i.test(targetName)) {
+        targetName = targetName.replace(/^10([\.\s\-_])/i, '11$1');
+      }
       return { targetName, targetGrade: 'XI', isGraduate: false };
     }
 
     // Grade XI / 11 -> XII / 12
     if (grade === 'XI' || grade === '11' || /^XI[\.\s\-_]/i.test(name) || /^11[\.\s\-_]/i.test(name)) {
-      const targetName = name
-        .replace(/^XI([\.\s\-_])/i, 'XII$1')
-        .replace(/^11([\.\s\-_])/i, '12$1')
-        .replace(/\bXI\b/gi, 'XII')
-        .replace(/\b11\b/g, '12');
+      let targetName = name;
+      if (/^XI([\.\s\-_])/i.test(targetName)) {
+        targetName = targetName.replace(/^XI([\.\s\-_])/i, 'XII$1');
+      } else if (/^11([\.\s\-_])/i.test(targetName)) {
+        targetName = targetName.replace(/^11([\.\s\-_])/i, '12$1');
+      }
       return { targetName, targetGrade: 'XII', isGraduate: false };
     }
 
@@ -529,10 +534,23 @@ export default function AdminKelasPage() {
           continue;
         }
 
-        // Search for existing class with matching name/grade in promoteToYear
+        // Search for existing class with matching name in promoteToYear
         let existingTarget = targetClassesInYear.find(
           (t) => t.name.toLowerCase() === targetName.toLowerCase()
         );
+
+        // If not found in target year, check if the name exists globally (different academic year)
+        // This prevents 422 errors from the unique:classes validation
+        if (!existingTarget) {
+          const globalMatch = latestClasses.find(
+            (c) => c.name.toLowerCase() === targetName.toLowerCase()
+          );
+          if (globalMatch) {
+            // Class exists but in a different academic year — use it as target anyway
+            existingTarget = globalMatch;
+            toast.info(`Kelas "${targetName}" sudah ada di TA ${globalMatch.academic_year}, digunakan sebagai tujuan`);
+          }
+        }
 
         // Auto-create target class if missing
         if (!existingTarget) {
@@ -550,7 +568,9 @@ export default function AdminKelasPage() {
               targetClassesInYear.push(createdClass);
               createdCount++;
             }
-          } catch (err) {
+          } catch (err: unknown) {
+            const errMsg = getApiErrorMessage(err, '');
+            toast.warning(`Gagal membuat kelas "${targetName}": ${errMsg || 'Nama kelas mungkin sudah ada'}`);
             console.error(`Gagal membuat kelas ${targetName}:`, err);
           }
         }
