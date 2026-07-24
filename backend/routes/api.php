@@ -93,12 +93,15 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/users/import/confirm', [UserController::class, 'importConfirm']);
         Route::get('/users/import-template', [UserController::class, 'importTemplate']);
         Route::get('/users/export', [UserController::class, 'export']);
-        Route::apiResource('users', UserController::class);
-        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+        
+        // Literal routes MUST be before wildcard {user} routes
         Route::delete('/users/bulk-delete-by-filter', [UserController::class, 'bulkDeleteByFilter']);
         Route::delete('/users/nomor-tes/clear', [UserController::class, 'clearNomorTes']);
         Route::post('/users/nomor-tes/normalize', [UserController::class, 'normalizeNomorTes']);
         Route::post('/users/nomor-tes/import', [UserController::class, 'importNomorTes']);
+        
+        Route::apiResource('users', UserController::class);
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::get('/teachers', [UserController::class, 'teachers']);
         Route::get('/students/class/{classId}', [UserController::class, 'studentsByClass']);
 
