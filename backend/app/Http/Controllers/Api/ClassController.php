@@ -69,7 +69,10 @@ class ClassController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:classes',
+            'name' => [
+                'required', 'string', 'max:255',
+                Rule::unique('classes')->where('academic_year', $request->input('academic_year')),
+            ],
             'grade_level' => 'required|in:X,XI,XII',
             'academic_year' => 'required|string',
             'is_active' => 'nullable|boolean',
@@ -115,8 +118,12 @@ class ClassController extends Controller
      */
     public function update(Request $request, ClassRoom $class)
     {
+        $academicYear = $request->input('academic_year', $class->academic_year);
         $request->validate([
-            'name' => 'sometimes|string|max:255|unique:classes,name,' . $class->id,
+            'name' => [
+                'sometimes', 'string', 'max:255',
+                Rule::unique('classes')->where('academic_year', $academicYear)->ignore($class->id),
+            ],
             'grade_level' => 'sometimes|in:X,XI,XII',
             'academic_year' => 'sometimes|string',
             'is_active' => 'nullable|boolean',
@@ -1101,12 +1108,15 @@ class ClassController extends Controller
             return ['invalid' => true, 'message' => $validator->errors()->first()];
         }
 
-        $query = ClassRoom::query()->whereRaw('LOWER(name) = ?', [mb_strtolower((string) $payload['name'], 'UTF-8')]);
+        // Composite unique check: name + academic_year
+        $query = ClassRoom::query()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower((string) $payload['name'], 'UTF-8')])
+            ->where('academic_year', $payload['academic_year']);
         if ($existing instanceof ClassRoom) {
             $query->where('id', '!=', $existing->id);
         }
         if ($query->exists()) {
-            return ['invalid' => true, 'message' => 'Nama kelas sudah digunakan'];
+            return ['invalid' => true, 'message' => 'Nama kelas sudah digunakan di tahun ajaran ini'];
         }
 
         return ['invalid' => false, 'message' => ''];

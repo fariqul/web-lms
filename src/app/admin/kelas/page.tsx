@@ -539,20 +539,7 @@ export default function AdminKelasPage() {
           (t) => t.name.toLowerCase() === targetName.toLowerCase()
         );
 
-        // If not found in target year, check if the name exists globally (different academic year)
-        // This prevents 422 errors from the unique:classes validation
-        if (!existingTarget) {
-          const globalMatch = latestClasses.find(
-            (c) => c.name.toLowerCase() === targetName.toLowerCase()
-          );
-          if (globalMatch) {
-            // Class exists but in a different academic year — use it as target anyway
-            existingTarget = globalMatch;
-            toast.info(`Kelas "${targetName}" sudah ada di TA ${globalMatch.academic_year}, digunakan sebagai tujuan`);
-          }
-        }
-
-        // Auto-create target class if missing
+        // Auto-create target class if missing in target academic year
         if (!existingTarget) {
           try {
             const createRes = await classAPI.create({
