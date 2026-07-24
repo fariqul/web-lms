@@ -483,7 +483,7 @@ function AdminUsersPageContent() {
       setIsModalOpen(false);
       fetchData(); // Refresh data
     } catch (error: unknown) {
-      toast.error('Gagal menghapus user', getApiErrorMessage(error));
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan data pengguna'));
     } finally {
       setSubmitting(false);
     }
@@ -491,18 +491,18 @@ function AdminUsersPageContent() {
 
   const handleBulkDeleteByFilter = async () => {
     if (!roleFilter && !classFilter) {
-      toast.error('Gagal', 'Pilih filter Role atau Kelas terlebih dahulu untuk mencegah penghapusan seluruh data.');
+      toast.error('Pilih filter Role atau Kelas terlebih dahulu untuk mencegah penghapusan seluruh data.');
       return;
     }
 
     try {
       setBulkDeleteSubmitting(true);
       const res = await userAPI.bulkDeleteByFilter({ role: roleFilter, class_id: classFilter });
-      toast.success('Berhasil', res.data?.message || 'Data berhasil dihapus');
+      toast.success(res.data?.message || 'Data berhasil dihapus');
       setIsBulkDeleteDialogOpen(false);
       fetchUsers(1, searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, sortOrder);
     } catch (error: any) {
-      toast.error('Gagal menghapus masal', getApiErrorMessage(error));
+      toast.error(getApiErrorMessage(error, 'Gagal menghapus masal'));
     } finally {
       setBulkDeleteSubmitting(false);
     }
@@ -1815,7 +1815,7 @@ function AdminUsersPageContent() {
         confirmText="Ya, Hapus Semua Sesuai Filter"
         cancelText="Batal"
         onConfirm={handleBulkDeleteByFilter}
-        onCancel={() => setIsBulkDeleteDialogOpen(false)}
+        onClose={() => setIsBulkDeleteDialogOpen(false)}
         isLoading={bulkDeleteSubmitting}
         variant="danger"
       />
