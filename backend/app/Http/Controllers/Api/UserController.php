@@ -62,7 +62,11 @@ class UserController extends Controller
 
         // Filter by class
         if ($request->has('class_id') && $request->class_id !== '') {
-            $query->where('class_id', $request->class_id);
+            if ($request->class_id === 'none') {
+                $query->whereNull('class_id');
+            } else {
+                $query->where('class_id', $request->class_id);
+            }
         }
 
         // Filter by status (active/blocked)
@@ -304,6 +308,49 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User berhasil dihapus',
+        ]);
+    }
+
+    /**
+     * Bulk delete users based on filter (admin only)
+     */
+    public function bulkDeleteByFilter(Request $request)
+    {
+        $query = User::query();
+
+        // Prevent accidentally deleting admin (safety check)
+        $query->where('id', '!=', auth()->id());
+        $query->where('role', '!=', 'admin');
+
+        // Filter by role
+        if ($request->has('role') && $request->role !== '') {
+            $query->where('role', $request->role);
+        }
+
+        // Filter by class
+        if ($request->has('class_id') && $request->class_id !== '') {
+            if ($request->class_id === 'none') {
+                $query->whereNull('class_id');
+            } else {
+                $query->where('class_id', $request->class_id);
+            }
+        }
+
+        // Must at least have one filter to prevent catastrophic wipe
+        if (!$request->filled('role') && !$request->filled('class_id')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Filter role atau kelas harus dipilih untuk mencegah penghapusan seluruh data',
+            ], 400);
+        }
+
+        $count = $query->count();
+        $query->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil menghapus {$count} pengguna berdasarkan filter",
+            'deleted_count' => $count,
         ]);
     }
 
@@ -1014,8 +1061,7 @@ class UserController extends Controller
      */
     private function buildUserImportPreview(array $rows): array
     {
-        $classByName = ClassRoom::query()->get(['id', 'name'])
-            ->keyBy(fn (ClassRoom $classRoom) => mb_strtolower(trim($classRoom->name), 'UTF-8'));
+        $allClasses = ClassRoom::query()->orderBy('id')->get(['id', 'name', 'academic_year', 'is_active']);
 
         $existingUsers = User::query()->get(['id', 'email', 'name', 'role', 'class_id', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes'])
             ->keyBy(fn (User $user) => strtolower((string) $user->email));
@@ -1045,7 +1091,7 @@ class UserController extends Controller
             $hasClassColumns = $this->rowHasAnyKey($data, ['class_id', 'class_name', 'kelas', 'nama_kelas', 'class']);
             $classResolution = $this->resolveClassId(
                 $data,
-                $classByName,
+                $allClasses,
                 $hasClassColumns,
                 $existing instanceof User && $existing->class_id ? (int) $existing->class_id : null
             );
@@ -1198,10 +1244,10 @@ class UserController extends Controller
 
     /**
      * @param array<string, mixed> $row
-     * @param \Illuminate\Support\Collection<string, ClassRoom> $classByName
+     * @param \Illuminate\Database\Eloquent\Collection $allClasses
      * @return array{valid:bool,class_id:?int,message:string}
      */
-    private function resolveClassId(array $row, $classByName, bool $hasClassColumns, ?int $existingClassId = null): array
+    private function resolveClassId(array $row, $allClasses, bool $hasClassColumns, ?int $existingClassId = null): array
     {
         if (!$hasClassColumns) {
             return ['valid' => true, 'class_id' => $existingClassId, 'message' => ''];
@@ -1216,17 +1262,35 @@ class UserController extends Controller
             return ['valid' => true, 'class_id' => $classId, 'message' => ''];
         }
 
-        $className = $this->pickRowValue($row, ['class_name', 'kelas', 'nama_kelas', 'class']);
+        $className = mb_strtolower(trim((string)$this->pickRowValue($row, ['class_name', 'kelas', 'nama_kelas', 'class'])), 'UTF-8');
         if ($className === '') {
             return ['valid' => true, 'class_id' => null, 'message' => ''];
         }
 
-        $resolved = $classByName->get(mb_strtolower($className, 'UTF-8'));
-        if (!$resolved instanceof ClassRoom) {
+        $academicYear = trim((string)$this->pickRowValue($row, ['tahun_ajaran', 'academic_year', 'tahun ajaran', 'ta']));
+
+        $matchingClasses = $allClasses->filter(function($c) use ($className) {
+            return mb_strtolower(trim($c->name), 'UTF-8') === $className;
+        });
+
+        if ($matchingClasses->isEmpty()) {
             return ['valid' => false, 'class_id' => null, 'message' => 'Nama kelas tidak ditemukan'];
         }
 
-        return ['valid' => true, 'class_id' => (int) $resolved->id, 'message' => ''];
+        if ($academicYear !== '') {
+            $exactMatch = $matchingClasses->firstWhere('academic_year', $academicYear);
+            if ($exactMatch) {
+                return ['valid' => true, 'class_id' => (int) $exactMatch->id, 'message' => ''];
+            }
+        }
+
+        $activeMatch = $matchingClasses->firstWhere('is_active', true);
+        if ($activeMatch) {
+            return ['valid' => true, 'class_id' => (int) $activeMatch->id, 'message' => ''];
+        }
+
+        $lastMatch = $matchingClasses->last();
+        return ['valid' => true, 'class_id' => (int) $lastMatch->id, 'message' => ''];
     }
 
     /**

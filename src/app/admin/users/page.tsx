@@ -75,6 +75,8 @@ function AdminUsersPageContent() {
   const [studentBlockFilter, setStudentBlockFilter] = useState<'all' | 'active' | 'blocked'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleteSubmitting, setBulkDeleteSubmitting] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -481,9 +483,28 @@ function AdminUsersPageContent() {
       setIsModalOpen(false);
       fetchData(); // Refresh data
     } catch (error: unknown) {
-      toast.error(getApiErrorMessage(error, 'Gagal menyimpan data pengguna'));
+      toast.error('Gagal menghapus user', getApiErrorMessage(error));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleBulkDeleteByFilter = async () => {
+    if (!roleFilter && !classFilter) {
+      toast.error('Gagal', 'Pilih filter Role atau Kelas terlebih dahulu untuk mencegah penghapusan seluruh data.');
+      return;
+    }
+
+    try {
+      setBulkDeleteSubmitting(true);
+      const res = await userAPI.bulkDeleteByFilter({ role: roleFilter, class_id: classFilter });
+      toast.success('Berhasil', res.data?.message || 'Data berhasil dihapus');
+      setIsBulkDeleteDialogOpen(false);
+      fetchUsers(1, searchQuery, roleFilter, classFilter, studentBlockFilter, sortKey, sortOrder);
+    } catch (error: any) {
+      toast.error('Gagal menghapus masal', getApiErrorMessage(error));
+    } finally {
+      setBulkDeleteSubmitting(false);
     }
   };
 
@@ -929,6 +950,16 @@ function AdminUsersPageContent() {
                 >
                   Tambah User
                 </Button>
+                {(roleFilter || classFilter) && (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    leftIcon={<Trash2 className="w-4 h-4" />}
+                    onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  >
+                    Hapus Sesuai Filter
+                  </Button>
+                )}
               </div>
             }
           />
@@ -954,6 +985,7 @@ function AdminUsersPageContent() {
               <Select
                 options={[
                   { value: '', label: 'Semua Kelas' },
+                  { value: 'none', label: 'Tanpa Kelas (Unassigned)' },
                   ...classes.map((c) => ({ value: c.id.toString(), label: `${c.name}${c.students_count !== undefined ? ` (${c.students_count} siswa)` : ''}` })),
                 ]}
                 value={classFilter}
@@ -1774,6 +1806,19 @@ function AdminUsersPageContent() {
           )}
         </div>
       </Modal>
+
+      {/* Bulk Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={isBulkDeleteDialogOpen}
+        title="Konfirmasi Hapus Masal"
+        message={`Apakah Anda yakin ingin MENGHAPUS SEMUA PENGGUNA yang tampil pada filter saat ini (${totalUsers} pengguna)? Tindakan ini permanen dan akan menghapus seluruh data terkait pengguna (nilai, ujian, dll).`}
+        confirmText="Ya, Hapus Semua Sesuai Filter"
+        cancelText="Batal"
+        onConfirm={handleBulkDeleteByFilter}
+        onCancel={() => setIsBulkDeleteDialogOpen(false)}
+        isLoading={bulkDeleteSubmitting}
+        variant="danger"
+      />
     </DashboardLayout>
   );
 }

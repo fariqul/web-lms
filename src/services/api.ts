@@ -253,6 +253,9 @@ export const userAPI = {
   
   delete: (id: number) =>
     api.delete(`/users/${id}`),
+
+  bulkDeleteByFilter: (params: { role?: string; class_id?: string | number }) =>
+    api.delete('/users/bulk-delete-by-filter', { params }),
   
   resetPassword: (id: number, newPassword: string) =>
     api.post(`/users/${id}/reset-password`, { new_password: newPassword }),

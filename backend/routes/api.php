@@ -95,6 +95,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/users/export', [UserController::class, 'export']);
         Route::apiResource('users', UserController::class);
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+        Route::delete('/users/bulk-delete-by-filter', [UserController::class, 'bulkDeleteByFilter']);
         Route::delete('/users/nomor-tes/clear', [UserController::class, 'clearNomorTes']);
         Route::post('/users/nomor-tes/normalize', [UserController::class, 'normalizeNomorTes']);
         Route::post('/users/nomor-tes/import', [UserController::class, 'importNomorTes']);
