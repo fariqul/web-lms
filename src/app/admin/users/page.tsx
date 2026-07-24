@@ -463,16 +463,13 @@ function AdminUsersPageContent() {
       if (formData.password) {
         payload.password = formData.password;
       }
-      if (formData.role === 'siswa' && formData.class_id) {
-        payload.class_id = parseInt(formData.class_id);
-        payload.nisn = formData.nisn;
-        payload.nis = formData.nis;
-      }
       if (formData.role === 'siswa') {
+        payload.class_id = formData.class_id ? parseInt(formData.class_id) : null;
+        payload.nisn = formData.nisn || null;
+        payload.nis = formData.nis || null;
         payload.nomor_tes = formData.nomor_tes || null;
-      }
-      if (formData.role === 'guru' && formData.nip) {
-        payload.nip = formData.nip;
+      } else if (formData.role === 'guru') {
+        payload.nip = formData.nip || null;
       }
 
       if (selectedUser) {
@@ -483,8 +480,8 @@ function AdminUsersPageContent() {
 
       setIsModalOpen(false);
       fetchData(); // Refresh data
-    } catch {
-      toast.error('Gagal menyimpan data pengguna');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan data pengguna'));
     } finally {
       setSubmitting(false);
     }

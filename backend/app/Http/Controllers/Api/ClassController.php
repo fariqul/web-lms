@@ -73,6 +73,13 @@ class ClassController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->has('name')) {
+            $request->merge(['name' => trim($request->name)]);
+        }
+        $request->merge([
+            'wali_kelas_id' => $request->filled('wali_kelas_id') ? $request->wali_kelas_id : null,
+        ]);
+
         $request->validate([
             'name' => [
                 'required', 'string', 'max:255',

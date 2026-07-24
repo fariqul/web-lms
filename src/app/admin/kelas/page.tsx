@@ -264,8 +264,8 @@ export default function AdminKelasPage() {
       }
       setIsModalOpen(false);
       fetchClasses(statusFilter); // Refresh data
-    } catch {
-      toast.error('Gagal menyimpan data kelas');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan data kelas'));
     } finally {
       setSubmitting(false);
     }
@@ -277,8 +277,8 @@ export default function AdminKelasPage() {
       await classAPI.delete(selectedClass.id);
       setIsDeleteDialogOpen(false);
       fetchClasses(statusFilter); // Refresh data
-    } catch {
-      toast.error('Gagal menghapus kelas');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Gagal menghapus kelas'));
     }
   };
 

@@ -13,6 +13,7 @@ class ClassRoom extends Model
 
     protected $fillable = [
         'name',
+        'grade_level',
         'grade',
         'academic_year',
         'is_active',

@@ -138,6 +138,15 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $request->merge([
+            'nisn' => $request->filled('nisn') ? $request->nisn : null,
+            'nis' => $request->filled('nis') ? $request->nis : null,
+            'nip' => $request->filled('nip') ? $request->nip : null,
+            'nomor_tes' => $request->filled('nomor_tes') ? $request->nomor_tes : null,
+            'class_id' => $request->filled('class_id') ? $request->class_id : null,
+            'jenis_kelamin' => $request->filled('jenis_kelamin') ? $request->jenis_kelamin : null,
+        ]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
@@ -195,6 +204,25 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        if ($request->has('nisn')) {
+            $request->merge(['nisn' => $request->filled('nisn') ? $request->nisn : null]);
+        }
+        if ($request->has('nis')) {
+            $request->merge(['nis' => $request->filled('nis') ? $request->nis : null]);
+        }
+        if ($request->has('nip')) {
+            $request->merge(['nip' => $request->filled('nip') ? $request->nip : null]);
+        }
+        if ($request->has('nomor_tes')) {
+            $request->merge(['nomor_tes' => $request->filled('nomor_tes') ? $request->nomor_tes : null]);
+        }
+        if ($request->has('class_id')) {
+            $request->merge(['class_id' => $request->filled('class_id') ? $request->class_id : null]);
+        }
+        if ($request->has('jenis_kelamin')) {
+            $request->merge(['jenis_kelamin' => $request->filled('jenis_kelamin') ? $request->jenis_kelamin : null]);
+        }
+
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],

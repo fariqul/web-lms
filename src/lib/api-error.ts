@@ -2,6 +2,7 @@ interface ApiLikeError {
   response?: {
     data?: {
       message?: string;
+      errors?: Record<string, string[] | string>;
     };
   };
   message?: string;
@@ -10,9 +11,23 @@ interface ApiLikeError {
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === 'object' && error !== null) {
     const maybeError = error as ApiLikeError;
-    const apiMessage = maybeError.response?.data?.message;
+    const errorsObj = maybeError.response?.data?.errors;
 
-    if (typeof apiMessage === 'string' && apiMessage.trim()) {
+    if (errorsObj && typeof errorsObj === 'object') {
+      const firstKey = Object.keys(errorsObj)[0];
+      if (firstKey) {
+        const val = errorsObj[firstKey];
+        if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string' && val[0].trim()) {
+          return val[0];
+        }
+        if (typeof val === 'string' && val.trim()) {
+          return val;
+        }
+      }
+    }
+
+    const apiMessage = maybeError.response?.data?.message;
+    if (typeof apiMessage === 'string' && apiMessage.trim() && apiMessage !== 'The given data was invalid.') {
       return apiMessage;
     }
 
