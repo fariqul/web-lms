@@ -60,6 +60,23 @@ const statusOptions = [
   { value: 'all', label: 'Semua' },
 ];
 
+const parseAcademicYearStart = (value: string) => {
+  const match = value.match(/(\d{4})/);
+  return match ? parseInt(match[1], 10) : 0;
+};
+
+const getNextAcademicYear = (value: string) => {
+  const start = parseAcademicYearStart(value);
+  return start ? `${start + 1}/${start + 2}` : '';
+};
+
+const getDefaultEffectiveDate = (value: string) => {
+  const start = parseAcademicYearStart(value);
+  if (!start) return new Date().toISOString().slice(0, 10);
+  const nextStart = start + 1;
+  return `${nextStart}-07-01`;
+};
+
 export default function AdminKelasPage() {
   const toast = useToast();
   const [classes, setClasses] = useState<ClassRoom[]>([]);
@@ -195,23 +212,6 @@ export default function AdminKelasPage() {
         : isActive;
     return matchesSearch && matchesGrade && matchesYear && matchesStatus;
   });
-
-  const parseAcademicYearStart = (value: string) => {
-    const match = value.match(/(\d{4})/);
-    return match ? parseInt(match[1], 10) : 0;
-  };
-
-  const getNextAcademicYear = (value: string) => {
-    const start = parseAcademicYearStart(value);
-    return start ? `${start + 1}/${start + 2}` : '';
-  };
-
-  const getDefaultEffectiveDate = (value: string) => {
-    const start = parseAcademicYearStart(value);
-    if (!start) return new Date().toISOString().slice(0, 10);
-    const nextStart = start + 1;
-    return `${nextStart}-07-01`;
-  };
 
   const promoteFromClasses = classes.filter((cls) => cls.academic_year === promoteFromYear);
   const promoteTargetClasses = classes.filter((cls) => cls.academic_year === promoteToYear);
