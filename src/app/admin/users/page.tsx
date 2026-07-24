@@ -1507,18 +1507,19 @@ function AdminUsersPageContent() {
               className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-sky-600 file:text-white hover:file:bg-sky-700"
             />
             <div className="pt-2">
-              <Select
+              <Input
                 label="Tahun Ajaran (Opsional, untuk mode Absen Mentah)"
-                options={[
-                  { value: '', label: 'Deteksi Otomatis / Sesuai File' },
-                  { value: '2025/2026', label: '2025/2026' },
-                  { value: '2026/2027', label: '2026/2027' },
-                  { value: '2027/2028', label: '2027/2028' },
-                  { value: '2028/2029', label: '2028/2029' },
-                ]}
+                placeholder="Contoh: 2026/2027 atau kosongkan untuk deteksi otomatis"
+                list="academic-years-list"
                 value={importAcademicYear}
                 onChange={(e) => setImportAcademicYear(e.target.value)}
               />
+              <datalist id="academic-years-list">
+                <option value="2025/2026" />
+                <option value="2026/2027" />
+                <option value="2027/2028" />
+                <option value="2028/2029" />
+              </datalist>
             </div>
           </div>
 

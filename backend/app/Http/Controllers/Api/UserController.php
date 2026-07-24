@@ -418,7 +418,7 @@ class UserController extends Controller
     public function importPreview(Request $request)
     {
         $request->validate([
-            'import_file' => ['required', File::types(['xlsx', 'csv'])->max(10 * 1024)],
+            'import_file' => ['required', 'file', 'max:20480'], // Longgarkan dari cek tipe mime ketat, IOFactory akan memvalidasinya nanti
             'academic_year' => ['nullable', 'string'],
         ]);
 
@@ -693,7 +693,7 @@ class UserController extends Controller
     public function importNomorTes(Request $request)
     {
         $request->validate([
-            'import_file' => ['required', File::types(['xlsx', 'csv'])->max(10 * 1024)],
+            'import_file' => ['required', 'file', 'max:20480'], // Longgarkan validasi mime agar tidak error di OS tertentu
         ]);
 
         try {
