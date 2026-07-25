@@ -63,16 +63,18 @@ const QR_REFRESH_OPTIONS = [
 ];
 
 const JAM_OPTIONS = [
-  { value: '1', label: 'Jam I (07.45 - 08.25)' },
-  { value: '2', label: 'Jam II (08.25 - 09.05)' },
-  { value: '3', label: 'Jam III (09.05 - 09.45)' },
-  { value: '4', label: 'Jam IV (09.45 - 10.25)' },
-  { value: '5', label: 'Jam V (10.40 - 11.20)' },
-  { value: '6', label: 'Jam VI (11.20 - 12.00)' },
-  { value: '7', label: 'Jam VII (13.00 - 13.40)' },
-  { value: '8', label: 'Jam VIII (13.40 - 14.20)' },
-  { value: '9', label: 'Jam IX (14.20 - 15.00)' },
-  { value: '10', label: 'Jam X (15.00 - 15.40)' },
+  { value: '1', label: 'Jam 1 (07.30 - 08.10)' },
+  { value: '2', label: 'Jam 2 (08.10 - 08.50)' },
+  { value: '3', label: 'Jam 3 (08.50 - 09.30)' },
+  { value: '4', label: 'Jam 4 (09.30 - 10.10)' },
+  { value: 'R-1', label: 'R-1 (10.10 - 10.25)' },
+  { value: '5', label: 'Jam 5 (10.25 - 11.05)' },
+  { value: '6', label: 'Jam 6 (11.05 - 11.45)' },
+  { value: 'R-2', label: 'R-2 (11.45 - 12.45)' },
+  { value: '7', label: 'Jam 7 (12.45 - 13.25)' },
+  { value: '8', label: 'Jam 8 (13.25 - 14.05)' },
+  { value: '9', label: 'Jam 9 (14.05 - 14.45)' },
+  { value: '10', label: 'Jam 10 (14.45 - 15.25)' },
 ];
 
 export default function AbsensiPage() {

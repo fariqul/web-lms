@@ -23,15 +23,21 @@ interface Schedule {
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-// Generate time options from 06:00 to 18:00 with 15 minute intervals
-const TIME_OPTIONS: string[] = [];
-for (let hour = 6; hour <= 18; hour++) {
-  for (let min = 0; min < 60; min += 15) {
-    const h = hour.toString().padStart(2, '0');
-    const m = min.toString().padStart(2, '0');
-    TIME_OPTIONS.push(`${h}:${m}`);
-  }
-}
+// Jam Ke sesuai jadwal sekolah
+const JAM_KE_OPTIONS = [
+  { value: '1', label: 'Jam 1', start: '07:30', end: '08:10' },
+  { value: '2', label: 'Jam 2', start: '08:10', end: '08:50' },
+  { value: '3', label: 'Jam 3', start: '08:50', end: '09:30' },
+  { value: '4', label: 'Jam 4', start: '09:30', end: '10:10' },
+  { value: 'R-1', label: 'Istirahat 1 (R-1)', start: '10:10', end: '10:25' },
+  { value: '5', label: 'Jam 5', start: '10:25', end: '11:05' },
+  { value: '6', label: 'Jam 6', start: '11:05', end: '11:45' },
+  { value: 'R-2', label: 'Istirahat 2 (R-2)', start: '11:45', end: '12:45' },
+  { value: '7', label: 'Jam 7', start: '12:45', end: '13:25' },
+  { value: '8', label: 'Jam 8', start: '13:25', end: '14:05' },
+  { value: '9', label: 'Jam 9', start: '14:05', end: '14:45' },
+  { value: '10', label: 'Jam 10', start: '14:45', end: '15:25' },
+];
 
 export default function AdminJadwalPage() {
   const toast = useToast();
@@ -401,34 +407,37 @@ export default function AdminJadwalPage() {
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Waktu Mulai</label>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jam Ke</label>
                     <select
-                      value={formData.start_time}
-                      onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      value={
+                        JAM_KE_OPTIONS.find(j => j.start === formData.start_time && j.end === formData.end_time)?.value || ''
+                      }
+                      onChange={(e) => {
+                        const selected = JAM_KE_OPTIONS.find(j => j.value === e.target.value);
+                        if (selected) {
+                          setFormData({ ...formData, start_time: selected.start, end_time: selected.end });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-slate-800 text-foreground"
                       required
                     >
-                      <option value="">Pilih Waktu</option>
-                      {TIME_OPTIONS.map(time => (
-                        <option key={time} value={time}>{time}</option>
+                      <option value="">Pilih Jam Ke</option>
+                      {JAM_KE_OPTIONS.map(jam => (
+                        <option key={jam.value} value={jam.value}>
+                          {jam.label} ({jam.start} - {jam.end})
+                        </option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Waktu Selesai</label>
-                    <select
-                      value={formData.end_time}
-                      onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Pilih Waktu</option>
-                      {TIME_OPTIONS.filter(t => t > formData.start_time).map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {formData.start_time && formData.end_time && (
+                    <div className="col-span-2 flex items-center gap-2 px-3 py-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-200 dark:border-sky-800/50">
+                      <Clock className="w-4 h-4 text-sky-500" />
+                      <span className="text-sm text-sky-700 dark:text-sky-300">
+                        Waktu: <strong>{formData.start_time}</strong> — <strong>{formData.end_time}</strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
