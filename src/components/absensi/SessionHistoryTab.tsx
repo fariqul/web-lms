@@ -715,6 +715,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                   <tr className="border-b border-slate-200 dark:border-slate-700">
                     <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">No</th>
                     <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">NISN</th>
+                    <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">NIS</th>
                     <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Nama Siswa</th>
                     <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Waktu</th>
@@ -728,6 +729,7 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
                       <tr key={sa.student.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
                         <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{index + 1}</td>
                         <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{sa.student.nisn || '-'}</td>
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{sa.student.nis || '-'}</td>
                         <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{sa.student.name}</td>
                         <td className="py-3 px-4">
                           {isEditMode ? (

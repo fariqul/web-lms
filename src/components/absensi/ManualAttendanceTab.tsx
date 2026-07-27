@@ -10,6 +10,7 @@ interface Student {
   id: number;
   name: string;
   nisn?: string;
+  nis?: string;
 }
 
 interface ClassOption {
@@ -60,6 +61,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedJam, setSelectedJam] = useState('');
+  const [selectedJamEnd, setSelectedJamEnd] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [statuses, setStatuses] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
@@ -145,7 +147,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
         const sessionResponse = await api.post('/attendance-sessions', {
           class_id: parseInt(selectedClass),
           subject: selectedSubject,
-          jam_ke: parseInt(selectedJam),
+          jam_ke: selectedJam + (selectedJamEnd && selectedJamEnd !== selectedJam ? `-${selectedJamEnd}` : ''),
           valid_from: validFrom,
           valid_until: validUntil,
           require_school_network: false,
@@ -220,7 +222,7 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
 
         {!saved ? (
           <div className="space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Select
                 label="Pilih Kelas"
                 options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
@@ -242,11 +244,33 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                 }}
               />
               <Select
-                label="Jam Ke"
+                label="Dari Jam"
                 options={[{ value: '', label: 'Pilih jam…' }, ...JAM_OPTIONS]}
                 value={selectedJam}
                 onChange={(e) => {
                   setSelectedJam(e.target.value);
+                  // Auto set end jam to same if not set or if end < start
+                  if (!selectedJamEnd || e.target.value > selectedJamEnd) {
+                    setSelectedJamEnd(e.target.value);
+                  }
+                  setSessionId(null);
+                  setSaved(false);
+                }}
+              />
+              <Select
+                label="Sampai Jam"
+                options={[
+                  { value: '', label: 'Pilih jam…' },
+                  ...JAM_OPTIONS.filter(j => {
+                    if (!selectedJam) return true;
+                    const startIdx = JAM_OPTIONS.findIndex(o => o.value === selectedJam);
+                    const thisIdx = JAM_OPTIONS.findIndex(o => o.value === j.value);
+                    return thisIdx >= startIdx;
+                  }),
+                ]}
+                value={selectedJamEnd}
+                onChange={(e) => {
+                  setSelectedJamEnd(e.target.value);
                   setSessionId(null);
                   setSaved(false);
                 }}
@@ -325,8 +349,12 @@ export function ManualAttendanceTab({ classes, subjects, onSessionCreated }: Man
                           <span className="w-10 text-sm text-slate-600 dark:text-slate-400">{index + 1}</span>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-slate-800 dark:text-white">{student.name}</p>
-                            {student.nisn && (
-                              <p className="text-xs text-slate-600 dark:text-slate-400">NISN: {student.nisn}</p>
+                            {(student.nisn || student.nis) && (
+                              <p className="text-xs text-slate-600 dark:text-slate-400">
+                                {student.nisn && <>NISN: {student.nisn}</>}
+                                {student.nisn && student.nis && <> • </>}
+                                {student.nis && <>NIS: {student.nis}</>}
+                              </p>
                             )}
                           </div>
                           <div className="w-52 flex gap-1 justify-center">

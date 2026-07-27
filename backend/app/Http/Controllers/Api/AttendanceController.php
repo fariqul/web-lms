@@ -216,7 +216,7 @@ class AttendanceController extends Controller
 
         // Transform attendances to include student info
         $attendancesWithStudent = Attendance::where('session_id', $attendanceSession->id)
-            ->with('student:id,name,nisn')
+            ->with('student:id,name,nisn,nis')
             ->get(['id', 'session_id', 'student_id', 'status', 'scanned_at']);
 
         return response()->json([

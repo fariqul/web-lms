@@ -16,6 +16,8 @@ import { ManualAttendanceTab } from '@/components/absensi/ManualAttendanceTab';
 interface AttendanceRecord {
   id: number;
   name: string;
+  nisn?: string;
+  nis?: string;
   time: string;
   status: string;
 }
@@ -86,6 +88,7 @@ export default function AbsensiPage() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedJam, setSelectedJam] = useState('');
+  const [selectedJamEnd, setSelectedJamEnd] = useState('');
   const [qrRefreshInterval, setQrRefreshInterval] = useState(300);
   const [qrToken, setQrToken] = useState('');
   const [timeRemaining, setTimeRemaining] = useState(300);
@@ -200,9 +203,11 @@ export default function AbsensiPage() {
       if (response.data?.data?.attendances) {
         const records = response.data.data.attendances
           .filter((a: { status: string }) => a.status === 'hadir')
-          .map((a: { student_id: number; student?: { name: string }; scanned_at: string; status: string }) => ({
+          .map((a: { student_id: number; student?: { name: string; nisn?: string; nis?: string }; scanned_at: string; status: string }) => ({
             id: a.student_id,
             name: a.student?.name || 'Unknown',
+            nisn: a.student?.nisn || '',
+            nis: a.student?.nis || '',
             time: new Date(a.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
             status: a.status,
           }));
@@ -234,6 +239,8 @@ export default function AbsensiPage() {
             {
               id: scanData.student_id,
               name: scanData.student_name || 'Unknown',
+              nisn: (scanData as { nisn?: string }).nisn || '',
+              nis: (scanData as { nis?: string }).nis || '',
               time: scanData.scanned_at
                 ? new Date(scanData.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                 : new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
@@ -462,7 +469,7 @@ export default function AbsensiPage() {
       const response = await api.post('/attendance-sessions', {
         class_id: parseInt(selectedClass),
         subject: selectedSubject,
-        jam_ke: parseInt(selectedJam),
+        jam_ke: selectedJam + (selectedJamEnd && selectedJamEnd !== selectedJam ? `-${selectedJamEnd}` : ''),
         token_refresh_interval: qrRefreshInterval,
         valid_from: validFrom,
         valid_until: validUntil,
@@ -547,7 +554,22 @@ export default function AbsensiPage() {
     `${Math.max(1, Math.round(qrRefreshInterval / 60))} menit`;
 
   const columns = [
-    { key: 'name', header: 'Nama Siswa' },
+    {
+      key: 'name',
+      header: 'Nama Siswa',
+      render: (item: AttendanceRecord) => (
+        <div>
+          <p className="font-medium text-slate-800 dark:text-white">{item.name}</p>
+          {(item.nisn || item.nis) && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {item.nisn && <>NISN: {item.nisn}</>}
+              {item.nisn && item.nis && <> • </>}
+              {item.nis && <>NIS: {item.nis}</>}
+            </p>
+          )}
+        </div>
+      ),
+    },
     { key: 'time', header: 'Waktu Absen' },
     {
       key: 'status',
@@ -640,7 +662,7 @@ export default function AbsensiPage() {
 
               {!isSessionActive ? (
                 <div className="space-y-4">
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Select
                       label="Pilih Kelas"
                       options={[{ value: '', label: 'Pilih kelas…' }, ...classes]}
@@ -654,10 +676,29 @@ export default function AbsensiPage() {
                       onChange={(e) => setSelectedSubject(e.target.value)}
                     />
                     <Select
-                      label="Jam Ke"
+                      label="Dari Jam"
                       options={[{ value: '', label: 'Pilih jam…' }, ...JAM_OPTIONS]}
                       value={selectedJam}
-                      onChange={(e) => setSelectedJam(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedJam(e.target.value);
+                        if (!selectedJamEnd || e.target.value > selectedJamEnd) {
+                          setSelectedJamEnd(e.target.value);
+                        }
+                      }}
+                    />
+                    <Select
+                      label="Sampai Jam"
+                      options={[
+                        { value: '', label: 'Pilih jam…' },
+                        ...JAM_OPTIONS.filter(j => {
+                          if (!selectedJam) return true;
+                          const startIdx = JAM_OPTIONS.findIndex(o => o.value === selectedJam);
+                          const thisIdx = JAM_OPTIONS.findIndex(o => o.value === j.value);
+                          return thisIdx >= startIdx;
+                        }),
+                      ]}
+                      value={selectedJamEnd}
+                      onChange={(e) => setSelectedJamEnd(e.target.value)}
                     />
                   </div>
                   
