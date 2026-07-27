@@ -123,7 +123,7 @@ class UserController extends Controller
         }
 
         // Pagination
-        $perPage = min($request->input('per_page', 25), 100);
+        $perPage = min((int) $request->input('per_page', 25), 1000);
         $users = $query->paginate($perPage);
 
         return response()->json([

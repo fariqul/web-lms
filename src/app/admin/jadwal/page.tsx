@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Card, Button, Input, ConfirmDialog } from '@/components/ui';
-import { Calendar, Plus, Edit2, Trash2, Clock, User, MapPin, X, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Edit2, Trash2, Clock, User, MapPin, X, Loader2, Search, ChevronDown, Check } from 'lucide-react';
 import { classAPI, userAPI, scheduleAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { SUBJECT_OPTIONS } from '@/constants/subjects';
@@ -23,8 +23,15 @@ interface Schedule {
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
+interface JamKeOption {
+  value: string;
+  label: string;
+  start: string;
+  end: string;
+}
+
 // Jam Ke sesuai jadwal sekolah
-const JAM_KE_OPTIONS = [
+const JAM_KE_OPTIONS: JamKeOption[] = [
   { value: '1', label: 'Jam 1', start: '07:30', end: '08:10' },
   { value: '2', label: 'Jam 2', start: '08:10', end: '08:50' },
   { value: '3', label: 'Jam 3', start: '08:50', end: '09:30' },
@@ -38,6 +45,126 @@ const JAM_KE_OPTIONS = [
   { value: '9', label: 'Jam 9', start: '14:05', end: '14:45' },
   { value: '10', label: 'Jam 10', start: '14:45', end: '15:25' },
 ];
+
+function SearchableTeacherSelect({
+  teachers,
+  value,
+  onChange,
+}: {
+  teachers: { id: number; name: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const selectedTeacher = teachers.find((t) => t.id.toString() === value);
+
+  const filteredTeachers = teachers.filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+        Guru Pengajar <span className="text-red-500">*</span>
+      </label>
+      
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 bg-white dark:bg-slate-800 text-foreground cursor-pointer flex items-center justify-between min-h-[42px]"
+      >
+        <span className={selectedTeacher ? 'text-slate-900 dark:text-white font-medium text-sm' : 'text-slate-400 text-sm'}>
+          {selectedTeacher ? selectedTeacher.name : 'Pilih / Cari Guru...'}
+        </span>
+        <div className="flex items-center gap-1 text-slate-400">
+          {selectedTeacher && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+                setSearch('');
+              }}
+              className="p-0.5 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Bersihkan pilihan guru"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          <ChevronDown className="w-4 h-4" />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden max-h-60 flex flex-col">
+          <div className="p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center gap-2">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ketik nama guru untuk mencari..."
+              className="w-full text-sm bg-transparent border-none focus:outline-none text-slate-800 dark:text-white placeholder:text-slate-400"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Bersihkan pencarian"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-700/50 max-h-48">
+            {filteredTeachers.length === 0 ? (
+              <div className="p-3 text-center text-xs text-slate-400">
+                Guru &quot;{search}&quot; tidak ditemukan
+              </div>
+            ) : (
+              filteredTeachers.map((t) => {
+                const isSelected = t.id.toString() === value;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(t.id.toString());
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors ${
+                      isSelected
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <span>{t.name}</span>
+                    {isSelected && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminJadwalPage() {
   const toast = useToast();
@@ -69,7 +196,7 @@ export default function AdminJadwalPage() {
       // Fetch all data in parallel
       const [classesRes, usersRes, schedulesRes] = await Promise.all([
         classAPI.getAll(),
-        userAPI.getAll({ per_page: 1000 }),
+        userAPI.getAll({ role: 'guru', per_page: 1000 }),
         scheduleAPI.getAll(),
       ]);
 
@@ -80,7 +207,7 @@ export default function AdminJadwalPage() {
       // Process teachers
       const usersRaw = usersRes.data?.data;
       const usersData = Array.isArray(usersRaw) ? usersRaw : (usersRaw?.data || []);
-      const teachersList = usersData.filter((u: { role: string }) => u.role === 'guru');
+      const teachersList = usersData.filter((u: { role?: string }) => !u.role || u.role === 'guru');
       setTeachers(teachersList.map((t: { id: number; name: string }) => ({ id: t.id, name: t.name })));
 
       // Process schedules
@@ -384,20 +511,11 @@ export default function AdminJadwalPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Guru Pengajar</label>
-                  <select
-                    value={formData.teacher_id}
-                    onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Pilih Guru</option>
-                    {teachers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <SearchableTeacherSelect
+                  teachers={teachers}
+                  value={formData.teacher_id}
+                  onChange={(id) => setFormData({ ...formData, teacher_id: id })}
+                />
 
                 <Input
                   label="Ruangan"
@@ -407,25 +525,71 @@ export default function AdminJadwalPage() {
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Jam Ke</label>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Dari Jam</label>
                     <select
                       value={
-                        JAM_KE_OPTIONS.find(j => j.start === formData.start_time && j.end === formData.end_time)?.value || ''
+                        JAM_KE_OPTIONS.find(j => j.start === formData.start_time.slice(0, 5))?.value || ''
                       }
                       onChange={(e) => {
-                        const selected = JAM_KE_OPTIONS.find(j => j.value === e.target.value);
-                        if (selected) {
-                          setFormData({ ...formData, start_time: selected.start, end_time: selected.end });
+                        const startVal = e.target.value;
+                        const startOpt = JAM_KE_OPTIONS.find(j => j.value === startVal);
+                        if (!startOpt) {
+                          setFormData({ ...formData, start_time: '', end_time: '' });
+                          return;
                         }
+                        const currentEndVal = JAM_KE_OPTIONS.find(j => j.end === formData.end_time.slice(0, 5))?.value || startVal;
+                        const currentEndIdx = JAM_KE_OPTIONS.findIndex(j => j.value === currentEndVal);
+                        const newStartIdx = JAM_KE_OPTIONS.findIndex(j => j.value === startVal);
+                        let endOpt = JAM_KE_OPTIONS.find(j => j.value === currentEndVal);
+                        if (!endOpt || currentEndIdx < newStartIdx) {
+                          endOpt = startOpt;
+                        }
+                        setFormData({ ...formData, start_time: startOpt.start, end_time: endOpt.end });
                       }}
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-slate-800 text-foreground"
                       required
                     >
-                      <option value="">Pilih Jam Ke</option>
+                      <option value="">Pilih Jam...</option>
                       {JAM_KE_OPTIONS.map(jam => (
                         <option key={jam.value} value={jam.value}>
-                          {jam.label} ({jam.start} - {jam.end})
+                          {jam.label} ({jam.start})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sampai Jam</label>
+                    <select
+                      value={
+                        JAM_KE_OPTIONS.find(j => j.end === formData.end_time.slice(0, 5))?.value || 
+                        JAM_KE_OPTIONS.find(j => j.start === formData.start_time.slice(0, 5))?.value || ''
+                      }
+                      onChange={(e) => {
+                        const endVal = e.target.value;
+                        const endOpt = JAM_KE_OPTIONS.find(j => j.value === endVal);
+                        if (!endOpt) return;
+                        const currentStartVal = JAM_KE_OPTIONS.find(j => j.start === formData.start_time.slice(0, 5))?.value;
+                        const startOpt = JAM_KE_OPTIONS.find(j => j.value === currentStartVal) || endOpt;
+                        setFormData({
+                          ...formData,
+                          start_time: startOpt.start,
+                          end_time: endOpt.end,
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-slate-800 text-foreground"
+                      required
+                    >
+                      <option value="">Pilih Jam...</option>
+                      {JAM_KE_OPTIONS.filter(j => {
+                        const currentStartVal = JAM_KE_OPTIONS.find(o => o.start === formData.start_time.slice(0, 5))?.value;
+                        if (!currentStartVal) return true;
+                        const startIdx = JAM_KE_OPTIONS.findIndex(o => o.value === currentStartVal);
+                        const thisIdx = JAM_KE_OPTIONS.findIndex(o => o.value === j.value);
+                        return thisIdx >= startIdx;
+                      }).map(jam => (
+                        <option key={jam.value} value={jam.value}>
+                          {jam.label} ({jam.end})
                         </option>
                       ))}
                     </select>
@@ -434,7 +598,7 @@ export default function AdminJadwalPage() {
                     <div className="col-span-2 flex items-center gap-2 px-3 py-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-200 dark:border-sky-800/50">
                       <Clock className="w-4 h-4 text-sky-500" />
                       <span className="text-sm text-sky-700 dark:text-sky-300">
-                        Waktu: <strong>{formData.start_time}</strong> — <strong>{formData.end_time}</strong>
+                        Waktu: <strong>{formData.start_time.slice(0, 5)}</strong> — <strong>{formData.end_time.slice(0, 5)}</strong>
                       </span>
                     </div>
                   )}
