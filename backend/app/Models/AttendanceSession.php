@@ -27,7 +27,7 @@ class AttendanceSession extends Model
     protected $casts = [
         'class_id' => 'integer',
         'teacher_id' => 'integer',
-        'jam_ke' => 'integer',
+        'jam_ke' => 'string',
         'token_refresh_interval' => 'integer',
         'valid_from' => 'datetime',
         'valid_until' => 'datetime',

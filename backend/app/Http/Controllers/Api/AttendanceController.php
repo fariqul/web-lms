@@ -128,7 +128,7 @@ class AttendanceController extends Controller
         $request->validate([
             'class_id' => 'required|exists:classes,id',
             'subject' => 'required|string|max:255',
-            'jam_ke' => 'nullable|integer|min:1|max:10',
+            'jam_ke' => 'nullable|string|max:50',
             'token_refresh_interval' => 'nullable|integer|min:60|max:1800',
             'valid_from' => 'required|date',
             'valid_until' => 'required|date|after:valid_from',
