@@ -135,18 +135,28 @@ class AttendanceController extends Controller
             'require_school_network' => 'boolean',
         ]);
 
-        $session = AttendanceSession::create([
+        $jamKe = $request->jam_ke;
+        $sessionPayload = [
             'class_id' => $request->class_id,
             'teacher_id' => $request->user()->id,
             'subject' => $request->subject,
-            'jam_ke' => $request->jam_ke,
+            'jam_ke' => $jamKe,
             'qr_token' => Str::random(32),
             'token_refresh_interval' => $request->input('token_refresh_interval', 300),
             'valid_from' => $request->valid_from,
             'valid_until' => $request->valid_until,
             'status' => 'active',
             'require_school_network' => $request->require_school_network ?? false,
-        ]);
+        ];
+
+        try {
+            $session = AttendanceSession::create($sessionPayload);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Fallback jika database belum di-migrate (kolom jam_ke masih TINYINT)
+            $numericJam = (int) preg_replace('/[^0-9]/', '', (string) $jamKe);
+            $sessionPayload['jam_ke'] = $numericJam > 0 ? min($numericJam, 255) : null;
+            $session = AttendanceSession::create($sessionPayload);
+        }
 
         $session->load(['teacher:id,name', 'class:id,name']);
 

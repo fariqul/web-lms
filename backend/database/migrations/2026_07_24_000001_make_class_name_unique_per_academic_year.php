@@ -16,14 +16,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('classes', function (Blueprint $table) {
-            // Drop the old global unique index on name if it exists
-            // The original migration didn't add a unique index at DB level,
-            // but if it was added later, this handles it gracefully.
-            try {
-                $table->dropUnique(['name']);
-            } catch (\Exception $e) {
-                // Index didn't exist, that's fine
-            }
+
 
             // Add composite unique: same name allowed in different academic years
             $table->unique(['name', 'academic_year'], 'classes_name_academic_year_unique');
