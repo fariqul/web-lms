@@ -19,7 +19,8 @@ import {
   FileText,
   AlertCircle,
   Download,
-  Star
+  Star,
+  ExternalLink
 } from 'lucide-react';
 import { classAPI, assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
@@ -50,6 +51,7 @@ interface Submission {
   student_id: number;
   content?: string;
   file_url?: string;
+  link_url?: string;
   score?: number;
   feedback?: string;
   status: 'submitted' | 'graded' | 'late';
@@ -748,16 +750,31 @@ export default function TugasGuruPage() {
                                 {submission.content}
                               </p>
                             )}
-                            {submission.file_url && (
-                              <a 
-                                href={getSecureFileUrl(submission.file_url)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
-                              >
-                                <Download className="w-4 h-4" />
-                                Download File
-                              </a>
+                            {(submission.file_url || submission.link_url) && (
+                              <div className="flex flex-wrap items-center gap-4 mt-2">
+                                {submission.file_url && (
+                                  <a 
+                                    href={getSecureFileUrl(submission.file_url)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                    Download File
+                                  </a>
+                                )}
+                                {submission.link_url && (
+                                  <a 
+                                    href={submission.link_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Buka Link Jawaban
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </div>
                           <div className="text-right">

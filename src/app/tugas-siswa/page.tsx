@@ -43,6 +43,7 @@ interface Assignment {
     id: number;
     content?: string;
     file_url?: string;
+    link_url?: string;
     score?: number;
     feedback?: string;
     status: 'submitted' | 'graded' | 'late';
@@ -66,6 +67,7 @@ export default function TugasSiswaPage() {
 
   // Submit form
   const [submitContent, setSubmitContent] = useState('');
+  const [submitLink, setSubmitLink] = useState('');
   const [submitFile, setSubmitFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,6 +126,7 @@ export default function TugasSiswaPage() {
   const handleOpenSubmit = (assignment: Assignment) => {
     setSelectedAssignment(assignment);
     setSubmitContent('');
+    setSubmitLink('');
     setSubmitFile(null);
     setShowSubmitModal(true);
   };
@@ -137,8 +140,8 @@ export default function TugasSiswaPage() {
     e.preventDefault();
     if (!selectedAssignment) return;
 
-    if (!submitContent && !submitFile) {
-      setError('Isi jawaban atau upload file');
+    if (!submitContent && !submitFile && !submitLink) {
+      setError('Isi jawaban, upload file, atau berikan link');
       return;
     }
 
@@ -152,6 +155,9 @@ export default function TugasSiswaPage() {
       }
       if (submitFile) {
         formData.append('file', submitFile);
+      }
+      if (submitLink) {
+        formData.append('link_url', submitLink);
       }
 
       await assignmentAPI.submit(selectedAssignment.id, formData);
@@ -510,6 +516,21 @@ export default function TugasSiswaPage() {
                   </div>
 
                   <div>
+                    <label htmlFor="link" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Link Jawaban (Opsional)
+                    </label>
+                    <input
+                      type="url"
+                      id="link"
+                      name="link"
+                      value={submitLink}
+                      onChange={(e) => setSubmitLink(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Upload File
                     </label>
@@ -659,10 +680,21 @@ export default function TugasSiswaPage() {
                         href={getSecureFileUrl(selectedAssignment.my_submission.file_url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
+                        className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2 mr-4"
                       >
                         <Download className="w-4 h-4" />
                         Download File Jawaban
+                      </a>
+                    )}
+                    {selectedAssignment.my_submission.link_url && (
+                      <a 
+                        href={selectedAssignment.my_submission.link_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Buka Link Jawaban
                       </a>
                     )}
                     <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">

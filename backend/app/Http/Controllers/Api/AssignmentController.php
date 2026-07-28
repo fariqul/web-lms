@@ -285,13 +285,14 @@ class AssignmentController extends Controller
         $request->validate([
             'content' => 'nullable|string',
             'file' => 'nullable|file|max:51200|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,jpg,jpeg,png',
+            'link_url' => 'nullable|url|max:500',
         ]);
 
-        // At least one of content or file must be provided
-        if (!$request->input('content') && !$request->hasFile('file')) {
+        // At least one of content, file, or link_url must be provided
+        if (!$request->input('content') && !$request->hasFile('file') && !$request->input('link_url')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Isi jawaban atau upload file',
+                'message' => 'Isi jawaban, upload file, atau berikan link',
             ], 422);
         }
 
@@ -310,6 +311,7 @@ class AssignmentController extends Controller
             'student_id' => $user->id,
             'content' => $request->input('content'),
             'file_url' => $fileUrl,
+            'link_url' => $request->input('link_url'),
             'status' => $isLate ? 'late' : 'submitted',
             'submitted_at' => now(),
         ]);

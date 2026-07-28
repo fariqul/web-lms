@@ -12,6 +12,7 @@ class AssignmentSubmission extends Model
         'student_id',
         'content',
         'file_url',
+        'link_url',
         'score',
         'feedback',
         'status',
