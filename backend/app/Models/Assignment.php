@@ -17,6 +17,7 @@ class Assignment extends Model
         'deadline',
         'max_score',
         'attachment_url',
+        'link_url',
         'status',
     ];
 

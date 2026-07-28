@@ -82,6 +82,7 @@ class AssignmentController extends Controller
             'deadline' => 'required|date|after:now',
             'max_score' => 'nullable|integer|min:1|max:1000',
             'attachment' => 'nullable|file|max:51200|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,jpg,jpeg,png', // 50MB, allowed types
+            'link_url' => 'nullable|url|max:500',
         ]);
 
         $user = $request->user();
@@ -110,6 +111,7 @@ class AssignmentController extends Controller
             'deadline' => $request->deadline,
             'max_score' => $request->max_score ?? 100,
             'attachment_url' => $attachmentUrl,
+            'link_url' => $request->link_url,
             'status' => 'active',
         ]);
 
@@ -190,6 +192,7 @@ class AssignmentController extends Controller
             'max_score' => 'nullable|integer|min:1|max:1000',
             'status' => 'sometimes|in:active,closed',
             'attachment' => 'nullable|file|max:51200',
+            'link_url' => 'nullable|url|max:500',
         ]);
 
         if ($request->hasFile('attachment')) {
@@ -206,7 +209,7 @@ class AssignmentController extends Controller
         }
 
         $assignment->fill($request->only([
-            'title', 'description', 'subject', 'class_id', 'deadline', 'max_score', 'status'
+            'title', 'description', 'subject', 'class_id', 'deadline', 'max_score', 'status', 'link_url'
         ]));
         $assignment->save();
 

@@ -35,6 +35,7 @@ interface Assignment {
   deadline: string;
   max_score: number;
   attachment_url?: string;
+  link_url?: string;
   status: 'active' | 'closed';
   created_at: string;
   submissions_count: number;
@@ -87,6 +88,7 @@ export default function TugasGuruPage() {
     class_id: '',
     deadline: '',
     max_score: '100',
+    link_url: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -139,6 +141,7 @@ export default function TugasGuruPage() {
       class_id: '',
       deadline: '',
       max_score: '100',
+      link_url: '',
     });
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -169,6 +172,7 @@ export default function TugasGuruPage() {
       submitData.append('class_id', formData.class_id);
       submitData.append('deadline', formData.deadline);
       submitData.append('max_score', formData.max_score);
+      if (formData.link_url) submitData.append('link_url', formData.link_url);
       
       if (selectedFile) {
         submitData.append('attachment', selectedFile);
@@ -206,6 +210,12 @@ export default function TugasGuruPage() {
       submitData.append('class_id', formData.class_id);
       submitData.append('deadline', formData.deadline);
       submitData.append('max_score', formData.max_score);
+      
+      if (formData.link_url) {
+        submitData.append('link_url', formData.link_url);
+      } else {
+        submitData.append('link_url', '');
+      }
       
       if (selectedFile) {
         submitData.append('attachment', selectedFile);
@@ -255,6 +265,7 @@ export default function TugasGuruPage() {
       class_id: assignment.class_id.toString(),
       deadline: assignment.deadline.slice(0, 16),
       max_score: assignment.max_score.toString(),
+      link_url: assignment.link_url || '',
     });
     setSelectedFile(null);
     setShowEditModal(true);
@@ -603,6 +614,14 @@ export default function TugasGuruPage() {
                     max="1000"
                   />
                 </div>
+
+                <Input
+                  label="Link Tugas (Opsional)"
+                  value={formData.link_url}
+                  onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+                  placeholder="https://..."
+                  type="url"
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">

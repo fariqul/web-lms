@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Download,
   Send,
-  Eye
+  Eye,
+  ExternalLink
 } from 'lucide-react';
 import { assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -32,6 +33,7 @@ interface Assignment {
   deadline: string;
   max_score: number;
   attachment_url?: string;
+  link_url?: string;
   status: 'active' | 'closed';
   created_at: string;
   teacher?: { id: number; name: string };
@@ -450,16 +452,31 @@ export default function TugasSiswaPage() {
                     <span>•</span>
                     <span>Deadline: {formatDate(selectedAssignment.deadline)}</span>
                   </div>
-                  {selectedAssignment.attachment_url && (
-                    <a 
-                      href={getSecureFileUrl(selectedAssignment.attachment_url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline mt-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download Lampiran Tugas
-                    </a>
+                  {(selectedAssignment.attachment_url || selectedAssignment.link_url) && (
+                    <div className="flex flex-wrap items-center gap-4 mt-2">
+                      {selectedAssignment.attachment_url && (
+                        <a 
+                          href={getSecureFileUrl(selectedAssignment.attachment_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download Lampiran Tugas
+                        </a>
+                      )}
+                      {selectedAssignment.link_url && (
+                        <a 
+                          href={selectedAssignment.link_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-sky-500 hover:underline"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Buka Link Tugas
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -601,6 +618,33 @@ export default function TugasSiswaPage() {
                     <p className="font-medium">{selectedAssignment.max_score}</p>
                   </div>
                 </div>
+
+                {(selectedAssignment.attachment_url || selectedAssignment.link_url) && (
+                  <div className="flex flex-wrap items-center gap-4 text-sm mt-2">
+                    {selectedAssignment.attachment_url && (
+                      <a 
+                        href={getSecureFileUrl(selectedAssignment.attachment_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sky-500 hover:underline"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Lampiran Tugas
+                      </a>
+                    )}
+                    {selectedAssignment.link_url && (
+                      <a 
+                        href={selectedAssignment.link_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sky-500 hover:underline"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Buka Link Tugas
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 {selectedAssignment.my_submission && (
                   <div className="border-t pt-4">
