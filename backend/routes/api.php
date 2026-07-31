@@ -228,6 +228,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Assignments Management
         Route::apiResource('assignments', AssignmentController::class);
         Route::get('/assignments/{assignment}/submissions', [AssignmentController::class, 'submissions']);
+        Route::get('/assignments/{assignment}/export-submissions', [AssignmentController::class, 'exportSubmissions']);
         Route::post('/submissions/{submission}/grade', [AssignmentController::class, 'grade']);
         
         // Teacher Schedule

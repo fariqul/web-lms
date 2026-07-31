@@ -20,7 +20,8 @@ import {
   AlertCircle,
   Download,
   Star,
-  ExternalLink
+  ExternalLink,
+  FileSpreadsheet
 } from 'lucide-react';
 import { classAPI, assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
@@ -281,6 +282,32 @@ export default function TugasGuruPage() {
       setShowSubmissionsModal(true);
     } catch {
       setError('Gagal memuat data pengumpulan');
+    }
+  };
+
+  const handleExportSubmissions = async (assignmentId: number) => {
+    try {
+      const res = await assignmentAPI.exportSubmissions(assignmentId);
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Extract filename from Content-Disposition header or use fallback
+      const contentDisposition = res.headers?.['content-disposition'];
+      let filename = `Rekap_Tugas_${assignmentId}.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=(?:.*?['"]([^'"]+)['"]|([^;\n]*))/);
+        if (match) filename = decodeURIComponent(match[1] || match[2]);
+      }
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      setError('Gagal mengekspor data ke Excel');
     }
   };
 
@@ -704,12 +731,24 @@ export default function TugasGuruPage() {
                   <h2 className="text-lg font-semibold">Pengumpulan Tugas</h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{selectedAssignment.title}</p>
                 </div>
-                <button 
-                  onClick={() => { setShowSubmissionsModal(false); setSelectedAssignment(null); }} 
-                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {submissions.length > 0 && (
+                    <button
+                      onClick={() => handleExportSubmissions(selectedAssignment.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors"
+                      title="Export ke Excel"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Export Excel
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => { setShowSubmissionsModal(false); setSelectedAssignment(null); }} 
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 {submissions.length === 0 ? (

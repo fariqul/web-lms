@@ -960,6 +960,12 @@ export const assignmentAPI = {
   // Get pending assignments (student)
   getPending: () =>
     api.get('/assignments-pending'),
+
+  // Export submissions to Excel (teacher)
+  exportSubmissions: (assignmentId: number) =>
+    api.get(`/assignments/${assignmentId}/export-submissions`, {
+      responseType: 'blob',
+    }),
 };
 
 // Announcement API

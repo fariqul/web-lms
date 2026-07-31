@@ -439,4 +439,123 @@ class AssignmentController extends Controller
             'data' => $assignments,
         ]);
     }
+
+    /**
+     * Export submissions for an assignment to Excel
+     */
+    public function exportSubmissions(Assignment $assignment)
+    {
+        $user = request()->user();
+
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $assignment->load('classRoom:id,name');
+        $submissions = $assignment->submissions()
+            ->with('student:id,name,nisn')
+            ->orderBy('submitted_at', 'asc')
+            ->get();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekap Tugas');
+
+        // Header info
+        $sheet->setCellValue('A1', 'Rekap Pengumpulan Tugas');
+        $sheet->mergeCells('A1:G1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        $sheet->setCellValue('A2', 'Judul Tugas');
+        $sheet->setCellValue('B2', $assignment->title);
+        $sheet->setCellValue('A3', 'Mata Pelajaran');
+        $sheet->setCellValue('B3', $assignment->subject);
+        $sheet->setCellValue('A4', 'Kelas');
+        $sheet->setCellValue('B4', $assignment->classRoom?->name ?? '-');
+        $sheet->setCellValue('A5', 'Deadline');
+        $sheet->setCellValue('B5', $assignment->deadline);
+        $sheet->setCellValue('A6', 'Nilai Maksimal');
+        $sheet->setCellValue('B6', $assignment->max_score);
+
+        $sheet->getStyle('A2:A6')->getFont()->setBold(true);
+
+        // Table header
+        $headerRow = 8;
+        $headers = ['No', 'NISN', 'Nama Siswa', 'Jawaban', 'Link Jawaban', 'Status', 'Nilai', 'Feedback', 'Waktu Pengumpulan'];
+        foreach ($headers as $col => $header) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . $headerRow;
+            $sheet->setCellValue($cell, $header);
+        }
+
+        // Style header row
+        $headerRange = 'A' . $headerRow . ':I' . $headerRow;
+        $sheet->getStyle($headerRange)->getFont()->setBold(true);
+        $sheet->getStyle($headerRange)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF4472C4');
+        $sheet->getStyle($headerRange)->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        // Data rows
+        $row = $headerRow + 1;
+        $no = 1;
+        foreach ($submissions as $submission) {
+            $statusLabel = match ($submission->status) {
+                'graded' => 'Sudah Dinilai',
+                'late' => 'Terlambat',
+                default => 'Menunggu Penilaian',
+            };
+
+            $sheet->setCellValue('A' . $row, $no);
+            $sheet->setCellValue('B' . $row, $submission->student?->nisn ?? '-');
+            $sheet->setCellValue('C' . $row, $submission->student?->name ?? '-');
+            $sheet->setCellValue('D' . $row, $submission->content ?? '-');
+            $sheet->setCellValue('E' . $row, $submission->link_url ?? '-');
+            $sheet->setCellValue('F' . $row, $statusLabel);
+            $sheet->setCellValue('G' . $row, $submission->score ?? '-');
+            $sheet->setCellValue('H' . $row, $submission->feedback ?? '-');
+            $sheet->setCellValue('I' . $row, $submission->submitted_at?->format('d/m/Y H:i') ?? '-');
+
+            $no++;
+            $row++;
+        }
+
+        // Add borders to the data table
+        $dataRange = 'A' . $headerRow . ':I' . ($row - 1);
+        $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
+            ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        // Auto-size columns
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Summary row
+        $summaryRow = $row + 1;
+        $sheet->setCellValue('A' . $summaryRow, 'Total Pengumpulan: ' . $submissions->count());
+        $sheet->getStyle('A' . $summaryRow)->getFont()->setBold(true);
+
+        $gradedCount = $submissions->where('status', 'graded')->count();
+        $sheet->setCellValue('A' . ($summaryRow + 1), 'Sudah Dinilai: ' . $gradedCount);
+        $sheet->setCellValue('A' . ($summaryRow + 2), 'Belum Dinilai: ' . ($submissions->count() - $gradedCount));
+
+        if ($gradedCount > 0) {
+            $avgScore = $submissions->where('status', 'graded')->avg('score');
+            $sheet->setCellValue('A' . ($summaryRow + 3), 'Rata-rata Nilai: ' . round($avgScore, 1));
+        }
+
+        // Generate filename
+        $safeTitle = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $assignment->title);
+        $filename = 'Rekap_Tugas_' . $safeTitle . '_' . date('Ymd') . '.xlsx';
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
 }
