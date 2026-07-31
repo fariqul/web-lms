@@ -27,7 +27,7 @@ class SummativeScoreController extends Controller
         return $user->role === 'guru';
     }
 
-    private function calculate(array $sumatifItems, float $sumatifAkhir): array
+    private function calculate(array $sumatifItems): array
     {
         $normalizedItems = array_slice(array_pad($sumatifItems, 13, null), 0, 13);
         $validItems = array_values(array_filter($normalizedItems, fn ($v) => $v !== null));
@@ -36,17 +36,9 @@ class SummativeScoreController extends Controller
             ? round(array_sum($validItems) / count($validItems), 2)
             : 0.0;
 
-        $bobot70 = round($nilaiSumatif * 0.7, 2);
-        $bobot30 = round($sumatifAkhir * 0.3, 2);
-        $nilaiRapor = round($bobot70 + $bobot30, 2);
-
         return [
             'sumatif_items' => $normalizedItems,
             'nilai_sumatif' => $nilaiSumatif,
-            'sumatif_akhir' => round($sumatifAkhir, 2),
-            'bobot_70' => $bobot70,
-            'bobot_30' => $bobot30,
-            'nilai_rapor' => $nilaiRapor,
         ];
     }
 
@@ -167,10 +159,6 @@ class SummativeScoreController extends Controller
                 'student_nis' => $student->nisn ?? '',
                 'sumatif_items' => $score?->sumatif_items ?? array_fill(0, 13, null),
                 'nilai_sumatif' => $score?->nilai_sumatif ?? 0,
-                'sumatif_akhir' => $score?->sumatif_akhir ?? 0,
-                'bobot_70' => $score?->bobot_70 ?? 0,
-                'bobot_30' => $score?->bobot_30 ?? 0,
-                'nilai_rapor' => $score?->nilai_rapor ?? 0,
             ];
         })->values();
 
@@ -206,7 +194,6 @@ class SummativeScoreController extends Controller
             'scores.*.student_id' => 'required|integer|exists:users,id',
             'scores.*.sumatif_items' => 'required|array|size:13',
             'scores.*.sumatif_items.*' => 'nullable|numeric|min:0|max:100',
-            'scores.*.sumatif_akhir' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $classId = (int) $request->input('class_id');
@@ -256,9 +243,8 @@ class SummativeScoreController extends Controller
                     fn ($v) => $v === null || $v === '' ? null : (float) $v,
                     (array) ($row['sumatif_items'] ?? [])
                 );
-                $sumatifAkhir = (float) ($row['sumatif_akhir'] ?? 0);
 
-                $computed = $this->calculate($sumatifItems, $sumatifAkhir);
+                $computed = $this->calculate($sumatifItems);
 
                 SummativeScore::updateOrCreate(
                     [
@@ -272,10 +258,6 @@ class SummativeScoreController extends Controller
                         'teacher_id' => $user->id,
                         'sumatif_items' => $computed['sumatif_items'],
                         'nilai_sumatif' => $computed['nilai_sumatif'],
-                        'sumatif_akhir' => $computed['sumatif_akhir'],
-                        'bobot_70' => $computed['bobot_70'],
-                        'bobot_30' => $computed['bobot_30'],
-                        'nilai_rapor' => $computed['nilai_rapor'],
                     ]
                 );
             }

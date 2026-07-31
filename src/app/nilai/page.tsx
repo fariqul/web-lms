@@ -58,7 +58,13 @@ interface StudentGrade {
   assignments: AssignmentDetail[];
   exam_average: number;
   assignment_average: number;
+  summative_average?: number;
   average: number;
+  summatives: {
+    subject: string;
+    score: number;
+    percentage: number;
+  }[];
 }
 
 type ViewTab = 'gabungan' | 'ujian' | 'tugas' | 'sumatif';
@@ -240,12 +246,17 @@ export default function NilaiPage() {
     ? grades.reduce((sum, g) => sum + g.assignment_average, 0) / grades.length
     : 0;
 
+  const overallSummativeAvg = grades.length > 0
+    ? grades.reduce((sum, g) => sum + (g.summative_average || 0), 0) / grades.length
+    : 0;
+
   const overallAverage = grades.length > 0
     ? grades.reduce((sum, g) => sum + g.average, 0) / grades.length
     : 0;
 
   const totalExams = grades.reduce((sum, g) => sum + g.exams.length, 0);
   const totalAssignments = grades.reduce((sum, g) => sum + g.assignments.length, 0);
+  const totalSummatives = grades.reduce((sum, g) => sum + (g.summatives?.length || 0), 0);
 
   if (loading) {
     return (
@@ -312,7 +323,8 @@ export default function NilaiPage() {
         {viewTab === 'sumatif' && <SummativeScorePanel />}
 
         {/* Stats */}
-        {viewTab !== 'sumatif' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {viewTab !== 'sumatif' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-sky-50 flex items-center justify-center">
@@ -354,8 +366,22 @@ export default function NilaiPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-                <Award className="w-5 h-5 text-sky-500" />
+              <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <Award className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Rata-rata Sumatif</p>
+                <p className={`text-xl font-bold ${getScoreColor(overallSummativeAvg)}`}>
+                  {overallSummativeAvg.toFixed(1)}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{totalSummatives} sumatif</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Rata-rata Gabungan</p>
@@ -365,7 +391,8 @@ export default function NilaiPage() {
               </div>
             </div>
           </Card>
-        </div>}
+          </div>
+        )}
 
         {/* Class Averages */}
         {viewTab !== 'sumatif' && classAverages.length > 0 && classAverages.some(c => c.count > 0) && (
@@ -463,6 +490,11 @@ export default function NilaiPage() {
                     )}
                     {viewTab === 'gabungan' && (
                       <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                        Avg Sumatif
+                      </th>
+                    )}
+                    {viewTab === 'gabungan' && (
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Avg Gabungan
                       </th>
                     )}
@@ -514,6 +546,13 @@ export default function NilaiPage() {
                             <td className="px-4 py-4 whitespace-nowrap text-center">
                               <span className={`font-bold tabular-nums ${getScoreColor(grade.assignment_average)}`}>
                                 {grade.assignment_average.toFixed(1)}
+                              </span>
+                            </td>
+                          )}
+                          {viewTab === 'gabungan' && (
+                            <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <span className={`font-bold tabular-nums ${getScoreColor(grade.summative_average || 0)}`}>
+                                {(grade.summative_average || 0).toFixed(1)}
                               </span>
                             </td>
                           )}

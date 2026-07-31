@@ -1028,7 +1028,6 @@ export const summativeAPI = {
     scores: Array<{
       student_id: number;
       sumatif_items: Array<number | null>;
-      sumatif_akhir: number;
     }>;
   }) => api.post('/summative-scores/bulk', data),
 

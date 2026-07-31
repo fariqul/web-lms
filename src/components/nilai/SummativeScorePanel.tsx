@@ -23,10 +23,6 @@ interface SummativeRow {
   student_nis: string;
   sumatif_items: Array<number | null>;
   nilai_sumatif: number;
-  sumatif_akhir: number;
-  bobot_70: number;
-  bobot_30: number;
-  nilai_rapor: number;
 }
 
 interface LockMeta {
@@ -43,18 +39,12 @@ function formatNumber(n: number): string {
   return n.toFixed(2);
 }
 
-function computeFromItems(items: Array<number | null>, sumatifAkhir: number) {
+function computeFromItems(items: Array<number | null>) {
   const valid = items.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
   const nilaiSumatif = valid.length > 0 ? valid.reduce((a, b) => a + b, 0) / valid.length : 0;
-  const bobot70 = nilaiSumatif * 0.7;
-  const bobot30 = sumatifAkhir * 0.3;
-  const nilaiRapor = bobot70 + bobot30;
 
   return {
     nilai_sumatif: Number(nilaiSumatif.toFixed(2)),
-    bobot_70: Number(bobot70.toFixed(2)),
-    bobot_30: Number(bobot30.toFixed(2)),
-    nilai_rapor: Number(nilaiRapor.toFixed(2)),
   };
 }
 
@@ -199,15 +189,13 @@ export function SummativeScorePanel() {
           return Number.isFinite(n) ? n : null;
         });
 
-        const sumatifAkhir = Number(row.sumatif_akhir) || 0;
-        const computed = computeFromItems(parsedItems, sumatifAkhir);
+        const computed = computeFromItems(parsedItems);
 
         return {
           student_id: row.student_id,
           student_name: row.student_name,
           student_nis: row.student_nis,
           sumatif_items: parsedItems,
-          sumatif_akhir: sumatifAkhir,
           ...computed,
         };
       });
@@ -238,20 +226,7 @@ export function SummativeScorePanel() {
       return {
         ...row,
         sumatif_items: items,
-        ...computeFromItems(items, row.sumatif_akhir),
-      };
-    }));
-  }, []);
-
-  const updateSumatifAkhir = useCallback((studentId: number, raw: string) => {
-    setRows((prev) => prev.map((row) => {
-      if (row.student_id !== studentId) return row;
-
-      const sumatifAkhir = raw === '' ? 0 : Math.max(0, Math.min(100, Number(raw) || 0));
-      return {
-        ...row,
-        sumatif_akhir: sumatifAkhir,
-        ...computeFromItems(row.sumatif_items, sumatifAkhir),
+        ...computeFromItems(items),
       };
     }));
   }, []);
@@ -277,7 +252,6 @@ export function SummativeScorePanel() {
         scores: rows.map((r) => ({
           student_id: r.student_id,
           sumatif_items: r.sumatif_items,
-          sumatif_akhir: r.sumatif_akhir,
         })),
       });
       toast.success('Nilai sumatif berhasil disimpan');
@@ -373,8 +347,8 @@ export function SummativeScorePanel() {
     }
   };
 
-  const getStatus = useCallback((nilaiRapor: number) => {
-    return nilaiRapor >= kkm ? 'Lulus' : 'Remedial';
+  const getStatus = useCallback((nilaiSumatif: number) => {
+    return nilaiSumatif >= kkm ? 'Lulus' : 'Remedial';
   }, [kkm]);
 
   const toCsvCell = (value: string | number | null): string => {
@@ -395,11 +369,7 @@ export function SummativeScorePanel() {
         'NIS',
         'Nama',
         ...Array.from({ length: 13 }).map((_, i) => `SM_${i + 1}`),
-        'Nilai Sumatif',
-        'Bobot 70%',
-        'Sumatif Akhir',
-        'Bobot 30%',
-        'Nilai Rapor',
+        'Rata-rata Sumatif',
         'KKM',
         'Status',
       ];
@@ -422,12 +392,8 @@ export function SummativeScorePanel() {
           row.student_name,
           ...row.sumatif_items.map((v) => (v === null ? '' : v)),
           Number(row.nilai_sumatif.toFixed(2)),
-          Number(row.bobot_70.toFixed(2)),
-          Number(row.sumatif_akhir.toFixed(2)),
-          Number(row.bobot_30.toFixed(2)),
-          Number(row.nilai_rapor.toFixed(2)),
           kkm,
-          getStatus(row.nilai_rapor),
+          getStatus(row.nilai_sumatif),
         ]);
       });
 
@@ -617,33 +583,25 @@ export function SummativeScorePanel() {
                 ))}
                 <col className="w-28" />
                 <col className="w-28" />
-                <col className="w-24" />
-                <col className="w-24" />
-                <col className="w-28" />
               </colgroup>
               <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
                   <th rowSpan={2} className="sticky left-0 z-30 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs text-center whitespace-nowrap">No</th>
                   <th rowSpan={2} className="sticky left-14 z-30 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs text-center whitespace-nowrap">NIS</th>
                   <th rowSpan={2} className="sticky left-[10.5rem] z-30 bg-slate-50 dark:bg-slate-800 px-3 py-2 border text-xs text-left whitespace-nowrap shadow-[6px_0_8px_-8px_rgba(0,0,0,0.55)]">Nama ({className})</th>
-                  <th colSpan={13} className="px-2 py-2 border text-xs text-center font-semibold">SUMATIF LINGKUP MATERI</th>
-                  <th colSpan={1} className="px-2 py-2 border text-xs text-center font-semibold bg-orange-50 dark:bg-orange-900/20">BOBOT 70%</th>
-                  <th colSpan={2} className="px-2 py-2 border text-xs text-center font-semibold bg-blue-50 dark:bg-blue-900/20">BOBOT 30%</th>
-                  <th rowSpan={2} className="sticky right-28 z-30 px-2 py-2 border text-xs bg-green-50 dark:bg-green-900/20 text-center whitespace-nowrap shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">Nilai Rapor</th>
+                  <th colSpan={13} className="px-2 py-2 border text-xs text-center font-semibold">SUMATIF LINGKUP MATERI (HARIAN)</th>
+                  <th rowSpan={2} className="sticky right-28 z-30 px-2 py-2 border text-xs bg-green-50 dark:bg-green-900/20 text-center whitespace-nowrap shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">Rata-rata Sumatif</th>
                   <th rowSpan={2} className="sticky right-0 z-30 px-2 py-2 border text-xs bg-emerald-50 dark:bg-emerald-900/20 text-center whitespace-nowrap">Status</th>
                 </tr>
                 <tr>
                   {Array.from({ length: 13 }).map((_, i) => (
                     <th key={i} className="px-2 py-2 border text-xs text-center whitespace-nowrap">SM_{i + 1}</th>
                   ))}
-                  <th className="px-2 py-2 border text-xs bg-orange-50 dark:bg-orange-900/20 text-center whitespace-nowrap">N/A (Sumatif)</th>
-                  <th className="px-2 py-2 border text-xs bg-blue-50 dark:bg-blue-900/20 text-center whitespace-nowrap">Sumatif Akhir</th>
-                  <th className="px-2 py-2 border text-xs bg-blue-50 dark:bg-blue-900/20 text-center whitespace-nowrap">N/A</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, idx) => (
-                  <tr key={row.student_id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${row.nilai_rapor < kkm ? 'bg-red-50/40 dark:bg-red-900/10' : ''}`}>
+                  <tr key={row.student_id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${row.nilai_sumatif < kkm ? 'bg-red-50/40 dark:bg-red-900/10' : ''}`}>
                     <td className="sticky left-0 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-center text-xs whitespace-nowrap">{idx + 1}</td>
                     <td className="sticky left-14 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-xs whitespace-nowrap">{row.student_nis}</td>
                     <td className="sticky left-[10.5rem] z-20 bg-white dark:bg-slate-900 px-3 py-2 border text-xs whitespace-nowrap shadow-[6px_0_8px_-8px_rgba(0,0,0,0.55)]">{row.student_name}</td>
@@ -660,35 +618,14 @@ export function SummativeScorePanel() {
                         />
                       </td>
                     ))}
-                    <td className="px-2 py-2 border text-sm font-semibold text-orange-700 dark:text-orange-400 text-center">
-                      {formatNumber(row.bobot_70)}
+                    <td className="sticky right-28 z-20 px-2 py-2 border text-sm font-bold bg-green-50 dark:bg-green-900/10 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-center shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">
+                      {formatNumber(row.nilai_sumatif)}
                     </td>
-                    <td className="px-1 py-1 border text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={row.sumatif_akhir}
-                        onChange={(e) => updateSumatifAkhir(row.student_id, e.target.value)}
-                        disabled={!lockMeta.can_edit}
-                        className="w-[88px] px-2 py-1 text-xs border border-slate-300 rounded-md text-center"
-                      />
-                    </td>
-                    <td className="px-2 py-2 border text-sm font-semibold text-blue-700 dark:text-blue-400 text-center">
-                      {formatNumber(row.bobot_30)}
-                    </td>
-                    <td className="sticky right-28 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-sm font-bold text-green-700 dark:text-green-400 text-center shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">
-                      {formatNumber(row.nilai_rapor)}
-                    </td>
-                    <td className="sticky right-0 z-20 bg-white dark:bg-slate-900 px-2 py-2 border text-center">
-                      {getStatus(row.nilai_rapor) === 'Lulus' ? (
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                          Lulus
-                        </span>
+                    <td className="sticky right-0 z-20 px-2 py-2 border text-xs bg-white dark:bg-slate-900 text-center font-medium">
+                      {row.nilai_sumatif >= kkm ? (
+                        <span className="text-emerald-600 dark:text-emerald-400">Tuntas</span>
                       ) : (
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                          Remedial
-                        </span>
+                        <span className="text-rose-600 dark:text-rose-400">Tidak Tuntas</span>
                       )}
                     </td>
                   </tr>

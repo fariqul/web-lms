@@ -622,12 +622,10 @@ class ExamController extends Controller
     }
 
     /**
-     * Get teacher grades summary - all students with exam results
+     * Get combined teacher grades data
      */
-    public function teacherGrades(Request $request)
+    private function getTeacherGradesData($user, $filterClass = null)
     {
-        $user = $request->user();
-        
         // Get all exams by this teacher
         $exams = Exam::where('teacher_id', $user->id)
             ->with('class:id,name')
@@ -652,28 +650,40 @@ class ExamController extends Controller
         $submissions = \App\Models\AssignmentSubmission::whereIn('assignment_id', $assignmentIds)
             ->with('student:id,name,nisn,class_id')
             ->get();
+
+        // Get all summative scores by this teacher
+        $summatives = \App\Models\SummativeScore::where('teacher_id', $user->id)
+            ->with(['student:id,name,nisn,class_id', 'class:id,name'])
+            ->get();
         
         // Group by student
         $studentMap = [];
         
-        // Process exam results
-        foreach ($results as $result) {
-            $student = $result->student;
-            if (!$student) continue;
-            
+        // Helper to initialize student
+        $initStudent = function($student, $className) use (&$studentMap) {
+            if (!$student) return;
             $sid = $student->id;
             if (!isset($studentMap[$sid])) {
                 $studentMap[$sid] = [
                     'id' => $sid,
                     'student_name' => $student->name,
                     'student_nis' => $student->nisn ?? '',
-                    'class_name' => $exams->firstWhere('id', $result->exam_id)?->class?->name ?? '',
+                    'class_name' => $className,
                     'exams' => [],
                     'assignments' => [],
+                    'summatives' => [],
                 ];
             }
-            
+        };
+
+        // Process exam results
+        foreach ($results as $result) {
             $exam = $exams->firstWhere('id', $result->exam_id);
+            $className = $exam?->class?->name ?? '';
+            $initStudent($result->student, $className);
+            if (!$result->student) continue;
+
+            $sid = $result->student->id;
             $studentMap[$sid]['exams'][] = [
                 'result_id' => $result->id,
                 'exam_name' => $exam?->title ?? '',
@@ -688,22 +698,12 @@ class ExamController extends Controller
         
         // Process assignment submissions
         foreach ($submissions as $submission) {
-            $student = $submission->student;
-            if (!$student) continue;
-            
-            $sid = $student->id;
-            if (!isset($studentMap[$sid])) {
-                $studentMap[$sid] = [
-                    'id' => $sid,
-                    'student_name' => $student->name,
-                    'student_nis' => $student->nisn ?? '',
-                    'class_name' => $assignments->firstWhere('id', $submission->assignment_id)?->classRoom?->name ?? '',
-                    'exams' => [],
-                    'assignments' => [],
-                ];
-            }
-            
             $assignment = $assignments->firstWhere('id', $submission->assignment_id);
+            $className = $assignment?->classRoom?->name ?? '';
+            $initStudent($submission->student, $className);
+            if (!$submission->student) continue;
+            
+            $sid = $submission->student->id;
             $studentMap[$sid]['assignments'][] = [
                 'submission_id' => $submission->id,
                 'assignment_name' => $assignment?->title ?? '',
@@ -717,11 +717,26 @@ class ExamController extends Controller
                 'submitted_at' => $this->toSchoolIso8601($submission->submitted_at) ?? '',
             ];
         }
+
+        // Process summative scores
+        foreach ($summatives as $summative) {
+            $className = $summative->class?->name ?? '';
+            $initStudent($summative->student, $className);
+            if (!$summative->student) continue;
+
+            $sid = $summative->student->id;
+            $studentMap[$sid]['summatives'][] = [
+                'subject' => $summative->subject ?? '',
+                'score' => $summative->nilai_sumatif,
+                'percentage' => $summative->nilai_sumatif, // It's already out of 100
+            ];
+        }
         
         // Calculate averages
         $grades = collect($studentMap)->map(function ($student) {
             $exams = collect($student['exams']);
             $assignments = collect($student['assignments']);
+            $summatives = collect($student['summatives'] ?? []);
             
             $student['exam_average'] = $exams->count() > 0 
                 ? round($exams->avg('percentage'), 1) 
@@ -731,16 +746,36 @@ class ExamController extends Controller
             $student['assignment_average'] = $gradedAssignments->count() > 0 
                 ? round($gradedAssignments->avg('percentage'), 1) 
                 : 0;
-            
-            // Combined average (exam + assignment)
-            $allPercentages = $exams->pluck('percentage')
-                ->merge($gradedAssignments->pluck('percentage'));
-            $student['average'] = $allPercentages->count() > 0 
-                ? round($allPercentages->avg(), 1) 
+
+            $student['summative_average'] = $summatives->count() > 0
+                ? round($summatives->avg('percentage'), 1)
                 : 0;
+            
+            // Combined average (30% Tugas + 30% Sumatif + 40% Ujian)
+            $student['average'] = round(
+                ($student['assignment_average'] * 0.3) +
+                ($student['summative_average'] * 0.3) +
+                ($student['exam_average'] * 0.4),
+                1
+            );
             
             return $student;
         })->values();
+
+        if ($filterClass) {
+            $grades = $grades->filter(fn($g) => $g['class_name'] === $filterClass)->values();
+        }
+
+        return $grades;
+    }
+
+    /**
+     * Get teacher grades summary - all students with exam results
+     */
+    public function teacherGrades(Request $request)
+    {
+        $user = $request->user();
+        $grades = $this->getTeacherGradesData($user);
         
         return response()->json([
             'success' => true,
@@ -755,110 +790,8 @@ class ExamController extends Controller
     {
         $user = $request->user();
         $filterClass = $request->query('class_name');
-
-        // Reuse the same data gathering logic from teacherGrades
-        $exams = Exam::where('teacher_id', $user->id)
-            ->with('class:id,name')
-            ->get();
-
-        $examIds = $exams->pluck('id');
-
-        $results = ExamResult::whereIn('exam_id', $examIds)
-            ->whereIn('status', ['completed', 'graded', 'submitted'])
-            ->with('student:id,name,nisn,class_id')
-            ->get();
-
-        $assignments = \App\Models\Assignment::where('teacher_id', $user->id)
-            ->with('classRoom:id,name')
-            ->get();
-
-        $assignmentIds = $assignments->pluck('id');
-
-        $submissions = \App\Models\AssignmentSubmission::whereIn('assignment_id', $assignmentIds)
-            ->with('student:id,name,nisn,class_id')
-            ->get();
-
-        // Group by student (same logic)
-        $studentMap = [];
-
-        foreach ($results as $result) {
-            $student = $result->student;
-            if (!$student) continue;
-            $sid = $student->id;
-            if (!isset($studentMap[$sid])) {
-                $studentMap[$sid] = [
-                    'id' => $sid,
-                    'student_name' => $student->name,
-                    'student_nis' => $student->nisn ?? '',
-                    'class_name' => $exams->firstWhere('id', $result->exam_id)?->class?->name ?? '',
-                    'exams' => [],
-                    'assignments' => [],
-                ];
-            }
-            $exam = $exams->firstWhere('id', $result->exam_id);
-            $studentMap[$sid]['exams'][] = [
-                'exam_name' => $exam?->title ?? '',
-                'subject' => $exam?->subject ?? '',
-                'score' => $result->total_score ?? 0,
-                'max_score' => $result->max_score ?? 0,
-                'percentage' => $result->percentage ?? 0,
-            ];
-        }
-
-        foreach ($submissions as $submission) {
-            $student = $submission->student;
-            if (!$student) continue;
-            $sid = $student->id;
-            if (!isset($studentMap[$sid])) {
-                $studentMap[$sid] = [
-                    'id' => $sid,
-                    'student_name' => $student->name,
-                    'student_nis' => $student->nisn ?? '',
-                    'class_name' => $assignments->firstWhere('id', $submission->assignment_id)?->classRoom?->name ?? '',
-                    'exams' => [],
-                    'assignments' => [],
-                ];
-            }
-            $assignment = $assignments->firstWhere('id', $submission->assignment_id);
-            $studentMap[$sid]['assignments'][] = [
-                'assignment_name' => $assignment?->title ?? '',
-                'subject' => $assignment?->subject ?? '',
-                'score' => $submission->score,
-                'max_score' => $assignment?->max_score ?? 100,
-                'percentage' => ($assignment?->max_score > 0 && $submission->score !== null)
-                    ? round(($submission->score / $assignment->max_score) * 100, 1)
-                    : null,
-                'status' => $submission->status,
-            ];
-        }
-
-        // Calculate averages
-        $grades = collect($studentMap)->map(function ($student) {
-            $exams = collect($student['exams']);
-            $assignments = collect($student['assignments']);
-
-            $student['exam_average'] = $exams->count() > 0
-                ? round($exams->avg('percentage'), 1)
-                : 0;
-
-            $gradedAssignments = $assignments->whereNotNull('percentage');
-            $student['assignment_average'] = $gradedAssignments->count() > 0
-                ? round($gradedAssignments->avg('percentage'), 1)
-                : 0;
-
-            $allPercentages = $exams->pluck('percentage')
-                ->merge($gradedAssignments->pluck('percentage'));
-            $student['average'] = $allPercentages->count() > 0
-                ? round($allPercentages->avg(), 1)
-                : 0;
-
-            return $student;
-        })->values();
-
-        // Filter by class if requested
-        if ($filterClass) {
-            $grades = $grades->filter(fn($g) => $g['class_name'] === $filterClass)->values();
-        }
+        
+        $grades = $this->getTeacherGradesData($user, $filterClass);
 
         // Build Excel
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -881,13 +814,13 @@ class ExamController extends Controller
 
         // Table header
         $headerRow = 6;
-        $headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Rata-rata Ujian', 'Rata-rata Tugas', 'Rata-rata Gabungan'];
+        $headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Rata-rata Ujian', 'Rata-rata Tugas', 'Rata-rata Sumatif', 'Rata-rata Gabungan'];
         foreach ($headers as $col => $header) {
             $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . $headerRow;
             $sheet->setCellValue($cell, $header);
         }
 
-        $headerRange = 'A' . $headerRow . ':G' . $headerRow;
+        $headerRange = 'A' . $headerRow . ':H' . $headerRow;
         $sheet->getStyle($headerRange)->getFont()->setBold(true);
         $sheet->getStyle($headerRange)->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
@@ -903,10 +836,11 @@ class ExamController extends Controller
             $sheet->setCellValue('D' . $row, $g['class_name']);
             $sheet->setCellValue('E' . $row, $g['exam_average']);
             $sheet->setCellValue('F' . $row, $g['assignment_average']);
-            $sheet->setCellValue('G' . $row, $g['average']);
+            $sheet->setCellValue('G' . $row, $g['summative_average']);
+            $sheet->setCellValue('H' . $row, $g['average']);
 
             // Color code average
-            $avgCell = 'G' . $row;
+            $avgCell = 'H' . $row;
             if ($g['average'] >= 80) {
                 $sheet->getStyle($avgCell)->getFont()->getColor()->setARGB('FF22C55E');
             } elseif ($g['average'] >= 60) {
@@ -921,7 +855,7 @@ class ExamController extends Controller
 
         // Borders
         if ($grades->count() > 0) {
-            $dataRange = 'A' . $headerRow . ':G' . ($row - 1);
+            $dataRange = 'A' . $headerRow . ':H' . ($row - 1);
             $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
                 ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
         }
@@ -933,10 +867,11 @@ class ExamController extends Controller
         if ($grades->count() > 0) {
             $sheet->setCellValue('A' . ($summaryRow + 1), 'Rata-rata Ujian Keseluruhan: ' . round($grades->avg('exam_average'), 1));
             $sheet->setCellValue('A' . ($summaryRow + 2), 'Rata-rata Tugas Keseluruhan: ' . round($grades->avg('assignment_average'), 1));
-            $sheet->setCellValue('A' . ($summaryRow + 3), 'Rata-rata Gabungan Keseluruhan: ' . round($grades->avg('average'), 1));
+            $sheet->setCellValue('A' . ($summaryRow + 3), 'Rata-rata Sumatif Keseluruhan: ' . round($grades->avg('summative_average'), 1));
+            $sheet->setCellValue('A' . ($summaryRow + 4), 'Rata-rata Gabungan Keseluruhan: ' . round($grades->avg('average'), 1));
         }
 
-        foreach (range('A', 'G') as $col) {
+        foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
