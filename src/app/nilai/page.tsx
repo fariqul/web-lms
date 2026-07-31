@@ -18,7 +18,8 @@ import {
   X,
   BookCheck,
   ClipboardList,
-  Layers
+  Layers,
+  FileSpreadsheet
 } from 'lucide-react';
 import { classAPI } from '@/services/api';
 import api from '@/services/api';
@@ -191,6 +192,38 @@ export default function NilaiPage() {
     }
   };
 
+  const handleExportGrades = async () => {
+    try {
+      toast.success('Menyiapkan file Excel...');
+      const response = await api.get('/teacher-grades/export', {
+        params: { class_name: filterClass || undefined },
+        responseType: 'blob',
+      });
+      
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      const contentDisposition = response.headers?.['content-disposition'];
+      let filename = `Rekap_Nilai_${filterClass ? filterClass.replace(/\s+/g, '_') : 'Semua_Kelas'}.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=(?:.*?['"]([^'"]+)['"]|([^;\n]*))/);
+        if (match) filename = decodeURIComponent(match[1] || match[2]);
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      toast.error('Gagal mengekspor data ke Excel');
+    }
+  };
+
   const classAverages = classes.map(c => {
     const classGrades = grades.filter(g => g.class_name === c.label);
     const avg = classGrades.length > 0 
@@ -241,7 +274,7 @@ export default function NilaiPage() {
                 <Printer className="w-5 h-5 mr-2" />
                 Cetak
               </Button>
-              <Button variant="outline" className="print:hidden bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
+              <Button onClick={handleExportGrades} variant="outline" className="print:hidden bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/20 text-white">
                 <Download className="w-5 h-5 mr-2" />
                 Export Nilai
               </Button>
@@ -380,6 +413,13 @@ export default function NilaiPage() {
               <option key={c.value} value={c.label}>{c.label}</option>
             ))}
           </select>
+          <Button 
+            onClick={handleExportGrades} 
+            className="whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <FileSpreadsheet className="w-5 h-5 mr-2" />
+            Export Excel
+          </Button>
         </div>}
 
         {/* Grades Table */}

@@ -221,6 +221,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Exams Management (create only for guru)
         Route::post('/exams', [ExamController::class, 'store']);
         Route::get('/teacher-grades', [ExamController::class, 'teacherGrades']);
+        Route::get('/teacher-grades/export', [ExamController::class, 'exportTeacherGrades']);
         
         // Materials Management
         Route::apiResource('materials', MaterialController::class);

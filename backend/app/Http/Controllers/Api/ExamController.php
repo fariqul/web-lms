@@ -749,6 +749,311 @@ class ExamController extends Controller
     }
 
     /**
+     * Export teacher grades to Excel
+     */
+    public function exportTeacherGrades(Request $request)
+    {
+        $user = $request->user();
+        $filterClass = $request->query('class_name');
+
+        // Reuse the same data gathering logic from teacherGrades
+        $exams = Exam::where('teacher_id', $user->id)
+            ->with('class:id,name')
+            ->get();
+
+        $examIds = $exams->pluck('id');
+
+        $results = ExamResult::whereIn('exam_id', $examIds)
+            ->whereIn('status', ['completed', 'graded', 'submitted'])
+            ->with('student:id,name,nisn,class_id')
+            ->get();
+
+        $assignments = \App\Models\Assignment::where('teacher_id', $user->id)
+            ->with('classRoom:id,name')
+            ->get();
+
+        $assignmentIds = $assignments->pluck('id');
+
+        $submissions = \App\Models\AssignmentSubmission::whereIn('assignment_id', $assignmentIds)
+            ->with('student:id,name,nisn,class_id')
+            ->get();
+
+        // Group by student (same logic)
+        $studentMap = [];
+
+        foreach ($results as $result) {
+            $student = $result->student;
+            if (!$student) continue;
+            $sid = $student->id;
+            if (!isset($studentMap[$sid])) {
+                $studentMap[$sid] = [
+                    'id' => $sid,
+                    'student_name' => $student->name,
+                    'student_nis' => $student->nisn ?? '',
+                    'class_name' => $exams->firstWhere('id', $result->exam_id)?->class?->name ?? '',
+                    'exams' => [],
+                    'assignments' => [],
+                ];
+            }
+            $exam = $exams->firstWhere('id', $result->exam_id);
+            $studentMap[$sid]['exams'][] = [
+                'exam_name' => $exam?->title ?? '',
+                'subject' => $exam?->subject ?? '',
+                'score' => $result->total_score ?? 0,
+                'max_score' => $result->max_score ?? 0,
+                'percentage' => $result->percentage ?? 0,
+            ];
+        }
+
+        foreach ($submissions as $submission) {
+            $student = $submission->student;
+            if (!$student) continue;
+            $sid = $student->id;
+            if (!isset($studentMap[$sid])) {
+                $studentMap[$sid] = [
+                    'id' => $sid,
+                    'student_name' => $student->name,
+                    'student_nis' => $student->nisn ?? '',
+                    'class_name' => $assignments->firstWhere('id', $submission->assignment_id)?->classRoom?->name ?? '',
+                    'exams' => [],
+                    'assignments' => [],
+                ];
+            }
+            $assignment = $assignments->firstWhere('id', $submission->assignment_id);
+            $studentMap[$sid]['assignments'][] = [
+                'assignment_name' => $assignment?->title ?? '',
+                'subject' => $assignment?->subject ?? '',
+                'score' => $submission->score,
+                'max_score' => $assignment?->max_score ?? 100,
+                'percentage' => ($assignment?->max_score > 0 && $submission->score !== null)
+                    ? round(($submission->score / $assignment->max_score) * 100, 1)
+                    : null,
+                'status' => $submission->status,
+            ];
+        }
+
+        // Calculate averages
+        $grades = collect($studentMap)->map(function ($student) {
+            $exams = collect($student['exams']);
+            $assignments = collect($student['assignments']);
+
+            $student['exam_average'] = $exams->count() > 0
+                ? round($exams->avg('percentage'), 1)
+                : 0;
+
+            $gradedAssignments = $assignments->whereNotNull('percentage');
+            $student['assignment_average'] = $gradedAssignments->count() > 0
+                ? round($gradedAssignments->avg('percentage'), 1)
+                : 0;
+
+            $allPercentages = $exams->pluck('percentage')
+                ->merge($gradedAssignments->pluck('percentage'));
+            $student['average'] = $allPercentages->count() > 0
+                ? round($allPercentages->avg(), 1)
+                : 0;
+
+            return $student;
+        })->values();
+
+        // Filter by class if requested
+        if ($filterClass) {
+            $grades = $grades->filter(fn($g) => $g['class_name'] === $filterClass)->values();
+        }
+
+        // Build Excel
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+
+        // ========== Sheet 1: Rekap Gabungan ==========
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekap Nilai');
+
+        $sheet->setCellValue('A1', 'Rekap Nilai Siswa');
+        $sheet->mergeCells('A1:G1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        $sheet->setCellValue('A2', 'Guru');
+        $sheet->setCellValue('B2', $user->name);
+        $sheet->setCellValue('A3', 'Kelas');
+        $sheet->setCellValue('B3', $filterClass ?: 'Semua Kelas');
+        $sheet->setCellValue('A4', 'Tanggal Export');
+        $sheet->setCellValue('B4', now()->format('d/m/Y H:i'));
+        $sheet->getStyle('A2:A4')->getFont()->setBold(true);
+
+        // Table header
+        $headerRow = 6;
+        $headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Rata-rata Ujian', 'Rata-rata Tugas', 'Rata-rata Gabungan'];
+        foreach ($headers as $col => $header) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . $headerRow;
+            $sheet->setCellValue($cell, $header);
+        }
+
+        $headerRange = 'A' . $headerRow . ':G' . $headerRow;
+        $sheet->getStyle($headerRange)->getFont()->setBold(true);
+        $sheet->getStyle($headerRange)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF4472C4');
+        $sheet->getStyle($headerRange)->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        $row = $headerRow + 1;
+        $no = 1;
+        foreach ($grades as $g) {
+            $sheet->setCellValue('A' . $row, $no);
+            $sheet->setCellValue('B' . $row, $g['student_nis']);
+            $sheet->setCellValue('C' . $row, $g['student_name']);
+            $sheet->setCellValue('D' . $row, $g['class_name']);
+            $sheet->setCellValue('E' . $row, $g['exam_average']);
+            $sheet->setCellValue('F' . $row, $g['assignment_average']);
+            $sheet->setCellValue('G' . $row, $g['average']);
+
+            // Color code average
+            $avgCell = 'G' . $row;
+            if ($g['average'] >= 80) {
+                $sheet->getStyle($avgCell)->getFont()->getColor()->setARGB('FF22C55E');
+            } elseif ($g['average'] >= 60) {
+                $sheet->getStyle($avgCell)->getFont()->getColor()->setARGB('FFEAB308');
+            } else {
+                $sheet->getStyle($avgCell)->getFont()->getColor()->setARGB('FFEF4444');
+            }
+
+            $no++;
+            $row++;
+        }
+
+        // Borders
+        if ($grades->count() > 0) {
+            $dataRange = 'A' . $headerRow . ':G' . ($row - 1);
+            $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
+                ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        }
+
+        // Summary
+        $summaryRow = $row + 1;
+        $sheet->setCellValue('A' . $summaryRow, 'Total Siswa: ' . $grades->count());
+        $sheet->getStyle('A' . $summaryRow)->getFont()->setBold(true);
+        if ($grades->count() > 0) {
+            $sheet->setCellValue('A' . ($summaryRow + 1), 'Rata-rata Ujian Keseluruhan: ' . round($grades->avg('exam_average'), 1));
+            $sheet->setCellValue('A' . ($summaryRow + 2), 'Rata-rata Tugas Keseluruhan: ' . round($grades->avg('assignment_average'), 1));
+            $sheet->setCellValue('A' . ($summaryRow + 3), 'Rata-rata Gabungan Keseluruhan: ' . round($grades->avg('average'), 1));
+        }
+
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // ========== Sheet 2: Detail Ujian ==========
+        $detailSheet = $spreadsheet->createSheet();
+        $detailSheet->setTitle('Detail Ujian');
+
+        $detailSheet->setCellValue('A1', 'Detail Nilai Ujian Per Siswa');
+        $detailSheet->mergeCells('A1:F1');
+        $detailSheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        $dHeaders = ['No', 'NIS', 'Nama Siswa', 'Nama Ujian', 'Mata Pelajaran', 'Skor', 'Skor Maks', 'Persentase'];
+        $dHeaderRow = 3;
+        foreach ($dHeaders as $col => $header) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . $dHeaderRow;
+            $detailSheet->setCellValue($cell, $header);
+        }
+        $dHeaderRange = 'A' . $dHeaderRow . ':H' . $dHeaderRow;
+        $detailSheet->getStyle($dHeaderRange)->getFont()->setBold(true);
+        $detailSheet->getStyle($dHeaderRange)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF6366F1');
+        $detailSheet->getStyle($dHeaderRange)->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        $dRow = $dHeaderRow + 1;
+        $dNo = 1;
+        foreach ($grades as $g) {
+            foreach ($g['exams'] as $exam) {
+                $detailSheet->setCellValue('A' . $dRow, $dNo);
+                $detailSheet->setCellValue('B' . $dRow, $g['student_nis']);
+                $detailSheet->setCellValue('C' . $dRow, $g['student_name']);
+                $detailSheet->setCellValue('D' . $dRow, $exam['exam_name']);
+                $detailSheet->setCellValue('E' . $dRow, $exam['subject']);
+                $detailSheet->setCellValue('F' . $dRow, $exam['score']);
+                $detailSheet->setCellValue('G' . $dRow, $exam['max_score']);
+                $detailSheet->setCellValue('H' . $dRow, $exam['percentage']);
+                $dNo++;
+                $dRow++;
+            }
+        }
+
+        if ($dRow > $dHeaderRow + 1) {
+            $detailSheet->getStyle('A' . $dHeaderRow . ':H' . ($dRow - 1))->getBorders()->getAllBorders()
+                ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        }
+        foreach (range('A', 'H') as $col) {
+            $detailSheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // ========== Sheet 3: Detail Tugas ==========
+        $taskSheet = $spreadsheet->createSheet();
+        $taskSheet->setTitle('Detail Tugas');
+
+        $taskSheet->setCellValue('A1', 'Detail Nilai Tugas Per Siswa');
+        $taskSheet->mergeCells('A1:F1');
+        $taskSheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        $tHeaders = ['No', 'NIS', 'Nama Siswa', 'Nama Tugas', 'Mata Pelajaran', 'Skor', 'Skor Maks', 'Persentase', 'Status'];
+        $tHeaderRow = 3;
+        foreach ($tHeaders as $col => $header) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . $tHeaderRow;
+            $taskSheet->setCellValue($cell, $header);
+        }
+        $tHeaderRange = 'A' . $tHeaderRow . ':I' . $tHeaderRow;
+        $taskSheet->getStyle($tHeaderRange)->getFont()->setBold(true);
+        $taskSheet->getStyle($tHeaderRange)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF8B5CF6');
+        $taskSheet->getStyle($tHeaderRange)->getFont()->getColor()->setARGB('FFFFFFFF');
+
+        $tRow = $tHeaderRow + 1;
+        $tNo = 1;
+        foreach ($grades as $g) {
+            foreach ($g['assignments'] as $asgn) {
+                $statusLabel = match ($asgn['status']) {
+                    'graded' => 'Sudah Dinilai',
+                    'late' => 'Terlambat',
+                    default => 'Menunggu Penilaian',
+                };
+                $taskSheet->setCellValue('A' . $tRow, $tNo);
+                $taskSheet->setCellValue('B' . $tRow, $g['student_nis']);
+                $taskSheet->setCellValue('C' . $tRow, $g['student_name']);
+                $taskSheet->setCellValue('D' . $tRow, $asgn['assignment_name']);
+                $taskSheet->setCellValue('E' . $tRow, $asgn['subject']);
+                $taskSheet->setCellValue('F' . $tRow, $asgn['score'] ?? '-');
+                $taskSheet->setCellValue('G' . $tRow, $asgn['max_score']);
+                $taskSheet->setCellValue('H' . $tRow, $asgn['percentage'] ?? '-');
+                $taskSheet->setCellValue('I' . $tRow, $statusLabel);
+                $tNo++;
+                $tRow++;
+            }
+        }
+
+        if ($tRow > $tHeaderRow + 1) {
+            $taskSheet->getStyle('A' . $tHeaderRow . ':I' . ($tRow - 1))->getBorders()->getAllBorders()
+                ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        }
+        foreach (range('A', 'I') as $col) {
+            $taskSheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Set active sheet to the first one
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $classLabel = $filterClass ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $filterClass) : 'Semua_Kelas';
+        $filename = 'Rekap_Nilai_' . $classLabel . '_' . date('Ymd') . '.xlsx';
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
      * Update exam result score (teacher can edit)
      */
     public function updateResultScore(Request $request, $resultId)
