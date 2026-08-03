@@ -159,6 +159,8 @@ class SummativeScoreController extends Controller
                 'student_nis' => $student->nisn ?? '',
                 'sumatif_items' => $score?->sumatif_items ?? array_fill(0, 13, null),
                 'nilai_sumatif' => $score?->nilai_sumatif ?? 0,
+                'nilai_tes' => $score?->nilai_tes,
+                'nilai_non_tes' => $score?->nilai_non_tes,
             ];
         })->values();
 
@@ -194,6 +196,8 @@ class SummativeScoreController extends Controller
             'scores.*.student_id' => 'required|integer|exists:users,id',
             'scores.*.sumatif_items' => 'required|array|size:13',
             'scores.*.sumatif_items.*' => 'nullable|numeric|min:0|max:100',
+            'scores.*.nilai_tes' => 'nullable|numeric|min:0|max:100',
+            'scores.*.nilai_non_tes' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $classId = (int) $request->input('class_id');
@@ -258,6 +262,8 @@ class SummativeScoreController extends Controller
                         'teacher_id' => $user->id,
                         'sumatif_items' => $computed['sumatif_items'],
                         'nilai_sumatif' => $computed['nilai_sumatif'],
+                        'nilai_tes' => isset($row['nilai_tes']) && $row['nilai_tes'] !== '' ? (float) $row['nilai_tes'] : null,
+                        'nilai_non_tes' => isset($row['nilai_non_tes']) && $row['nilai_non_tes'] !== '' ? (float) $row['nilai_non_tes'] : null,
                     ]
                 );
             }

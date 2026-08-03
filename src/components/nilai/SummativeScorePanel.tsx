@@ -23,6 +23,8 @@ interface SummativeRow {
   student_nis: string;
   sumatif_items: Array<number | null>;
   nilai_sumatif: number;
+  nilai_tes: number | null;
+  nilai_non_tes: number | null;
 }
 
 interface LockMeta {
@@ -228,6 +230,18 @@ export function SummativeScorePanel() {
         sumatif_items: items,
         ...computeFromItems(items),
       };
+    }));
+  }, []);
+
+  const updateSpecialItem = useCallback((studentId: number, field: 'nilai_tes' | 'nilai_non_tes', raw: string) => {
+    setRows((prev) => prev.map((row) => {
+      if (row.student_id !== studentId) return row;
+      let val: number | null = null;
+      if (raw !== '') {
+        const parsed = Number(raw);
+        if (Number.isFinite(parsed)) val = Math.max(0, Math.min(100, parsed));
+      }
+      return { ...row, [field]: val };
     }));
   }, []);
 
@@ -583,6 +597,7 @@ export function SummativeScorePanel() {
                 ))}
                 <col className="w-28" />
                 <col className="w-28" />
+                <col className="w-28" />
               </colgroup>
               <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
@@ -590,7 +605,9 @@ export function SummativeScorePanel() {
                   <th rowSpan={2} className="sticky left-14 z-30 bg-slate-50 dark:bg-slate-800 px-2 py-2 border text-xs text-center whitespace-nowrap">NIS</th>
                   <th rowSpan={2} className="sticky left-[10.5rem] z-30 bg-slate-50 dark:bg-slate-800 px-3 py-2 border text-xs text-left whitespace-nowrap shadow-[6px_0_8px_-8px_rgba(0,0,0,0.55)]">Nama ({className})</th>
                   <th colSpan={13} className="px-2 py-2 border text-xs text-center font-semibold">SUMATIF LINGKUP MATERI (HARIAN)</th>
-                  <th rowSpan={2} className="sticky right-28 z-30 px-2 py-2 border text-xs bg-green-50 dark:bg-green-900/20 text-center whitespace-nowrap shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">Rata-rata Sumatif</th>
+                  <th rowSpan={2} className="sticky right-[20.5rem] z-30 px-2 py-2 border text-xs bg-green-50 dark:bg-green-900/20 text-center whitespace-nowrap shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">Rata-rata Sumatif</th>
+                  <th rowSpan={2} className="sticky right-[13.5rem] z-30 px-2 py-2 border text-xs bg-indigo-50 dark:bg-indigo-900/20 text-center whitespace-nowrap">Nilai Tes</th>
+                  <th rowSpan={2} className="sticky right-28 z-30 px-2 py-2 border text-xs bg-purple-50 dark:bg-purple-900/20 text-center whitespace-nowrap">Nilai Non-Tes</th>
                   <th rowSpan={2} className="sticky right-0 z-30 px-2 py-2 border text-xs bg-emerald-50 dark:bg-emerald-900/20 text-center whitespace-nowrap">Status</th>
                 </tr>
                 <tr>
@@ -618,10 +635,32 @@ export function SummativeScorePanel() {
                         />
                       </td>
                     ))}
-                    <td className="sticky right-28 z-20 px-2 py-2 border text-sm font-bold bg-green-50 dark:bg-green-900/10 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-center shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">
+                    <td className="sticky right-[20.5rem] z-20 px-2 py-2 border text-sm font-bold bg-green-50 dark:bg-green-900/10 text-green-700 dark:bg-green-900/20 dark:text-green-400 text-center shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.55)]">
                       {formatNumber(row.nilai_sumatif)}
                     </td>
-                    <td className="sticky right-0 z-20 px-2 py-2 border text-xs bg-white dark:bg-slate-900 text-center font-medium">
+                    <td className="sticky right-[13.5rem] z-20 px-1 py-1 border bg-white dark:bg-slate-900 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={row.nilai_tes ?? ''}
+                        onChange={(e) => updateSpecialItem(row.student_id, 'nilai_tes', e.target.value)}
+                        disabled={!lockMeta.can_edit}
+                        className="w-[72px] px-2 py-1 text-xs border border-slate-300 rounded-md text-center bg-indigo-50/30 dark:bg-indigo-900/10 focus:bg-white dark:focus:bg-slate-800"
+                      />
+                    </td>
+                    <td className="sticky right-28 z-20 px-1 py-1 border bg-white dark:bg-slate-900 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={row.nilai_non_tes ?? ''}
+                        onChange={(e) => updateSpecialItem(row.student_id, 'nilai_non_tes', e.target.value)}
+                        disabled={!lockMeta.can_edit}
+                        className="w-[72px] px-2 py-1 text-xs border border-slate-300 rounded-md text-center bg-purple-50/30 dark:bg-purple-900/10 focus:bg-white dark:focus:bg-slate-800"
+                      />
+                    </td>
+                    <td className="sticky right-0 z-20 px-2 py-2 border text-xs bg-white dark:bg-slate-900 text-center font-medium shadow-[-6px_0_8px_-8px_rgba(0,0,0,0.1)]">
                       {row.nilai_sumatif >= kkm ? (
                         <span className="text-emerald-600 dark:text-emerald-400">Tuntas</span>
                       ) : (

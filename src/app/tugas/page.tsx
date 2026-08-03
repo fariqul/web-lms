@@ -818,13 +818,24 @@ export default function TugasGuruPage() {
                           </div>
                           <div className="text-right">
                             {submission.status === 'graded' ? (
-                              <div>
-                                <p className="text-2xl font-bold text-sky-500">
-                                  {submission.score}
-                                </p>
-                                <p className="text-xs text-slate-600 dark:text-slate-400">
-                                  / {selectedAssignment.max_score}
-                                </p>
+                              <div className="flex flex-col items-end gap-2">
+                                <div>
+                                  <p className="text-2xl font-bold text-sky-500">
+                                    {submission.score}
+                                  </p>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                                    / {selectedAssignment.max_score}
+                                  </p>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleOpenGrade(submission)}
+                                  className="h-7 text-xs"
+                                >
+                                  <Pencil className="w-3 h-3 mr-1" />
+                                  Edit Nilai
+                                </Button>
                               </div>
                             ) : (
                               <Button 
