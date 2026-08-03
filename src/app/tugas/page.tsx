@@ -21,7 +21,8 @@ import {
   Download,
   Star,
   ExternalLink,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Pencil
 } from 'lucide-react';
 import { classAPI, assignmentAPI, getSecureFileUrl } from '@/services/api';
 import { SUBJECT_LIST } from '@/constants/subjects';
