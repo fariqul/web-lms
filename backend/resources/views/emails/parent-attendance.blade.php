@@ -49,7 +49,7 @@
                                             <tr>
                                                 <td style="padding:6px 0;">
                                                     <span style="color:#64748b;font-size:13px;">Mata Pelajaran</span><br>
-                                                    <strong style="color:#1e293b;font-size:15px;">{{ $subject }}</strong>
+                                                    <strong style="color:#1e293b;font-size:15px;">{{ $subjectName }}</strong>
                                                 </td>
                                             </tr>
                                             <tr>

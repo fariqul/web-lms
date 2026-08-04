@@ -80,7 +80,7 @@ class ProcessAttendanceEmails implements ShouldQueue
                         new ParentAttendanceNotification(
                             studentName: $student->name,
                             status: $attendance->status,
-                            subject: $session->subject ?? 'Umum',
+                            subjectName: $session->subject ?? 'Umum',
                             className: $class->name ?? '-',
                             date: $date,
                             time: $time,

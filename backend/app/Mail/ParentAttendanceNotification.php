@@ -15,7 +15,7 @@ class ParentAttendanceNotification extends Mailable
     public function __construct(
         public string $studentName,
         public string $status,
-        public string $subject,
+        public string $subjectName,
         public string $className,
         public string $date,
         public string $time,
