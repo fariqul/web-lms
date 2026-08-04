@@ -22,6 +22,8 @@ export default function AkunPage() {
     email: user?.email || '',
     phone: '',
     nip: user?.nip || '',
+    parent_email: (user as any)?.parent_email || '',
+    personal_email: (user as any)?.personal_email || '',
   });
   const [passwordData, setPasswordData] = useState({
     current_password: '',
@@ -39,7 +41,13 @@ export default function AkunPage() {
     try {
       const payload: Record<string, string> = {};
       if (canEditName) payload.name = formData.name;
-      if (user?.role === 'guru') payload.nip = formData.nip;
+      if (user?.role === 'guru') {
+        payload.nip = formData.nip;
+        payload.personal_email = formData.personal_email;
+      }
+      if (user?.role === 'siswa') {
+        payload.parent_email = formData.parent_email;
+      }
       await api.post('/profile', payload);
       if (refreshUser) {
         await refreshUser();
@@ -329,25 +337,68 @@ export default function AkunPage() {
               </>
             )}
 
-            {user?.role === 'guru' && (
+            {user?.role === 'siswa' && (
               <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                <Mail className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 <div className="flex-1">
-                  <p className="text-sm text-slate-600 dark:text-slate-400">NIP</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Email Orang Tua</p>
                   {isEditing ? (
                     <Input
-                      label="NIP"
-                      name="nip"
-                      value={formData.nip}
-                      onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
+                      label="Email Orang Tua"
+                      name="parent_email"
+                      type="email"
+                      value={formData.parent_email}
+                      onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
                       className="mt-1"
-                      placeholder="Masukkan NIP"
+                      placeholder="Email orang tua untuk notifikasi absensi"
                     />
                   ) : (
-                    <p className="font-medium text-slate-900 dark:text-white">{user?.nip || '-'}</p>
+                    <p className="font-medium text-slate-900 dark:text-white">{(user as any)?.parent_email || '-'}</p>
                   )}
                 </div>
               </div>
+            )}
+
+            {user?.role === 'guru' && (
+              <>
+                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <User className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">NIP</p>
+                    {isEditing ? (
+                      <Input
+                        label="NIP"
+                        name="nip"
+                        value={formData.nip}
+                        onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
+                        className="mt-1"
+                        placeholder="Masukkan NIP"
+                      />
+                    ) : (
+                      <p className="font-medium text-slate-900 dark:text-white">{user?.nip || '-'}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <Mail className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Email Pribadi (Asli)</p>
+                    {isEditing ? (
+                      <Input
+                        label="Email Pribadi"
+                        name="personal_email"
+                        type="email"
+                        value={formData.personal_email}
+                        onChange={(e) => setFormData({ ...formData, personal_email: e.target.value })}
+                        className="mt-1"
+                        placeholder="Email asli untuk notifikasi absensi"
+                      />
+                    ) : (
+                      <p className="font-medium text-slate-900 dark:text-white">{(user as any)?.personal_email || '-'}</p>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </Card>

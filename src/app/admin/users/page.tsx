@@ -28,6 +28,8 @@ interface User {
   is_blocked?: boolean;
   block_reason?: string;
   blocked_at?: string;
+  parent_email?: string;
+  personal_email?: string;
 }
 
 interface ClassOption {
@@ -131,6 +133,8 @@ function AdminUsersPageContent() {
     nis: '',
     nip: '',
     nomor_tes: '',
+    parent_email: '',
+    personal_email: '',
   });
 
   // Pagination state
@@ -324,6 +328,8 @@ function AdminUsersPageContent() {
         nis: user.nis || '',
         nip: user.nip || '',
         nomor_tes: user.nomor_tes || '',
+        parent_email: user.parent_email || '',
+        personal_email: user.personal_email || '',
       });
     } else {
       setSelectedUser(null);
@@ -338,6 +344,8 @@ function AdminUsersPageContent() {
         nis: '',
         nip: '',
         nomor_tes: '',
+        parent_email: '',
+        personal_email: '',
       });
     }
     setIsModalOpen(true);
@@ -471,8 +479,10 @@ function AdminUsersPageContent() {
         payload.nisn = formData.nisn || null;
         payload.nis = formData.nis || null;
         payload.nomor_tes = formData.nomor_tes || null;
+        payload.parent_email = formData.parent_email || null;
       } else if (formData.role === 'guru') {
         payload.nip = formData.nip || null;
+        payload.personal_email = formData.personal_email || null;
       }
 
       if (selectedUser) {
@@ -1203,13 +1213,31 @@ function AdminUsersPageContent() {
               />
             </>
           )}
-          {formData.role === 'guru' && (
+          {formData.role === 'siswa' && (
             <Input
-              label="NIP"
-              value={formData.nip}
-              onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
-              placeholder="Nomor Induk Pegawai"
+              label="Email Orang Tua"
+              type="email"
+              value={formData.parent_email}
+              onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
+              placeholder="Email orang tua untuk notifikasi absensi (opsional)"
             />
+          )}
+          {formData.role === 'guru' && (
+            <>
+              <Input
+                label="NIP"
+                value={formData.nip}
+                onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
+                placeholder="Nomor Induk Pegawai"
+              />
+              <Input
+                label="Email Pribadi (Asli)"
+                type="email"
+                value={formData.personal_email}
+                onChange={(e) => setFormData({ ...formData, personal_email: e.target.value })}
+                placeholder="Email asli guru untuk notifikasi (opsional)"
+              />
+            </>
           )}
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>

@@ -148,6 +148,8 @@ class AuthController extends Controller
             'name' => 'sometimes|string|max:255',
             'nip' => 'sometimes|string|max:50',
             'photo' => 'sometimes|image|max:2048',
+            'parent_email' => 'sometimes|nullable|email|max:255',
+            'personal_email' => 'sometimes|nullable|email|max:255',
         ]);
 
         // Siswa cannot edit name — only admin can manage student profiles
@@ -155,9 +157,21 @@ class AuthController extends Controller
             $user->name = $request->name;
         }
 
-        // Guru can update their own NIP
-        if ($request->has('nip') && $user->role === 'guru') {
-            $user->nip = $request->nip;
+        // Guru can update their own NIP and personal email
+        if ($user->role === 'guru') {
+            if ($request->has('nip')) {
+                $user->nip = $request->nip;
+            }
+            if ($request->has('personal_email')) {
+                $user->personal_email = $request->filled('personal_email') ? $request->personal_email : null;
+            }
+        }
+
+        // Siswa can update their parent email
+        if ($user->role === 'siswa') {
+            if ($request->has('parent_email')) {
+                $user->parent_email = $request->filled('parent_email') ? $request->parent_email : null;
+            }
         }
 
         if ($request->hasFile('photo')) {

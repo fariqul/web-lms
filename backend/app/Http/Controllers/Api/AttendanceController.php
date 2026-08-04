@@ -11,6 +11,7 @@ use App\Models\StudentDevice;
 use App\Models\DeviceSwitchRequest;
 use App\Models\SchoolNetworkSetting;
 use App\Services\SocketBroadcastService;
+use App\Jobs\ProcessAttendanceEmails;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -318,6 +319,13 @@ class AttendanceController extends Controller
             ])->toArray();
 
             Attendance::insert($insertData);
+        }
+
+        // Dispatch email notification job
+        try {
+            ProcessAttendanceEmails::dispatch($attendanceSession->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to dispatch attendance email job: ' . $e->getMessage());
         }
 
         return response()->json([

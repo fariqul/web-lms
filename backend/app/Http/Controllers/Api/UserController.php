@@ -166,12 +166,14 @@ class UserController extends Controller
             'nip' => 'nullable|string|unique:users',
             'nomor_tes' => 'nullable|string|max:50|unique:users',
             'class_id' => 'nullable|exists:classes,id',
+            'parent_email' => 'nullable|email|max:255',
+            'personal_email' => 'nullable|email|max:255',
         ], [
             'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
 
         $user = new User();
-        $user->fill($request->only(['name', 'email', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_id']));
+        $user->fill($request->only(['name', 'email', 'jenis_kelamin', 'nisn', 'nis', 'nip', 'nomor_tes', 'class_id', 'parent_email', 'personal_email']));
         $user->email = strtolower($request->email);
         $user->password = Hash::make($request->password);
         $user->role = $request->role;
@@ -242,6 +244,8 @@ class UserController extends Controller
             'nip' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nomor_tes' => ['nullable', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
             'class_id' => 'nullable|exists:classes,id',
+            'parent_email' => 'nullable|email|max:255',
+            'personal_email' => 'nullable|email|max:255',
         ], [
             'password.regex' => 'Password harus mengandung minimal 1 huruf kecil, 1 huruf besar, dan 1 angka.',
         ]);
@@ -278,6 +282,12 @@ class UserController extends Controller
         }
         if ($request->has('class_id')) {
             $user->class_id = $request->class_id;
+        }
+        if ($request->has('parent_email')) {
+            $user->parent_email = $request->filled('parent_email') ? $request->parent_email : null;
+        }
+        if ($request->has('personal_email')) {
+            $user->personal_email = $request->filled('personal_email') ? $request->personal_email : null;
         }
 
         $user->save();

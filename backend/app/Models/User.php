@@ -21,6 +21,8 @@ class User extends Authenticatable
         'nomor_tes',
         'class_id',
         'photo',
+        'parent_email',
+        'personal_email',
         'is_blocked',
         'block_reason',
         'blocked_at',
