@@ -61,8 +61,8 @@
                                             <tr>
                                                 <td style="padding:12px 0 4px;">
                                                     <span style="color:#64748b;font-size:13px;">Status Kehadiran</span><br>
-                                                    <span style="display:inline-block;margin-top:6px;padding:6px 16px;border-radius:20px;font-weight:700;font-size:14px;color:#ffffff;background-color:{{ $statusColor() }};">
-                                                        {{ $statusLabel() }}
+                                                    <span style="display:inline-block;margin-top:6px;padding:6px 16px;border-radius:20px;font-weight:700;font-size:14px;color:#ffffff;background-color:{{ $statusColor }};">
+                                                        {{ $statusLabel }}
                                                     </span>
                                                 </td>
                                             </tr>

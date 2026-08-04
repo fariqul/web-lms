@@ -40,6 +40,10 @@ class ParentAttendanceNotification extends Mailable
     {
         return new Content(
             view: 'emails.parent-attendance',
+            with: [
+                'statusColor' => $this->statusColor(),
+                'statusLabel' => $this->statusLabel(),
+            ],
         );
     }
 
