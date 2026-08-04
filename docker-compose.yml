@@ -86,6 +86,15 @@ services:
       QUEUE_TRIES: ${QUEUE_TRIES:-3}
       QUEUE_MAX_TIME: ${QUEUE_MAX_TIME:-600}
       PROCTORING_SERVICE_URL: "http://proctoring:8001"
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_SCHEME: ${MAIL_SCHEME:-smtps}
+      MAIL_HOST: ${MAIL_HOST:-smtp.resend.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-resend}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-notifikasi@libelslms.my.id}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-"LMS SMA 15 Makassar"}
     volumes:
       - backend_storage:/var/www/html/storage
     deploy:
