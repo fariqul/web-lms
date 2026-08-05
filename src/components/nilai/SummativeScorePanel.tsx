@@ -199,6 +199,8 @@ export function SummativeScorePanel() {
           student_nis: row.student_nis,
           sumatif_items: parsedItems,
           ...computed,
+          nilai_tes: row.nilai_tes ?? null,
+          nilai_non_tes: row.nilai_non_tes ?? null,
         };
       });
 
@@ -266,6 +268,8 @@ export function SummativeScorePanel() {
         scores: rows.map((r) => ({
           student_id: r.student_id,
           sumatif_items: r.sumatif_items,
+          nilai_tes: r.nilai_tes,
+          nilai_non_tes: r.nilai_non_tes,
         })),
       });
       toast.success('Nilai sumatif berhasil disimpan');
@@ -384,6 +388,8 @@ export function SummativeScorePanel() {
         'Nama',
         ...Array.from({ length: 13 }).map((_, i) => `SM_${i + 1}`),
         'Rata-rata Sumatif',
+        'Nilai Tes',
+        'Nilai Non-Tes',
         'KKM',
         'Status',
       ];
@@ -406,6 +412,8 @@ export function SummativeScorePanel() {
           row.student_name,
           ...row.sumatif_items.map((v) => (v === null ? '' : v)),
           Number(row.nilai_sumatif.toFixed(2)),
+          row.nilai_tes === null ? '' : Number(row.nilai_tes),
+          row.nilai_non_tes === null ? '' : Number(row.nilai_non_tes),
           kkm,
           getStatus(row.nilai_sumatif),
         ]);
