@@ -3,85 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notifikasi Absensi</title>
+    <title>Informasi Kehadiran</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 0;">
+<body style="margin:0;padding:0;background-color:#fafafa;font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fafafa;padding:40px 0;">
         <tr>
             <td align="center">
-                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;">
                     {{-- Header --}}
                     <tr>
-                        <td style="background: linear-gradient(135deg, #0ea5e9, #6366f1);padding:28px 32px;text-align:center;">
-                            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;">📋 Notifikasi Absensi</h1>
-                            <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Informasi kehadiran anak Anda</p>
+                        <td style="padding:40px 40px 24px;border-bottom:1px solid #f0f0f0;">
+                            <h1 style="color:#111827;margin:0;font-size:24px;font-weight:600;letter-spacing:-0.5px;">Informasi Kehadiran</h1>
+                            <p style="color:#6b7280;margin:8px 0 0;font-size:15px;line-height:1.5;">Rekapitulasi absensi harian untuk anak Anda.</p>
                         </td>
                     </tr>
 
                     {{-- Body --}}
                     <tr>
-                        <td style="padding:28px 32px;">
-                            <p style="color:#334155;font-size:15px;margin:0 0 20px;">
+                        <td style="padding:32px 40px;">
+                            <p style="color:#111827;font-size:15px;margin:0 0 24px;line-height:1.5;">
                                 Yth. Orang Tua/Wali dari <strong>{{ $studentName }}</strong>,
                             </p>
 
-                            <p style="color:#475569;font-size:14px;margin:0 0 20px;">
-                                Berikut adalah informasi kehadiran anak Anda pada sesi absensi hari ini:
+                            <p style="color:#374151;font-size:15px;margin:0 0 32px;line-height:1.5;">
+                                Berikut adalah rincian kehadiran anak Anda pada sesi hari ini:
                             </p>
 
-                            {{-- Status Card --}}
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
+                            {{-- Data Grid --}}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
                                 <tr>
-                                    <td style="padding:20px 24px;">
-                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td style="padding:6px 0;">
-                                                    <span style="color:#64748b;font-size:13px;">Nama Siswa</span><br>
-                                                    <strong style="color:#1e293b;font-size:15px;">{{ $studentName }}</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding:6px 0;">
-                                                    <span style="color:#64748b;font-size:13px;">Kelas</span><br>
-                                                    <strong style="color:#1e293b;font-size:15px;">{{ $className }}</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding:6px 0;">
-                                                    <span style="color:#64748b;font-size:13px;">Mata Pelajaran</span><br>
-                                                    <strong style="color:#1e293b;font-size:15px;">{{ $subjectName }}</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding:6px 0;">
-                                                    <span style="color:#64748b;font-size:13px;">Tanggal & Waktu</span><br>
-                                                    <strong style="color:#1e293b;font-size:15px;">{{ $date }}, {{ $time }}</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding:12px 0 4px;">
-                                                    <span style="color:#64748b;font-size:13px;">Status Kehadiran</span><br>
-                                                    <span style="display:inline-block;margin-top:6px;padding:6px 16px;border-radius:20px;font-weight:700;font-size:14px;color:#ffffff;background-color:{{ $statusColor }};">
-                                                        {{ $statusLabel }}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;" width="35%">
+                                        <span style="color:#6b7280;font-size:14px;">Nama Siswa</span>
+                                    </td>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <strong style="color:#111827;font-size:14px;font-weight:500;">{{ $studentName }}</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <span style="color:#6b7280;font-size:14px;">Kelas</span>
+                                    </td>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <strong style="color:#111827;font-size:14px;font-weight:500;">{{ $className }}</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <span style="color:#6b7280;font-size:14px;">Mata Pelajaran</span>
+                                    </td>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <strong style="color:#111827;font-size:14px;font-weight:500;">{{ $subjectName }}</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <span style="color:#6b7280;font-size:14px;">Tanggal & Waktu</span>
+                                    </td>
+                                    <td style="padding:12px 0;border-bottom:1px solid #f3f4f6;">
+                                        <strong style="color:#111827;font-size:14px;font-weight:500;">{{ $date }}, {{ $time }}</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:16px 0 12px;">
+                                        <span style="color:#6b7280;font-size:14px;">Status Kehadiran</span>
+                                    </td>
+                                    <td style="padding:16px 0 12px;">
+                                        <span style="display:inline-block;padding:4px 12px;border-radius:4px;font-size:13px;font-weight:600;color:{{ $statusColor }};border:1px solid {{ $statusColor }}33;background-color:{{ $statusColor }}10;">
+                                            {{ $statusLabel }}
+                                        </span>
                                     </td>
                                 </tr>
                             </table>
 
-                            <p style="color:#64748b;font-size:13px;margin:0;">
-                                Email ini dikirim secara otomatis oleh sistem LMS. Jika ada pertanyaan, silakan hubungi pihak sekolah.
+                            <p style="color:#6b7280;font-size:13px;margin:0;line-height:1.5;">
+                                Email ini dikirim secara otomatis oleh sistem. Jika Anda memiliki pertanyaan, silakan menghubungi wali kelas.
                             </p>
                         </td>
                     </tr>
 
                     {{-- Footer --}}
                     <tr>
-                        <td style="background-color:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
-                            <p style="color:#94a3b8;font-size:12px;margin:0;">
-                                &copy; {{ date('Y') }} {{ config('app.name', 'LMS') }} &middot; Notifikasi Otomatis
+                        <td style="background-color:#fafafa;padding:24px 40px;text-align:center;border-top:1px solid #e5e5e5;">
+                            <p style="color:#9ca3af;font-size:12px;margin:0;">
+                                &copy; {{ date('Y') }} {{ config('app.name', 'LMS') }}<br>Notifikasi Absensi Otomatis
                             </p>
                         </td>
                     </tr>

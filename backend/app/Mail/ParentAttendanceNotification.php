@@ -40,6 +40,7 @@ class ParentAttendanceNotification extends Mailable
     {
         return new Content(
             view: 'emails.parent-attendance',
+            text: 'emails.parent-attendance-text',
             with: [
                 'statusColor' => $this->statusColor(),
                 'statusLabel' => $this->statusLabel(),
@@ -50,10 +51,10 @@ class ParentAttendanceNotification extends Mailable
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'hadir' => 'Hadir ✅',
-            'izin' => 'Izin 📋',
-            'sakit' => 'Sakit 🏥',
-            'alpha' => 'Tidak Hadir (Alpha) ❌',
+            'hadir' => 'Hadir',
+            'izin' => 'Izin',
+            'sakit' => 'Sakit',
+            'alpha' => 'Tidak Hadir',
             default => ucfirst($this->status),
         };
     }

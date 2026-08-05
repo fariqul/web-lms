@@ -40,6 +40,7 @@ class HomeroomAttendanceNotification extends Mailable
     {
         return new Content(
             view: 'emails.homeroom-attendance',
+            text: 'emails.homeroom-attendance-text',
         );
     }
 }
