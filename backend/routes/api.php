@@ -327,6 +327,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/exams/{exam}/clear-history', [ExamController::class, 'clearHistory']);
         
         // Question management (shared — admin can edit even locked exams)
+        Route::post('/exams/{exam}/duplicate-from-exam', [ExamController::class, 'duplicateFromExam']);
         Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
         Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
         Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
@@ -374,6 +375,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
     Route::get('/snapshot-monitor/status', [SchoolNetworkController::class, 'getSnapshotMonitorSetting']);
     
     // Student can view exams and materials
+    Route::get('/exams/{exam}/sync-questions', [ExamController::class, 'syncQuestions'])->middleware('role:siswa');
     Route::get('/exams', [ExamController::class, 'index'])->middleware('throttle:' . $examPollingThrottle);
     Route::get('/exams/{exam}', [ExamController::class, 'show'])->middleware('throttle:' . $examPollingThrottle);
     Route::get('/materials', [MaterialController::class, 'index']);

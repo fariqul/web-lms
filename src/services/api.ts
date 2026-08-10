@@ -563,13 +563,13 @@ export const attendanceAPI = {
     api.get(`/attendance/class/${classId}`, { params }),
 };
 
-// Quiz / Ujian Harian API
+// Quiz / Ujian Harian API (Mapped to ExamController)
 export const quizAPI = {
   getAll: (params?: { status?: string; page?: number }) =>
-    api.get('/quizzes', { params }),
+    api.get('/exams', { params: { ...params, type: 'quiz' } }),
 
   getById: (id: number) =>
-    api.get(`/quizzes/${id}`),
+    api.get(`/exams/${id}`),
 
   create: (data: {
     title: string;
@@ -581,62 +581,62 @@ export const quizAPI = {
     passing_score?: number;
     shuffle_questions?: boolean;
     shuffle_options?: boolean;
-  }) => api.post('/quizzes', data),
+  }) => api.post('/exams', { ...data, type: 'quiz' }),
 
   update: (id: number, data: Record<string, unknown>) =>
-    api.put(`/quizzes/${id}`, data),
+    api.put(`/exams/${id}`, data),
 
   delete: (id: number) =>
-    api.delete(`/quizzes/${id}`),
+    api.delete(`/exams/${id}`),
 
   publish: (id: number) =>
-    api.post(`/quizzes/${id}/publish`),
+    api.post(`/exams/${id}/publish`),
 
   end: (id: number) =>
-    api.post(`/quizzes/${id}/end`),
+    api.post(`/exams/${id}/end`),
 
   duplicateFromExam: (quizId: number, data: { source_exam_id: number; replace_existing?: boolean; question_ids?: number[] }) =>
-    api.post(`/quizzes/${quizId}/duplicate-from-exam`, data),
+    api.post(`/exams/${quizId}/duplicate-from-exam`, data),
 
   // Questions
   addQuestion: (quizId: number, data: FormData) =>
-    api.post(`/quizzes/${quizId}/questions`, data, {
+    api.post(`/exams/${quizId}/questions`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
   updateQuestion: (questionId: number, data: FormData) => {
     // Use POST with _method spoof for FormData compatibility with Laravel
     data.append('_method', 'PUT');
-    return api.post(`/quiz-questions/${questionId}`, data, {
+    return api.post(`/questions/${questionId}`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
 
   deleteQuestion: (questionId: number) =>
-    api.delete(`/quiz-questions/${questionId}`),
+    api.delete(`/questions/${questionId}`),
 
   // Student actions
   start: (quizId: number) =>
-    api.post(`/quizzes/${quizId}/start`),
+    api.post(`/exams/${quizId}/start`),
 
   syncQuestions: (quizId: number) =>
-    api.get(`/quizzes/${quizId}/sync-questions`),
+    api.get(`/exams/${quizId}/sync-questions`),
 
   submitAnswer: (quizId: number, data: { question_id: number; answer: string }) =>
-    api.post(`/quizzes/${quizId}/answer`, data),
+    api.post(`/exams/${quizId}/answer`, data),
 
   finish: (quizId: number, data?: { answers?: Record<number, string>; time_spent?: number }) =>
-    api.post(`/quizzes/${quizId}/finish`, data),
+    api.post(`/exams/${quizId}/finish`, data),
 
   // Results
   getResults: (quizId: number) =>
-    api.get(`/quizzes/${quizId}/results`),
+    api.get(`/exams/${quizId}/results`),
 
   getStudentResult: (quizId: number, studentId: number) =>
-    api.get(`/quizzes/${quizId}/results/${studentId}`),
+    api.get(`/exams/${quizId}/results/${studentId}`),
 
   gradeAnswer: (quizId: number, answerId: number, data: { score: number; feedback?: string }) =>
-    api.post(`/quizzes/${quizId}/grade-answer/${answerId}`, data),
+    api.post(`/exams/${quizId}/grade-answer/${answerId}`, data),
 };
 
 // Exam API

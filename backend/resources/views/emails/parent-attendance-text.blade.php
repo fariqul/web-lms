@@ -1,13 +1,18 @@
-Yth. Orang Tua/Wali dari {{ $studentName }},
+Informasi Kehadiran Siswa - {{ $studentName }}
 
-Berikut adalah informasi kehadiran anak Anda pada sesi absensi hari ini:
+Yth. Orang Tua / Wali dari {{ $studentName }},
 
-Nama Siswa: {{ $studentName }}
-Kelas: {{ $className }}
-Mata Pelajaran: {{ $subjectName }}
+Berikut adalah rincian kehadiran anak Anda:
+
+--------------------------------------------------
+Nama Siswa     : {{ $studentName }}
+Kelas          : {{ $className }}
+Mata Pelajaran : {{ $subjectName }}
 Tanggal & Waktu: {{ $date }}, {{ $time }}
-Status Kehadiran: {{ $statusLabel }}
+Status         : {{ $statusLabel }}
+--------------------------------------------------
 
-Email ini dikirim secara otomatis oleh sistem LMS. Jika ada pertanyaan, silakan hubungi pihak sekolah.
+Apabila Anda memiliki pertanyaan terkait kehadiran ini, silakan menghubungi wali kelas yang bersangkutan.
 
-© {{ date('Y') }} {{ config('app.name', 'LMS') }} · Notifikasi Otomatis
+==================================================
+© {{ date('Y') }} {{ config('app.name', 'LMS') }}

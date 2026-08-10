@@ -1,44 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Reset Password</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .header { background-color: #2563eb; color: white; padding: 20px 30px; text-align: center; }
-        .header h1 { margin: 0; font-size: 22px; }
-        .content { padding: 30px; }
-        .content p { color: #333; line-height: 1.6; }
-        .btn { display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 12px 30px; border-radius: 6px; margin: 20px 0; font-weight: bold; }
-        .btn:hover { background-color: #1d4ed8; }
-        .footer { text-align: center; padding: 20px; color: #999; font-size: 12px; border-top: 1px solid #eee; }
-        .code { background: #f3f4f6; padding: 10px 15px; border-radius: 4px; font-family: monospace; font-size: 14px; word-break: break-all; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permintaan Reset Password</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>SMA 15 Makassar LMS</h1>
-        </div>
-        <div class="content">
-            <p>Halo <strong>{{ $user->name }}</strong>,</p>
-            <p>Kami menerima permintaan untuk mereset password akun Anda. Klik tombol di bawah untuk membuat password baru:</p>
-            
-            <p style="text-align: center;">
-                <a href="{{ $resetUrl }}" class="btn">Reset Password</a>
-            </p>
-            
-            <p>Atau salin link berikut ke browser Anda:</p>
-            <p class="code">{{ $resetUrl }}</p>
-            
-            <p><strong>Link ini akan kadaluarsa dalam 60 menit.</strong></p>
-            
-            <p>Jika Anda tidak meminta reset password, abaikan email ini. Password Anda tidak akan berubah.</p>
-        </div>
-        <div class="footer">
-            <p>&copy; {{ date('Y') }} SMA 15 Makassar LMS. Seluruh hak cipta dilindungi.</p>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;background-color:#F3F4F6;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding:40px 40px 30px;background-color:#111827;text-align:center;">
+                            <h1 style="margin:0;color:#FFFFFF;font-size:24px;font-weight:600;letter-spacing:-0.025em;">Reset Password</h1>
+                            <p style="margin:8px 0 0;color:#9CA3AF;font-size:15px;">{{ config('app.name', 'LMS') }}</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding:40px;">
+                            <p style="margin:0 0 24px;color:#374151;font-size:16px;line-height:1.5;">
+                                Yth. <strong>{{ $user->name }}</strong>,<br><br>
+                                Kami menerima permintaan untuk melakukan pengaturan ulang (reset) password pada akun Anda.
+                            </p>
+
+                            <!-- CTA Button -->
+                            <div style="text-align:center;margin:32px 0;">
+                                <a href="{{ $resetUrl }}" style="display:inline-block;padding:14px 32px;background-color:#2563EB;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+                                    Atur Ulang Password
+                                </a>
+                            </div>
+
+                            <p style="margin:0 0 24px;color:#6B7280;font-size:14px;line-height:1.5;">
+                                Atau, salin dan tempel URL berikut ke peramban (browser) Anda:
+                            </p>
+                            
+                            <div style="margin-bottom:32px;padding:16px;background-color:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;">
+                                <p style="margin:0;color:#4B5563;font-size:13px;word-break:break-all;font-family:monospace;">
+                                    {{ $resetUrl }}
+                                </p>
+                            </div>
+
+                            <p style="margin:0 0 16px;color:#DC2626;font-size:14px;font-weight:500;">
+                                Tautan ini hanya berlaku selama 60 menit.
+                            </p>
+
+                            <p style="margin:0;color:#6B7280;font-size:14px;line-height:1.5;">
+                                Apabila Anda tidak meminta pengaturan ulang password, Anda dapat mengabaikan pesan ini dengan aman.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding:30px 40px;background-color:#F9FAFB;border-top:1px solid #E5E7EB;text-align:center;">
+                            <p style="margin:0;color:#9CA3AF;font-size:13px;line-height:1.5;">
+                                &copy; {{ date('Y') }} {{ config('app.name', 'LMS') }}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

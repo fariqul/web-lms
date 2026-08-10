@@ -1053,9 +1053,14 @@ class ExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Exam::where(function ($q) {
-                $q->whereNull('type')
-                    ->orWhere('type', '!=', 'quiz');
+        $type = $request->query('type');
+        $query = Exam::where(function ($q) use ($type) {
+                if ($type === 'quiz') {
+                    $q->where('type', 'quiz');
+                } else {
+                    $q->whereNull('type')
+                      ->orWhere('type', '!=', 'quiz');
+                }
             })
             ->with(['teacher:id,name', 'class:id,name', 'classes:id,name', 'lockedByUser:id,name', 'classSchedules:id,exam_id,class_id,start_time,end_time,is_published'])
             ->withCount('results');
@@ -1172,15 +1177,26 @@ class ExamController extends Controller
      */
     public function store(Request $request)
     {
+        $type = $request->input('type', 'exam');
+        $isQuiz = $type === 'quiz';
+
         // Support both single class_id and multiple class_ids
         $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'subject' => 'required|string|max:255',
             'duration_minutes' => 'required|integer|min:1',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time',
         ];
+
+        if (!$isQuiz) {
+            $rules['start_time'] = 'required|date';
+            $rules['end_time'] = 'required|date|after:start_time';
+        } else {
+            $rules['show_result'] = 'nullable|boolean';
+            $rules['passing_score'] = 'nullable|integer|min:0|max:100';
+            $rules['shuffle_questions'] = 'nullable|boolean';
+            $rules['shuffle_options'] = 'nullable|boolean';
+        }
 
         if ($request->has('class_ids')) {
             $rules['class_ids'] = 'required|array|min:1';
@@ -1199,17 +1215,28 @@ class ExamController extends Controller
         // Use the first class as the primary class_id (backward compatibility)
         $primaryClassId = $classIds[0];
 
-        $exam = Exam::create([
+        $examData = [
+            'type' => $isQuiz ? 'quiz' : null,
             'title' => $request->title,
             'description' => $request->description,
             'class_id' => $primaryClassId,
             'teacher_id' => $request->user()->id,
             'subject' => $request->subject,
             'duration' => $request->duration_minutes,
-            'start_time' => $this->parseSchoolTimeToUtc((string) $request->start_time),
-            'end_time' => $this->parseSchoolTimeToUtc((string) $request->end_time),
             'status' => 'draft',
-        ]);
+        ];
+
+        if (!$isQuiz) {
+            $examData['start_time'] = $this->parseSchoolTimeToUtc((string) $request->start_time);
+            $examData['end_time'] = $this->parseSchoolTimeToUtc((string) $request->end_time);
+        } else {
+            $examData['show_result'] = $request->input('show_result', true);
+            $examData['passing_score'] = $request->input('passing_score', 0);
+            $examData['shuffle_questions'] = $request->input('shuffle_questions', false);
+            $examData['shuffle_options'] = $request->input('shuffle_options', false);
+        }
+
+        $exam = Exam::create($examData);
 
         // Sync all classes to pivot table
         $exam->classes()->sync($classIds);
@@ -3135,8 +3162,10 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
-        // Validate nomor_tes if student has one assigned
-        if ($user->nomor_tes) {
+        $isQuiz = $exam->type === 'quiz';
+
+        // Validate nomor_tes if student has one assigned (only for exams)
+        if (!$isQuiz && $user->nomor_tes) {
             $request->validate([
                 'nomor_tes' => 'required|string',
             ], [
@@ -3162,16 +3191,21 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-        $effectiveStartTime = $window['start_time'];
-        $effectiveEndTime = $window['end_time'];
-
         $now = now();
-        if ($now < $effectiveStartTime || $now > $effectiveEndTime) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ujian tidak dalam waktu pelaksanaan untuk kelas Anda',
-            ], 422);
+        $effectiveStartTime = null;
+        $effectiveEndTime = null;
+
+        if (!$isQuiz) {
+            $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+            $effectiveStartTime = $window['start_time'];
+            $effectiveEndTime = $window['end_time'];
+
+            if ($now < $effectiveStartTime || $now > $effectiveEndTime) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ujian tidak dalam waktu pelaksanaan untuk kelas Anda',
+                ], 422);
+            }
         }
 
         // SEB enforcement: check User-Agent for Safe Exam Browser
@@ -3203,7 +3237,7 @@ class ExamController extends Controller
             ], 422);
         }
 
-        if (!$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
+        if (!$isQuiz && !$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian belum dipublish untuk kelas Anda',
@@ -3219,7 +3253,7 @@ class ExamController extends Controller
             ->where('student_id', $user->id)
             ->first();
 
-        if (!$existingResult || $existingResult->started_at === null) {
+        if (!$isQuiz && (!$existingResult || $existingResult->started_at === null)) {
             $lateEntryDeadline = $effectiveStartTime->copy()->addMinutes(self::LATE_ENTRY_LIMIT_MINUTES);
             if ($now > $lateEntryDeadline) {
                 $isApproved = $existingResult && $existingResult->late_entry_status === 'approved';
@@ -3455,9 +3489,11 @@ class ExamController extends Controller
 
         // Server-side time expiry check
         $now = now();
-        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-        $effectiveEndTime = $window['end_time'];
-        
+        $effectiveEndTime = null;
+        if ($exam->type !== 'quiz') {
+            $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+            $effectiveEndTime = $window['end_time'];
+        }
         // Check exam end_time
         if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
             return $this->forceFinishFromAutosave($request, $exam, $answerMap);
@@ -3605,8 +3641,11 @@ class ExamController extends Controller
 
         // Server-side time expiry check
         $now = now();
-        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-        $effectiveEndTime = $window['end_time'];
+        $effectiveEndTime = null;
+        if ($exam->type !== 'quiz') {
+            $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+            $effectiveEndTime = $window['end_time'];
+        }
 
         if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
             return $this->forceFinishFromAutosave($request, $exam, $answerMap);
@@ -3734,8 +3773,11 @@ class ExamController extends Controller
             ], 422);
         }
 
-        $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-        $effectiveEndTime = $window['end_time'];
+        $effectiveEndTime = null;
+        if ($exam->type !== 'quiz') {
+            $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+            $effectiveEndTime = $window['end_time'];
+        }
 
         $remaining = $this->calculateRemainingSeconds($result, $exam, $effectiveEndTime);
 
@@ -3842,12 +3884,17 @@ class ExamController extends Controller
                 ->first();
 
             if ($activeResult && $activeResult->started_at) {
-                $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-                $effectiveEndTime = $window['end_time'] ?? null;
+                if ($exam->type !== 'quiz') {
+                    $window = $this->getEffectiveExamWindow($exam, $user->class_id);
+                    $effectiveEndTime = $window['end_time'] ?? null;
+                } else {
+                    $effectiveEndTime = null;
+                }
+                
                 $remainingSeconds = $this->calculateRemainingSeconds($activeResult, $exam, $effectiveEndTime);
 
-                // Tolak jika sisa waktu masih lebih dari 10 menit
-                if ($remainingSeconds > 600) {
+                // Tolak jika sisa waktu masih lebih dari 10 menit (kecuali kuis)
+                if ($exam->type !== 'quiz' && $remainingSeconds > 600) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Ujian hanya dapat dikumpulkan saat sisa waktu ≤ 10 menit.',
@@ -5855,3 +5902,4 @@ class ExamController extends Controller
         ]);
     }
 }
+
