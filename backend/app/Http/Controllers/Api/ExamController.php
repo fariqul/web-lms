@@ -653,7 +653,7 @@ class ExamController extends Controller
 
         // Get all summative scores by this teacher
         $summatives = \App\Models\SummativeScore::where('teacher_id', $user->id)
-            ->with(['student:id,name,nisn,class_id', 'class:id,name'])
+            ->with(['student:id,name,nisn,class_id', 'classRoom:id,name'])
             ->get();
         
         // Group by student
@@ -720,7 +720,7 @@ class ExamController extends Controller
 
         // Process summative scores
         foreach ($summatives as $summative) {
-            $className = $summative->class?->name ?? '';
+            $className = $summative->classRoom?->name ?? '';
             $initStudent($summative->student, $className);
             if (!$summative->student) continue;
 
