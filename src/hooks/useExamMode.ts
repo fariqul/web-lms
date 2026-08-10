@@ -124,6 +124,8 @@ export function useExamMode({
   // iOS timer-drift detection: iOS freezes timers when app goes background
   const iosTimerDriftRef = useRef<number>(0);
   const iosTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const [baselineCaptured, setBaselineCaptured] = useState(false);
 
   const applyFreezeWindow = useCallback((freezeSeconds: number) => {
     const durationMs = Math.max(0, freezeSeconds) * 1000;
@@ -301,6 +303,33 @@ export function useExamMode({
     return VIRTUAL_CAMERA_PATTERNS.some(p => lower.includes(p));
   }, []);
 
+  // Capture Baseline Photo (Server-side AI verification)
+  const captureBaselinePhoto = useCallback(async () => {
+    if (!videoRef.current || !isCameraActive || baselineCaptured) return;
+    
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 240;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>(resolve => 
+        canvas.toBlob(resolve, 'image/jpeg', 0.8)
+      );
+      
+      if (blob) {
+        await monitoringAPI.uploadBaselineBlob(examId, blob);
+        setBaselineCaptured(true);
+        console.log('[Camera] Baseline photo captured and uploaded successfully');
+      }
+    } catch (error) {
+      console.warn('[Camera] Failed to upload baseline photo', error);
+    }
+  }, [examId, isCameraActive, baselineCaptured, videoRef]);
+
   const startCamera = useCallback(async () => {
     try {
       // If we already have an active stream with working tracks, don't request again
@@ -388,7 +417,17 @@ export function useExamMode({
       consecutiveFailsRef.current = 0;
       setConsecutiveSnapshotFails(0);
       cameraRestartAttemptsRef.current = 0; // Reset restart counter on successful start
-      console.log('[Camera] Camera started successfully');
+      console.log('[Camera] Started successfully with config:', {
+        width: videoTrack.getSettings().width,
+        height: videoTrack.getSettings().height,
+        facingMode: videoTrack.getSettings().facingMode
+      });
+      
+      // NEW: Trigger baseline capture slightly after start
+      setTimeout(() => {
+        captureBaselinePhoto().catch(console.error);
+      }, 2000);
+      
     } catch (error) {
       console.error('[Camera] Camera access failed:', error);
       cameraRetryRef.current += 1;
@@ -403,7 +442,7 @@ export function useExamMode({
         reportViolation('camera_off', 'Kamera tidak dapat diakses');
       }
     }
-  }, [reportViolation, isVirtualCamera]);
+  }, [reportViolation, isVirtualCamera, captureBaselinePhoto]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {

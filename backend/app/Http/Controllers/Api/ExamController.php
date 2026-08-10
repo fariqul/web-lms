@@ -4271,6 +4271,52 @@ class ExamController extends Controller
         ]);
     }
 
+    public function uploadBaseline(Request $request, Exam $exam)
+    {
+        $request->validate([
+            'image' => 'required|file|mimetypes:image/jpeg,image/png,image/webp|max:2048',
+        ]);
+
+        $user = $request->user();
+
+        // Check if student has active exam result
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->whereIn('status', ['in_progress', 'started'])
+            ->first();
+
+        if (!$result) {
+            return response()->json(['success' => false, 'message' => 'Ujian tidak aktif'], 400);
+        }
+
+        // Store baseline image
+        $imagePath = $request->file('image')->store('monitoring-baselines', 'public');
+        
+        // Save baseline path to ExamResult
+        $result->update([
+            'proctoring_baseline_path' => $imagePath,
+        ]);
+
+        // Note: For real-time identity, we could dispatch a job to extract embedding now.
+        // But for laziness, we'll let the first snapshot job handle embedding extraction if needed,
+        // or just let Python extract it when testing. 
+        // Wait, Python needs both images, or Python extracts embedding of baseline once and we store it.
+        // Actually, Python returns embedding. We can extract baseline embedding now.
+        // Let's just dispatch an async job to extract and store baseline embedding!
+        \App\Jobs\AnalyzeProctoringSnapshot::dispatch(
+            $exam->id,
+            $user->id,
+            $imagePath,
+            true // isBaseline
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Baseline photo uploaded and queued for processing',
+            'data' => ['path' => $imagePath],
+        ]);
+    }
+
     /**
      * Upload monitoring snapshot
      */
@@ -4286,9 +4332,6 @@ class ExamController extends Controller
             ]);
         }
 
-        // Use mimetypes (checks actual content) instead of mimes (checks extension mapping)
-        // canvas.toBlob() produces valid JPEG content but File() constructor extension mapping
-        // can confuse Laravel's mimes rule
         $request->validate([
             'image' => 'required|file|mimetypes:image/jpeg,image/png,image/webp|max:2048',
         ]);
@@ -4339,17 +4382,25 @@ class ExamController extends Controller
                 $old->delete();
             }
 
-            return MonitoringSnapshot::create([
-                'exam_result_id' => $result->id,
-                'user_id' => $user->id,
-                'student_id' => $user->id,
+            $snap = MonitoringSnapshot::create([
                 'exam_id' => $exam->id,
+                'student_id' => $user->id,
+                'exam_result_id' => $result->id,
                 'image_path' => $imagePath,
                 'photo_path' => $imagePath,
                 'captured_at' => now(),
-                'is_violation' => false,
+                'is_violation' => false, // Default to false until AI says otherwise
             ]);
+            return $snap;
         });
+
+        // Dispatch AI processing job
+        \App\Jobs\AnalyzeProctoringSnapshot::dispatch(
+            $exam->id,
+            $user->id,
+            $imagePath,
+            false // isBaseline = false
+        );
 
         // Broadcast: new snapshot
         app(SocketBroadcastService::class)->examSnapshot($exam->id, [

@@ -10,6 +10,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  CheckCircle,
 } from 'lucide-react';
 import type { AnalysisResultsProps } from '@/types/diagnostic';
 import { getHealthScoreColor, formatProcessingTime } from '@/types/diagnostic';
@@ -91,6 +92,32 @@ export function AnalysisResults({ result, onDownloadReport }: AnalysisResultsPro
           </div>
         </div>
       </div>
+
+      {/* Identity Check */}
+      {result.identity && result.identity.has_baseline && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Identity Verification
+          </h3>
+          <div className={`p-4 rounded-lg border ${result.identity.mismatch ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'}`}>
+            <div className="flex items-center gap-3">
+              {result.identity.mismatch ? (
+                <XCircle className="w-6 h-6 text-red-500" />
+              ) : (
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              )}
+              <div>
+                <h4 className={`font-semibold ${result.identity.mismatch ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>
+                  {result.identity.mismatch ? 'Identity Mismatch (Wajah Berbeda)' : 'Identity Match (Wajah Sesuai)'}
+                </h4>
+                <p className={`text-sm ${result.identity.mismatch ? 'text-red-600 dark:text-red-300' : 'text-green-600 dark:text-green-300'}`}>
+                  Distance: {result.identity.distance} (Threshold: 0.6)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Component Scores Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">

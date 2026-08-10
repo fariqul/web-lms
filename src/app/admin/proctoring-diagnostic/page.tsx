@@ -138,6 +138,33 @@ export default function DiagnosticPage() {
     }
   }, [loadTestHistory]);
 
+  const handleSetBaseline = useCallback(async (imageBlob: Blob) => {
+    try {
+      setErrorMessage(null);
+      const reader = new FileReader();
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(imageBlob);
+      });
+
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+
+      const response = await apiPost('/api/proctoring-diagnostic/set-baseline', { image: base64Image });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal set baseline');
+      }
+
+      alert('Baseline photo berhasil di-set! Silakan Capture Analysis untuk menguji Identity Matching.');
+    } catch (error) {
+      const err = error as Error;
+      console.error('Error setting baseline:', err);
+      setErrorMessage(err.message || 'Failed to set baseline');
+    }
+  }, []);
+
   /**
    * Handle camera permission denied
    */
@@ -319,6 +346,7 @@ ${comparison.regressions.map(r => `- ${r.component}: ${r.regression}`).join('\n'
           <div className="xl:col-span-1">
             <CameraPreview
               onCapture={handleCapture}
+              onSetBaseline={handleSetBaseline}
               onPermissionDenied={handlePermissionDenied}
               onError={handleCameraError}
             />

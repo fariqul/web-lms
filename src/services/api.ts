@@ -794,6 +794,16 @@ export const monitoringAPI = {
     });
   },
 
+  uploadBaselineBlob: (examId: number, blob: Blob) => {
+    const formData = new FormData();
+    const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+    const file = new File([blob], `baseline_${Date.now()}.${ext}`, { type: blob.type || 'image/jpeg' });
+    formData.append('image', file);
+    return api.post(`/exams/${examId}/baseline`, formData, {
+      timeout: 20000,
+    });
+  },
+
   reportViolation: (data: {
     exam_id: number;
     type: string;

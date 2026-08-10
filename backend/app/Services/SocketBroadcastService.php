@@ -395,4 +395,17 @@ class SocketBroadcastService
             'system.exam-results-visibility'
         );
     }
+
+    /**
+     * Broadcast an alert for admins when proctoring detects critical issues
+     *
+     * @param int $examId
+     * @param array $alertData
+     * @return bool
+     */
+    public function adminAlert(int $examId, array $alertData): bool
+    {
+        $alertData['exam_id'] = $examId;
+        return $this->broadcast('admin:proctoring-alert', $alertData, 'system.admin-alerts');
+    }
 }

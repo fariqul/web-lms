@@ -276,30 +276,19 @@ export default function ExamTakingPage() {
     examId,
     videoRef,
     enabled: isStarted && isCameraActive,
-    detectionInterval: 1500,
+    detectionInterval: 3000,
     onDetection: (detection: ProctoringDetection) => {
       // Show brief warning overlay for critical detections
-      if (detection.type === 'no_face' || detection.type === 'multi_face' || detection.type === 'identity_mismatch') {
+      if (detection.type === 'no_face' || detection.type === 'multi_face') {
         setProctoringWarning(detection.description);
         setTimeout(() => setProctoringWarning(null), 3000);
+        // Instant trigger: force a snapshot upload to server immediately
+        captureSnapshot();
       }
     },
   });
 
-  // Capture reference face shortly after camera starts
-  const referenceCapturedRef = React.useRef(false);
-  useEffect(() => {
-    if (isStarted && isCameraActive && proctoring.isModelLoaded && !referenceCapturedRef.current) {
-      const timer = setTimeout(async () => {
-        const success = await proctoring.captureReference();
-        if (success) {
-          referenceCapturedRef.current = true;
-          console.log('[Proctoring] Reference face captured');
-        }
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isStarted, isCameraActive, proctoring.isModelLoaded, proctoring]);
+
 
   // Socket: listen for admin ending the exam
   const examSocket = useExamSocket(examId);
@@ -2182,21 +2171,11 @@ export default function ExamTakingPage() {
                   <div className="mt-1.5 space-y-1">
                     <div className="flex items-center justify-between text-[9px]">
                       <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        {proctoring.stats.riskLevel === 'low' && <ShieldCheck className="w-3 h-3 text-green-500" />}
-                        {proctoring.stats.riskLevel === 'medium' && <Shield className="w-3 h-3 text-yellow-500" />}
-                        {proctoring.stats.riskLevel === 'high' && <ShieldAlert className="w-3 h-3 text-orange-500" />}
-                        {proctoring.stats.riskLevel === 'critical' && <ShieldAlert className="w-3 h-3 text-red-500" />}
-                        AI Proktor
+                        <ShieldCheck className="w-3 h-3 text-green-500" />
+                        AI Proktor (Lokal)
                       </span>
-                      <span className={`font-medium ${
-                        proctoring.stats.riskLevel === 'low' ? 'text-green-600 dark:text-green-400' :
-                        proctoring.stats.riskLevel === 'medium' ? 'text-yellow-600 dark:text-yellow-400' :
-                        proctoring.stats.riskLevel === 'high' ? 'text-orange-600 dark:text-orange-400' :
-                        'text-red-600 dark:text-red-400'
-                      }`}>
-                        {proctoring.stats.riskLevel === 'low' ? 'Aman' :
-                         proctoring.stats.riskLevel === 'medium' ? 'Perhatian' :
-                         proctoring.stats.riskLevel === 'high' ? 'Peringatan' : 'Kritis'}
+                      <span className="font-medium text-green-600 dark:text-green-400">
+                        Aktif
                       </span>
                     </div>
                     {proctoring.stats.totalDetections > 0 && (
@@ -2209,21 +2188,6 @@ export default function ExamTakingPage() {
                         {proctoring.stats.multiFaceCount > 0 && (
                           <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-1 py-0.5 rounded">
                             Multi wajah: {proctoring.stats.multiFaceCount}
-                          </span>
-                        )}
-                        {proctoring.stats.headTurnCount > 0 && (
-                          <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-1 py-0.5 rounded">
-                            Menoleh: {proctoring.stats.headTurnCount}
-                          </span>
-                        )}
-                        {proctoring.stats.eyeGazeCount > 0 && (
-                          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded">
-                            Lirikan: {proctoring.stats.eyeGazeCount}
-                          </span>
-                        )}
-                        {proctoring.stats.identityMismatchCount > 0 && (
-                          <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1 py-0.5 rounded">
-                            ID berbeda: {proctoring.stats.identityMismatchCount}
                           </span>
                         )}
                       </div>

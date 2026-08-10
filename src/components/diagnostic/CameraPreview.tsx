@@ -14,6 +14,7 @@ export function CameraPreview({
   onCapture,
   onPermissionDenied,
   onError,
+  onSetBaseline,
 }: CameraPreviewProps) {
   const [cameraState, setCameraState] = useState<CameraState>({
     status: 'idle',
@@ -316,6 +317,38 @@ export function CameraPreview({
               </>
             )}
           </button>
+
+          {onSetBaseline && (
+            <button
+              onClick={async () => {
+                if (!videoRef.current || !canvasRef.current) return;
+                setIsCapturing(true);
+                try {
+                  const video = videoRef.current;
+                  const canvas = canvasRef.current;
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(async (blob) => {
+                      if (blob) await onSetBaseline(blob);
+                      setIsCapturing(false);
+                    }, 'image/jpeg', 0.9);
+                  } else {
+                    setIsCapturing(false);
+                  }
+                } catch (error) {
+                  setIsCapturing(false);
+                  console.error('Failed to set baseline', error);
+                }
+              }}
+              disabled={isCapturing}
+              className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              Set Baseline
+            </button>
+          )}
 
           <button
             onClick={handleStopCamera}

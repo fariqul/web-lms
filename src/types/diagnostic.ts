@@ -45,6 +45,11 @@ export interface AnalysisResult {
   processing_time_ms: number;
   troubleshooting: TroubleshootingSuggestion[];
   timestamp: string;
+  identity?: {
+    has_baseline: boolean;
+    mismatch: boolean;
+    distance: number | null;
+  };
 }
 
 // ==================== Detection Types ====================
@@ -222,6 +227,7 @@ export interface CameraPreviewProps {
   onCapture: (imageBlob: Blob) => Promise<void>;
   onPermissionDenied: () => void;
   onError: (error: string) => void;
+  onSetBaseline?: (imageBlob: Blob) => Promise<void>;
 }
 
 export interface AnalysisResultsProps {

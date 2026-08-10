@@ -28,6 +28,70 @@ class ProctoringDiagnosticController extends Controller
     }
 
     /**
+     * Set diagnostic baseline photo
+     */
+    public function setBaseline(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $imageData = $request->input('image');
+            $mimeType = 'image/jpeg';
+            $base64Data = $imageData;
+            if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+                $base64Data = substr($imageData, strpos($imageData, ',') + 1);
+                $mimeType = 'image/' . $type[1];
+            }
+            $imageContents = base64_decode($base64Data);
+
+            $proctoringServiceUrl = env('PROCTORING_SERVICE_URL', 'http://proctoring:8001');
+
+            $response = Http::timeout(60)
+                ->attach('image', $imageContents, 'baseline.jpg', ['Content-Type' => $mimeType])
+                ->post("{$proctoringServiceUrl}/analyze");
+
+            if (!$response->successful()) {
+                throw new Exception("Proctoring service error: " . $response->body());
+            }
+
+            $analysisResult = $response->json();
+            $embedding = $analysisResult['face_analysis']['face_embedding'] ?? null;
+
+            if (!$embedding) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Wajah tidak terdeteksi untuk baseline. Silakan coba lagi.',
+                ], 400);
+            }
+
+            // Save baseline embedding in cache for this admin
+            $cacheKey = 'diagnostic_baseline_' . Auth::id();
+            Cache::put($cacheKey, $embedding, now()->addHours(2));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Baseline berhasil di-set',
+            ]);
+        } catch (Exception $e) {
+            Log::error("Diagnostic Set Baseline Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Analyze captured frame
      * POST /api/proctoring-diagnostic/analyze
      * 
@@ -113,6 +177,29 @@ class ProctoringDiagnosticController extends Controller
                 'detected_objects' => $detectedObjects,
                 'suspicious_objects' => $suspiciousNames,
                 'prohibited_objects' => $prohibitedNames,
+            ];
+
+            // Append Identity Check if baseline exists
+            $cacheKey = 'diagnostic_baseline_' . Auth::id();
+            $baselineEmbedding = Cache::get($cacheKey);
+            $currentEmbedding = $analysisResult['face_analysis']['face_embedding'] ?? null;
+            $identityMismatch = false;
+            $identityDistance = null;
+
+            if ($baselineEmbedding && $currentEmbedding) {
+                $identityDistance = $this->calculateEuclideanDistance($baselineEmbedding, $currentEmbedding);
+                if ($identityDistance > 0.6) {
+                    $identityMismatch = true;
+                    $analysisResult['risk_score'] = min(100, ($analysisResult['risk_score'] ?? 0) + 50);
+                    $analysisResult['message'] = ($analysisResult['message'] ?? '') . " | Wajah berbeda dari baseline!";
+                    $analysisResult['detections'][] = 'identity_mismatch';
+                }
+            }
+
+            $analysisResult['identity'] = [
+                'has_baseline' => $baselineEmbedding !== null,
+                'mismatch' => $identityMismatch,
+                'distance' => $identityDistance ? round($identityDistance, 2) : null,
             ];
 
             $analysisResult['object_detection'] = $objectDetection;
@@ -1159,5 +1246,15 @@ class ProctoringDiagnosticController extends Controller
             'requirements_met' => $requirementsMet,
             'requirements_failed' => $requirementsFailed,
         ];
+    }
+
+    private function calculateEuclideanDistance($arr1, $arr2)
+    {
+        $sum = 0;
+        for ($i = 0; $i < 128; $i++) {
+            if (!isset($arr1[$i]) || !isset($arr2[$i])) return 0;
+            $sum += pow($arr1[$i] - $arr2[$i], 2);
+        }
+        return sqrt($sum);
     }
 }

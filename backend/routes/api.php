@@ -179,6 +179,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // PROCTORING DIAGNOSTIC TOOL (Admin only)
         // ============================================
         Route::prefix('proctoring-diagnostic')->group(function () {
+            // Set diagnostic baseline photo
+            Route::post('/set-baseline', [ProctoringDiagnosticController::class, 'setBaseline']);
+            
             // Analyze captured frame
             Route::post('/analyze', [ProctoringDiagnosticController::class, 'analyzeCapture']);
             
