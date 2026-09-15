@@ -8,7 +8,13 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/components/ui/Toast";
 import { OfflineBanner } from "@/components/ui/OfflineBanner";
 import { SessionEventHandler } from "@/components/auth/SessionEventHandler";
-import { AdminProctoringAlerts } from "@/components/admin/AdminProctoringAlerts";
+import dynamic from "next/dynamic";
+
+const AdminProctoringAlerts = dynamic(
+  () => import("@/components/admin/AdminProctoringAlerts").then((mod) => mod.AdminProctoringAlerts),
+  { ssr: false }
+);
+
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
