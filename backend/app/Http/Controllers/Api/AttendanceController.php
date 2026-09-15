@@ -144,8 +144,8 @@ class AttendanceController extends Controller
             'jam_ke' => $jamKe,
             'qr_token' => Str::random(32),
             'token_refresh_interval' => $request->input('token_refresh_interval', 300),
-            'valid_from' => $request->valid_from,
-            'valid_until' => $request->valid_until,
+            'valid_from' => \Carbon\Carbon::parse($request->valid_from)->setTimezone(config('app.timezone')),
+            'valid_until' => \Carbon\Carbon::parse($request->valid_until)->setTimezone(config('app.timezone')),
             'status' => 'active',
             'require_school_network' => $request->require_school_network ?? false,
         ];
