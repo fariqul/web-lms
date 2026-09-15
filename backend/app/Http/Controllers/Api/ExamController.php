@@ -1216,7 +1216,7 @@ class ExamController extends Controller
         $primaryClassId = $classIds[0];
 
         $examData = [
-            'type' => $isQuiz ? 'quiz' : null,
+            'type' => $isQuiz ? 'quiz' : 'exam',
             'title' => $request->title,
             'description' => $request->description,
             'class_id' => $primaryClassId,
