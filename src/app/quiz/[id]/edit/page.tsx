@@ -450,15 +450,22 @@ export default function EditQuizPage() {
             order: (q.order as number) || 0,
             passage: q.passage as string | null,
             image: q.image as string | null,
-            options: ((q.options || []) as { text: string; is_correct?: boolean; image?: string | null }[]).map((o, i) => ({
-              text: o.text || '',
-              is_correct: questionType === 'multiple_choice'
-                ? o.text === q.correct_answer
-                : questionType === 'multiple_answer'
-                ? (() => { try { const ca = JSON.parse(q.correct_answer as string); return Array.isArray(ca) && ca.map((s: string) => s.toLowerCase()).includes(o.text.toLowerCase()); } catch { return false; } })()
-                : i === 0,
-              image: o.image || null,
-            })),
+            options: ((q.options || []) as { text?: string; option_text?: string; is_correct?: boolean; image?: string | null }[]).map((o, i) => {
+              const optText = o.option_text || o.text || '';
+              // Use backend-provided is_correct if available, otherwise derive from correct_answer
+              const isCorrect = typeof o.is_correct === 'boolean'
+                ? o.is_correct
+                : questionType === 'multiple_choice'
+                  ? optText === q.correct_answer
+                  : questionType === 'multiple_answer'
+                  ? (() => { try { const ca = JSON.parse(q.correct_answer as string); return Array.isArray(ca) && ca.map((s: string) => s.toLowerCase()).includes(optText.toLowerCase()); } catch { return false; } })()
+                  : i === 0;
+              return {
+                text: optText,
+                is_correct: isCorrect,
+                image: o.image || null,
+              };
+            }),
             essay_keywords: (q.essay_keywords as string[]) || [],
           };
         });
