@@ -427,34 +427,34 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
     // ============================================
     
     // Shared: list & show quiz (all authenticated)
-    Route::get('/quizzes', [QuizController::class, 'index']);
-    Route::get('/quizzes/{quiz}', [QuizController::class, 'show']);
+    Route::get('/quizzes', [ExamController::class, 'index']);
+    Route::get('/quizzes/{exam}', [ExamController::class, 'show']);
 
     // Teacher quiz management
     Route::middleware('role:guru')->group(function () {
-        Route::post('/quizzes', [QuizController::class, 'store']);
-        Route::delete('/quizzes/{quiz}', [QuizController::class, 'destroy']);
+        Route::post('/quizzes', [ExamController::class, 'store']);
+        Route::delete('/quizzes/{exam}', [ExamController::class, 'destroy']);
     });
 
     // Teacher + Admin: update, publish, end, questions, results, grading
     Route::middleware('role:admin,guru')->group(function () {
-        Route::put('/quizzes/{quiz}', [QuizController::class, 'update']);
-        Route::post('/quizzes/{quiz}/publish', [QuizController::class, 'publish']);
-        Route::post('/quizzes/{quiz}/end', [QuizController::class, 'endQuiz']);
-        Route::post('/quizzes/{quiz}/duplicate-from-exam', [QuizController::class, 'duplicateFromExam']);
-        Route::post('/quizzes/{quiz}/questions', [QuizController::class, 'addQuestion']);
-        Route::put('/quiz-questions/{question}', [QuizController::class, 'updateQuestion']);
-        Route::delete('/quiz-questions/{question}', [QuizController::class, 'deleteQuestion']);
-        Route::get('/quizzes/{quiz}/results', [QuizController::class, 'results']);
-        Route::get('/quizzes/{quiz}/results/{studentId}', [QuizController::class, 'studentResult']);
-        Route::post('/quizzes/{quiz}/grade-answer/{answerId}', [QuizController::class, 'gradeAnswer']);
+        Route::put('/quizzes/{exam}', [ExamController::class, 'update']);
+        Route::post('/quizzes/{exam}/publish', [ExamController::class, 'publish']);
+        Route::post('/quizzes/{exam}/end', [ExamController::class, 'endExam']);
+        Route::post('/quizzes/{exam}/duplicate-from-exam', [ExamController::class, 'duplicateFromExam']);
+        Route::post('/quizzes/{exam}/questions', [ExamController::class, 'addQuestion']);
+        Route::put('/quiz-questions/{question}', [ExamController::class, 'updateQuestion']);
+        Route::delete('/quiz-questions/{question}', [ExamController::class, 'deleteQuestion']);
+        Route::get('/quizzes/{exam}/results', [ExamController::class, 'results']);
+        Route::get('/quizzes/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
+        Route::post('/quizzes/{exam}/grade-answer/{answerId}', [ExamController::class, 'gradeAnswer']);
     });
 
     // Student quiz taking
     Route::middleware('role:siswa')->group(function () {
-        Route::get('/quizzes/{quiz}/sync-questions', [QuizController::class, 'syncQuestions']);
-        Route::post('/quizzes/{quiz}/start', [QuizController::class, 'startQuiz']);
-        Route::post('/quizzes/{quiz}/answer', [QuizController::class, 'submitAnswer']);
-        Route::post('/quizzes/{quiz}/finish', [QuizController::class, 'finishQuiz']);
+        Route::get('/quizzes/{exam}/sync-questions', [ExamController::class, 'syncQuestions']);
+        Route::post('/quizzes/{exam}/start', [ExamController::class, 'startExam']);
+        Route::post('/quizzes/{exam}/answer', [ExamController::class, 'submitAnswer']);
+        Route::post('/quizzes/{exam}/finish', [ExamController::class, 'finishExam']);
     });
 });
