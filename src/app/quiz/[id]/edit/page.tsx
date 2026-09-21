@@ -8,7 +8,7 @@ import { Card, Button, Input, Modal, ConfirmDialog } from '@/components/ui';
 import {
   Plus, Trash2, Save, ArrowLeft, Loader2, FileEdit, ImagePlus, X,
   ChevronDown, ClipboardPaste, FileSpreadsheet, FileType, BookUp, Library,
-  CheckCircle,
+  CheckCircle, PlayCircle, BarChart3, StopCircle,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { quizAPI } from '@/services/api';
@@ -755,11 +755,47 @@ export default function EditQuizPage() {
     if (!quiz) return;
     try {
       await quizAPI.publish(quiz.id);
-      toast.success(quiz.status === 'draft' ? 'Quiz berhasil dipublish' : 'Quiz dikembalikan ke draft');
+      toast.success('Quiz berhasil dipublish (Siap Dimulai)');
       fetchData();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Gagal mengubah status');
+      toast.error(e.response?.data?.message || 'Gagal mempublish quiz');
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!quiz) return;
+    try {
+      await quizAPI.unpublish(quiz.id);
+      toast.success('Publish dibatalkan. Quiz kembali ke draft.');
+      fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal membatalkan publish');
+    }
+  };
+
+  const handleStartQuiz = async () => {
+    if (!quiz) return;
+    try {
+      await quizAPI.startQuiz(quiz.id);
+      toast.success('Quiz berhasil dimulai dan sekarang aktif untuk siswa!');
+      fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal memulai quiz');
+    }
+  };
+
+  const handleEndQuiz = async () => {
+    if (!quiz) return;
+    try {
+      await quizAPI.end(quiz.id);
+      toast.success('Quiz telah diakhiri');
+      fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal mengakhiri quiz');
     }
   };
 
@@ -906,13 +942,36 @@ export default function EditQuizPage() {
           </div>
           <div className="flex items-center gap-2">
             {quiz.status === 'draft' && questions.length > 0 && (
-              <Button onClick={handlePublish} className="gap-1.5 bg-green-600 hover:bg-green-700">
+              <Button onClick={handlePublish} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
                 <CheckCircle className="w-4 h-4" /> Publish Quiz
               </Button>
             )}
-            {(quiz.status === 'active' || quiz.status === 'scheduled') && (
-              <Button variant="outline" onClick={handlePublish} className="gap-1.5 text-amber-600">
-                Unpublish
+            {quiz.status === 'scheduled' && (
+              <>
+                <Button onClick={handleStartQuiz} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium" disabled={questions.length === 0}>
+                  <PlayCircle className="w-4 h-4" /> Mulai Quiz
+                </Button>
+                <Button variant="outline" onClick={handleUnpublish} className="gap-1.5 text-amber-600 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                  Unpublish
+                </Button>
+              </>
+            )}
+            {quiz.status === 'active' && (
+              <>
+                <Button onClick={() => router.push(`/quiz/${quiz.id}/hasil`)} className="gap-1.5 bg-indigo-600 hover:bg-indigo-700">
+                  <BarChart3 className="w-4 h-4" /> Hasil Quiz
+                </Button>
+                <Button variant="outline" onClick={handleUnpublish} className="gap-1.5 text-amber-600 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                  Unpublish
+                </Button>
+                <Button variant="outline" onClick={handleEndQuiz} className="gap-1.5 text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20">
+                  <StopCircle className="w-4 h-4" /> Akhiri
+                </Button>
+              </>
+            )}
+            {quiz.status === 'completed' && (
+              <Button onClick={() => router.push(`/quiz/${quiz.id}/hasil`)} className="gap-1.5 bg-indigo-600 hover:bg-indigo-700">
+                <BarChart3 className="w-4 h-4" /> Lihat Hasil
               </Button>
             )}
           </div>

@@ -40,10 +40,13 @@ export default function QuizSiswaPage() {
     if (resultStatus === 'in_progress') {
       return { label: 'Sedang Dikerjakan', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400', icon: PlayCircle };
     }
+    if (quiz.status === 'scheduled') {
+      return { label: 'Belum Dimulai', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300', icon: Clock };
+    }
     if (quiz.status !== 'active') {
       return { label: 'Tidak Tersedia', color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300', icon: AlertCircle };
     }
-    return { label: 'Tersedia', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: PlayCircle };
+    return { label: 'Tersedia', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400', icon: PlayCircle };
   };
 
   const canStartQuiz = (quiz: Exam) => {
@@ -140,11 +143,16 @@ export default function QuizSiswaPage() {
                     </div>
                   ) : canStartQuiz(quiz) ? (
                     <Button
-                      className="w-full"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                       onClick={() => router.push(`/quiz/${quiz.id}`)}
                     >
                       <PlayCircle className="w-4 h-4 mr-2" />
                       {quiz.my_result?.status === 'in_progress' ? 'Lanjutkan Quiz' : 'Mulai Quiz'}
+                    </Button>
+                  ) : quiz.status === 'scheduled' ? (
+                    <Button className="w-full text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20" variant="outline" disabled>
+                      <Clock className="w-4 h-4 mr-2" />
+                      Menunggu Guru Memulai
                     </Button>
                   ) : (
                     <Button className="w-full" variant="outline" disabled>

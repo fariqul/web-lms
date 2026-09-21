@@ -440,6 +440,8 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
     Route::middleware('role:admin,guru')->group(function () {
         Route::put('/quizzes/{exam}', [ExamController::class, 'update']);
         Route::post('/quizzes/{exam}/publish', [ExamController::class, 'publish']);
+        Route::post('/quizzes/{exam}/unpublish', [ExamController::class, 'unpublish']);
+        Route::post('/quizzes/{exam}/start-quiz', [ExamController::class, 'startQuiz']);
         Route::post('/quizzes/{exam}/end', [ExamController::class, 'endExam']);
         Route::post('/quizzes/{exam}/duplicate-from-exam', [ExamController::class, 'duplicateFromExam']);
         Route::post('/quizzes/{exam}/questions', [ExamController::class, 'addQuestion']);

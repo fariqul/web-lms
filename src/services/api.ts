@@ -592,6 +592,12 @@ export const quizAPI = {
   publish: (id: number) =>
     api.post(`/quizzes/${id}/publish`),
 
+  unpublish: (id: number) =>
+    api.post(`/quizzes/${id}/unpublish`),
+
+  startQuiz: (id: number) =>
+    api.post(`/quizzes/${id}/start-quiz`),
+
   end: (id: number) =>
     api.post(`/quizzes/${id}/end`),
 

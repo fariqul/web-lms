@@ -995,17 +995,18 @@ class ExamController extends Controller
     {
         $user = $request->user();
         
-        $result = ExamResult::with('exam')->findOrFail($resultId);
-        
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $result->exam->teacher_id === (int) $user->id || ($result->exam->teacher_id === null && $result->exam->type === 'quiz'));
+
         // Only the teacher who owns the exam or admin can edit
-        if ($user->role !== 'admin' && $result->exam->teacher_id !== $user->id) {
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized',
             ], 403);
         }
 
-        if ($user->role === 'guru' && $this->isTeacherExamResultsHidden()) {
+        if ($user->role === 'guru' && $result->exam->type !== 'quiz' && $this->isTeacherExamResultsHidden()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
@@ -2228,8 +2229,11 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
+
         // Ownership check
-        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk mempublish ujian ini',
@@ -2278,6 +2282,84 @@ class ExamController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Ujian berhasil dipublish',
+        ]);
+    }
+
+    /**
+     * Start live quiz session (scheduled/draft -> active) by teacher/admin
+     */
+    public function startQuiz(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
+
+        if (!$isAdmin && !$isOwnerTeacher) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk memulai quiz ini',
+            ], 403);
+        }
+
+        if ($exam->questions()->count() === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Quiz harus memiliki minimal 1 soal sebelum dimulai',
+            ], 422);
+        }
+
+        if ($exam->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Quiz yang sudah selesai tidak dapat dimulai kembali secara langsung',
+            ], 422);
+        }
+
+        $now = now();
+        $duration = (int) ($exam->duration ?: 60);
+        $endTime = (clone $now)->addMinutes($duration);
+
+        $exam->status = 'active';
+        $exam->start_time = $now;
+        $exam->end_time = $endTime;
+        $exam->save();
+
+        ExamClassSchedule::where('exam_id', $exam->id)
+            ->update([
+                'is_published' => true,
+                'start_time' => $now,
+                'end_time' => $endTime,
+            ]);
+
+        $this->forgetExamShowCache($exam->id);
+
+        try {
+            $broadcast = app(\App\Services\SocketBroadcastService::class);
+            $broadcast->examStarted($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'status' => 'active',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+            ]);
+            $broadcast->examUpdated($exam->id, [
+                'exam_id' => $exam->id,
+                'title' => $exam->title,
+                'status' => 'active',
+                'start_time' => $exam->start_time,
+                'end_time' => $exam->end_time,
+                'duration' => $exam->duration,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Broadcast startQuiz failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Quiz berhasil dimulai dan sekarang aktif untuk siswa',
+            'data' => $exam,
         ]);
     }
 
@@ -2537,18 +2619,24 @@ class ExamController extends Controller
     public function unpublish(Request $request, Exam $exam)
     {
         $user = $request->user();
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
 
-        if ($user->role !== 'admin') {
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya admin yang dapat membatalkan publish ujian',
+                'message' => 'Anda tidak memiliki akses untuk membatalkan publish ujian ini',
             ], 403);
         }
 
-        if ($exam->status !== 'scheduled') {
+        $canUnpublish = $exam->type === 'quiz'
+            ? in_array($exam->status, ['scheduled', 'active'])
+            : $exam->status === 'scheduled';
+
+        if (!$canUnpublish) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya ujian terjadwal yang dapat dibatalkan publish-nya',
+                'message' => 'Hanya ujian terjadwal' . ($exam->type === 'quiz' ? ' atau aktif' : '') . ' yang dapat dibatalkan publish-nya',
             ], 422);
         }
 
@@ -2559,6 +2647,10 @@ class ExamController extends Controller
         $oldStatus = $exam->status;
         $exam->status = 'draft';
         $exam->save();
+
+        ExamClassSchedule::where('exam_id', $exam->id)
+            ->update(['is_published' => false]);
+
         $this->forgetExamShowCache($exam->id);
 
         // Log to audit trail
@@ -3188,6 +3280,13 @@ class ExamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian tidak tersedia',
+            ], 422);
+        }
+
+        if ($isQuiz && $exam->status === 'scheduled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Quiz belum dimulai oleh guru. Silakan tunggu hingga guru memulai quiz.',
             ], 422);
         }
 
@@ -4483,7 +4582,7 @@ class ExamController extends Controller
         $user = $request->user();
 
         $isAdmin = $user->role === 'admin';
-        $isOwnerTeacher = $user->role === 'guru' && (int) $exam->teacher_id === (int) $user->id;
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
 
         if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
@@ -4492,7 +4591,7 @@ class ExamController extends Controller
             ], 403);
         }
 
-        if (!$isAdmin && $this->isTeacherExamResultsHidden()) {
+        if (!$isAdmin && $exam->type !== 'quiz' && $this->isTeacherExamResultsHidden()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
@@ -4777,7 +4876,7 @@ class ExamController extends Controller
         $user = $request->user();
 
         $isAdmin = $user->role === 'admin';
-        $isOwnerTeacher = $user->role === 'guru' && (int) $exam->teacher_id === (int) $user->id;
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
 
         if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
@@ -4786,7 +4885,7 @@ class ExamController extends Controller
             ], 403);
         }
 
-        if (!$isAdmin && $this->isTeacherExamResultsHidden()) {
+        if (!$isAdmin && $exam->type !== 'quiz' && $this->isTeacherExamResultsHidden()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',
@@ -4837,15 +4936,18 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
+
         // Ownership check
-        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk menilai ujian ini',
             ], 403);
         }
 
-        if ($user->role === 'guru' && $this->isTeacherExamResultsHidden()) {
+        if ($user->role === 'guru' && $exam->type !== 'quiz' && $this->isTeacherExamResultsHidden()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses hasil ujian untuk guru sedang dinonaktifkan admin',

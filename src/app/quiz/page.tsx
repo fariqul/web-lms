@@ -125,11 +125,33 @@ export default function QuizPage() {
   const handlePublish = async (quiz: Exam) => {
     try {
       await quizAPI.publish(quiz.id);
-      toast.success(quiz.status === 'draft' ? 'Quiz berhasil dipublish' : 'Quiz dikembalikan ke draft');
+      toast.success('Quiz berhasil dipublish (Siap Dimulai)');
       fetchData();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Gagal mengubah status');
+      toast.error(e.response?.data?.message || 'Gagal mempublish quiz');
+    }
+  };
+
+  const handleUnpublish = async (quiz: Exam) => {
+    try {
+      await quizAPI.unpublish(quiz.id);
+      toast.success('Publish dibatalkan. Quiz kembali ke draft.');
+      fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal membatalkan publish');
+    }
+  };
+
+  const handleStartQuiz = async (quiz: Exam) => {
+    try {
+      await quizAPI.startQuiz(quiz.id);
+      toast.success('Quiz berhasil dimulai dan sekarang aktif untuk siswa!');
+      fetchData();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Gagal memulai quiz');
     }
   };
 
@@ -157,8 +179,8 @@ export default function QuizPage() {
   const statusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; label: string }> = {
       draft: { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300', label: 'Draft' },
-      scheduled: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', label: 'Terjadwal' },
-      active: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Aktif' },
+      scheduled: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', label: 'Siap Dimulai' },
+      active: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Sedang Aktif' },
       completed: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', label: 'Selesai' },
     };
     const s = map[status] || map.draft;
@@ -265,7 +287,43 @@ export default function QuizPage() {
                         </Button>
                       </>
                     )}
-                    {(quiz.status === 'active' || quiz.status === 'scheduled') && (
+                    {quiz.status === 'scheduled' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartQuiz(quiz)}
+                          className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm"
+                          disabled={quiz.total_questions === 0}
+                        >
+                          <PlayCircle className="w-3.5 h-3.5" /> Mulai Quiz
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.push(`/quiz/${quiz.id}/edit`)}
+                          className="gap-1.5"
+                        >
+                          <FileEdit className="w-3.5 h-3.5" /> Soal
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUnpublish(quiz)}
+                          className="gap-1.5 text-amber-600 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                        >
+                          Unpublish
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDeleteQuizModal(quiz)}
+                          className="gap-1.5 text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    )}
+                    {quiz.status === 'active' && (
                       <>
                         <Button
                           size="sm"
@@ -278,15 +336,15 @@ export default function QuizPage() {
                         <Button
                           size="sm"
                           onClick={() => router.push(`/quiz/${quiz.id}/hasil`)}
-                          className="gap-1.5"
+                          className="gap-1.5 bg-indigo-600 hover:bg-indigo-700"
                         >
                           <BarChart3 className="w-3.5 h-3.5" /> Hasil
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handlePublish(quiz)}
-                          className="gap-1.5 text-amber-600 border-amber-200 dark:border-amber-800"
+                          onClick={() => handleUnpublish(quiz)}
+                          className="gap-1.5 text-amber-600 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                         >
                           Unpublish
                         </Button>
@@ -294,7 +352,7 @@ export default function QuizPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleEnd(quiz)}
-                          className="gap-1.5 text-red-500 border-red-200 dark:border-red-800"
+                          className="gap-1.5 text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           <StopCircle className="w-3.5 h-3.5" /> Akhiri
                         </Button>
