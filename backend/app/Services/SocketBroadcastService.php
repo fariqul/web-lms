@@ -165,6 +165,18 @@ class SocketBroadcastService
     }
 
     /**
+     * Exam started (scheduled → active).
+     */
+    public function examStarted(int $examId, array $data): bool
+    {
+        return $this->broadcast(
+            "exam.{$examId}.started",
+            $data,
+            "exam.{$examId}"
+        );
+    }
+
+    /**
      * Exam deleted.
      */
     public function examDeleted(int $examId, array $data): bool

@@ -2352,7 +2352,7 @@ class ExamController extends Controller
                 'end_time' => $exam->end_time,
                 'duration' => $exam->duration,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning('Broadcast startQuiz failed: ' . $e->getMessage());
         }
 
