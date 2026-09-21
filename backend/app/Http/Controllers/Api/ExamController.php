@@ -2851,6 +2851,164 @@ class ExamController extends Controller
         ]);
     }
 
+    private function clonePublicFilePath(?string $sourcePath, string $targetDir): ?string
+    {
+        if (!$sourcePath) {
+            return null;
+        }
+
+        if (!Storage::disk('public')->exists($sourcePath)) {
+            return $sourcePath;
+        }
+
+        $ext = pathinfo($sourcePath, PATHINFO_EXTENSION);
+        $filename = uniqid('dup_', true) . ($ext ? ".{$ext}" : '');
+        $newPath = trim($targetDir, '/') . '/' . $filename;
+
+        Storage::disk('public')->copy($sourcePath, $newPath);
+        return $newPath;
+    }
+
+    /**
+     * Duplicate questions from CBT exam into target exam/quiz
+     */
+    public function duplicateFromExam(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+        if ($user->role === 'guru' && $exam->teacher_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if ($exam->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Duplikasi soal hanya dapat dilakukan saat ujian/quiz berstatus draft',
+            ], 422);
+        }
+
+        $request->validate([
+            'source_exam_id' => 'required|exists:exams,id',
+            'replace_existing' => 'nullable|boolean',
+            'question_ids' => 'nullable|array|min:1',
+            'question_ids.*' => 'integer|exists:questions,id',
+        ]);
+
+        $sourceExam = Exam::with(['questions' => fn($q) => $q->orderBy('order')])->findOrFail($request->source_exam_id);
+
+        if ($sourceExam->type === 'quiz' && $exam->type !== 'quiz') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sumber harus dari ujian CBT',
+            ], 422);
+        }
+
+        if ($user->role === 'guru' && $sourceExam->teacher_id !== $user->id && $sourceExam->teacher_id !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda hanya dapat duplicate dari ujian milik Anda',
+            ], 403);
+        }
+
+        if ($sourceExam->questions->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian sumber belum memiliki soal',
+            ], 422);
+        }
+
+        $selectedQuestionIds = collect($request->input('question_ids', []))
+            ->filter(fn($id) => is_numeric($id))
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $sourceQuestions = $sourceExam->questions;
+        if ($selectedQuestionIds->isNotEmpty()) {
+            $sourceQuestions = $sourceQuestions
+                ->whereIn('id', $selectedQuestionIds)
+                ->sortBy('order')
+                ->values();
+
+            if ($sourceQuestions->count() !== $selectedQuestionIds->count()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ada soal yang dipilih tidak berasal dari ujian sumber',
+                ], 422);
+            }
+        }
+
+        if ($sourceQuestions->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada soal yang dipilih untuk diduplikasi',
+            ], 422);
+        }
+
+        $replaceExisting = (bool) $request->boolean('replace_existing', false);
+        $duplicatedCount = 0;
+
+        DB::transaction(function () use ($exam, $sourceQuestions, $replaceExisting, &$duplicatedCount) {
+            if ($replaceExisting) {
+                $exam->questions()->delete();
+            }
+
+            $order = ($exam->questions()->max('order') ?? 0) + 1;
+
+            foreach ($sourceQuestions as $srcQuestion) {
+                $newQuestionImage = $this->clonePublicFilePath($srcQuestion->image, 'question-images');
+
+                $newOptions = null;
+                if (is_array($srcQuestion->options)) {
+                    $newOptions = collect($srcQuestion->options)->map(function ($opt) {
+                        if (is_string($opt)) {
+                            return $opt;
+                        }
+
+                        if (!is_array($opt)) {
+                            return $opt;
+                        }
+
+                        $newOpt = $opt;
+                        if (!empty($opt['image']) && is_string($opt['image'])) {
+                            $newOpt['image'] = $this->clonePublicFilePath($opt['image'], 'option-images');
+                        }
+                        return $newOpt;
+                    })->toArray();
+                }
+
+                Question::create([
+                    'exam_id' => $exam->id,
+                    'passage' => $srcQuestion->passage,
+                    'question_text' => $srcQuestion->question_text,
+                    'type' => $srcQuestion->type,
+                    'image' => $newQuestionImage,
+                    'options' => $newOptions,
+                    'correct_answer' => $srcQuestion->correct_answer,
+                    'essay_keywords' => $srcQuestion->essay_keywords,
+                    'points' => $srcQuestion->points,
+                    'order' => $order,
+                ]);
+
+                $order++;
+                $duplicatedCount++;
+            }
+
+            $exam->total_questions = $exam->questions()->count();
+            $exam->save();
+        });
+
+        $this->forgetExamShowCache($exam->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil menduplikasi {$duplicatedCount} soal",
+            'data' => [
+                'duplicated_count' => $duplicatedCount,
+                'total_questions' => $exam->fresh()->total_questions,
+            ],
+        ]);
+    }
+
     /**
      * Add question to exam
      */
@@ -3015,6 +3173,14 @@ class ExamController extends Controller
             'essay_keywords' => 'nullable|array',
             'essay_keywords.*' => 'string',
         ]);
+
+        $isLiveEdit = $exam->status === 'active';
+        if ($isLiveEdit && $request->has('question_type') && $request->question_type !== $question->type) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tipe soal tidak dapat diubah saat ujian/quiz sedang berlangsung',
+            ], 422);
+        }
 
         // Validate essay must have keywords (only warn, don't block — allows import without keywords)
         $questionType = $request->question_type ?? $question->type;
@@ -3293,6 +3459,7 @@ class ExamController extends Controller
         $now = now();
         $effectiveStartTime = null;
         $effectiveEndTime = null;
+        $window = ['start_time' => null, 'end_time' => null, 'is_override' => false];
 
         if (!$isQuiz) {
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);
@@ -3305,6 +3472,10 @@ class ExamController extends Controller
                     'message' => 'Ujian tidak dalam waktu pelaksanaan untuk kelas Anda',
                 ], 422);
             }
+        } else {
+            // For quiz, use the exam's own start/end time set by startQuiz
+            $effectiveStartTime = $exam->start_time ? Carbon::parse($exam->start_time) : $now;
+            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
         }
 
         // SEB enforcement: check User-Agent for Safe Exam Browser
@@ -3393,21 +3564,29 @@ class ExamController extends Controller
                 ]);
 
                 // Broadcast: student joined exam
-                app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
-                    'student_id' => $user->id,
-                    'student_name' => $user->name,
-                    'started_at' => $this->toSchoolIso8601(now()),
-                ]);
+                try {
+                    app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
+                        'student_id' => $user->id,
+                        'student_name' => $user->name,
+                        'started_at' => $this->toSchoolIso8601(now()),
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('Broadcast examStudentJoined failed: ' . $e->getMessage());
+                }
             } else if ($result->started_at === null) {
                 $result->started_at = now();
                 $result->save();
 
                 // Broadcast: student joined exam
-                app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
-                    'student_id' => $user->id,
-                    'student_name' => $user->name,
-                    'started_at' => $this->toSchoolIso8601(now()),
-                ]);
+                try {
+                    app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
+                        'student_id' => $user->id,
+                        'student_name' => $user->name,
+                        'started_at' => $this->toSchoolIso8601(now()),
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('Broadcast examStudentJoined failed: ' . $e->getMessage());
+                }
             }
 
             return $result;
@@ -3526,32 +3705,87 @@ class ExamController extends Controller
         // gunakan deadline paling cepat antara durasi personal dan end_time efektif ujian.
         $remainingTime = $this->calculateRemainingSeconds($result, $exam, $effectiveEndTime);
 
+        $examData = array_merge(
+            $exam->only(['id', 'title', 'duration', 'max_violations']),
+            [
+                'effective_start_time' => $effectiveStartTime,
+                'effective_end_time' => $effectiveEndTime,
+                'has_class_schedule_override' => $window['is_override'] ?? false,
+            ]
+        );
+
         return response()->json([
             'success' => true,
             'data' => [
-                'exam' => array_merge(
-                    $exam->only(['id', 'title', 'duration', 'max_violations']),
-                    [
-                        'effective_start_time' => $effectiveStartTime,
-                        'effective_end_time' => $effectiveEndTime,
-                        'has_class_schedule_override' => $window['is_override'],
-                    ]
-                ),
+                'exam' => $examData,
+                'quiz' => $isQuiz ? array_merge($examData, [
+                    'subject' => $exam->subject,
+                    'show_result' => $exam->show_result,
+                    'totalQuestions' => $questions->count(),
+                ]) : null,
                 'result' => $result,
                 'questions' => $questions->values(),
                 'existing_answers' => $existingAnswers,
                 'remaining_time' => $remainingTime,
+                'remainingTime' => $remainingTime,
                 'snapshot_monitor_enabled' => $this->isSnapshotMonitoringEnabled(),
             ],
         ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('startExam error for exam ' . $exam->id . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat memulai ujian. Silakan coba lagi.',
             ], 500);
         }
+    }
+
+    /**
+     * Sync latest question content for in-progress student sessions.
+     */
+    public function syncQuestions(Request $request, Exam $exam)
+    {
+        $user = $request->user();
+        $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+        if (empty($examClassIds)) {
+            $examClassIds = [$exam->class_id];
+        }
+
+        if (!in_array($user->class_id, $examClassIds)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke ujian ini'], 403);
+        }
+
+        $result = ExamResult::where('exam_id', $exam->id)
+            ->where('student_id', $user->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$result) {
+            return response()->json(['success' => false, 'message' => 'Sesi ujian tidak aktif'], 422);
+        }
+
+        $questions = $exam->questions()->orderBy('order')->get();
+        $latestUpdatedAt = $questions->max('updated_at');
+        $revision = $latestUpdatedAt ? Carbon::parse((string) $latestUpdatedAt)->getTimestamp() : 0;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'revision' => $revision,
+                'questions' => $questions->map(fn($q) => [
+                    'id' => $q->id,
+                    'order' => $q->order,
+                    'question_text' => $q->question_text,
+                    'type' => $q->type,
+                    'question_type' => $q->type,
+                    'passage' => $q->passage,
+                    'options' => $q->options ?? [],
+                    'image' => $q->image,
+                    'updated_at' => $q->updated_at ? $q->updated_at->toISOString() : null,
+                ])->values(),
+            ],
+        ]);
     }
 
     /**
@@ -3569,7 +3803,7 @@ class ExamController extends Controller
             (int) $request->question_id => (string) $request->answer,
         ];
 
-        if (!$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
+        if ($exam->type !== 'quiz' && !$this->canStudentSeeExamByClassSchedule($exam, $user->class_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian belum dipublish untuk kelas Anda',
@@ -3592,6 +3826,8 @@ class ExamController extends Controller
         if ($exam->type !== 'quiz') {
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);
             $effectiveEndTime = $window['end_time'];
+        } else {
+            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
         }
         // Check exam end_time
         if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
@@ -3744,6 +3980,8 @@ class ExamController extends Controller
         if ($exam->type !== 'quiz') {
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);
             $effectiveEndTime = $window['end_time'];
+        } else {
+            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
         }
 
         if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
@@ -3876,6 +4114,8 @@ class ExamController extends Controller
         if ($exam->type !== 'quiz') {
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);
             $effectiveEndTime = $window['end_time'];
+        } else {
+            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
         }
 
         $remaining = $this->calculateRemainingSeconds($result, $exam, $effectiveEndTime);
@@ -3987,7 +4227,7 @@ class ExamController extends Controller
                     $window = $this->getEffectiveExamWindow($exam, $user->class_id);
                     $effectiveEndTime = $window['end_time'] ?? null;
                 } else {
-                    $effectiveEndTime = null;
+                    $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
                 }
                 
                 $remainingSeconds = $this->calculateRemainingSeconds($activeResult, $exam, $effectiveEndTime);
@@ -4044,7 +4284,15 @@ class ExamController extends Controller
 
             // Persist last known client answers before final scoring.
             // This prevents score=0 when force/manual submit happens while autosave is lagging.
-            $submittedAnswers = $request->input('answers', []);
+            $isDeadlineExceeded = false;
+            if ($result->started_at && $exam->duration) {
+                $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
+                if (now()->greaterThan($personalDeadline)) {
+                    $isDeadlineExceeded = true;
+                }
+            }
+
+            $submittedAnswers = $isDeadlineExceeded ? [] : $request->input('answers', []);
             if (is_array($submittedAnswers) && !empty($submittedAnswers)) {
                 $questionIds = array_keys($submittedAnswers);
                 $questions = Question::where('exam_id', $exam->id)
@@ -4157,16 +4405,23 @@ class ExamController extends Controller
             $result->calculateScore();
 
             // Broadcast: student submitted
-            app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
-                'student_id' => $user->id,
-                'student_name' => $user->name,
-                'score' => $result->score,
-                'finished_at' => $this->toSchoolIso8601($result->finished_at),
-            ]);
+            try {
+                app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
+                    'student_id' => $user->id,
+                    'student_name' => $user->name,
+                    'score' => $result->score,
+                    'finished_at' => $this->toSchoolIso8601($result->finished_at),
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast examStudentSubmitted failed: ' . $e->getMessage());
+            }
 
+            $defaultMsg = $exam->type === 'quiz' ? 'Quiz berhasil diselesaikan' : 'Ujian berhasil diselesaikan';
             $response = [
                 'success' => true,
-                'message' => 'Ujian berhasil diselesaikan',
+                'message' => ($isDeadlineExceeded && $exam->type === 'quiz')
+                    ? 'Quiz berhasil diselesaikan (waktu habis, jawaban terlambat diabaikan)'
+                    : $defaultMsg,
             ];
 
             if ($exam->show_result) {
