@@ -435,16 +435,29 @@ class ExamController extends Controller
 
         if ($classSchedule) {
             return [
-                'start_time' => Carbon::parse($classSchedule->start_time),
-                'end_time' => Carbon::parse($classSchedule->end_time),
+                'start_time' => !empty($classSchedule->start_time) 
+                    ? Carbon::parse($classSchedule->start_time) 
+                    : now(),
+                'end_time' => !empty($classSchedule->end_time) 
+                    ? Carbon::parse($classSchedule->end_time) 
+                    : now()->addHours(2),
                 'is_override' => true,
                 'class_schedule_id' => $classSchedule->id,
             ];
         }
 
+        // Fallback to exam's own times with proper null/empty handling
+        $startTime = !empty($exam->start_time) 
+            ? Carbon::parse($exam->start_time) 
+            : now();
+        
+        $endTime = !empty($exam->end_time) 
+            ? Carbon::parse($exam->end_time) 
+            : $startTime->copy()->addMinutes($exam->duration ?? 90);
+
         return [
-            'start_time' => Carbon::parse($exam->start_time),
-            'end_time' => Carbon::parse($exam->end_time),
+            'start_time' => $startTime,
+            'end_time' => $endTime,
             'is_override' => false,
             'class_schedule_id' => null,
         ];
@@ -485,7 +498,8 @@ class ExamController extends Controller
 
     private function calculateRemainingSeconds(ExamResult $result, Exam $exam, ?Carbon $effectiveEndTime): int
     {
-        $personalRemaining = $result->started_at
+        // Safe parsing: check for null AND empty string to prevent Carbon parse errors
+        $personalRemaining = !empty($result->started_at) && $result->started_at !== null
             ? now()->diffInSeconds(Carbon::parse($result->started_at)->addMinutes($exam->duration ?? 90), false)
             : ($exam->duration ?? 90) * 60;
 
@@ -3491,8 +3505,12 @@ class ExamController extends Controller
             }
         } else {
             // For quiz, use the exam's own start/end time set by startQuiz
-            $effectiveStartTime = $exam->start_time ? Carbon::parse($exam->start_time) : $now;
-            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
+            $effectiveStartTime = !empty($exam->start_time) 
+                ? Carbon::parse($exam->start_time) 
+                : $now;
+            $effectiveEndTime = !empty($exam->end_time) 
+                ? Carbon::parse($exam->end_time) 
+                : null;
         }
 
         // SEB enforcement: check User-Agent for Safe Exam Browser
@@ -3842,17 +3860,17 @@ class ExamController extends Controller
         $effectiveEndTime = null;
         if ($exam->type !== 'quiz') {
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-            $effectiveEndTime = $window['end_time'];
+            $effectiveEndTime = $window['end_time']; // Already Carbon instance
         } else {
-            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
+            $effectiveEndTime = !empty($exam->end_time) ? Carbon::parse($exam->end_time) : null;
         }
         // Check exam end_time
-        if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
+        if ($effectiveEndTime && $now->greaterThan($effectiveEndTime->copy()->addSeconds(30))) {
             return $this->forceFinishFromAutosave($request, $exam, $answerMap);
         }
         
         // Check student's personal duration (started_at + duration)
-        if ($result->started_at && $exam->duration) {
+        if (!empty($result->started_at) && $exam->duration) {
             $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
             if ($now->greaterThan($personalDeadline)) {
                 return $this->forceFinishFromAutosave($request, $exam, $answerMap);
@@ -3996,16 +4014,16 @@ class ExamController extends Controller
         $effectiveEndTime = null;
         if ($exam->type !== 'quiz') {
             $window = $this->getEffectiveExamWindow($exam, $user->class_id);
-            $effectiveEndTime = $window['end_time'];
+            $effectiveEndTime = $window['end_time']; // Already Carbon instance
         } else {
-            $effectiveEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
+            $effectiveEndTime = !empty($exam->end_time) ? Carbon::parse($exam->end_time) : null;
         }
 
-        if ($effectiveEndTime && $now->greaterThan(Carbon::parse($effectiveEndTime)->addSeconds(30))) {
+        if ($effectiveEndTime && $now->greaterThan($effectiveEndTime->copy()->addSeconds(30))) {
             return $this->forceFinishFromAutosave($request, $exam, $answerMap);
         }
 
-        if ($result->started_at && $exam->duration) {
+        if (!empty($result->started_at) && $exam->duration) {
             $personalDeadline = Carbon::parse($result->started_at)->addMinutes($exam->duration)->addSeconds(30);
             if ($now->greaterThan($personalDeadline)) {
                 return $this->forceFinishFromAutosave($request, $exam, $answerMap);
