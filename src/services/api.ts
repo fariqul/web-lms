@@ -566,10 +566,10 @@ export const attendanceAPI = {
 // Quiz / Ujian Harian API (Mapped to ExamController)
 export const quizAPI = {
   getAll: (params?: { status?: string; page?: number }) =>
-    api.get('/exams', { params: { ...params, type: 'quiz' } }),
+    api.get('/quizzes', { params: { ...params, type: 'quiz' } }),
 
   getById: (id: number) =>
-    api.get(`/exams/${id}`),
+    api.get(`/quizzes/${id}`),
 
   create: (data: {
     title: string;
@@ -581,62 +581,62 @@ export const quizAPI = {
     passing_score?: number;
     shuffle_questions?: boolean;
     shuffle_options?: boolean;
-  }) => api.post('/exams', { ...data, type: 'quiz' }),
+  }) => api.post('/quizzes', { ...data, type: 'quiz' }),
 
   update: (id: number, data: Record<string, unknown>) =>
-    api.put(`/exams/${id}`, data),
+    api.put(`/quizzes/${id}`, data),
 
   delete: (id: number) =>
-    api.delete(`/exams/${id}`),
+    api.delete(`/quizzes/${id}`),
 
   publish: (id: number) =>
-    api.post(`/exams/${id}/publish`),
+    api.post(`/quizzes/${id}/publish`),
 
   end: (id: number) =>
-    api.post(`/exams/${id}/end`),
+    api.post(`/quizzes/${id}/end`),
 
   duplicateFromExam: (quizId: number, data: { source_exam_id: number; replace_existing?: boolean; question_ids?: number[] }) =>
-    api.post(`/exams/${quizId}/duplicate-from-exam`, data),
+    api.post(`/quizzes/${quizId}/duplicate-from-exam`, data),
 
   // Questions
   addQuestion: (quizId: number, data: FormData) =>
-    api.post(`/exams/${quizId}/questions`, data, {
+    api.post(`/quizzes/${quizId}/questions`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
   updateQuestion: (questionId: number, data: FormData) => {
     // Use POST with _method spoof for FormData compatibility with Laravel
     data.append('_method', 'PUT');
-    return api.post(`/questions/${questionId}`, data, {
+    return api.post(`/quiz-questions/${questionId}`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
 
   deleteQuestion: (questionId: number) =>
-    api.delete(`/questions/${questionId}`),
+    api.delete(`/quiz-questions/${questionId}`),
 
   // Student actions
   start: (quizId: number) =>
-    api.post(`/exams/${quizId}/start`),
+    api.post(`/quizzes/${quizId}/start`),
 
   syncQuestions: (quizId: number) =>
-    api.get(`/exams/${quizId}/sync-questions`),
+    api.get(`/quizzes/${quizId}/sync-questions`),
 
   submitAnswer: (quizId: number, data: { question_id: number; answer: string }) =>
-    api.post(`/exams/${quizId}/answer`, data),
+    api.post(`/quizzes/${quizId}/answer`, data),
 
   finish: (quizId: number, data?: { answers?: Record<number, string>; time_spent?: number }) =>
-    api.post(`/exams/${quizId}/finish`, data),
+    api.post(`/quizzes/${quizId}/finish`, data),
 
   // Results
   getResults: (quizId: number) =>
-    api.get(`/exams/${quizId}/results`),
+    api.get(`/quizzes/${quizId}/results`),
 
   getStudentResult: (quizId: number, studentId: number) =>
-    api.get(`/exams/${quizId}/results/${studentId}`),
+    api.get(`/quizzes/${quizId}/results/${studentId}`),
 
   gradeAnswer: (quizId: number, answerId: number, data: { score: number; feedback?: string }) =>
-    api.post(`/exams/${quizId}/grade-answer/${answerId}`, data),
+    api.post(`/quizzes/${quizId}/grade-answer/${answerId}`, data),
 };
 
 // Exam API
