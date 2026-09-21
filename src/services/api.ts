@@ -713,15 +713,15 @@ export const examAPI = {
   
   // Student exam actions
   start: (examId: number) =>
-    api.post(`/exam/${examId}/start`),
+    api.post(`/exams/${examId}/start`),
   
   submitAnswer: (examId: number, data: {
     question_id: number;
     answer: string;
-  }) => api.post(`/exam/${examId}/answer`, data),
+  }) => api.post(`/exams/${examId}/answer`, data),
   
   submit: (examId: number) =>
-    api.post(`/exam/${examId}/submit`),
+    api.post(`/exams/${examId}/finish`),
   
   getResult: (examId: number, studentId?: number) =>
     api.get(`/exams/${examId}/result`, { params: { student_id: studentId } }),
