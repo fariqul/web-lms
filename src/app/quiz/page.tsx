@@ -97,7 +97,7 @@ export default function QuizPage() {
   const handleDelete = async () => {
     if (!deleteQuiz || deleting) return;
 
-    if (deleteQuiz.status === 'completed' && deleteConfirmText.trim().toUpperCase() !== 'HAPUS') {
+    if ((deleteQuiz.status === 'completed' || deleteQuiz.status === 'active') && deleteConfirmText.trim().toUpperCase() !== 'HAPUS') {
       toast.warning('Ketik HAPUS untuk konfirmasi penghapusan permanen');
       return;
     }
@@ -173,7 +173,7 @@ export default function QuizPage() {
     return true;
   });
 
-  const requiresPermanentConfirm = deleteQuiz?.status === 'completed';
+  const requiresPermanentConfirm = deleteQuiz?.status === 'completed' || deleteQuiz?.status === 'active';
   const permanentConfirmMatched = deleteConfirmText.trim().toUpperCase() === 'HAPUS';
 
   const statusBadge = (status: string) => {
@@ -356,6 +356,15 @@ export default function QuizPage() {
                         >
                           <StopCircle className="w-3.5 h-3.5" /> Akhiri
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDeleteQuizModal(quiz)}
+                          className="gap-1.5 text-red-500 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          title="Hapus Quiz"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </>
                     )}
                     {quiz.status === 'completed' && (
@@ -533,18 +542,18 @@ export default function QuizPage() {
             setDeleteQuiz(null);
           }
         }}
-        title={deleteQuiz?.status === 'completed' ? 'Hapus Permanen Quiz Selesai' : 'Hapus Quiz'}
+        title={requiresPermanentConfirm ? 'Hapus Permanen Quiz' : 'Hapus Quiz'}
         size="md"
       >
         <div className="space-y-4">
           <div className={`rounded-lg border p-4 ${
-            deleteQuiz?.status === 'completed'
+            requiresPermanentConfirm
               ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/50'
               : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50'
           }`}>
             <div className="flex items-start gap-3">
               <AlertCircle className={`w-5 h-5 mt-0.5 shrink-0 ${
-                deleteQuiz?.status === 'completed'
+                requiresPermanentConfirm
                   ? 'text-red-600 dark:text-red-400'
                   : 'text-amber-600 dark:text-amber-400'
               }`} />
@@ -552,7 +561,7 @@ export default function QuizPage() {
                 <p className="text-sm text-slate-800 dark:text-slate-200">
                   Yakin ingin menghapus quiz <span className="font-semibold">&quot;{deleteQuiz?.title}&quot;</span>?
                 </p>
-                {deleteQuiz?.status === 'completed' ? (
+                {requiresPermanentConfirm ? (
                   <p className="text-sm font-medium text-red-700 dark:text-red-300">
                     Data nilai, hasil, dan jawaban siswa akan hilang permanen.
                   </p>
@@ -600,7 +609,7 @@ export default function QuizPage() {
               disabled={deleting || (requiresPermanentConfirm && !permanentConfirmMatched)}
             >
               {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {deleteQuiz?.status === 'completed' ? 'Hapus Permanen' : 'Hapus'}
+              {requiresPermanentConfirm ? 'Hapus Permanen' : 'Hapus'}
             </Button>
           </div>
         </div>

@@ -2063,16 +2063,19 @@ class ExamController extends Controller
     {
         $user = $request->user();
 
+        $isAdmin = $user->role === 'admin';
+        $isOwnerTeacher = $user->role === 'guru' && ((int) $exam->teacher_id === (int) $user->id || ($exam->teacher_id === null && $exam->type === 'quiz'));
+
         // Ownership check
-        if ($user->role !== 'admin' && $exam->teacher_id !== $user->id) {
+        if (!$isAdmin && !$isOwnerTeacher) {
             return response()->json([
                 'success' => false,
-                'message' => 'Anda tidak memiliki akses untuk menghapus ujian ini',
+                'message' => 'Anda tidak memiliki akses untuk menghapus ' . ($exam->type === 'quiz' ? 'quiz' : 'ujian') . ' ini',
             ], 403);
         }
 
-        // Non-admin users are blocked from deleting exams that already have results.
-        if ($user->role !== 'admin' && $exam->results()->count() > 0) {
+        // Non-admin users are blocked from deleting exams that already have results (except for quizzes).
+        if (!$isAdmin && $exam->type !== 'quiz' && $exam->results()->count() > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak dapat menghapus ujian yang sudah memiliki hasil',
@@ -2082,12 +2085,17 @@ class ExamController extends Controller
         // Delete all related data in correct order to avoid orphans
         $examId = $exam->id;
         $classId = $exam->class_id;
+        $isQuiz = $exam->type === 'quiz';
         $this->forgetExamShowCache($examId);
+
         DB::transaction(function () use ($exam) {
             // Delete answers for this exam
             Answer::where('exam_id', $exam->id)->delete();
             // Delete violations for this exam
             Violation::where('exam_id', $exam->id)->delete();
+            // Delete proctoring alerts and scores
+            ProctoringAlert::where('exam_id', $exam->id)->delete();
+            ProctoringScore::where('exam_id', $exam->id)->delete();
             // Delete monitoring snapshots for this exam
             MonitoringSnapshot::where('exam_id', $exam->id)->each(function (MonitoringSnapshot $snap) {
                 if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
@@ -2099,10 +2107,19 @@ class ExamController extends Controller
             ExamResult::where('exam_id', $exam->id)->delete();
             // Detach multi-class pivot
             $exam->classes()->detach();
-            // Delete questions (with their images)
+            // Delete class schedules
+            ExamClassSchedule::where('exam_id', $exam->id)->delete();
+            // Delete questions (with their images and option images)
             $exam->questions()->each(function (Question $q) {
                 if ($q->image && Storage::disk('public')->exists($q->image)) {
                     Storage::disk('public')->delete($q->image);
+                }
+                if (is_array($q->options)) {
+                    foreach ($q->options as $opt) {
+                        if (is_array($opt) && !empty($opt['image']) && Storage::disk('public')->exists($opt['image'])) {
+                            Storage::disk('public')->delete($opt['image']);
+                        }
+                    }
                 }
                 $q->delete();
             });
@@ -2117,13 +2134,13 @@ class ExamController extends Controller
                 'exam_id' => $examId,
                 'class_id' => $classId,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning('Broadcast examDeleted failed: ' . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Ujian berhasil dihapus',
+            'message' => ($isQuiz ? 'Quiz' : 'Ujian') . ' berhasil dihapus',
         ]);
     }
 

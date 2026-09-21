@@ -164,5 +164,22 @@ class QuizResultsAccessTest extends TestCase
         $this->get("/api/export/quiz-results/{$quiz->id}?format=xlsx")
             ->assertOk();
     }
+
+    public function test_teacher_owner_can_delete_quiz_with_results(): void
+    {
+        $classId = $this->createClassRoom('X-Quiz-Delete-With-Results');
+        $teacher = $this->createUser('guru', $classId, 'teacher-quiz-delete');
+        $student = $this->createUser('siswa', $classId, 'student-quiz-delete');
+        $quiz = $this->createQuizWithResult($teacher, $student, $classId);
+
+        Sanctum::actingAs($teacher);
+
+        $response = $this->deleteJson("/api/quizzes/{$quiz->id}");
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('exams', ['id' => $quiz->id]);
+        $this->assertDatabaseMissing('exam_results', ['exam_id' => $quiz->id]);
+    }
 }
 
