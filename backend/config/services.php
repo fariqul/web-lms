@@ -45,7 +45,9 @@ return [
     ],
 
     'log_viewer' => [
-        'secret' => env('LOG_VIEWER_SECRET'),
+        'secret'   => env('LOG_VIEWER_SECRET'),
+        'username' => env('LOG_VIEWER_USER'),
+        'password' => env('LOG_VIEWER_PASSWORD'),
     ],
 
 ];

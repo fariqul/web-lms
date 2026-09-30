@@ -94,6 +94,8 @@ services:
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       LOG_STACK: ${LOG_STACK:-daily,telegram}
       LOG_VIEWER_SECRET: ${LOG_VIEWER_SECRET:-}
+      LOG_VIEWER_USER: ${LOG_VIEWER_USER:-}
+      LOG_VIEWER_PASSWORD: ${LOG_VIEWER_PASSWORD:-}
     volumes:
       - backend_storage:/var/www/html/storage
     deploy:
