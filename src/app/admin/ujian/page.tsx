@@ -248,19 +248,22 @@ export default function AdminUjianPage() {
     setPublishingId(examId);
     try {
       const exam = exams.find(e => e.id === examId);
-      if (exam?.start_time) {
-        const startTime = new Date(exam.start_time);
-        const now = new Date();
-        // If start_time is a far-future placeholder (immediate mode), set to now
-        if (startTime.getTime() - now.getTime() > 30 * 24 * 60 * 60 * 1000) {
-          const newStart = now.toISOString();
-          const duration = exam.duration || 90;
-          const newEnd = new Date(now.getTime() + duration * 60 * 1000).toISOString();
-          await api.put(`/exams/${examId}`, {
-            start_time: newStart,
-            end_time: newEnd,
-          });
-        }
+      const now = new Date();
+      const startTime = exam?.start_time ? new Date(exam.start_time) : null;
+      const endTime = exam?.end_time ? new Date(exam.end_time) : null;
+      const isFarFuture = startTime !== null && (startTime.getTime() - now.getTime() > 30 * 24 * 60 * 60 * 1000);
+      const isExpired = endTime !== null && endTime.getTime() <= now.getTime();
+      const needsImmediateSchedule = !startTime || !endTime || isFarFuture || isExpired;
+
+      // If start_time is a far-future placeholder (immediate mode), expired, or unset, set to now
+      if (needsImmediateSchedule) {
+        const newStart = now.toISOString();
+        const duration = exam?.duration || 90;
+        const newEnd = new Date(now.getTime() + duration * 60 * 1000).toISOString();
+        await api.put(`/exams/${examId}`, {
+          start_time: newStart,
+          end_time: newEnd,
+        });
       }
       await api.post(`/exams/${examId}/publish`);
       toast.success('Ujian berhasil dipublish');

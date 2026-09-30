@@ -39,7 +39,7 @@ class ExamController extends Controller
 
     private function parseSchoolTimeToUtc(string $value): Carbon
     {
-        return Carbon::parse($value, self::SCHOOL_TIMEZONE)->setTimezone('UTC');
+        return Carbon::parse($value, self::SCHOOL_TIMEZONE)->setTimezone(self::SCHOOL_TIMEZONE);
     }
 
     private function toSchoolIso8601($value): ?string
@@ -50,7 +50,7 @@ class ExamController extends Controller
 
         $carbon = $value instanceof Carbon
             ? $value->copy()
-            : Carbon::parse($value, 'UTC');
+            : Carbon::parse($value, self::SCHOOL_TIMEZONE);
 
         return $carbon->setTimezone(self::SCHOOL_TIMEZONE)->toIso8601String();
     }
@@ -2279,17 +2279,45 @@ class ExamController extends Controller
             ], 422);
         }
 
-        // Pastikan semua override jadwal lama ikut publish agar siswa tidak kehilangan akses
-        // jika data historis class_schedules masih ada.
-        ExamClassSchedule::where('exam_id', $exam->id)
-            ->update(['is_published' => true]);
-
         // Only allow publishing from draft status
         if ($exam->status !== 'draft') {
             return response()->json([
                 'success' => false,
                 'message' => 'Hanya ujian berstatus draft yang dapat dipublish',
             ], 422);
+        }
+
+        $now = now();
+        $duration = (int) ($exam->duration ?? 90);
+
+        // Pastikan jadwal ujian valid saat dipublish.
+        // Jika jadwal adalah placeholder jauh di masa depan (>30 hari), atau sudah lewat/expired (end_time <= now),
+        // atau kosong: atur agar ujian mulai sekarang selama durasi yang ditentukan (misal 90 menit).
+        $isFarFuture = $exam->start_time && $exam->start_time->isAfter($now->copy()->addDays(30));
+        $isExpired = $exam->end_time && $exam->end_time->lte($now);
+        $needsReset = !$exam->start_time || !$exam->end_time || $isFarFuture || $isExpired;
+
+        if ($needsReset) {
+            $exam->start_time = $now;
+            $exam->end_time = $now->copy()->addMinutes($duration);
+        }
+
+        // Pastikan semua override jadwal kelas juga aktif dan valid
+        $classSchedules = $exam->relationLoaded('classSchedules')
+            ? $exam->classSchedules
+            : $exam->classSchedules()->get();
+
+        foreach ($classSchedules as $schedule) {
+            $scheduleFarFuture = $schedule->start_time && $schedule->start_time->isAfter($now->copy()->addDays(30));
+            $scheduleExpired = $schedule->end_time && $schedule->end_time->lte($now);
+            $scheduleNeedsReset = !$schedule->start_time || !$schedule->end_time || $scheduleFarFuture || $scheduleExpired;
+
+            if ($scheduleNeedsReset) {
+                $schedule->start_time = $now;
+                $schedule->end_time = $now->copy()->addMinutes($duration);
+            }
+            $schedule->is_published = true;
+            $schedule->save();
         }
 
         $exam->status = 'scheduled';
