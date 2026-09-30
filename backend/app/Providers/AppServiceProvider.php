@@ -43,12 +43,19 @@ class AppServiceProvider extends ServiceProvider
             }
 
             // Cek dari query string: ?token=xxx
+            // Simpan ke session agar AJAX internal Log Viewer ikut terautentikasi.
             if ($request->query('token') === $secret) {
+                $request->session()->put('log_viewer_authed', true);
                 return true;
             }
 
             // Cek dari HTTP header: X-Log-Viewer-Token: xxx
             if ($request->header('X-Log-Viewer-Token') === $secret) {
+                return true;
+            }
+
+            // Cek session (untuk AJAX request setelah halaman dimuat)
+            if ($request->session()->get('log_viewer_authed') === true) {
                 return true;
             }
 
