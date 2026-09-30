@@ -90,6 +90,10 @@ services:
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-notifikasi@libelslms.my.id}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-"LMS SMA 15 Makassar"}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      LOG_STACK: ${LOG_STACK:-daily,telegram}
+      LOG_VIEWER_SECRET: ${LOG_VIEWER_SECRET:-}
     volumes:
       - backend_storage:/var/www/html/storage
     deploy:
