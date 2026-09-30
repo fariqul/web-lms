@@ -4678,13 +4678,14 @@ class ExamController extends Controller
             $violationImagePath = $request->file('screenshot')->store('monitoring-snapshots', 'public');
             MonitoringSnapshot::create([
                 'exam_result_id' => $result->id,
-                'user_id' => $user->id,
-                'student_id' => $user->id,
-                'exam_id' => $exam->id,
-                'image_path' => $violationImagePath,
-                'photo_path' => $violationImagePath,
-                'captured_at' => now(),
-                'is_violation' => true,
+                'user_id'        => $user->id,
+                'student_id'     => $user->id,
+                'exam_id'        => $exam->id,
+                'image_path'     => $violationImagePath,
+                'photo_path'     => $violationImagePath,
+                'captured_at'    => now(),
+                'is_violation'   => true,
+                'expires_at'     => null, // Violation snapshots kept indefinitely for admin review
             ]);
         }
 
@@ -4762,18 +4763,14 @@ class ExamController extends Controller
             'proctoring_baseline_path' => $imagePath,
         ]);
 
-        // Note: For real-time identity, we could dispatch a job to extract embedding now.
-        // But for laziness, we'll let the first snapshot job handle embedding extraction if needed,
-        // or just let Python extract it when testing. 
-        // Wait, Python needs both images, or Python extracts embedding of baseline once and we store it.
-        // Actually, Python returns embedding. We can extract baseline embedding now.
-        // Let's just dispatch an async job to extract and store baseline embedding!
-        \App\Jobs\AnalyzeProctoringSnapshot::dispatch(
-            $exam->id,
-            $user->id,
-            $imagePath,
-            true // isBaseline
-        );
+        // Dispatch baseline extraction — extracts face embedding and stores it on the ExamResult.
+        // Uses AnalyzeSnapshotJob::forBaseline() so we have a single job class for all AI work.
+        \App\Jobs\AnalyzeSnapshotJob::forBaseline(
+            examId:       $exam->id,
+            studentId:    $user->id,
+            examResultId: $result->id,
+            imagePath:    $imagePath,
+        )->dispatch();
 
         return response()->json([
             'success' => true,
@@ -4831,51 +4828,45 @@ class ExamController extends Controller
             ]);
         }
 
-        // Delete previous non-violation snapshots and create new one in a transaction
+        // Delete previous non-violation snapshots and create new one in a transaction.
+        //
+        // Retention policy (config/proctoring.php):
+        //   - Non-violation snapshots: expires_at = captured_at + retention_hours.
+        //     The proctoring:cleanup command deletes the file when expires_at passes.
+        //   - Violation snapshots:     expires_at = NULL (never auto-deleted).
+        //
+        // We no longer delete old snapshot files immediately here. The previous behaviour
+        // deleted files the moment a new snapshot arrived, making them unavailable for
+        // admin review within the same session. The cleanup command handles deletion.
+        $retentionHours = (int) config('proctoring.retention.hours', 48);
         $imagePath = $request->file('image')->store('monitoring-snapshots', 'public');
 
-        $snapshot = DB::transaction(function () use ($exam, $user, $result, $imagePath) {
-            $oldSnapshots = MonitoringSnapshot::where('exam_id', $exam->id)
+        $snapshot = DB::transaction(function () use ($exam, $user, $result, $imagePath, $retentionHours) {
+            // Expire (but do NOT delete) old non-violation snapshots for this student.
+            // Setting expires_at in the past marks them for immediate cleanup on next run.
+            MonitoringSnapshot::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
                 ->where('is_violation', false)
-                ->get();
+                ->whereNull('file_deleted_at')
+                ->update(['expires_at' => now()]);
 
-            foreach ($oldSnapshots as $old) {
-                if ($old->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($old->image_path)) {
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete($old->image_path);
-                }
-                $old->delete();
-            }
-
-            $snap = MonitoringSnapshot::create([
-                'exam_id' => $exam->id,
-                'user_id' => $user->id,
-                'student_id' => $user->id,
+            return MonitoringSnapshot::create([
+                'exam_id'        => $exam->id,
+                'user_id'        => $user->id,
+                'student_id'     => $user->id,
                 'exam_result_id' => $result->id,
-                'image_path' => $imagePath,
-                'photo_path' => $imagePath,
-                'captured_at' => now(),
-                'is_violation' => false, // Default to false until AI says otherwise
+                'image_path'     => $imagePath,
+                'photo_path'     => $imagePath,
+                'captured_at'    => now(),
+                'is_violation'   => false,
+                'expires_at'     => now()->addHours($retentionHours),
             ]);
-            return $snap;
         });
 
-        // Dispatch AI processing job
-        \App\Jobs\AnalyzeProctoringSnapshot::dispatch(
-            $exam->id,
-            $user->id,
-            $imagePath,
-            false // isBaseline = false
-        );
-
-        // Broadcast: new snapshot
-        app(SocketBroadcastService::class)->examSnapshot($exam->id, [
-            'student_id' => $user->id,
-            'image_path' => $imagePath,
-            'captured_at' => $this->toSchoolIso8601(now()),
-        ]);
-
-        // Dispatch async AI analysis job (if queue is configured)
+        // Dispatch AI analysis job (single job — no double dispatch).
+        // AnalyzeSnapshotJob handles: Python service call, analysis_result storage,
+        // is_violation flag, ProctoringAlert, ProctoringScore, baseline face check,
+        // and admin broadcast.
         try {
             \App\Jobs\AnalyzeSnapshotJob::dispatch(
                 $snapshot->id,
@@ -4887,6 +4878,13 @@ class ExamController extends Controller
             // Silently ignore if queue not available — AI analysis is optional
             \Illuminate\Support\Facades\Log::debug('[Proctoring] Job dispatch skipped: ' . $e->getMessage());
         }
+
+        // Broadcast new snapshot to admin monitoring dashboard (immediate, before AI analysis)
+        app(SocketBroadcastService::class)->examSnapshot($exam->id, [
+            'student_id'  => $user->id,
+            'image_path'  => $imagePath,
+            'captured_at' => $this->toSchoolIso8601(now()),
+        ]);
 
         return response()->json([
             'success' => true,

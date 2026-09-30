@@ -162,6 +162,17 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         // Admin exam lock/unlock
         Route::post('/exams/{exam}/lock', [ExamController::class, 'lockExam']);
         Route::post('/exams/{exam}/unlock', [ExamController::class, 'unlockExam']);
+
+        // ============================================
+        // PROCTORING MONITOR (Admin only)
+        // ============================================
+        Route::get('/exams/{exam}/proctoring-scores', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'scores']);
+        Route::get('/exams/{exam}/proctoring-alerts', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'alerts']);
+        Route::get('/exams/{exam}/proctoring-alerts/pending-count', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'pendingCount']);
+        // HITL: admin review AI alert → formal violation or dismissed
+        Route::post('/proctoring-alerts/{alert}/review', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'reviewAlert']);
+        // Legacy: acknowledge only (mark as seen, no decision)
+        Route::post('/proctoring-alerts/{alert}/acknowledge', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'acknowledgeAlert']);
         
         // Graduation Management
         // ⚠️ IMPORTANT: literal routes MUST be before wildcard {studentId}/{classId}
@@ -414,6 +425,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/export/student/{studentId}', [ExportController::class, 'studentReport']);
         Route::get('/export/exam-results/{examId}', [ExportController::class, 'examResults']);
         Route::get('/export/quiz-results/{quizId}', [ExportController::class, 'quizResults']);
+
+        // Proctoring detail per exam result (admin + owning guru)
+        Route::get('/exam-results/{result}/proctoring', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'studentDetail']);
     });
 
     // ============================================

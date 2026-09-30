@@ -221,6 +221,7 @@ export default function ExamTakingPage() {
   const {
     isCameraActive,
     isMobile,
+    isOffline,
     violationCount,
     maxViolations,
     policyAction,
@@ -281,18 +282,31 @@ export default function ExamTakingPage() {
   }, []);
 
   // AI Proctoring — face detection, head pose, eye gaze, identity verification
+  // Hybrid trigger: useProctoring detects anomaly locally via face-api.js.
+  // When confirmed (MIN_CONFIRMATIONS reached), onDetection fires and we
+  // immediately capture + upload a snapshot *outside* the normal 30-second interval.
+  // A 20-second cooldown prevents flooding the server with anomaly snapshots.
+  const lastAnomalySnapshotRef = React.useRef<number>(0);
+  const ANOMALY_SNAPSHOT_COOLDOWN_MS = 20_000; // 20 s between anomaly-triggered uploads
+
   const proctoring = useProctoring({
     examId,
     videoRef,
     enabled: isStarted && isCameraActive,
     detectionInterval: 3000,
     onDetection: (detection: ProctoringDetection) => {
-      // Show brief warning overlay for critical detections
+      // Show brief warning overlay
       if (detection.type === 'no_face' || detection.type === 'multi_face') {
         setProctoringWarning(detection.description);
         setTimeout(() => setProctoringWarning(null), 3000);
-        // Instant trigger: force a snapshot upload to server immediately
-        captureSnapshot();
+
+        // Hybrid trigger: send snapshot immediately, respecting cooldown
+        const now = Date.now();
+        if (now - lastAnomalySnapshotRef.current >= ANOMALY_SNAPSHOT_COOLDOWN_MS) {
+          lastAnomalySnapshotRef.current = now;
+          // Fire-and-forget — errors handled inside captureSnapshot
+          void captureSnapshot();
+        }
       }
     },
   });

@@ -26,6 +26,7 @@ class Exam extends Model
         'locked_by',
         'locked_at',
         'max_violations',
+        'auto_submit_on_max_violations',
         'shuffle_questions',
         'shuffle_options',
         'show_result',
@@ -45,6 +46,7 @@ class Exam extends Model
         'is_locked' => 'boolean',
         'is_archived' => 'boolean',
         'locked_at' => 'datetime',
+        'auto_submit_on_max_violations' => 'boolean',
     ];
 
     public function class()

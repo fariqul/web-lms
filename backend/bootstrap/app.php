@@ -13,6 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        // Run proctoring file cleanup every hour.
+        // Deletes expired snapshot files, keeps DB rows as audit trail.
+        // Orphan files (no DB row) are also removed.
+        $schedule->command('proctoring:cleanup')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/proctoring-cleanup.log'));
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->use([
             \Illuminate\Http\Middleware\HandleCors::class,

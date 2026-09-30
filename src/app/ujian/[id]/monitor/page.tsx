@@ -27,6 +27,9 @@ import {
   UserX,
   Check,
   Ban,
+  ShieldCheck,
+  ShieldAlert,
+  MessageSquare,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { useExamSocket } from '@/hooks/useSocket';
@@ -136,6 +139,94 @@ export default function MonitorUjianPage() {
   const [snapshotModalImageError, setSnapshotModalImageError] = useState(false);
   const [snapshotImageErrors, setSnapshotImageErrors] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+
+  // AI Proctoring scores keyed by student_id
+  interface ProctoringScoreData {
+    student_id: number;
+    total_score: number;
+    risk_level: 'low' | 'medium' | 'high' | 'critical';
+    no_face_score: number;
+    multi_face_score: number;
+    head_turn_score: number;
+    eye_gaze_score: number;
+    identity_mismatch_score: number;
+    object_detection_score: number;
+    total_snapshots: number;
+    total_analyzed: number;
+  }
+  const [proctoringScores, setProctoringScores] = useState<Record<number, ProctoringScoreData>>({});
+
+  // ── HITL Review Panel ────────────────────────────────────────────────────
+  interface ProctoringAlertItem {
+    id: number;
+    student_id: number;
+    snapshot_id: number | null;
+    type: string;
+    severity: string;
+    description: string | null;
+    confidence: number;
+    review_status: 'pending' | 'confirmed' | 'dismissed';
+    reviewed_at: string | null;
+    admin_note: string | null;
+    created_at: string;
+    student?: { id: number; name: string; nisn: string };
+    snapshot?: { id: number; image_path: string; captured_at: string; is_violation: boolean } | null;
+    reviewer?: { id: number; name: string } | null;
+  }
+
+  const [pendingAlerts, setPendingAlerts] = useState<ProctoringAlertItem[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [reviewingAlertId, setReviewingAlertId] = useState<number | null>(null);
+  // Per-alert note state — keyed by alert.id agar catatan tidak tercampur antar alert
+  const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({});
+
+  const fetchPendingAlerts = useCallback(async () => {
+    try {
+      const [countRes, alertsRes] = await Promise.all([
+        api.get(`/exams/${examId}/proctoring-alerts/pending-count`),
+        api.get(`/exams/${examId}/proctoring-alerts`, {
+          params: { review_status: 'pending', per_page: 30 },
+        }),
+      ]);
+      setPendingCount(countRes.data?.data?.pending_count ?? 0);
+      setPendingAlerts(alertsRes.data?.data?.data ?? []);
+    } catch {
+      // Non-critical — silently ignore
+    }
+  }, [examId]);
+
+  const handleReviewAlert = async (alertId: number, decision: 'confirmed' | 'dismissed') => {
+    setReviewingAlertId(alertId);
+    try {
+      await api.post(`/proctoring-alerts/${alertId}/review`, {
+        decision,
+        admin_note: reviewNotes[alertId]?.trim() || undefined,
+      });
+      // Clear note for this alert after successful review
+      setReviewNotes(prev => { const n = { ...prev }; delete n[alertId]; return n; });
+      // Refresh alerts + participant data
+      await Promise.all([fetchPendingAlerts(), fetchData()]);
+      toast.success(
+        decision === 'confirmed'
+          ? 'Pelanggaran dikonfirmasi dan dicatat resmi.'
+          : 'Alert diabaikan (false positive).'
+      );
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message ?? 'Gagal memproses review.');
+    } finally {
+      setReviewingAlertId(null);
+    }
+  };
+
+  // Poll pending alerts tiap 20 detik saat monitor page aktif
+  useEffect(() => {
+    if (!exam) return;
+    void fetchPendingAlerts();
+    const interval = setInterval(() => void fetchPendingAlerts(), 20_000);
+    return () => clearInterval(interval);
+  }, [exam, fetchPendingAlerts]);
   
   // Reactivate exam result states
   const [reactivateModal, setReactivateModal] = useState<{ participantId: number; studentName: string; resultId: number } | null>(null);
@@ -264,6 +355,22 @@ export default function MonitorUjianPage() {
         setSummary(monitorData.summary);
       }
       setLateEntryRequests(lateEntryRes.data?.data || []);
+
+      // Fetch AI proctoring scores (non-blocking — errors are silently ignored)
+      try {
+        const scoresRes = await api.get(`/exams/${examId}/proctoring-scores`);
+        const scoresMap = scoresRes.data?.data as Record<string, ProctoringScoreData> | undefined;
+        if (scoresMap) {
+          // API returns keyed by student_id (string) — convert to number keys
+          const normalized: Record<number, ProctoringScoreData> = {};
+          Object.entries(scoresMap).forEach(([k, v]) => {
+            normalized[Number(k)] = v;
+          });
+          setProctoringScores(normalized);
+        }
+      } catch {
+        // Proctoring scores are supplementary — don't fail the whole fetch
+      }
 
       setLastRefresh(new Date());
     } catch (error) {
@@ -483,6 +590,42 @@ export default function MonitorUjianPage() {
       default:
         return <span className="px-2 py-1 bg-slate-100 text-slate-600 dark:text-slate-400 text-xs rounded-full">{status}</span>;
     }
+  };
+
+  const getRiskBadge = (studentId: number) => {
+    const score = proctoringScores[studentId];
+    if (!score) return null;
+
+    const { risk_level, total_score } = score;
+    const configs: Record<string, { bg: string; text: string; label: string }> = {
+      low:      { bg: 'bg-green-100 dark:bg-green-900/20',  text: 'text-green-700 dark:text-green-400',  label: 'Rendah'  },
+      medium:   { bg: 'bg-yellow-100 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-400', label: 'Sedang'  },
+      high:     { bg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-400', label: 'Tinggi'  },
+      critical: { bg: 'bg-red-100 dark:bg-red-900/20',       text: 'text-red-700 dark:text-red-400',       label: 'Kritis'  },
+    };
+    const cfg = configs[risk_level] ?? configs.low;
+
+    // Build tooltip with individual scores
+    const tooltip = [
+      `Skor AI: ${total_score}/100`,
+      `Objek: ${score.object_detection_score}`,
+      `Identitas: ${score.identity_mismatch_score}`,
+      `Multi-wajah: ${score.multi_face_score}`,
+      `Tanpa wajah: ${score.no_face_score}`,
+      `Kepala menoleh: ${score.head_turn_score}`,
+      `Mata: ${score.eye_gaze_score}`,
+      `Snapshot: ${score.total_analyzed}/${score.total_snapshots}`,
+    ].join(' | ');
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${cfg.bg} ${cfg.text} cursor-help`}
+        title={tooltip}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${risk_level === 'critical' ? 'bg-red-500 animate-pulse' : risk_level === 'high' ? 'bg-orange-500' : risk_level === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+        AI {cfg.label} ({total_score})
+      </span>
+    );
   };
 
   const formatTime = (dateString: string) => {
@@ -779,6 +922,25 @@ export default function MonitorUjianPage() {
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
+            {/* HITL Review button — only for admin */}
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setShowReviewPanel(v => !v)}
+                className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                  showReviewPanel
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">Review AI</span>
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -816,6 +978,160 @@ export default function MonitorUjianPage() {
             </div>
           </div>
         </Card>
+
+        {/* HITL Review Panel — muncul saat tombol "Review AI" diklik */}
+        {showReviewPanel && user?.role === 'admin' && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-amber-200 dark:border-amber-800">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-amber-600" />
+                <span className="font-semibold text-amber-800 dark:text-amber-300">
+                  Review Deteksi AI
+                </span>
+                {pendingCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                    {pendingCount} pending
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowReviewPanel(false)}
+                className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Alert list */}
+            <div className="divide-y divide-amber-100 dark:divide-amber-900/30 max-h-[480px] overflow-y-auto">
+              {pendingAlerts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-500 dark:text-slate-400">
+                  <ShieldCheck className="w-10 h-10 mb-2 text-green-400" />
+                  <p className="text-sm font-medium">Semua alert sudah direview</p>
+                  <p className="text-xs mt-1">Tidak ada deteksi AI yang menunggu keputusan</p>
+                </div>
+              ) : (
+                pendingAlerts.map((alert) => {
+                  const isProcessing = reviewingAlertId === alert.id;
+                  const severityColors: Record<string, string> = {
+                    critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                    alert:    'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+                    warning:  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+                    info:     'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                  };
+                  const severityClass = severityColors[alert.severity] ?? severityColors.info;
+                  const typeLabels: Record<string, string> = {
+                    no_face:           'Tanpa Wajah',
+                    multi_face:        'Wajah Ganda',
+                    head_turn:         'Kepala Menoleh',
+                    eye_gaze:          'Mata Menyimpang',
+                    object_detected:   'Objek Terlarang',
+                    object_suspicious: 'Objek Mencurigakan',
+                    identity_mismatch: 'Identitas Tidak Cocok',
+                  };
+
+                  return (
+                    <div key={alert.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-3">
+                      {/* Snapshot thumbnail */}
+                      <div className="flex-shrink-0">
+                        {alert.snapshot?.image_path ? (
+                          <div className="w-20 h-16 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-700 relative">
+                            <img
+                              src={getSecureFileUrl(alert.snapshot.image_path)}
+                              alt="snapshot"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-20 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                            <Camera className="w-6 h-6 text-slate-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Alert info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm text-slate-900 dark:text-white">
+                            {alert.student?.name ?? `Siswa #${alert.student_id}`}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${severityClass}`}>
+                            {typeLabels[alert.type] ?? alert.type}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {new Date(alert.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
+                          {alert.description ?? '-'}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Kepercayaan AI: {Math.round(alert.confidence * 100)}%
+                        </p>
+
+                        {/* Note input — per-alert, tidak tercampur */}
+                        <div className="mt-2 flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="Catatan admin (opsional)..."
+                            value={reviewNotes[alert.id] ?? ''}
+                            className="flex-1 text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            maxLength={500}
+                            onChange={(e) => setReviewNotes(prev => ({ ...prev, [alert.id]: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex sm:flex-col gap-2 flex-shrink-0">
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => handleReviewAlert(alert.id, 'confirmed')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors shadow-sm"
+                          title="Konfirmasi sebagai pelanggaran resmi"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                          )}
+                          Konfirmasi
+                        </button>
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => handleReviewAlert(alert.id, 'dismissed')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors"
+                          title="Abaikan (false positive)"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <X className="w-3.5 h-3.5" />
+                          )}
+                          Abaikan
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-2 border-t border-amber-200 dark:border-amber-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
+              <span>
+                <strong>Konfirmasi</strong> = catat sebagai pelanggaran resmi (violation_count naik) ·
+                <strong> Abaikan</strong> = tandai false positive, tidak ada konsekuensi ke siswa
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -1199,6 +1515,7 @@ export default function MonitorUjianPage() {
                   <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Status</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Progress</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Pelanggaran</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">AI Risk</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Waktu Mulai</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Nilai</th>
                   <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Aksi</th>
@@ -1207,7 +1524,7 @@ export default function MonitorUjianPage() {
               <tbody className="divide-y divide-slate-200">
                 {displayedParticipants.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-600 dark:text-slate-400">
+                    <td colSpan={8} className="py-12 text-center text-slate-600 dark:text-slate-400">
                       <Users className="w-12 h-12 mx-auto mb-3 text-slate-400 dark:text-slate-600" />
                       <p>Tidak ada peserta dengan filter ini</p>
                     </td>
@@ -1281,6 +1598,12 @@ export default function MonitorUjianPage() {
                             </span>
                           )}
                         </div>
+                      </td>
+                      {/* AI Risk column */}
+                      <td className="py-3 px-4 text-center">
+                        {getRiskBadge(participant.student.id) ?? (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center text-sm text-slate-600 dark:text-slate-400">
                         {participant.started_at ? formatTime(participant.started_at) : '-'}

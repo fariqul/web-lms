@@ -14,6 +14,7 @@ interface UseExamModeReturn {
   isFullscreen: boolean;
   isCameraActive: boolean;
   isMobile: boolean;
+  isOffline: boolean;
   violations: string[];
   violationCount: number;
   maxViolations: number | null;
@@ -100,6 +101,8 @@ export function useExamMode({
   // Upload retry queue — max 3 blobs in memory
   const retryQueueRef = useRef<Blob[]>([]);
   const MAX_RETRY_QUEUE = 3;
+  // Network offline state — shown in UI as indicator
+  const [isOffline, setIsOffline] = useState(false);
   // Track when snapshot is being captured (suppress camera health check)
   const snapshotInProgressRef = useRef(false);
   // Grace period after snapshot (milliseconds) — some phones need time to recover camera
@@ -491,6 +494,30 @@ export function useExamMode({
       }
     }
   }, [examId]);
+
+  // Online/offline listeners: flush retry queue as soon as network recovers.
+  // face-api.js continues running locally regardless of network state.
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('[Snapshot] Network back online — flushing retry queue');
+      setIsOffline(false);
+      void flushRetryQueue();
+    };
+    const handleOffline = () => {
+      console.log('[Snapshot] Network offline — snapshots will be queued');
+      setIsOffline(true);
+    };
+
+    // Sync with current state on mount
+    setIsOffline(!navigator.onLine);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [flushRetryQueue]);
 
   // Capture snapshot — single robust canvas-based method
   const captureSnapshot = useCallback(async (): Promise<'captured' | 'disabled' | null> => {
@@ -1168,6 +1195,7 @@ export function useExamMode({
     isFullscreen,
     isCameraActive,
     isMobile,
+    isOffline,
     violations,
     violationCount,
     maxViolations,
