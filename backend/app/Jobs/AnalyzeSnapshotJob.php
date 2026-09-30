@@ -497,6 +497,17 @@ class AnalyzeSnapshotJob implements ShouldQueue
     {
         $w = config('proctoring.score_weights');
 
+        // Sanity check: warn if weights don't sum to ~1.0 (misconfiguration via .env).
+        // This never throws — misconfigured weights produce distorted scores silently
+        // without the warning, making calibration data misleading.
+        $weightSum = array_sum(array_values($w));
+        if (abs($weightSum - 1.0) > 0.05) {
+            Log::warning(
+                "[Proctoring] Score weights sum to {$weightSum} (expected ~1.0). "
+                . "Check PROCTORING_WEIGHT_* env vars. Scores will be distorted."
+            );
+        }
+
         $total = 0;
         $total += ($score->object_detection_score  ?? 0) * (float) ($w['object_detection']  ?? 0.25);
         $total += ($score->identity_mismatch_score ?? 0) * (float) ($w['identity_mismatch'] ?? 0.20);
@@ -584,7 +595,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
                     'threshold'            => $threshold,
                     'baseline_captured_at' => $examResult->baseline_captured_at?->toIso8601String(),
                 ],
-            ], 'identity_' . date('YmdHi'));
+            ], 'identity_mismatch');  // fixed fingerprint — dedup window controlled by alert_dedup_window_seconds config
 
             // Bump identity_mismatch_score
             $score = ProctoringScore::where('exam_result_id', $this->examResultId)->first();

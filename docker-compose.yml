@@ -201,7 +201,11 @@ services:
       - "8001"
     environment:
       YOLO_MODEL: yolov8n.pt
-      CONFIDENCE_THRESHOLD: "0.4"
+      CONFIDENCE_THRESHOLD: "0.45"
+      HEAD_YAW_THRESHOLD: "38"
+      HEAD_PITCH_THRESHOLD: "33"
+      EYE_GAZE_THRESHOLD: "0.48"
+      ALERT_DEDUP_WINDOW_SECONDS: "15"
       DEVICE: "0"
       LOG_LEVEL: INFO
     deploy:

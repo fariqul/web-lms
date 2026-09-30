@@ -31,19 +31,30 @@ interface UseProctoringReturn {
   stats: ProctoringStats;
 }
 
+// Spesifikasi: "anomali terdeteksi 3 detik berturut-turut → kirim snapshot segera"
+// Implementasi: interval 1000 ms, MIN_CONFIRMATIONS = 3 → 3 × 1 s = 3 s ✓
+// Cooldown setelah trigger: 20 detik (selaras dengan ANOMALY_SNAPSHOT_COOLDOWN_MS di page.tsx)
+const DETECTION_INTERVAL_MS = 1000;
+
 const THRESHOLDS = {
   FACE_DETECTION_SCORE: 0.35,
 };
 
+// Berapa kali deteksi berturut-turut sebelum onDetection dipanggil.
+// no_face: 3 × 1 s = 3 s | multi_face: 2 × 1 s = 2 s
 const MIN_CONFIRMATIONS = {
   no_face: 3,
   multi_face: 2,
 };
 
+// Cooldown setelah onDetection dipanggil — harus sama dengan
+// ANOMALY_SNAPSHOT_COOLDOWN_MS di page.tsx agar tidak ada gap/overlap.
+const POST_DETECTION_COOLDOWN_MS = 20_000;
+
 export function useProctoring({
   videoRef,
   enabled,
-  detectionInterval = 3000,
+  detectionInterval = DETECTION_INTERVAL_MS,
   onDetection,
 }: UseProctoringOptions): UseProctoringReturn {
   const [isModelLoaded, setIsModelLoaded] = useState(false);
@@ -148,7 +159,7 @@ export function useProctoring({
           onDetection?.(detection);
 
           streakRef.current = { type: 'none', count: 0 };
-          cooldownRef.current = { type: detectedType, until: now + 60_000 };
+          cooldownRef.current = { type: detectedType, until: now + POST_DETECTION_COOLDOWN_MS };
         }
       }
     } catch (error) {

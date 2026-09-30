@@ -165,9 +165,13 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
 
         // ============================================
         // PROCTORING MONITOR (Admin only)
+        // ⚠️ ROUTE ORDER MATTERS: literal paths (/pending-count) MUST appear
+        //    before wildcard paths (/{alert}) on the same prefix.
+        //    Same pattern as graduation routes below — do not reorder.
         // ============================================
         Route::get('/exams/{exam}/proctoring-scores', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'scores']);
         Route::get('/exams/{exam}/proctoring-alerts', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'alerts']);
+        // ⚠️ Literal — must stay before any GET /proctoring-alerts/{alert} wildcard
         Route::get('/exams/{exam}/proctoring-alerts/pending-count', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'pendingCount']);
         // HITL: admin review AI alert → formal violation or dismissed
         Route::post('/proctoring-alerts/{alert}/review', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'reviewAlert']);

@@ -15,6 +15,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Guard: skip if user_id column doesn't exist (shouldn't happen, but safe)
+        if (!Schema::hasColumn('monitoring_snapshots', 'user_id')) {
+            return;
+        }
+
         Schema::table('monitoring_snapshots', function (Blueprint $table) {
             // Drop the FK constraint first so we can change the column definition.
             // The constraint name follows Laravel's convention: table_column_foreign.

@@ -98,7 +98,9 @@ class ProctoringCleanupCommand extends Command
         $this->info("Scanning for orphan files in monitoring-snapshots/...");
 
         try {
-            $files = $disk->files('monitoring-snapshots');
+            // allFiles() scans recursively — catches date-based subdirectories
+            // (e.g. monitoring-snapshots/2026/09/30/file.jpg) that files() would miss.
+            $files = $disk->allFiles('monitoring-snapshots');
 
             // Build set of known image_path values from DB (chunked for memory safety)
             $knownPaths = [];

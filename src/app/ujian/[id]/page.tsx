@@ -285,9 +285,11 @@ export default function ExamTakingPage() {
   // Hybrid trigger: useProctoring detects anomaly locally via face-api.js.
   // When confirmed (MIN_CONFIRMATIONS reached), onDetection fires and we
   // immediately capture + upload a snapshot *outside* the normal 30-second interval.
-  // A 20-second cooldown prevents flooding the server with anomaly snapshots.
+  //
+  // Cooldown must match POST_DETECTION_COOLDOWN_MS in useProctoring.ts (20 s)
+  // so the two mechanisms don't double-send or leave a gap.
   const lastAnomalySnapshotRef = React.useRef<number>(0);
-  const ANOMALY_SNAPSHOT_COOLDOWN_MS = 20_000; // 20 s between anomaly-triggered uploads
+  const ANOMALY_SNAPSHOT_COOLDOWN_MS = 20_000; // must equal POST_DETECTION_COOLDOWN_MS
 
   const proctoring = useProctoring({
     examId,
