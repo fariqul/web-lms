@@ -21,7 +21,6 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\AuditLogController;
-use App\Http\Controllers\Api\QuizController;
 use App\Http\Controllers\Api\SummativeScoreController;
 use App\Http\Controllers\Api\ExamResultVisibilityController;
 use App\Http\Controllers\Api\GraduationController;
@@ -157,7 +156,6 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/exams/{exam}/republish', [ExamController::class, 'republish']);
         Route::post('/exams/{exam}/unpublish', [ExamController::class, 'unpublish']);
         Route::post('/exams/unpublish-multiple', [ExamController::class, 'unpublishMultiple']);
-        Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
         Route::post('/exams/{exam}/participants/{student}/kick', [ExamController::class, 'kickParticipant']);
         Route::post('/exams/{exam}/adjust-time', [ExamController::class, 'adjustActiveTime']);
         
@@ -278,6 +276,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/exams/{exam}/work-photo', [ExamController::class, 'uploadWorkPhoto']);
         Route::post('/exams/{exam}/finish', [ExamController::class, 'finishExam']);
         Route::post('/exams/{exam}/violation', [ExamController::class, 'reportViolation']);
+        Route::post('/exams/{exam}/baseline', [ExamController::class, 'uploadBaseline']);
         Route::post('/exams/{exam}/snapshot', [ExamController::class, 'uploadSnapshot']);
         
         // Student Assignments
@@ -326,10 +325,13 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/exams/{exam}/results/{studentId}', [ExamController::class, 'studentResult'])->middleware('role:admin,guru');
         Route::post('/exams/{exam}/clear-history', [ExamController::class, 'clearHistory']);
         
+        // Exam monitoring (admin + exam owner guru)
+        Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
+
         // Question management (shared — admin can edit even locked exams)
         Route::post('/exams/{exam}/duplicate-from-exam', [ExamController::class, 'duplicateFromExam']);
         Route::post('/exams/{exam}/questions', [ExamController::class, 'addQuestion']);
-        Route::put('/questions/{question}', [ExamController::class, 'updateQuestion']);
+        Route::match(['put', 'post'], '/questions/{question}', [ExamController::class, 'updateQuestion']);
         Route::delete('/questions/{question}', [ExamController::class, 'deleteQuestion']);
         
         // Grading (both admin and guru can grade essays)
@@ -445,7 +447,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/quizzes/{exam}/end', [ExamController::class, 'endExam']);
         Route::post('/quizzes/{exam}/duplicate-from-exam', [ExamController::class, 'duplicateFromExam']);
         Route::post('/quizzes/{exam}/questions', [ExamController::class, 'addQuestion']);
-        Route::put('/quiz-questions/{question}', [ExamController::class, 'updateQuestion']);
+        Route::match(['put', 'post'], '/quiz-questions/{question}', [ExamController::class, 'updateQuestion']);
         Route::delete('/quiz-questions/{question}', [ExamController::class, 'deleteQuestion']);
         Route::get('/quizzes/{exam}/results', [ExamController::class, 'results']);
         Route::get('/quizzes/{exam}/results/{studentId}', [ExamController::class, 'studentResult']);
@@ -453,10 +455,12 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
     });
 
     // Student quiz taking
-    Route::middleware('role:siswa')->group(function () {
+    Route::middleware('role:siswa')->group(function () use ($examPollingThrottle) {
         Route::get('/quizzes/{exam}/sync-questions', [ExamController::class, 'syncQuestions']);
         Route::post('/quizzes/{exam}/start', [ExamController::class, 'startExam']);
         Route::post('/quizzes/{exam}/answer', [ExamController::class, 'submitAnswer']);
+        Route::post('/quizzes/{exam}/answers/batch', [ExamController::class, 'submitAnswersBatch']);
+        Route::get('/quizzes/{exam}/time-sync', [ExamController::class, 'timeSync'])->middleware('throttle:' . $examPollingThrottle);
         Route::post('/quizzes/{exam}/finish', [ExamController::class, 'finishExam']);
     });
 });

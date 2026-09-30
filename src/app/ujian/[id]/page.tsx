@@ -20,7 +20,6 @@ import {
   Flag,
   Loader2,
   ArrowLeft,
-  Shield,
   ShieldAlert,
   ShieldCheck,
   Download,
@@ -37,6 +36,7 @@ import { useExamSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/context/AuthContext';
 import { MathText } from '@/components/ui/MathText';
 import { useAnswerQueue } from '@/hooks/useAnswerQueue';
+import { detectFaceInVideo, loadFaceDetectionModels } from '@/utils/faceDetection';
 
 interface QuestionOption {
   text: string;
@@ -115,6 +115,11 @@ export default function ExamTakingPage() {
   const [cameraPreviewActive, setCameraPreviewActive] = useState(false);
   const [cameraPreviewTested, setCameraPreviewTested] = useState(false);
   const [cameraPreviewError, setCameraPreviewError] = useState<string | null>(null);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [faceVerified, setFaceVerified] = useState(false);
+  const [faceDetectionStatus, setFaceDetectionStatus] = useState<'idle' | 'loading_model' | 'scanning' | 'detected' | 'not_detected'>('idle');
+  const [faceConfidence, setFaceConfidence] = useState<number>(0);
+  const faceDetectionIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const [imagePreview, setImagePreview] = useState<ExamImagePreview | null>(null);
   const [imagePreviewZoom, setImagePreviewZoom] = useState<number>(MIN_IMAGE_PREVIEW_ZOOM);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
@@ -617,7 +622,7 @@ export default function ExamTakingPage() {
         }
       })();
     }
-  }, [exam, examId, enterFullscreen, isStarted, syncSnapshotMonitoringState, toast]);
+  }, [exam, examId, enterFullscreen, isStarted, syncSnapshotMonitoringState, toast, router]);
 
   // Persist exam-active flag and current question to sessionStorage
   useEffect(() => {
@@ -692,18 +697,65 @@ export default function ExamTakingPage() {
     }
   }, [isCameraActive]);
 
-  // Cleanup preview stream on unmount or when exam starts
+  const stopFaceDetectionLoop = useCallback(() => {
+    if (faceDetectionIntervalRef.current) {
+      clearInterval(faceDetectionIntervalRef.current);
+      faceDetectionIntervalRef.current = null;
+    }
+  }, []);
+
+  const startFaceDetectionLoop = useCallback(() => {
+    stopFaceDetectionLoop();
+    setFaceDetectionStatus('loading_model');
+
+    loadFaceDetectionModels().then((loaded) => {
+      if (!loaded) {
+        setFaceDetectionStatus('not_detected');
+        return;
+      }
+
+      setFaceDetectionStatus('scanning');
+      faceDetectionIntervalRef.current = setInterval(async () => {
+        if (!previewVideoRef.current || previewVideoRef.current.paused || previewVideoRef.current.ended) {
+          return;
+        }
+
+        try {
+          const res = await detectFaceInVideo(previewVideoRef.current);
+          if (res.detected) {
+            setFaceDetected(true);
+            setFaceVerified(true);
+            setFaceDetectionStatus('detected');
+            setFaceConfidence(Math.round(res.score * 100));
+          } else {
+            setFaceDetected(false);
+            setFaceDetectionStatus('not_detected');
+          }
+        } catch (e) {
+          console.warn('[FaceDetection] Loop error:', e);
+        }
+      }, 500);
+    }).catch((err) => {
+      console.warn('[FaceDetection] Init error:', err);
+      setFaceDetectionStatus('not_detected');
+    });
+  }, [stopFaceDetectionLoop]);
+
+  // Cleanup preview stream and face detection on unmount or when exam starts
   useEffect(() => {
     return () => {
+      stopFaceDetectionLoop();
       if (previewStreamRef.current) {
         previewStreamRef.current.getTracks().forEach(track => track.stop());
         previewStreamRef.current = null;
       }
     };
-  }, []);
+  }, [stopFaceDetectionLoop]);
 
   const startCameraPreview = async () => {
     setCameraPreviewError(null);
+    setFaceDetected(false);
+    setFaceDetectionStatus('idle');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
@@ -717,15 +769,23 @@ export default function ExamTakingPage() {
       setCameraPreviewActive(true);
       setCameraPreviewTested(true);
       setCameraPermissionDenied(false);
+
+      // Start continuous face detection loop
+      startFaceDetectionLoop();
     } catch (err) {
       console.warn('[Camera Preview] Failed:', err);
       setCameraPreviewError('Kamera tidak dapat diakses. Pastikan izin kamera diaktifkan di pengaturan browser.');
       setCameraPreviewTested(true);
       setCameraPermissionDenied(true);
+      setFaceDetected(false);
+      setFaceDetectionStatus('idle');
     }
   };
 
   const stopCameraPreview = () => {
+    stopFaceDetectionLoop();
+    setFaceDetected(false);
+    setFaceDetectionStatus('idle');
     if (previewStreamRef.current) {
       previewStreamRef.current.getTracks().forEach(track => track.stop());
       previewStreamRef.current = null;
@@ -1004,6 +1064,11 @@ export default function ExamTakingPage() {
   };
 
   const handleStartExam = async () => {
+    if (!faceVerified) {
+      toast.error('Wajah Anda belum terverifikasi. Nyalakan tes kamera dan posisikan wajah Anda tepat di depan kamera sebelum memulai ujian.');
+      return;
+    }
+
     // Validate nomor_tes if required
     if (hasNomorTes) {
       if (!nomorTes.trim()) {
@@ -1493,28 +1558,34 @@ export default function ExamTakingPage() {
             )}
 
             <div className="space-y-3">
-              {/* Camera Preview Test */}
+              {/* Camera Preview Test with Face Verification */}
               <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-2">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Camera className="w-5 h-5 text-teal-600" />
-                    <h3 className="font-medium text-slate-800 dark:text-white text-sm">Tes Kamera Pengawas</h3>
+                    <h3 className="font-medium text-slate-800 dark:text-white text-sm">Tes Kamera & Verifikasi Wajah</h3>
                   </div>
-                  {cameraPreviewTested && !cameraPreviewError && (
-                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                  {cameraPreviewTested && !cameraPreviewError && faceVerified && (
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 px-2 py-0.5 rounded-full">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      Kamera Siap
+                      Wajah Terverifikasi ✓
+                    </span>
+                  )}
+                  {cameraPreviewTested && !cameraPreviewError && !faceVerified && cameraPreviewActive && (
+                    <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-full animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Mendeteksi Wajah...
                     </span>
                   )}
                   {cameraPreviewTested && cameraPreviewError && (
-                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 px-2 py-0.5 rounded-full">
                       <XCircle className="w-3.5 h-3.5" />
                       Gagal
                     </span>
                   )}
                 </div>
                 
-                <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden relative mb-3">
+                <div className="aspect-video bg-slate-900 rounded-lg overflow-hidden relative mb-3 border border-slate-700">
                   <video
                     ref={previewVideoRef}
                     autoPlay
@@ -1529,15 +1600,56 @@ export default function ExamTakingPage() {
                       <p className="text-xs text-center px-4">
                         {cameraPreviewError
                           ? cameraPreviewError
-                          : 'Klik tombol di bawah untuk menguji kamera Anda'}
+                          : 'Klik tombol di bawah untuk menguji kamera dan mendeteksi wajah Anda'}
                       </p>
                     </div>
                   )}
                   {cameraPreviewActive && (
-                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                      Preview Kamera
-                    </div>
+                    <>
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white text-[10px] px-2.5 py-1 rounded-full border border-white/10">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                        Preview Aktif
+                      </div>
+
+                      {/* Face detection badge overlay */}
+                      <div className="absolute top-2 right-2">
+                        {faceDetectionStatus === 'loading_model' && (
+                          <div className="flex items-center gap-1.5 bg-sky-950/80 backdrop-blur-sm text-sky-200 text-[10px] px-2.5 py-1 rounded-full border border-sky-500/30">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Memuat AI Deteksi...
+                          </div>
+                        )}
+                        {faceDetectionStatus === 'scanning' && (
+                          <div className="flex items-center gap-1.5 bg-amber-950/80 backdrop-blur-sm text-amber-200 text-[10px] px-2.5 py-1 rounded-full border border-amber-500/30 animate-pulse">
+                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
+                            Posisikan Wajah...
+                          </div>
+                        )}
+                        {faceDetectionStatus === 'detected' && (
+                          <div className="flex items-center gap-1.5 bg-emerald-950/85 backdrop-blur-sm text-emerald-200 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-emerald-500/40 shadow-sm">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            Wajah Terdeteksi ({faceConfidence}%)
+                          </div>
+                        )}
+                        {faceDetectionStatus === 'not_detected' && (
+                          <div className="flex items-center gap-1.5 bg-rose-950/80 backdrop-blur-sm text-rose-200 text-[10px] px-2.5 py-1 rounded-full border border-rose-500/30">
+                            <XCircle className="w-3 h-3 text-rose-400" />
+                            Wajah Belum Terdeteksi
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Target Guide Oval */}
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div
+                          className={`w-36 h-48 sm:w-44 sm:h-56 rounded-full border-2 border-dashed transition-all duration-300 ${
+                            faceDetected
+                              ? 'border-emerald-400/90 shadow-[0_0_20px_rgba(52,211,153,0.35)]'
+                              : 'border-white/30'
+                          }`}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -1548,7 +1660,7 @@ export default function ExamTakingPage() {
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                       <Video className="w-4 h-4" />
-                      {cameraPreviewTested ? 'Coba Lagi' : 'Tes Kamera'}
+                      {cameraPreviewTested ? 'Uji Ulang Kamera' : 'Tes Kamera & Deteksi Wajah'}
                     </button>
                   ) : (
                     <button
@@ -1561,9 +1673,19 @@ export default function ExamTakingPage() {
                   )}
                 </div>
 
-                {cameraPreviewTested && !cameraPreviewError && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-2 text-center">
-                    ✓ Kamera berhasil diuji. Anda siap memulai ujian.
+                {cameraPreviewActive && faceDetected && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2 text-center font-medium">
+                    ✓ Wajah Anda berhasil diverifikasi. Anda siap memulai ujian.
+                  </p>
+                )}
+                {cameraPreviewActive && !faceDetected && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 text-center font-medium">
+                    ⚠️ Posisikan wajah Anda tepat di dalam bingkai oval di depan kamera.
+                  </p>
+                )}
+                {!cameraPreviewActive && cameraPreviewTested && !cameraPreviewError && faceVerified && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2 text-center font-medium">
+                    ✓ Kamera & verifikasi wajah siap. Silakan klik Mulai Ujian.
                   </p>
                 )}
                 {cameraPreviewError && (
@@ -1605,7 +1727,13 @@ export default function ExamTakingPage() {
               <Button
                 onClick={handleStartExam}
                 fullWidth
-                disabled={startingExam || (exam.sebRequired && !usingSEB && !isMobile) || !cameraPreviewTested || !!cameraPreviewError}
+                disabled={
+                  startingExam ||
+                  (exam.sebRequired && !usingSEB && !isMobile) ||
+                  !cameraPreviewTested ||
+                  !!cameraPreviewError ||
+                  !faceVerified
+                }
               >
                 {startingExam ? (
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -1614,11 +1742,15 @@ export default function ExamTakingPage() {
                 )}
                 {startingExam ? 'Mempersiapkan…' : 'Mulai Ujian'}
               </Button>
-              {(!cameraPreviewTested || !!cameraPreviewError) && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 text-center -mt-1">
+              {(!cameraPreviewTested || !!cameraPreviewError || !faceVerified) && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center -mt-1 font-medium">
                   {!cameraPreviewTested
-                    ? '⚠️ Tes kamera terlebih dahulu sebelum memulai ujian'
-                    : '⚠️ Kamera gagal diakses. Izinkan kamera untuk memulai ujian.'}
+                    ? '⚠️ Lakukan tes kamera terlebih dahulu sebelum memulai ujian'
+                    : cameraPreviewError
+                    ? '⚠️ Kamera gagal diakses. Izinkan kamera untuk memulai ujian.'
+                    : !faceVerified
+                    ? '⚠️ Wajah wajib terdeteksi di kamera terlebih dahulu untuk dapat memulai ujian'
+                    : ''}
                 </p>
               )}
               <Button

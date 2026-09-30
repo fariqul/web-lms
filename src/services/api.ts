@@ -631,6 +631,12 @@ export const quizAPI = {
   submitAnswer: (quizId: number, data: { question_id: number; answer: string }) =>
     api.post(`/quizzes/${quizId}/answer`, data),
 
+  submitAnswersBatch: (quizId: number, data: { answers: { question_id: number; answer: string }[] }) =>
+    api.post(`/quizzes/${quizId}/answers/batch`, data),
+
+  timeSync: (quizId: number) =>
+    api.get(`/quizzes/${quizId}/time-sync`),
+
   finish: (quizId: number, data?: { answers?: Record<number, string>; time_spent?: number }) =>
     api.post(`/quizzes/${quizId}/finish`, data),
 
@@ -707,15 +713,23 @@ export const examAPI = {
     points: number;
   }) => api.post(`/exams/${examId}/questions`, data),
   
-  updateQuestion: (examId: number, questionId: number, data: Partial<{
+  updateQuestion: (examId: number, questionId: number, data: FormData | Partial<{
     question_text: string;
     options: string[];
     correct_answer: string;
     points: number;
-  }>) => api.put(`/exams/${examId}/questions/${questionId}`, data),
+  }>) => {
+    if (typeof FormData !== 'undefined' && data instanceof FormData) {
+      data.append('_method', 'PUT');
+      return api.post(`/questions/${questionId}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put(`/questions/${questionId}`, data);
+  },
   
   deleteQuestion: (examId: number, questionId: number) =>
-    api.delete(`/exams/${examId}/questions/${questionId}`),
+    api.delete(`/questions/${questionId}`),
   
   // Student exam actions
   start: (examId: number) =>
@@ -730,7 +744,9 @@ export const examAPI = {
     api.post(`/exams/${examId}/finish`),
   
   getResult: (examId: number, studentId?: number) =>
-    api.get(`/exams/${examId}/result`, { params: { student_id: studentId } }),
+    studentId
+      ? api.get(`/exams/${examId}/results/${studentId}`)
+      : api.get(`/exams/${examId}/results`),
   
   getAllResults: (examId: number) =>
     api.get(`/exams/${examId}/results`),

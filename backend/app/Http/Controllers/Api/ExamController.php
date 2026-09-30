@@ -1068,7 +1068,8 @@ class ExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $type = $request->query('type');
+        $isQuizRoute = $request->is('*quizzes*');
+        $type = $isQuizRoute ? 'quiz' : $request->query('type');
         $query = Exam::where(function ($q) use ($type) {
                 if ($type === 'quiz') {
                     $q->where('type', 'quiz');
@@ -1192,8 +1193,8 @@ class ExamController extends Controller
      */
     public function store(Request $request)
     {
-        $type = $request->input('type', 'exam');
-        $isQuiz = $type === 'quiz';
+        $isQuiz = $request->is('*quizzes*') || $request->input('type') === 'quiz';
+        $type = $isQuiz ? 'quiz' : 'exam';
 
         // Support both single class_id and multiple class_ids
         $rules = [
