@@ -28,6 +28,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import api, { getSecureFileUrl } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
@@ -37,6 +39,7 @@ import { useAuth } from '@/context/AuthContext';
 import { MathText } from '@/components/ui/MathText';
 import { useAnswerQueue } from '@/hooks/useAnswerQueue';
 import { detectFaceInVideo, loadFaceDetectionModels } from '@/utils/faceDetection';
+import { useTheme } from '@/context/ThemeContext';
 
 interface QuestionOption {
   text: string;
@@ -88,6 +91,7 @@ export default function ExamTakingPage() {
   const params = useParams();
   const router = useRouter();
   const toast = useToast();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const examId = Number(params.id) || 1;
   
   const [loading, setLoading] = useState(true);
@@ -1843,6 +1847,19 @@ export default function ExamTakingPage() {
               }`}>
                 {isCameraActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
                 <span className="text-xs sm:text-sm font-medium hidden sm:inline">{isCameraActive ? 'Kamera' : 'Mati'}</span>
+              </div>
+              {/* Theme Toggle — agar siswa bisa ganti mode terang/gelap saat ujian */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={toggleTheme}
+                  className="flex items-center gap-1 px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-muted hover:bg-muted/80 text-slate-600 dark:text-slate-300 transition-colors"
+                  aria-label={resolvedTheme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+                  title={resolvedTheme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+                >
+                  {resolvedTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  <span className="text-xs font-medium hidden sm:inline">{resolvedTheme === 'dark' ? 'Terang' : 'Gelap'}</span>
+                </button>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline max-w-[100px] leading-tight">Ganti mode kalau teks tidak kelihatan</span>
               </div>
               {violationCount > 0 && (
                 <div className="flex items-center gap-1 text-red-600 dark:text-red-400 px-2 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg">
