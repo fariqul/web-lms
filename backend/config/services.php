@@ -44,4 +44,8 @@ return [
         'chat_id'   => env('TELEGRAM_CHAT_ID'),
     ],
 
+    'log_viewer' => [
+        'secret' => env('LOG_VIEWER_SECRET'),
+    ],
+
 ];
