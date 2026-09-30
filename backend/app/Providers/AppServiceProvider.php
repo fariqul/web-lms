@@ -36,12 +36,12 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
 
-            // Redirect ke halaman login jika belum autentikasi
-            // (hanya untuk request non-AJAX)
+            // Belum login → redirect ke halaman login kita
             if (! $request->expectsJson()) {
-                return redirect('/log-viewer/login');
+                return redirect('/admin/logs-auth');
             }
 
+            // AJAX request (dari Log Viewer internal) → 403
             return false;
         });
     }
