@@ -431,8 +431,8 @@ export function SessionHistoryTab({ sessions, loadingHistory, onRefresh }: Sessi
             )}
           </div>
 
-          {/* Download Dropdown */}
-          {user?.role === 'admin' && (
+          {/* Download Dropdown — tersedia untuk admin dan guru */}
+          {(user?.role === 'admin' || user?.role === 'guru') && (
             <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowDownloadMenu(!showDownloadMenu); }}

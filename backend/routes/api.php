@@ -233,6 +233,10 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         
         // Teacher attendance stats
         Route::get('/teacher-attendance-stats', [AttendanceController::class, 'teacherStats']);
+
+        // Rekap absensi keseluruhan per-siswa lintas semua sesi milik guru
+        // ?class_id=&subject=&date_from=&date_to=&format=json|csv
+        Route::get('/attendance-recap', [AttendanceController::class, 'recap']);
         
         // Exams Management (create only for guru)
         Route::post('/exams', [ExamController::class, 'store']);
@@ -256,7 +260,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/bank-questions', [BankQuestionController::class, 'store']);
         Route::put('/bank-questions/{id}', [BankQuestionController::class, 'update']);
         Route::delete('/bank-questions/{id}', [BankQuestionController::class, 'destroy']);
-        Route::post('/bank-questions/bulk', [BankQuestionController::class, 'bulkStore']);
+        // bulkStore juga ada di admin,guru group di bawah — duplikasi ini untuk backward compat
         Route::post('/bank-questions/{id}/duplicate', [BankQuestionController::class, 'duplicate']);
         
         // PDF Import for Bank Soal
@@ -432,6 +436,10 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
 
         // Proctoring detail per exam result (admin + owning guru)
         Route::get('/exam-results/{result}/proctoring', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'studentDetail']);
+
+        // Bank Soal bulk create — accessible by both admin and guru
+        // (admin can export exam questions to bank soal from the exam edit page)
+        Route::post('/bank-questions/bulk', [BankQuestionController::class, 'bulkStore']);
     });
 
     // ============================================

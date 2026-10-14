@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts';
 import { Card, CardHeader, Button, Select, Table } from '@/components/ui';
-import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Smartphone, AlertTriangle, UserCheck } from 'lucide-react';
+import { QrCode, Clock, CheckCircle, RefreshCw, Download, StopCircle, Loader2, History, Smartphone, AlertTriangle, UserCheck, TrendingUp } from 'lucide-react';
 import { classAPI } from '@/services/api';
 import api from '@/services/api';
 import { QRCodeSVG } from 'qrcode.react';
@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAttendanceSocket } from '@/hooks/useSocket';
 import { SessionHistoryTab, SessionHistory } from '@/components/absensi/SessionHistoryTab';
 import { ManualAttendanceTab } from '@/components/absensi/ManualAttendanceTab';
+import { AttendanceRecapTab } from '@/components/absensi/AttendanceRecapTab';
 
 interface AttendanceRecord {
   id: number;
@@ -100,7 +101,7 @@ export default function AbsensiPage() {
   // Session history states
   const [sessionHistory, setSessionHistory] = useState<SessionHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'manual' | 'history'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'manual' | 'history' | 'recap'>('create');
   
   // Anti-cheat options
   const [requireSchoolNetwork, setRequireSchoolNetwork] = useState(false);
@@ -649,6 +650,17 @@ export default function AbsensiPage() {
             <History className="w-4 h-4 inline mr-2" />
             Riwayat Sesi
           </button>
+          <button
+            onClick={() => setActiveTab('recap')}
+            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === 'recap'
+                ? 'border-blue-500 text-sky-500'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4 inline mr-2" />
+            Rekap Kehadiran
+          </button>
         </div>
 
         {activeTab === 'create' ? (
@@ -853,6 +865,10 @@ export default function AbsensiPage() {
             classes={classes}
             subjects={subjects}
             onSessionCreated={fetchSessionHistory}
+          />
+        ) : activeTab === 'recap' ? (
+          <AttendanceRecapTab
+            classes={classes.map(c => ({ id: Number(c.value), name: c.label }))}
           />
         ) : (
           <SessionHistoryTab

@@ -573,10 +573,11 @@ class ExportController extends Controller
         ]);
 
         if ($request->user()?->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hanya admin yang dapat mengekspor rekap absensi',
-            ], 403);
+            // Guru bisa export, tapi scope dibatasi ke sesi miliknya sendiri (filter by teacher_id diterapkan di query bawah)
+            // Admin bisa export semua kelas tanpa batasan
+            $isAdmin = false;
+        } else {
+            $isAdmin = true;
         }
 
         $format = $request->input('format');
@@ -628,6 +629,11 @@ class ExportController extends Controller
 
         if ($classId) {
             $sessionsQuery->where('class_id', $classId);
+        }
+
+        // Guru hanya bisa export sesi miliknya sendiri
+        if (!$isAdmin) {
+            $sessionsQuery->where('teacher_id', $request->user()->id);
         }
 
         $sessions = $sessionsQuery->get(['id', 'class_id', 'teacher_id', 'subject', 'valid_from']);

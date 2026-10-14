@@ -239,43 +239,57 @@ class BankQuestionController extends Controller
     }
 
     /**
-     * Bulk import questions (from Open Trivia DB or manual)
+     * Bulk import questions (from Open Trivia DB or manual / export from exam)
      */
     public function bulkStore(Request $request)
     {
         $request->validate([
-            'questions' => 'required|array|min:1',
+            'questions'           => 'required|array|min:1',
             'questions.*.subject' => 'required|string|max:100',
-            'questions.*.type' => 'required|in:pilihan_ganda,essay',
+            'questions.*.type'    => 'required|in:pilihan_ganda,essay',
             'questions.*.question' => 'required|string',
-            'questions.*.options' => 'required_if:questions.*.type,pilihan_ganda|array',
-            'questions.*.correct_answer' => 'required_if:questions.*.type,pilihan_ganda|nullable|string',
-            'questions.*.explanation' => 'nullable|string',
-            'questions.*.difficulty' => 'required|in:mudah,sedang,sulit',
-            'questions.*.grade_level' => 'required|in:10,11,12,semua',
+            // NOTE: required_if with wildcard cross-reference (questions.*.type) is not
+            // supported by Laravel's validator — validate options/correct_answer manually below.
+            'questions.*.options'         => 'nullable|array',
+            'questions.*.correct_answer'  => 'nullable|string',
+            'questions.*.explanation'     => 'nullable|string',
+            'questions.*.difficulty'      => 'required|in:mudah,sedang,sulit',
+            'questions.*.grade_level'     => 'required|in:10,11,12,semua',
         ]);
 
         $created = [];
-        foreach ($request->questions as $q) {
+        foreach ($request->questions as $index => $q) {
+            $type = $q['type'] ?? '';
+
+            // Manual per-row validation for options/correct_answer
+            if ($type === 'pilihan_ganda') {
+                if (empty($q['options']) || !is_array($q['options']) || count($q['options']) < 2) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Soal #" . ($index + 1) . " (pilihan_ganda) harus memiliki minimal 2 pilihan jawaban.",
+                    ], 422);
+                }
+            }
+
             $created[] = BankQuestion::create([
-                'teacher_id' => Auth::id(),
-                'class_id' => $q['class_id'] ?? null,
-                'subject' => $q['subject'],
-                'type' => $q['type'],
-                'question' => $q['question'],
-                'options' => $q['options'] ?? null,
+                'teacher_id'     => Auth::id(),
+                'class_id'       => $q['class_id'] ?? null,
+                'subject'        => $q['subject'],
+                'type'           => $type,
+                'question'       => $q['question'],
+                'options'        => $q['options'] ?? null,
                 'correct_answer' => $q['correct_answer'] ?? null,
-                'explanation' => $q['explanation'] ?? null,
-                'difficulty' => $q['difficulty'],
-                'grade_level' => $q['grade_level'],
-                'is_active' => true,
+                'explanation'    => $q['explanation'] ?? null,
+                'difficulty'     => $q['difficulty'],
+                'grade_level'    => $q['grade_level'],
+                'is_active'      => true,
             ]);
         }
 
         return response()->json([
             'success' => true,
             'message' => count($created) . ' soal berhasil ditambahkan',
-            'data' => $created,
+            'data'    => $created,
         ], 201);
     }
 

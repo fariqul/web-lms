@@ -983,4 +983,140 @@ class AttendanceController extends Controller
             'message' => 'Sesi absensi berhasil dihapus',
         ]);
     }
+
+    /**
+     * GET /api/attendance-recap
+     *
+     * Rekap kehadiran per-siswa lintas semua sesi milik guru.
+     * Mengembalikan ringkasan: total hadir/izin/sakit/alpha, persentase, jumlah sesi.
+     *
+     * Query params (semua opsional):
+     *   - class_id      : filter berdasarkan kelas
+     *   - subject       : filter berdasarkan mata pelajaran
+     *   - date_from     : filter sesi mulai tanggal ini (Y-m-d)
+     *   - date_to       : filter sesi sampai tanggal ini (Y-m-d)
+     *   - format        : 'json' (default) | 'csv' — download CSV langsung
+     */
+    public function recap(Request $request)
+    {
+        $request->validate([
+            'class_id'  => 'nullable|integer|exists:classes,id',
+            'subject'   => 'nullable|string|max:100',
+            'date_from' => 'nullable|date',
+            'date_to'   => 'nullable|date|after_or_equal:date_from',
+            'format'    => 'nullable|in:json,csv',
+        ]);
+
+        $user = $request->user();
+
+        // Ambil semua sesi milik guru ini sesuai filter
+        $sessionQuery = AttendanceSession::where('teacher_id', $user->id);
+
+        if ($request->filled('class_id')) {
+            $sessionQuery->where('class_id', $request->class_id);
+        }
+        if ($request->filled('subject')) {
+            $sessionQuery->where('subject', $request->subject);
+        }
+        if ($request->filled('date_from')) {
+            $sessionQuery->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $sessionQuery->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $sessionIds = $sessionQuery->pluck('id');
+        $totalSessions = $sessionIds->count();
+
+        if ($totalSessions === 0) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'students'       => [],
+                    'total_sessions' => 0,
+                    'filters'        => $request->only('class_id', 'subject', 'date_from', 'date_to'),
+                ],
+            ]);
+        }
+
+        // Ambil semua record absensi dalam sesi-sesi tersebut
+        $attendances = Attendance::whereIn('session_id', $sessionIds)
+            ->with('student:id,name,nisn,nis,class_id')
+            ->get();
+
+        // Agregasi per student_id
+        $grouped = $attendances->groupBy('student_id');
+
+        $students = $grouped->map(function ($records, $studentId) use ($totalSessions) {
+            $student = $records->first()->student;
+
+            $hadir = $records->where('status', 'hadir')->count();
+            $izin  = $records->where('status', 'izin')->count();
+            $sakit = $records->where('status', 'sakit')->count();
+            $alpha = $records->where('status', 'alpha')->count();
+            $total = $records->count();
+
+            // Persentase kehadiran relatif terhadap total sesi (bukan hanya yang hadir scan)
+            $pct = $totalSessions > 0
+                ? round(($hadir / $totalSessions) * 100, 1)
+                : 0;
+
+            return [
+                'student_id'   => $studentId,
+                'name'         => $student?->name ?? '(Siswa dihapus)',
+                'nisn'         => $student?->nisn ?? '-',
+                'nis'          => $student?->nis  ?? '-',
+                'class_id'     => $student?->class_id,
+                'hadir'        => $hadir,
+                'izin'         => $izin,
+                'sakit'        => $sakit,
+                'alpha'        => $alpha,
+                'total_tercatat' => $total,
+                'total_sesi'   => $totalSessions,
+                'persentase'   => $pct,
+            ];
+        })->values()->sortBy('name')->values();
+
+        // CSV download
+        if ($request->input('format') === 'csv') {
+            $filename = 'rekap-absensi-' . now()->format('Ymd-His') . '.csv';
+            $headers  = [
+                'Content-Type'        => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ];
+
+            $callback = function () use ($students) {
+                $out = fopen('php://output', 'w');
+                // BOM agar Excel baca UTF-8 dengan benar
+                fwrite($out, "\xEF\xBB\xBF");
+                fputcsv($out, ['No', 'Nama', 'NISN', 'NIS', 'Hadir', 'Izin', 'Sakit', 'Alpha', 'Total Sesi', 'Persentase (%)']);
+                foreach ($students as $i => $s) {
+                    fputcsv($out, [
+                        $i + 1,
+                        $s['name'],
+                        $s['nisn'],
+                        $s['nis'],
+                        $s['hadir'],
+                        $s['izin'],
+                        $s['sakit'],
+                        $s['alpha'],
+                        $s['total_sesi'],
+                        $s['persentase'],
+                    ]);
+                }
+                fclose($out);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'students'       => $students,
+                'total_sessions' => $totalSessions,
+                'filters'        => $request->only('class_id', 'subject', 'date_from', 'date_to'),
+            ],
+        ]);
+    }
 }
