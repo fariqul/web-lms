@@ -27,8 +27,8 @@ return new class extends Migration
             // Network info
             $table->string('ip_address')->nullable();
 
-            // How location was validated: gps | network | manual
-            $table->enum('location_method', ['gps', 'network', 'manual'])->default('manual');
+            // How location was validated: gps | manual
+            $table->enum('location_method', ['gps', 'manual'])->default('manual');
 
             // Whether the location check passed
             $table->boolean('is_location_valid')->default(false);

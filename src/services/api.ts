@@ -1333,7 +1333,7 @@ export const staffAttendanceAPI = {
     message: string;
     data?: {
       checked_in_at: string;
-      location_method: 'gps' | 'network' | 'manual';
+      location_method: 'gps' | 'manual';
       is_location_valid: boolean;
       distance_meters: number | null;
     };
@@ -1345,7 +1345,7 @@ export const staffAttendanceAPI = {
     data: {
       has_checked_in: boolean;
       checked_in_at: string | null;
-      location_method: 'gps' | 'network' | 'manual' | null;
+      location_method: 'gps' | 'manual' | null;
       is_location_valid: boolean;
       distance_meters: number | null;
     };

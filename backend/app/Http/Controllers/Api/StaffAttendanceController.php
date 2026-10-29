@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\SchoolNetworkSetting;
 use App\Models\StaffAttendance;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -61,51 +60,47 @@ class StaffAttendanceController extends Controller
             }
         }
 
-        // 3. Location validation
+        // 3. Location validation — GPS only
         $lat       = $request->input('latitude');
         $lng       = $request->input('longitude');
-        $clientIp  = $this->getRealClientIp($request);
         $coords    = SystemSetting::getSchoolCoordinates();
         $schoolLat = $coords['latitude'];
         $schoolLng = $coords['longitude'];
 
-        $locationMethod  = 'manual';
-        $isLocationValid = true;   // default: allow when not configured
+        $locationMethod  = 'gps';
+        $isLocationValid = true;  // default: allow when coordinates not yet configured
         $distanceMeters  = null;
 
         if ($schoolLat !== null && $schoolLng !== null) {
-            // School coordinates are configured — enforce validation
+            // School coordinates configured — enforce GPS radius check
             $radius = SystemSetting::getStaffAttendanceRadius();
 
             if ($lat !== null && $lng !== null) {
-                // GPS path
+                // GPS available: calculate distance
                 $distanceMeters  = (int) round($this->haversineDistance((float)$lat, (float)$lng, $schoolLat, $schoolLng));
-                $locationMethod  = 'gps';
                 $isLocationValid = $distanceMeters <= $radius;
             } else {
-                // Network fallback path
-                $locationMethod  = 'network';
-                $isLocationValid = SchoolNetworkSetting::isSchoolNetwork($clientIp);
+                // GPS not available: reject
+                return response()->json([
+                    'success'    => false,
+                    'message'    => 'Absen masuk memerlukan izin GPS. Aktifkan lokasi di perangkat Anda lalu coba lagi.',
+                    'error_code' => 'GPS_REQUIRED',
+                ], 422);
             }
 
             if (!$isLocationValid) {
-                $detail = $locationMethod === 'gps'
-                    ? "Anda berada {$distanceMeters} m dari sekolah (batas {$radius} m)."
-                    : "IP Anda ({$clientIp}) tidak terdeteksi sebagai jaringan sekolah.";
-
                 return response()->json([
                     'success'         => false,
-                    'message'         => "Lokasi tidak valid. {$detail}",
+                    'message'         => "Lokasi tidak valid. Anda berada {$distanceMeters} m dari sekolah (batas {$radius} m).",
                     'error_code'      => 'LOCATION_INVALID',
                     'distance_meters' => $distanceMeters,
-                    'detected_ip'     => $clientIp,
                 ], 422);
             }
         } elseif ($lat !== null && $lng !== null) {
-            $locationMethod = 'gps';
-        } elseif (SchoolNetworkSetting::isSchoolNetwork($clientIp)) {
-            $locationMethod = 'network';
+            // Coordinates not configured yet — GPS data received, save it but skip radius check
+            $isLocationValid = true;
         }
+        // If GPS not sent and coordinates not configured — allow (unconfigured system)
 
         // 4. Save
         $record = StaffAttendance::create([
@@ -114,7 +109,7 @@ class StaffAttendanceController extends Controller
             'checked_in_at'     => now(),
             'latitude'          => $lat,
             'longitude'         => $lng,
-            'ip_address'        => $clientIp,
+            'ip_address'        => $request->ip(),
             'location_method'   => $locationMethod,
             'is_location_valid' => $isLocationValid,
             'distance_meters'   => $distanceMeters,
@@ -361,29 +356,5 @@ class StaffAttendanceController extends Controller
 
         return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
-
-    /**
-     * Get the real client IP, respecting reverse proxy headers (same as AttendanceController).
-     */
-    private function getRealClientIp(Request $request): string
-    {
-        $ip = $request->ip();
-
-        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            $forwarded = $request->header('X-Forwarded-For');
-            if ($forwarded) {
-                $ips = array_map('trim', explode(',', $forwarded));
-                if (!empty($ips[0]) && filter_var($ips[0], FILTER_VALIDATE_IP)) {
-                    return $ips[0];
-                }
-            }
-
-            $realIp = $request->header('X-Real-IP');
-            if ($realIp && filter_var($realIp, FILTER_VALIDATE_IP)) {
-                return $realIp;
-            }
-        }
-
-        return $ip;
-    }
 }
+

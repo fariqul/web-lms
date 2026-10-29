@@ -7,7 +7,6 @@ import { useToast } from '@/components/ui/Toast';
 import {
   ClipboardCheck,
   MapPin,
-  Wifi,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -21,7 +20,7 @@ import {
 interface TodayStatus {
   has_checked_in: boolean;
   checked_in_at: string | null;
-  location_method: 'gps' | 'network' | 'manual' | null;
+  location_method: 'gps' | 'manual' | null;
   is_location_valid: boolean;
   distance_meters: number | null;
 }
@@ -29,7 +28,7 @@ interface TodayStatus {
 interface HistoryItem {
   date: string;
   checked_in_at: string | null;
-  location_method: 'gps' | 'network' | 'manual' | null;
+  location_method: 'gps' | 'manual' | null;
   is_location_valid: boolean;
 }
 
@@ -72,14 +71,12 @@ const formatTime = (iso: string | null | undefined): string => {
 };
 
 const locationLabel = (method: string | null): string => {
-  if (method === 'gps')     return 'GPS';
-  if (method === 'network') return 'Jaringan Sekolah';
+  if (method === 'gps') return 'GPS';
   return 'Manual';
 };
 
 const locationIcon = (method: string | null) => {
-  if (method === 'gps')     return <Navigation className="w-3.5 h-3.5" />;
-  if (method === 'network') return <Wifi className="w-3.5 h-3.5" />;
+  if (method === 'gps') return <Navigation className="w-3.5 h-3.5" />;
   return <MapPin className="w-3.5 h-3.5" />;
 };
 
@@ -122,7 +119,7 @@ export default function AbsenMasukPage() {
     setErrorMsg(null);
 
     try {
-      // Request GPS (max 8 s, gracefully falls back to null)
+      // Request GPS (max 8 s)
       const coords   = await getLocation();
       const deviceId = getDeviceId();
 
@@ -145,8 +142,15 @@ export default function AbsenMasukPage() {
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string; error_code?: string } } };
-      const msg = e.response?.data?.message || 'Gagal absen masuk. Silakan coba lagi.';
-      setErrorMsg(msg);
+      const code = e.response?.data?.error_code;
+      const msg  = e.response?.data?.message || 'Gagal absen masuk. Silakan coba lagi.';
+
+      // Give a more specific hint for GPS errors
+      if (code === 'GPS_REQUIRED') {
+        setErrorMsg('GPS diperlukan. Pastikan izin lokasi diaktifkan di browser/perangkat Anda.');
+      } else {
+        setErrorMsg(msg);
+      }
       toast.error(msg);
     } finally {
       setChecking(false);
@@ -257,7 +261,7 @@ export default function AbsenMasukPage() {
             </button>
 
             <p className="text-center text-xs text-slate-400">
-              Validasi lokasi: GPS (radius sekolah) atau WiFi sekolah
+              Validasi lokasi: GPS (radius dari sekolah)
             </p>
           </div>
         )}

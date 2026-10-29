@@ -15,7 +15,6 @@ import {
   AlertCircle,
   RefreshCw,
   Navigation,
-  Wifi,
   MapPin,
 } from 'lucide-react';
 
@@ -27,7 +26,7 @@ interface StaffRow {
   role: 'guru' | 'staff';
   has_checked_in: boolean;
   checked_in_at: string | null;
-  location_method: 'gps' | 'network' | 'manual' | null;
+  location_method: 'gps' | 'manual' | null;
   is_location_valid: boolean;
 }
 
@@ -38,15 +37,13 @@ interface Summary {
 }
 
 const locationLabel = (method: string | null) => {
-  if (method === 'gps')     return 'GPS';
-  if (method === 'network') return 'Jaringan';
-  if (method === 'manual')  return 'Manual';
+  if (method === 'gps')    return 'GPS';
+  if (method === 'manual') return 'Manual';
   return '-';
 };
 
 const locationIcon = (method: string | null) => {
-  if (method === 'gps')     return <Navigation className="w-3.5 h-3.5 text-blue-500" />;
-  if (method === 'network') return <Wifi className="w-3.5 h-3.5 text-teal-500" />;
+  if (method === 'gps') return <Navigation className="w-3.5 h-3.5 text-blue-500" />;
   return <MapPin className="w-3.5 h-3.5 text-slate-400" />;
 };
 
