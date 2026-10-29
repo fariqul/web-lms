@@ -209,7 +209,7 @@ class StaffAttendanceController extends Controller
                 'jabatan'          => $u->jabatan ?? '-',
                 'role'             => $u->role,
                 'has_checked_in'   => $att !== null,
-                'checked_in_at'    => $att?->checked_in_at?->format('H:i:s'),
+                'checked_in_at'    => $att?->checked_in_at?->toIso8601String(),
                 'location_method'  => $att?->location_method,
                 'is_location_valid' => $att?->is_location_valid,
             ];

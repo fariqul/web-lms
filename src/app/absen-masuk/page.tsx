@@ -34,17 +34,28 @@ interface HistoryItem {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Request GPS with 8-second timeout. Returns null if unavailable/denied. */
+/** Request GPS with 8-second timeout. Returns null if unavailable, throws if explicitly denied. */
 const getLocation = (): Promise<{ lat: number; lng: number } | null> =>
-  new Promise((resolve) => {
-    if (!navigator.geolocation) { resolve(null); return; }
+  new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
     const timer = setTimeout(() => resolve(null), 8000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         clearTimeout(timer);
         resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
-      () => { clearTimeout(timer); resolve(null); },
+      (err) => {
+        clearTimeout(timer);
+        if (err.code === err.PERMISSION_DENIED) {
+          reject(new Error('GPS_PERMISSION_DENIED'));
+        } else {
+          // Timeout or position unavailable — resolve null so backend can decide
+          resolve(null);
+        }
+      },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   });
@@ -113,14 +124,24 @@ export default function AbsenMasukPage() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
-  // ── Handle check-in button ────────────────────────────────────────────────
   const handleCheckIn = async () => {
     setChecking(true);
     setErrorMsg(null);
 
     try {
-      // Request GPS (max 8 s)
-      const coords   = await getLocation();
+      // Request GPS — will throw if user explicitly denied permission
+      let coords: { lat: number; lng: number } | null = null;
+      try {
+        coords = await getLocation();
+      } catch (gpsErr) {
+        const msg = gpsErr instanceof Error && gpsErr.message === 'GPS_PERMISSION_DENIED'
+          ? 'Izin GPS ditolak. Buka pengaturan browser/perangkat → izinkan akses lokasi untuk halaman ini, lalu coba lagi.'
+          : 'GPS tidak tersedia. Pastikan izin lokasi sudah diaktifkan.';
+        setErrorMsg(msg);
+        setChecking(false);
+        return;
+      }
+
       const deviceId = getDeviceId();
 
       const res = await staffAttendanceAPI.checkIn({
@@ -138,16 +159,15 @@ export default function AbsenMasukPage() {
           distance_meters:   res.data.data.distance_meters,
         });
         toast.success('Absen masuk berhasil dicatat!');
-        void loadData(); // refresh history
+        void loadData();
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string; error_code?: string } } };
       const code = e.response?.data?.error_code;
       const msg  = e.response?.data?.message || 'Gagal absen masuk. Silakan coba lagi.';
 
-      // Give a more specific hint for GPS errors
       if (code === 'GPS_REQUIRED') {
-        setErrorMsg('GPS diperlukan. Pastikan izin lokasi diaktifkan di browser/perangkat Anda.');
+        setErrorMsg('GPS diperlukan. Aktifkan izin lokasi di browser/perangkat Anda lalu coba lagi.');
       } else {
         setErrorMsg(msg);
       }
