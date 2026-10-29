@@ -49,6 +49,7 @@ const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: Home, roles: ['admin', 'guru', 'siswa'] },
   // Guru only
   { name: 'Sesi Absensi', href: '/absensi', icon: ClipboardList, roles: ['guru'] },
+  { name: 'Absen Masuk', href: '/absen-masuk', icon: ClipboardCheck, roles: ['guru', 'staff'] },
   { name: 'Ujian / CBT', href: '/ujian', icon: GraduationCap, roles: ['guru'] },
   { name: 'Quiz / Ujian Harian', href: '/quiz', icon: ClipboardCheck, roles: ['guru'] },
   { name: 'Bank Soal', href: '/bank-soal', icon: FileText, roles: ['guru'] },
@@ -72,6 +73,7 @@ const navigation: NavItem[] = [
   { name: 'Kelola Pengguna', href: '/admin/users', icon: Users, roles: ['admin'] },
   { name: 'Kelola Kelas', href: '/admin/kelas', icon: GraduationCap, roles: ['admin'] },
   { name: 'Kelola Ujian', href: '/admin/ujian', icon: ClipboardList, roles: ['admin'] },
+  { name: 'Absen Masuk Pegawai', href: '/admin/absen-masuk', icon: ClipboardCheck, roles: ['admin'] },
   { name: 'Kelola Kelulusan', href: '/admin/kelulusan', icon: GraduationCap, roles: ['admin'] },
   { name: 'Kelola Beranda', href: '/admin/fasilitas', icon: ImagePlus, roles: ['admin'] },
   { name: 'Kelola Berita', href: '/admin/berita', icon: Newspaper, roles: ['admin'] },
@@ -101,7 +103,7 @@ export default function DashboardLayout({ children }: SidebarProps) {
   const roleInfo = useMemo(() => {
     const role = user?.role;
     return {
-      label: role === 'admin' ? 'Administrator' : role === 'guru' ? 'Dashboard Guru' : role === 'siswa' ? 'E-Learning Portal' : '',
+      label: role === 'admin' ? 'Administrator' : role === 'guru' ? 'Dashboard Guru' : role === 'siswa' ? 'E-Learning Portal' : role === 'staff' ? 'Pegawai / Staff' : '',
       accent: role === 'admin' ? 'bg-orange-400' : role === 'guru' ? 'bg-cyan-500' : role === 'siswa' ? 'bg-sky-500' : 'bg-blue-800'
     };
   }, [user?.role]);

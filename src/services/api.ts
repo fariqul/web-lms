@@ -1319,3 +1319,67 @@ export const graduationAPI = {
   publicCheck: (data: { nisn: string; nis?: string }) =>
     api.post('/public/graduation/check', data),
 };
+
+// ─── Absen Masuk — Staff & Guru ──────────────────────────────────────────────
+export const staffAttendanceAPI = {
+  /** Guru/staff: tap absen masuk */
+  checkIn: (data: {
+    latitude?: number;
+    longitude?: number;
+    device_id?: string;
+    notes?: string;
+  }) => api.post<{
+    success: boolean;
+    message: string;
+    data?: {
+      checked_in_at: string;
+      location_method: 'gps' | 'network' | 'manual';
+      is_location_valid: boolean;
+      distance_meters: number | null;
+    };
+  }>('/staff-attendance/check-in', data),
+
+  /** Cek apakah sudah absen hari ini */
+  todayStatus: () => api.get<{
+    success: boolean;
+    data: {
+      has_checked_in: boolean;
+      checked_in_at: string | null;
+      location_method: 'gps' | 'network' | 'manual' | null;
+      is_location_valid: boolean;
+      distance_meters: number | null;
+    };
+  }>('/staff-attendance/today'),
+
+  /** Riwayat 30 hari terakhir */
+  myHistory: () => api.get('/staff-attendance/history'),
+
+  /** Admin: rekap harian */
+  adminIndex: (params?: { date?: string; role?: 'guru' | 'staff' }) =>
+    api.get('/staff-attendance', { params }),
+
+  /** Admin: download CSV */
+  adminExportCsv: (params?: { date?: string; role?: 'guru' | 'staff' }) =>
+    api.get('/staff-attendance/export', { params, responseType: 'blob' as const }),
+
+  /** Admin: baca pengaturan */
+  getSettings: () => api.get<{
+    success: boolean;
+    data: {
+      school_latitude: number | null;
+      school_longitude: number | null;
+      radius_meters: number;
+      check_in_start: string;
+      check_in_end: string;
+    };
+  }>('/staff-attendance/settings'),
+
+  /** Admin: simpan pengaturan */
+  updateSettings: (data: {
+    school_latitude?: number | null;
+    school_longitude?: number | null;
+    radius_meters?: number;
+    check_in_start?: string;
+    check_in_end?: string;
+  }) => api.post('/staff-attendance/settings', data),
+};

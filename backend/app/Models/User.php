@@ -19,6 +19,7 @@ class User extends Authenticatable
         'nis',
         'nip',
         'nomor_tes',
+        'jabatan',
         'class_id',
         'photo',
         'parent_email',
@@ -68,6 +69,11 @@ class User extends Authenticatable
     public function attendances()
     {
         return $this->hasMany(Attendance::class, 'student_id');
+    }
+
+    public function staffAttendances()
+    {
+        return $this->hasMany(StaffAttendance::class);
     }
 
     public function examResults()
@@ -125,6 +131,11 @@ class User extends Authenticatable
     public function isSiswa(): bool
     {
         return $this->role === 'siswa';
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->role === 'staff';
     }
 
     /**

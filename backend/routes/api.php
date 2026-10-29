@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ClassController;
 use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\StaffAttendanceController;
 use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ScheduleController;
@@ -212,6 +213,15 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
             // Scenario testing
             Route::post('/scenarios/{scenario}/run', [ProctoringDiagnosticController::class, 'runScenario']);
         });
+
+        // ============================================
+        // ABSEN MASUK — Admin rekap & settings
+        // ⚠️ Literal routes (export, settings) BEFORE any wildcard
+        // ============================================
+        Route::get('/staff-attendance/export', [StaffAttendanceController::class, 'adminExportCsv']);
+        Route::get('/staff-attendance/settings', [StaffAttendanceController::class, 'getSettings']);
+        Route::post('/staff-attendance/settings', [StaffAttendanceController::class, 'updateSettings']);
+        Route::get('/staff-attendance', [StaffAttendanceController::class, 'adminIndex']);
     });
 
     // ============================================
@@ -273,6 +283,19 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/url-import/preview', [UrlImportController::class, 'preview']);
         Route::post('/url-import/import', [UrlImportController::class, 'import']);
 
+    });
+
+    // ============================================
+    // STAFF ATTENDANCE (ABSEN MASUK) — self check-in
+    // Accessible by guru, staff, and admin (for testing).
+    // ============================================
+    // ABSEN MASUK — Guru & Staff (self check-in)
+    // Literal routes MUST come before any wildcard on same prefix
+    // ============================================
+    Route::middleware('role:guru,staff,admin')->group(function () {
+        Route::post('/staff-attendance/check-in', [StaffAttendanceController::class, 'checkIn']);
+        Route::get('/staff-attendance/today', [StaffAttendanceController::class, 'todayStatus']);
+        Route::get('/staff-attendance/history', [StaffAttendanceController::class, 'myHistory']);
     });
 
     // ============================================

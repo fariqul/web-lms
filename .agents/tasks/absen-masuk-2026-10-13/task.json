@@ -1,0 +1,7 @@
+{
+  "task_id": "task-absen-masuk-2026-10-13",
+  "task_description": "Implement the 'Absen Masuk' staff/guru self check-in attendance feature with location validation (GPS Haversine radius + SchoolNetworkSetting IP fallback) and admin rekap + settings, in the LMS SMA 15 Makassar monorepo (Laravel backend + Next.js frontend).",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
