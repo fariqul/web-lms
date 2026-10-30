@@ -57,30 +57,14 @@ export default function AdminBarcodePage() {
     if (el?.requestFullscreen) el.requestFullscreen();
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => window.open('/admin/absen-masuk/barcode/print', '_blank');
 
   return (
     <DashboardLayout>
-      {/* Print styles */}
-      <style>{`
-        @media print {
-          body > *:not(#print-area) { display: none !important; }
-          #print-area {
-            display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 2rem;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
       <div className="max-w-xl mx-auto space-y-5">
 
         {/* Header */}
-        <div className="flex items-center gap-3 no-print">
+        <div className="flex items-center gap-3">
           <Link
             href="/admin/absen-masuk"
             className="p-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
@@ -101,12 +85,6 @@ export default function AdminBarcodePage() {
           id="barcode-display"
           className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 flex flex-col items-center gap-4"
         >
-          {/* Print header — only shows when printing */}
-          <div id="print-area" className="hidden print:flex flex-col items-center gap-1 mb-2">
-            <p className="text-xl font-bold text-slate-800">SMA Negeri 15 Makassar</p>
-            <p className="text-base text-slate-600">Absen Masuk Guru &amp; Staff</p>
-          </div>
-
           {loading ? (
             <Loader2 className="w-12 h-12 animate-spin text-teal-500" />
           ) : token ? (
@@ -130,15 +108,10 @@ export default function AdminBarcodePage() {
               <p>Barcode belum dibuat</p>
             </div>
           )}
-
-          {/* Print footer */}
-          <div className="hidden print:block mt-4 text-center text-xs text-slate-500">
-            <p>Arahkan kamera ke barcode ini melalui halaman Absen Masuk di aplikasi LMS</p>
-          </div>
         </div>
 
         {/* Action buttons */}
-        <div className="grid grid-cols-3 gap-3 no-print">
+        <div className="grid grid-cols-3 gap-3">
           <button
             onClick={handleFullscreen}
             className="flex flex-col items-center gap-2 py-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300"
@@ -166,7 +139,7 @@ export default function AdminBarcodePage() {
 
         {/* Regenerate confirmation */}
         {confirmRegen && (
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3 no-print">
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3">
             <div className="flex items-start gap-2">
               <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
@@ -194,7 +167,7 @@ export default function AdminBarcodePage() {
         )}
 
         {/* Info */}
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-xs text-blue-700 dark:text-blue-400 space-y-1 no-print">
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-xs text-blue-700 dark:text-blue-400 space-y-1">
           <p className="font-semibold">Cara penggunaan:</p>
           <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-500">
             <li>Print atau tampilkan barcode ini di meja piket / papan absen sekolah</li>

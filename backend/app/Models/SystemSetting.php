@@ -20,6 +20,8 @@ class SystemSetting extends Model
     public const STAFF_ATTENDANCE_RADIUS_KEY        = 'staff_attendance_radius_meters';
     public const STAFF_CHECKIN_START_KEY            = 'staff_attendance_check_in_start';
     public const STAFF_CHECKIN_END_KEY              = 'staff_attendance_check_in_end';
+    public const STAFF_CHECKOUT_START_KEY           = 'staff_attendance_check_out_start';
+    public const STAFF_CHECKOUT_END_KEY             = 'staff_attendance_check_out_end';
     public const STAFF_ATTENDANCE_BARCODE_KEY       = 'staff_attendance_barcode_token';
 
     protected $fillable = [
@@ -324,6 +326,39 @@ class SystemSetting extends Model
     }
 
     /**
+     * Get the staff check-out time window. Returns ['start'=>string|null,'end'=>string|null].
+     */
+    public static function getStaffCheckOutWindow(): array
+    {
+        $start = Cache::rememberForever(self::cacheKey(self::STAFF_CHECKOUT_START_KEY), function () {
+            try {
+                return self::query()
+                    ->where('setting_key', self::STAFF_CHECKOUT_START_KEY)
+                    ->value('setting_value');
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting read failed for staff check-out start: ' . $e->getMessage());
+                return null;
+            }
+        });
+
+        $end = Cache::rememberForever(self::cacheKey(self::STAFF_CHECKOUT_END_KEY), function () {
+            try {
+                return self::query()
+                    ->where('setting_key', self::STAFF_CHECKOUT_END_KEY)
+                    ->value('setting_value');
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting read failed for staff check-out end: ' . $e->getMessage());
+                return null;
+            }
+        });
+
+        return [
+            'start' => $start,
+            'end'   => $end,
+        ];
+    }
+
+    /**
      * Combined setter for staff attendance settings. Accepts keys:
      * school_latitude, school_longitude, radius_meters, check_in_start, check_in_end.
      * Calls the individual setters and flushes the affected cache keys.
@@ -336,6 +371,8 @@ class SystemSetting extends Model
         Cache::forget(self::cacheKey(self::STAFF_ATTENDANCE_RADIUS_KEY));
         Cache::forget(self::cacheKey(self::STAFF_CHECKIN_START_KEY));
         Cache::forget(self::cacheKey(self::STAFF_CHECKIN_END_KEY));
+        Cache::forget(self::cacheKey(self::STAFF_CHECKOUT_START_KEY));
+        Cache::forget(self::cacheKey(self::STAFF_CHECKOUT_END_KEY));
 
         if (array_key_exists('school_latitude', $data) || array_key_exists('school_longitude', $data)) {
             self::setSchoolCoordinates(
@@ -372,6 +409,32 @@ class SystemSetting extends Model
                 Log::warning('SystemSetting write failed for staff check-in end: ' . $e->getMessage());
             }
             Cache::forever(self::cacheKey(self::STAFF_CHECKIN_END_KEY), $value);
+        }
+
+        if (array_key_exists('check_out_start', $data)) {
+            $value = $data['check_out_start'] === '' ? null : $data['check_out_start'];
+            try {
+                self::updateOrCreate(
+                    ['setting_key' => self::STAFF_CHECKOUT_START_KEY],
+                    ['setting_value' => $value]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting write failed for staff check-out start: ' . $e->getMessage());
+            }
+            Cache::forever(self::cacheKey(self::STAFF_CHECKOUT_START_KEY), $value);
+        }
+
+        if (array_key_exists('check_out_end', $data)) {
+            $value = $data['check_out_end'] === '' ? null : $data['check_out_end'];
+            try {
+                self::updateOrCreate(
+                    ['setting_key' => self::STAFF_CHECKOUT_END_KEY],
+                    ['setting_value' => $value]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting write failed for staff check-out end: ' . $e->getMessage());
+            }
+            Cache::forever(self::cacheKey(self::STAFF_CHECKOUT_END_KEY), $value);
         }
     }
 

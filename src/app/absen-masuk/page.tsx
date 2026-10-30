@@ -15,6 +15,7 @@ import {
   Clock,
   CalendarDays,
   QrCode,
+  LogOut,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,6 +24,9 @@ interface TodayStatus {
   has_checked_in: boolean;
   checked_in_at: string | null;
   location_method: 'gps' | 'manual' | 'barcode' | null;
+  has_checked_out: boolean;
+  checked_out_at: string | null;
+  check_out_distance_meters: number | null;
 }
 
 interface HistoryItem {
@@ -85,6 +89,7 @@ export default function AbsenMasukPage() {
   const [errorMsg, setErrorMsg]       = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [facingMode, setFacingMode]   = useState<'environment' | 'user'>('environment');
+  const [checkingOut, setCheckingOut] = useState(false);
 
   const videoRef      = useRef<HTMLVideoElement>(null);
   const canvasRef     = useRef<HTMLCanvasElement>(null);
@@ -161,6 +166,9 @@ export default function AbsenMasukPage() {
           has_checked_in: true,
           checked_in_at:  res.data.data?.checked_in_at ?? null,
           location_method: 'barcode',
+          has_checked_out: false,
+          checked_out_at: null,
+          check_out_distance_meters: null,
         });
         toast.success('Absen masuk berhasil dicatat!');
         void loadData();
@@ -259,6 +267,32 @@ export default function AbsenMasukPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facingMode]);
 
+  const handleCheckOut = useCallback(async () => {
+    setCheckingOut(true);
+    try {
+      const coords = await getLocation();
+      if (!coords) {
+        toast.error('GPS diperlukan untuk absen pulang. Aktifkan lokasi lalu coba lagi.');
+        return;
+      }
+      const res = await staffAttendanceAPI.checkOut({
+        latitude: coords.lat,
+        longitude: coords.lng,
+        device_id: getDeviceId(),
+      });
+      if (res.data.success) {
+        toast.success('Absen pulang berhasil dicatat!');
+        void loadData();
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string; error_code?: string } } };
+      const msg = e.response?.data?.message ?? 'Gagal absen pulang';
+      toast.error(msg);
+    } finally {
+      setCheckingOut(false);
+    }
+  }, [toast, loadData]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
@@ -305,6 +339,25 @@ export default function AbsenMasukPage() {
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{methodLabel(todayStatus.location_method)}</p>
               </div>
             </div>
+
+            {/* Check-out section */}
+            {todayStatus.has_checked_out ? (
+              <div className="grid grid-cols-1 gap-3 mt-2">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mb-1"><LogOut className="w-3.5 h-3.5" /> Jam Pulang</p>
+                  <p className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{formatTime(todayStatus.checked_out_at)}</p>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => void handleCheckOut()}
+                disabled={checkingOut}
+                className="w-full mt-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
+              >
+                {checkingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
+                {checkingOut ? 'Memproses...' : 'Absen Pulang'}
+              </button>
+            )}
           </div>
         )}
 

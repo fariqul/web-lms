@@ -27,6 +27,7 @@ interface StaffRow {
   role: 'guru' | 'staff';
   has_checked_in: boolean;
   checked_in_at: string | null;
+  checked_out_at: string | null;
   location_method: 'gps' | 'manual' | null;
   is_location_valid: boolean;
 }
@@ -217,6 +218,7 @@ export default function AdminAbsenMasukPage() {
                     <th className="text-left px-4 py-3 font-medium hidden md:table-cell">NIP / Jabatan</th>
                     <th className="text-center px-3 py-3 font-medium">Role</th>
                     <th className="text-center px-3 py-3 font-medium">Jam Masuk</th>
+                    <th className="text-center px-3 py-3 font-medium">Jam Pulang</th>
                     <th className="text-center px-3 py-3 font-medium hidden sm:table-cell">Metode</th>
                     <th className="text-center px-4 py-3 font-medium">Status</th>
                   </tr>
@@ -249,6 +251,11 @@ export default function AdminAbsenMasukPage() {
                       <td className="px-3 py-3 text-center font-mono text-sm tabular-nums text-slate-700 dark:text-slate-200">
                         {row.checked_in_at
                           ? new Date(row.checked_in_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                          : <span className="text-slate-400">-</span>}
+                      </td>
+                      <td className="px-3 py-3 text-center font-mono text-sm tabular-nums text-slate-700 dark:text-slate-200">
+                        {row.checked_out_at
+                          ? new Date(row.checked_out_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
                           : <span className="text-slate-400">-</span>}
                       </td>
                       <td className="px-3 py-3 text-center hidden sm:table-cell">

@@ -143,11 +143,120 @@ class StaffAttendanceController extends Controller
         return response()->json([
             'success' => true,
             'data'    => [
-                'has_checked_in'    => $record !== null,
-                'checked_in_at'     => $record?->checked_in_at,
-                'location_method'   => $record?->location_method,
-                'is_location_valid' => $record?->is_location_valid,
-                'distance_meters'   => $record?->distance_meters,
+                'has_checked_in'            => $record !== null,
+                'checked_in_at'             => $record?->checked_in_at,
+                'location_method'           => $record?->location_method,
+                'is_location_valid'         => $record?->is_location_valid,
+                'distance_meters'           => $record?->distance_meters,
+                'has_checked_out'           => $record?->checked_out_at !== null,
+                'checked_out_at'            => $record?->checked_out_at,
+                'check_out_distance_meters' => $record?->check_out_distance_meters,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/staff-attendance/check-out
+     */
+    public function checkOut(Request $request): JsonResponse
+    {
+        $request->validate([
+            'latitude'  => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'device_id' => 'nullable|string|max:255',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Cek sudah absen masuk hari ini
+        $record = StaffAttendance::where('user_id', $user->id)
+            ->whereDate('date', today())
+            ->first();
+
+        if (!$record) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Anda belum absen masuk hari ini.',
+                'error_code' => 'NO_CHECK_IN',
+            ], 422);
+        }
+
+        // 2. Cek belum absen pulang hari ini
+        if ($record->checked_out_at !== null) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Anda sudah absen pulang hari ini pukul ' . $record->checked_out_at->format('H:i') . '.',
+                'error_code' => 'ALREADY_CHECKED_OUT',
+                'data'       => [
+                    'checked_out_at' => $record->checked_out_at,
+                ],
+            ], 422);
+        }
+
+        // 3. Cek window jam pulang (skip jika belum dikonfigurasi)
+        $window = SystemSetting::getStaffCheckOutWindow();
+        if ($window['start'] && $window['end']) {
+            $now   = now()->format('H:i');
+            $start = $window['start'];
+            $end   = $window['end'];
+            if ($now < $start || $now > $end) {
+                return response()->json([
+                    'success'    => false,
+                    'message'    => "Absen pulang hanya bisa dilakukan antara {$start} – {$end}.",
+                    'error_code' => 'OUTSIDE_CHECK_OUT_WINDOW',
+                ], 422);
+            }
+        }
+
+        // 4. Validasi GPS radius (sama pola barcodeCheckIn)
+        $lat       = $request->input('latitude');
+        $lng       = $request->input('longitude');
+        $coords    = SystemSetting::getSchoolCoordinates();
+        $schoolLat = $coords['latitude'];
+        $schoolLng = $coords['longitude'];
+
+        $distanceMeters = null;
+
+        if ($schoolLat !== null && $schoolLng !== null) {
+            $radius = SystemSetting::getStaffAttendanceRadius();
+
+            if ($lat !== null && $lng !== null) {
+                $distanceMeters = (int) round($this->haversineDistance(
+                    (float) $lat, (float) $lng, $schoolLat, $schoolLng
+                ));
+
+                if ($distanceMeters > $radius) {
+                    return response()->json([
+                        'success'         => false,
+                        'message'         => "Lokasi tidak valid. Anda berada {$distanceMeters} m dari sekolah (batas {$radius} m).",
+                        'error_code'      => 'LOCATION_INVALID',
+                        'distance_meters' => $distanceMeters,
+                    ], 422);
+                }
+            } else {
+                return response()->json([
+                    'success'    => false,
+                    'message'    => 'Absen pulang memerlukan izin GPS. Aktifkan lokasi di perangkat Anda lalu coba lagi.',
+                    'error_code' => 'GPS_REQUIRED',
+                ], 422);
+            }
+        }
+
+        // 5. Simpan ke record yang sudah ada
+        $record->update([
+            'checked_out_at'            => now(),
+            'check_out_latitude'        => $lat,
+            'check_out_longitude'       => $lng,
+            'check_out_ip'              => $request->ip(),
+            'check_out_distance_meters' => $distanceMeters,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Absen pulang berhasil dicatat!',
+            'data'    => [
+                'checked_out_at'            => $record->checked_out_at,
+                'distance_meters'           => $distanceMeters,
             ],
         ]);
     }
@@ -211,6 +320,7 @@ class StaffAttendanceController extends Controller
                 'role'             => $u->role,
                 'has_checked_in'   => $att !== null,
                 'checked_in_at'    => $att?->checked_in_at?->toIso8601String(),
+                'checked_out_at'   => $att?->checked_out_at?->toIso8601String(),
                 'location_method'  => $att?->location_method,
                 'is_location_valid' => $att?->is_location_valid,
             ];
@@ -268,7 +378,7 @@ class StaffAttendanceController extends Controller
         $callback = function () use ($users, $attendances, $date) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM for Excel
-            fputcsv($out, ['No', 'Nama', 'NIP', 'Jabatan', 'Role', 'Tanggal', 'Jam Masuk', 'Metode Lokasi', 'Status']);
+            fputcsv($out, ['No', 'Nama', 'NIP', 'Jabatan', 'Role', 'Tanggal', 'Jam Masuk', 'Jam Pulang', 'Metode Lokasi', 'Status']);
 
             $i = 1;
             foreach ($users as $u) {
@@ -282,6 +392,7 @@ class StaffAttendanceController extends Controller
                     $u->role === 'guru' ? 'Guru' : 'Staff',
                     $date,
                     $att?->checked_in_at?->format('H:i:s') ?? '-',
+                    $att?->checked_out_at?->format('H:i:s') ?? '-',
                     $att?->location_method ?? '-',
                     $status,
                 ]);
@@ -298,8 +409,9 @@ class StaffAttendanceController extends Controller
      */
     public function getSettings(Request $request): JsonResponse
     {
-        $coords = SystemSetting::getSchoolCoordinates();
-        $window = SystemSetting::getStaffCheckInWindow();
+        $coords         = SystemSetting::getSchoolCoordinates();
+        $window         = SystemSetting::getStaffCheckInWindow();
+        $checkOutWindow = SystemSetting::getStaffCheckOutWindow();
 
         return response()->json([
             'success' => true,
@@ -309,6 +421,8 @@ class StaffAttendanceController extends Controller
                 'radius_meters'     => SystemSetting::getStaffAttendanceRadius(),
                 'check_in_start'    => $window['start'] ?? '06:00',
                 'check_in_end'      => $window['end']   ?? '09:00',
+                'check_out_start'   => $checkOutWindow['start'] ?? '13:00',
+                'check_out_end'     => $checkOutWindow['end']   ?? '18:00',
             ],
         ]);
     }
@@ -324,6 +438,8 @@ class StaffAttendanceController extends Controller
             'radius_meters'    => 'nullable|integer|min:50|max:5000',
             'check_in_start'   => 'nullable|date_format:H:i',
             'check_in_end'     => 'nullable|date_format:H:i|after:check_in_start',
+            'check_out_start'  => 'nullable|date_format:H:i',
+            'check_out_end'    => 'nullable|date_format:H:i|after:check_out_start',
         ]);
 
         SystemSetting::setStaffAttendanceSettings([
@@ -332,6 +448,8 @@ class StaffAttendanceController extends Controller
             'radius_meters'    => $request->input('radius_meters'),
             'check_in_start'   => $request->input('check_in_start'),
             'check_in_end'     => $request->input('check_in_end'),
+            'check_out_start'  => $request->input('check_out_start'),
+            'check_out_end'    => $request->input('check_out_end'),
         ]);
 
         return response()->json([

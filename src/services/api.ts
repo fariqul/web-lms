@@ -1361,6 +1361,9 @@ export const staffAttendanceAPI = {
       location_method: 'gps' | 'manual' | 'barcode' | null;
       is_location_valid: boolean;
       distance_meters: number | null;
+      has_checked_out: boolean;
+      checked_out_at: string | null;
+      check_out_distance_meters: number | null;
     };
   }>('/staff-attendance/today'),
 
@@ -1384,6 +1387,8 @@ export const staffAttendanceAPI = {
       radius_meters: number;
       check_in_start: string;
       check_in_end: string;
+      check_out_start: string;
+      check_out_end: string;
     };
   }>('/staff-attendance/settings'),
 
@@ -1394,6 +1399,8 @@ export const staffAttendanceAPI = {
     radius_meters?: number;
     check_in_start?: string;
     check_in_end?: string;
+    check_out_start?: string;
+    check_out_end?: string;
   }) => api.post('/staff-attendance/settings', data),
 
   /** Admin: ambil token barcode aktif (auto-generate jika belum ada) */
@@ -1405,4 +1412,12 @@ export const staffAttendanceAPI = {
     api.post<{ success: boolean; message: string; data: { barcode_token: string } }>(
       '/staff-attendance/barcode/regenerate'
     ),
+
+  /** Guru/staff: absen pulang via GPS */
+  checkOut: (data: { latitude: number; longitude: number; device_id?: string }) =>
+    api.post<{
+      success: boolean;
+      message: string;
+      data?: { checked_out_at: string; distance_meters: number | null };
+    }>('/staff-attendance/check-out', data),
 };

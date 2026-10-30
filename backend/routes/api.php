@@ -301,6 +301,7 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/staff-attendance/history', [StaffAttendanceController::class, 'myHistory']);
         // Barcode check-in — no GPS required
         Route::post('/staff-attendance/barcode/check-in', [StaffAttendanceController::class, 'barcodeCheckIn']);
+        Route::post('/staff-attendance/check-out', [StaffAttendanceController::class, 'checkOut']);
     });
 
     // ============================================

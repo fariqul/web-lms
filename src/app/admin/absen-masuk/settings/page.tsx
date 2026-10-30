@@ -13,6 +13,8 @@ interface Settings {
   radius_meters: number;
   check_in_start: string;
   check_in_end: string;
+  check_out_start: string;
+  check_out_end: string;
 }
 
 export default function AbsenMasukSettingsPage() {
@@ -24,6 +26,8 @@ export default function AbsenMasukSettingsPage() {
     radius_meters:    200,
     check_in_start:   '06:00',
     check_in_end:     '09:00',
+    check_out_start:  '13:00',
+    check_out_end:    '17:00',
   });
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -40,6 +44,8 @@ export default function AbsenMasukSettingsPage() {
             radius_meters:    d.radius_meters ?? 200,
             check_in_start:   d.check_in_start ?? '06:00',
             check_in_end:     d.check_in_end ?? '09:00',
+            check_out_start:  d.check_out_start ?? '13:00',
+            check_out_end:    d.check_out_end ?? '17:00',
           });
         }
       })
@@ -57,6 +63,8 @@ export default function AbsenMasukSettingsPage() {
         radius_meters:    form.radius_meters,
         check_in_start:   form.check_in_start,
         check_in_end:     form.check_in_end,
+        check_out_start:  form.check_out_start,
+        check_out_end:    form.check_out_end,
       });
       toast.success('Pengaturan berhasil disimpan!');
     } catch {
@@ -186,6 +194,34 @@ export default function AbsenMasukSettingsPage() {
               </div>
               <p className="text-xs text-slate-400">
                 Di luar rentang jam ini, absen masuk akan ditolak. Kosongkan/tidak diset = tidak ada batasan jam.
+              </p>
+            </div>
+
+            {/* Jam absen pulang */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Jam Absen Pulang</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jam Mulai Pulang</label>
+                  <input
+                    type="time"
+                    value={form.check_out_start}
+                    onChange={e => setForm(f => ({ ...f, check_out_start: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jam Akhir Pulang</label>
+                  <input
+                    type="time"
+                    value={form.check_out_end}
+                    onChange={e => setForm(f => ({ ...f, check_out_end: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-400">
+                Di luar rentang jam ini, absen pulang akan ditolak. Kosongkan/tidak diset = tidak ada batasan jam.
               </p>
             </div>
 
