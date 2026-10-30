@@ -357,7 +357,6 @@ class StaffAttendanceController extends Controller
 
         return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
-}
 
 
     // ─── Barcode endpoints ────────────────────────────────────────────────────
@@ -521,3 +520,4 @@ class StaffAttendanceController extends Controller
             'data'    => ['barcode_token' => $newToken],
         ]);
     }
+}
