@@ -8,6 +8,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class StaffAttendanceController extends Controller
 {
@@ -358,3 +359,165 @@ class StaffAttendanceController extends Controller
     }
 }
 
+
+    // ─── Barcode endpoints ────────────────────────────────────────────────────
+
+    /**
+     * POST /api/staff-attendance/barcode/check-in
+     * Guru/staff submit token barcode yang discan.
+     * Tetap validasi lokasi GPS atau IP jaringan sekolah.
+     */
+    public function barcodeCheckIn(Request $request): JsonResponse
+    {
+        $request->validate([
+            'barcode_token' => 'required|string',
+            'device_id'     => 'nullable|string|max:255',
+            'latitude'      => 'nullable|numeric|between:-90,90',
+            'longitude'     => 'nullable|numeric|between:-180,180',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Validasi token barcode
+        $validToken = SystemSetting::getStaffAttendanceBarcodeToken();
+
+        if (!$validToken) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Barcode absen belum dibuat. Hubungi admin.',
+                'error_code' => 'BARCODE_NOT_CONFIGURED',
+            ], 422);
+        }
+
+        if ($request->input('barcode_token') !== $validToken) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Barcode tidak valid atau sudah diganti oleh admin.',
+                'error_code' => 'BARCODE_INVALID',
+            ], 422);
+        }
+
+        // 2. Validasi lokasi GPS (sama seperti checkIn GPS)
+        $lat       = $request->input('latitude');
+        $lng       = $request->input('longitude');
+        $coords    = SystemSetting::getSchoolCoordinates();
+        $schoolLat = $coords['latitude'];
+        $schoolLng = $coords['longitude'];
+
+        $distanceMeters = null;
+
+        if ($schoolLat !== null && $schoolLng !== null) {
+            $radius = SystemSetting::getStaffAttendanceRadius();
+
+            if ($lat !== null && $lng !== null) {
+                $distanceMeters = (int) round($this->haversineDistance(
+                    (float) $lat, (float) $lng, $schoolLat, $schoolLng
+                ));
+
+                if ($distanceMeters > $radius) {
+                    return response()->json([
+                        'success'         => false,
+                        'message'         => "Lokasi tidak valid. Anda berada {$distanceMeters} m dari sekolah (batas {$radius} m).",
+                        'error_code'      => 'LOCATION_INVALID',
+                        'distance_meters' => $distanceMeters,
+                    ], 422);
+                }
+            } else {
+                // GPS tidak tersedia — tolak
+                return response()->json([
+                    'success'    => false,
+                    'message'    => 'Absen masuk memerlukan izin GPS. Aktifkan lokasi di perangkat Anda lalu coba lagi.',
+                    'error_code' => 'GPS_REQUIRED',
+                ], 422);
+            }
+        }
+
+        // 3. Sudah absen hari ini?
+        $existing = StaffAttendance::where('user_id', $user->id)
+            ->whereDate('date', today())
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Anda sudah absen masuk hari ini pukul ' . $existing->checked_in_at?->format('H:i') . '.',
+                'error_code' => 'ALREADY_CHECKED_IN',
+                'data'       => [
+                    'checked_in_at'   => $existing->checked_in_at,
+                    'location_method' => $existing->location_method,
+                ],
+            ], 422);
+        }
+
+        // 4. Cek window jam masuk
+        $window = SystemSetting::getStaffCheckInWindow();
+        if ($window['start'] && $window['end']) {
+            $now = now()->format('H:i');
+            if ($now < $window['start'] || $now > $window['end']) {
+                return response()->json([
+                    'success'    => false,
+                    'message'    => "Absen masuk hanya bisa dilakukan antara {$window['start']} – {$window['end']}.",
+                    'error_code' => 'OUTSIDE_CHECK_IN_WINDOW',
+                ], 422);
+            }
+        }
+
+        // 5. Simpan
+        $record = StaffAttendance::create([
+            'user_id'           => $user->id,
+            'date'              => today(),
+            'checked_in_at'     => now(),
+            'latitude'          => $lat,
+            'longitude'         => $lng,
+            'ip_address'        => $request->ip(),
+            'location_method'   => 'barcode',
+            'is_location_valid' => true,
+            'distance_meters'   => $distanceMeters,
+            'device_id'         => $request->input('device_id'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Absen masuk berhasil dicatat!',
+            'data'    => [
+                'checked_in_at'   => $record->checked_in_at,
+                'location_method' => $record->location_method,
+                'distance_meters' => $record->distance_meters,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/staff-attendance/barcode
+     * Admin ambil token aktif. Auto-generate jika belum ada.
+     */
+    public function getBarcodeToken(Request $request): JsonResponse
+    {
+        $token = SystemSetting::getStaffAttendanceBarcodeToken();
+
+        if (!$token) {
+            $token = (string) Str::uuid();
+            SystemSetting::setStaffAttendanceBarcodeToken($token);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => ['barcode_token' => $token],
+        ]);
+    }
+
+    /**
+     * POST /api/staff-attendance/barcode/regenerate
+     * Admin buat barcode baru — token lama langsung invalid.
+     */
+    public function regenerateBarcode(Request $request): JsonResponse
+    {
+        $newToken = (string) Str::uuid();
+        SystemSetting::setStaffAttendanceBarcodeToken($newToken);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barcode baru berhasil dibuat. Barcode lama tidak berlaku lagi.',
+            'data'    => ['barcode_token' => $newToken],
+        ]);
+    }

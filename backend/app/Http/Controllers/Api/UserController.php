@@ -159,7 +159,7 @@ class UserController extends Controller
                 'min:8',
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/', // At least 1 lowercase, 1 uppercase, 1 number
             ],
-            'role' => 'required|in:admin,guru,siswa',
+            'role' => 'required|in:admin,guru,siswa,staff',
             'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => 'nullable|string|unique:users',
             'nis' => 'nullable|string',
@@ -237,7 +237,7 @@ class UserController extends Controller
                 'min:8',
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
             ],
-            'role' => 'sometimes|in:admin,guru,siswa',
+            'role' => 'sometimes|in:admin,guru,siswa,staff',
             'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)],
             'nis' => 'nullable|string',
@@ -584,7 +584,7 @@ class UserController extends Controller
     {
         $request->validate([
             'format' => 'nullable|in:xlsx,csv',
-            'role' => 'nullable|in:admin,guru,siswa',
+            'role' => 'nullable|in:admin,guru,siswa,staff',
             'class_id' => 'nullable|exists:classes,id',
         ]);
 
@@ -1287,7 +1287,7 @@ class UserController extends Controller
         $validator = Validator::make($payload, [
             'name' => 'required|string|max:255',
             'email' => ['required', 'email'],
-            'role' => 'required|in:admin,guru,siswa',
+            'role' => 'required|in:admin,guru,siswa,staff',
             'jenis_kelamin' => 'nullable|in:L,P',
             'nisn' => 'nullable|string|max:255',
             'nis' => 'nullable|string|max:255',

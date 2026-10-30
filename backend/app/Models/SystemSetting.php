@@ -20,6 +20,7 @@ class SystemSetting extends Model
     public const STAFF_ATTENDANCE_RADIUS_KEY        = 'staff_attendance_radius_meters';
     public const STAFF_CHECKIN_START_KEY            = 'staff_attendance_check_in_start';
     public const STAFF_CHECKIN_END_KEY              = 'staff_attendance_check_in_end';
+    public const STAFF_ATTENDANCE_BARCODE_KEY       = 'staff_attendance_barcode_token';
 
     protected $fillable = [
         'setting_key',
@@ -372,5 +373,42 @@ class SystemSetting extends Model
             }
             Cache::forever(self::cacheKey(self::STAFF_CHECKIN_END_KEY), $value);
         }
+    }
+
+    /**
+     * Get the current staff attendance barcode token.
+     * Returns null if no barcode has been generated yet.
+     */
+    public static function getStaffAttendanceBarcodeToken(): ?string
+    {
+        return Cache::rememberForever(self::cacheKey(self::STAFF_ATTENDANCE_BARCODE_KEY), function () {
+            try {
+                return self::query()
+                    ->where('setting_key', self::STAFF_ATTENDANCE_BARCODE_KEY)
+                    ->value('setting_value');
+            } catch (\Throwable $e) {
+                Log::warning('SystemSetting read failed for staff barcode token: ' . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Persist a new barcode token. Flushes cache so old token is immediately invalid.
+     */
+    public static function setStaffAttendanceBarcodeToken(string $token): void
+    {
+        Cache::forget(self::cacheKey(self::STAFF_ATTENDANCE_BARCODE_KEY));
+
+        try {
+            self::updateOrCreate(
+                ['setting_key' => self::STAFF_ATTENDANCE_BARCODE_KEY],
+                ['setting_value' => $token]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('SystemSetting write failed for staff barcode token: ' . $e->getMessage());
+        }
+
+        Cache::forever(self::cacheKey(self::STAFF_ATTENDANCE_BARCODE_KEY), $token);
     }
 }

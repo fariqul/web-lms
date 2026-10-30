@@ -1322,7 +1322,20 @@ export const graduationAPI = {
 
 // ─── Absen Masuk — Staff & Guru ──────────────────────────────────────────────
 export const staffAttendanceAPI = {
-  /** Guru/staff: tap absen masuk */
+  /** Guru/staff: absen via scan barcode */
+  barcodeCheckIn: (data: {
+    barcode_token: string;
+    device_id?: string;
+    latitude?: number;
+    longitude?: number;
+  }) =>
+    api.post<{
+      success: boolean;
+      message: string;
+      data?: { checked_in_at: string; location_method: string };
+    }>('/staff-attendance/barcode/check-in', data),
+
+  /** Guru/staff: tap absen masuk via GPS (legacy, masih tersedia) */
   checkIn: (data: {
     latitude?: number;
     longitude?: number;
@@ -1345,7 +1358,7 @@ export const staffAttendanceAPI = {
     data: {
       has_checked_in: boolean;
       checked_in_at: string | null;
-      location_method: 'gps' | 'manual' | null;
+      location_method: 'gps' | 'manual' | 'barcode' | null;
       is_location_valid: boolean;
       distance_meters: number | null;
     };
@@ -1382,4 +1395,14 @@ export const staffAttendanceAPI = {
     check_in_start?: string;
     check_in_end?: string;
   }) => api.post('/staff-attendance/settings', data),
+
+  /** Admin: ambil token barcode aktif (auto-generate jika belum ada) */
+  getBarcodeToken: () =>
+    api.get<{ success: boolean; data: { barcode_token: string } }>('/staff-attendance/barcode'),
+
+  /** Admin: generate barcode baru (token lama langsung invalid) */
+  regenerateBarcode: () =>
+    api.post<{ success: boolean; message: string; data: { barcode_token: string } }>(
+      '/staff-attendance/barcode/regenerate'
+    ),
 };

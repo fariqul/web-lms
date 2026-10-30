@@ -1,34 +1,166 @@
 {
-  "project_type": "Monorepo: Laravel 11 backend (PHP 8.2, Sanctum auth, MySQL in Docker prod / SQLite in tests) + Next.js 14 app-router frontend (TypeScript, Tailwind, lucide-react icons).",
-  "language": "PHP 8.2 (backend), TypeScript (frontend)",
-  "build_system": "Composer (backend) + npm/next (frontend). Backend lives in backend/ (run commands from there); frontend package.json is at repo root. Backend runs in Docker container lms-backend in production.",
-  "test_framework": "PHPUnit 11 (backend, tests use RefreshDatabase + Laravel\\Sanctum Sanctum::actingAs). No frontend test framework.",
-  "build_command": "Frontend: `npm run build` from repo root. Backend has no compile step — `php -l <file>` for syntax.",
-  "test_command": "Backend: `php artisan test` (or `composer test`) from backend/. Migrations: `php artisan migrate` from backend/.",
-  "verification_instructions": "Backend: run `php -l <path>` on each new/modified PHP file for syntax; run `php artisan migrate` to confirm migrations apply idempotently; run `php artisan test` to confirm no regression in the existing suite (do NOT expect new tests unless you add them). Frontend: run `npm run build` (type-checks + compiles all pages) and `npm run lint` from repo root; both must be clean.",
-  "snapshot_or_generated_files": null,
-  "environment_constraints": "Windows host, PowerShell (use ';' not '&&' to chain commands). Production is a Docker container (lms-backend) — never restart the prod server. ENUM ALTER statements are MySQL/MariaDB-only and MUST be guarded by a supportsAlterModify() helper that checks DB::connection()->getDriverName() in ['mysql','mariadb']; the test suite uses SQLite and silently skips the ALTER, which is fine.",
-  "contribution_requirements": "No AGENTS.md/CONTRIBUTING.md present. Follow existing code conventions: anonymous-class migrations with idempotency guards; SystemSetting uses Cache::rememberForever getters + updateOrCreate/Cache::forever setters with try/catch fail-safes; controllers extend App\\Http\\Controllers\\Controller and return response()->json(['success'=>true,...]); routes grouped by role via Route::middleware('role:...')->group(...). Never change RoleMiddleware (handles multi-role via in_array already) or existing AttendanceController logic.",
-  "key_patterns": "Migrations: `private function supportsAlterModify(): bool { return in_array(DB::connection()->getDriverName(), ['mysql','mariadb'], true); }`; guard ENUM ALTER with `if ($this->supportsAlterModify() && Schema::hasColumn($table,$col))`; guard column adds with `if (!Schema::hasColumn($table,$col))`. Models: protected $fillable array + protected function casts(): array returning ['col'=>'type']; belongsTo/hasMany relations; role helpers isAdmin()/isGuru()/isSiswa() (add isStaff() alongside). SystemSetting: `public const X_KEY='...'`; getter `Cache::rememberForever(self::cacheKey(KEY), fn() => try{...}catch{fail-safe default})`; setter `self::updateOrCreate(['setting_key'=>KEY],['setting_value'=>val]); Cache::forever(...)`. Controller: `$request->validate([...])`; `$request->user()`; private getRealClientIp(Request) reads X-Forwarded-For/X-Real-IP when request IP is private; returns JSON with 'success' bool. Frontend api.ts: named exports `export const xxxAPI = {...}` using shared `api` axios instance; pages are 'use client' default exports wrapped in <DashboardLayout>; UI from '@/components/ui' (Card, CardHeader, Button); device_id from localStorage (btoa([userAgent,language,screen,timezoneOffset].join('|')).slice(0,32)).",
-  "relevant_files": [
-    "backend/database/migrations/0001_01_01_000000_create_users_table.php",
-    "backend/database/migrations/2026_02_27_000001_alter_bank_questions_grade_level_add_semua.php",
-    "backend/database/migrations/2025_01_20_000003_fix_exam_monitoring_schema.php",
-    "backend/database/migrations/2026_03_02_100000_add_nomor_tes_to_users_table.php",
-    "backend/app/Models/User.php",
-    "backend/app/Models/SystemSetting.php",
-    "backend/app/Models/SchoolNetworkSetting.php",
-    "backend/app/Models/StaffAttendance.php",
-    "backend/app/Models/StaffAttendanceSchedule.php",
-    "backend/app/Http/Controllers/Api/AttendanceController.php",
-    "backend/app/Http/Controllers/Api/StaffAttendanceController.php",
-    "backend/routes/api.php",
-    "src/services/api.ts",
-    "src/components/layouts/DashboardLayout.tsx",
-    "src/app/scan-qr/page.tsx",
-    "src/app/absen-masuk/page.tsx",
-    "src/app/admin/absen-masuk/page.tsx",
-    "src/app/admin/absen-masuk/settings/page.tsx"
+  "qr_library": {
+    "scan_library": "jsqr@1.4.0",
+    "display_library": "qrcode.react@4.2.0",
+    "notes": "jsqr sudah ada di package.json (dependencies) dan dipakai di scan-qr/page.tsx via dynamic import('jsqr'). qrcode.react juga sudah ada — dipakai di sisi lain (student QR session). TIDAK perlu install library baru untuk fitur barcode guru: pakai jsqr untuk scan + qrcode.react untuk display barcode admin. html5-qrcode juga ada di .next/dev cache tapi TIDAK ada di package.json — kemungkinan sisa build lama, jangan andalkan."
+  },
+
+  "scan_flow_summary": {
+    "source_file": "src/app/scan-qr/page.tsx",
+    "pattern": "Video element → requestAnimationFrame loop → jsQR decode imageData dari canvas → jika QR ditemukan, POST ke /api/attendance/submit dengan { qr_token, device_id }",
+    "camera_setup": "navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 1280, height: 720 } }) → srcObject pada <video> → onloadedmetadata → play() → startScanLoop()",
+    "scan_loop": "canvas.getContext('2d', { willReadFrequently: true }) → drawImage(video) → ctx.getImageData → jsQR(data, width, height, { inversionAttempts: 'dontInvert' }) → jika code.data ditemukan, panggil handleScanQR",
+    "submit_endpoint": "POST /api/attendance/submit (siswa) — untuk guru akan pakai POST /api/staff-attendance/check-in",
+    "guard": "isProcessingRef.current mencegah double-submit selama satu scan diproses",
+    "manual_fallback": "Input text manual token juga tersedia sebagai fallback",
+    "camera_switch": "Button ganti antara 'environment' (rear) dan 'user' (front) camera",
+    "key_refs": ["videoRef", "canvasRef", "streamRef", "animationRef", "isProcessingRef", "isMountedRef"]
+  },
+
+  "system_setting_pattern": {
+    "source_file": "backend/app/Models/SystemSetting.php",
+    "pattern": "updateOrCreate(['setting_key' => KEY], ['setting_value' => VALUE]) + Cache::forever(cacheKey, parsedValue)",
+    "read_pattern": "Cache::rememberForever(cacheKey, fn() => query->where('setting_key', KEY)->value('setting_value')) dengan try/catch fallback",
+    "existing_string_example": "STAFF_CHECKIN_START_KEY → value disimpan sebagai plain string (format 'H:i'), getter return ?string",
+    "barcode_token_fit": "SANGAT cocok — cukup tambah konstanta baru STAFF_ATTENDANCE_BARCODE_KEY = 'staff_attendance_barcode_token' dan dua method getStaffAttendanceBarcodeToken(): ?string + setStaffAttendanceBarcodeToken(string $token): void mengikuti pola yang persis sama dengan getGraduationAnnouncementDatetime/setGraduationAnnouncementDatetime",
+    "cache_invalidation": "Saat admin ganti barcode: Cache::forget(cacheKey) lalu simpan via updateOrCreate → barcode lama otomatis invalid di request berikutnya"
+  },
+
+  "staff_attendance_columns": {
+    "source_file": "backend/database/migrations/2026_10_01_000003_create_staff_attendances_table.php",
+    "existing_columns": [
+      "id",
+      "user_id (FK users)",
+      "date (DATE, unique per user)",
+      "checked_in_at (TIMESTAMP nullable)",
+      "latitude (DECIMAL 10,7 nullable)",
+      "longitude (DECIMAL 10,7 nullable)",
+      "ip_address (STRING nullable)",
+      "location_method (ENUM: gps|manual, default manual)",
+      "is_location_valid (BOOLEAN default false)",
+      "distance_meters (INT nullable)",
+      "device_id (STRING nullable)",
+      "notes (TEXT nullable)",
+      "created_at, updated_at"
+    ],
+    "migration_decision": "TIDAK perlu migration baru. Alasan: (1) latitude/longitude tetap dipertahankan — bisa diisi null untuk barcode flow, tidak ada overhead; (2) location_method enum saat ini 'gps'|'manual' — perlu ditambah value 'barcode', ATAU bisa pakai nilai 'manual' untuk barcode flow dan bedakan dari notes/device_id. Rekomendasi: tambah migration ALTER TABLE untuk tambah 'barcode' ke enum location_method agar data bersih dan bisa difilter di admin rekap. (3) is_location_valid di barcode flow selalu true (barcode sah = lokasi valid secara konseptual). (4) distance_meters null untuk barcode flow.",
+    "migration_needed": true,
+    "migration_detail": "Buat migration baru: ALTER TABLE staff_attendances MODIFY COLUMN location_method ENUM('gps','manual','barcode') DEFAULT 'manual'. Di Laravel: $table->enum tidak bisa ALTER langsung — pakai DB::statement(\"ALTER TABLE staff_attendances MODIFY COLUMN location_method ENUM('gps','manual','barcode') DEFAULT 'manual'\").",
+    "columns_to_keep": "Semua kolom tetap dipertahankan (latitude/longitude bisa null, tidak perlu hapus — backward compatible dengan data GPS lama dan tidak ada biaya storage signifikan)"
+  },
+
+  "existing_endpoints": {
+    "self_checkin": "POST /api/staff-attendance/check-in — roles: guru, staff, admin",
+    "today_status": "GET /api/staff-attendance/today — roles: guru, staff, admin",
+    "history": "GET /api/staff-attendance/history — roles: guru, staff, admin",
+    "admin_index": "GET /api/staff-attendance — role: admin only",
+    "admin_export": "GET /api/staff-attendance/export — role: admin only",
+    "admin_get_settings": "GET /api/staff-attendance/settings — role: admin only",
+    "admin_update_settings": "POST /api/staff-attendance/settings — role: admin only",
+    "new_endpoints_needed": [
+      "POST /api/staff-attendance/barcode/check-in — validasi token barcode, simpan record (roles: guru, staff, admin) — GANTIKAN alur GPS di checkIn()",
+      "GET /api/staff-attendance/barcode — admin get current barcode token (role: admin)",
+      "POST /api/staff-attendance/barcode/regenerate — admin buat barcode baru, invalidasi lama (role: admin)"
+    ]
+  },
+
+  "pages_to_create": [
+    {
+      "path": "src/app/absen-masuk/page.tsx",
+      "action": "REPLACE (file sudah ada, kontennya diganti total)",
+      "description": "Halaman absen masuk guru/staff — ganti dari tombol GPS ke scan barcode. Pola identik dengan scan-qr/page.tsx: video + canvas + jsQR loop. Submit ke POST /api/staff-attendance/barcode/check-in dengan { barcode_token: qrData }. Tampilkan status sudah/belum absen + riwayat 7 hari.",
+      "notes": "Hapus semua logic GPS (getLocation, haversine, GPS_PERMISSION_DENIED, GPS_REQUIRED handling). Pertahankan manual token fallback, kamera switch button, isProcessingRef guard."
+    },
+    {
+      "path": "src/app/admin/absen-masuk/barcode/page.tsx",
+      "action": "CREATE NEW",
+      "description": "Halaman display barcode admin — tampilkan QR code besar (fullscreen option) menggunakan qrcode.react <QRCodeSVG>. Tombol: Fullscreen, Print, Regenerate Barcode (dengan konfirmasi). Fetch current token dari GET /api/staff-attendance/barcode. Regenerate panggil POST /api/staff-attendance/barcode/regenerate."
+    },
+    {
+      "path": "src/app/admin/absen-masuk/barcode/print/page.tsx",
+      "action": "CREATE NEW (opsional, bisa pakai window.print() langsung dari halaman barcode)",
+      "description": "Halaman print khusus — layout print-friendly, tanpa sidebar. Tampilkan QR code + nama sekolah + instruksi scan. Gunakan CSS @media print. ALTERNATIF: cukup tambahkan print CSS di halaman barcode utama dan panggil window.print() — lebih sederhana, tidak perlu halaman terpisah.",
+      "recommendation": "Cukup gunakan window.print() di halaman barcode/page.tsx dengan style @media print, TIDAK perlu halaman print terpisah"
+    }
   ],
-  "directory_structure": "backend/ = Laravel app (app/Models, app/Http/Controllers/Api, routes/api.php, database/migrations, tests/Feature + tests/Unit). src/ = Next.js app router (src/app/<route>/page.tsx; src/app/admin/* for admin pages). src/services/api.ts = single axios-based API client with named exports. src/components/layouts/DashboardLayout.tsx = sidebar nav (navigation: NavItem[] with roles: string[]). src/components/ui = shared Card/Button primitives. Full plan at d:/project-amsp/.agents/tasks/absen-masuk-2026-10-13/plan.md."
+
+  "pages_to_modify": [
+    {
+      "path": "src/app/absen-masuk/page.tsx",
+      "changes": "Ganti total — hapus GPS logic, ganti handleCheckIn() dengan scan flow barcode (mengadopsi pola dari scan-qr/page.tsx). Update TodayStatus interface: hapus location_method/is_location_valid/distance_meters atau biarkan tapi tidak tampilkan GPS-specific info. Update staffAttendanceAPI.checkIn() type untuk menerima barcode_token."
+    },
+    {
+      "path": "src/app/admin/absen-masuk/page.tsx",
+      "changes": "Minor — kolom 'Metode Lokasi' di tabel rekap perlu handle nilai 'barcode' baru selain 'gps'/'manual'. Tambah link/button ke halaman display barcode. locationLabel() dan locationIcon() perlu case 'barcode'."
+    },
+    {
+      "path": "src/services/api.ts",
+      "changes": "staffAttendanceAPI: (1) update checkIn() type — hapus latitude/longitude, tambah barcode_token: string; (2) tambah getBarcodeToken() → GET /staff-attendance/barcode; (3) tambah regenerateBarcode() → POST /staff-attendance/barcode/regenerate"
+    },
+    {
+      "path": "src/components/layouts/DashboardLayout.tsx",
+      "changes": "Tambah nav item 'Display Barcode' dengan href '/admin/absen-masuk/barcode' dan icon QrCode, roles: ['admin']. Letakkan setelah 'Absen Masuk Pegawai' di navigation array."
+    },
+    {
+      "path": "backend/app/Models/SystemSetting.php",
+      "changes": "Tambah konstanta STAFF_ATTENDANCE_BARCODE_KEY = 'staff_attendance_barcode_token'. Tambah method getStaffAttendanceBarcodeToken(): ?string dan setStaffAttendanceBarcodeToken(string $token): void mengikuti pola getGraduationAnnouncementDatetime/setGraduationAnnouncementDatetime."
+    },
+    {
+      "path": "backend/app/Http/Controllers/Api/StaffAttendanceController.php",
+      "changes": "Tambah 3 method baru: (1) barcodeCheckIn() — validasi barcode_token vs SystemSetting, simpan record dengan location_method='barcode'; (2) getBarcodeToken() — admin get token; (3) regenerateBarcode() — admin generate Str::uuid(), simpan via SystemSetting, return token baru. Update existing checkIn() atau biarkan untuk backward compat (GPS flow tidak dihapus di backend, hanya frontend yang ganti)."
+    },
+    {
+      "path": "backend/routes/api.php",
+      "changes": "Di blok admin: tambah GET /staff-attendance/barcode dan POST /staff-attendance/barcode/regenerate. Di blok guru,staff,admin: tambah POST /staff-attendance/barcode/check-in. PERHATIKAN urutan literal route sebelum wildcard — tambahkan SEBELUM Route::get('/staff-attendance', ...) di blok admin."
+    }
+  ],
+
+  "migration_needed": {
+    "required": true,
+    "reason": "location_method ENUM saat ini hanya 'gps'|'manual', perlu tambah 'barcode' untuk identifikasi data absen via barcode flow",
+    "file": "backend/database/migrations/YYYY_MM_DD_HHMMSS_add_barcode_to_staff_attendance_location_method.php",
+    "sql_change": "ALTER TABLE staff_attendances MODIFY COLUMN location_method ENUM('gps','manual','barcode') DEFAULT 'manual'",
+    "laravel_syntax": "DB::statement(\"ALTER TABLE staff_attendances MODIFY COLUMN location_method ENUM('gps', 'manual', 'barcode') DEFAULT 'manual'\")",
+    "rollback": "DB::statement(\"ALTER TABLE staff_attendances MODIFY COLUMN location_method ENUM('gps', 'manual') DEFAULT 'manual'\")",
+    "system_settings_migration": "Tidak perlu migration baru untuk system_settings — tabel sudah punya setting_key/setting_value (key-value store), cukup insert baris baru 'staff_attendance_barcode_token' saat pertama kali regenerate."
+  },
+
+  "notes": {
+    "barcode_token_design": "Token sebaiknya UUID v4 (Str::uuid()) disimpan sebagai plain string di SystemSetting. Barcode yang ditampilkan via qrcode.react akan encode string ini. Saat guru scan, frontend kirim string ini ke backend, backend compare dengan SystemSetting::getStaffAttendanceBarcodeToken(). Jika admin regenerate: SystemSetting flush cache lama, simpan UUID baru — semua request dengan token lama langsung 422.",
+    "no_expiry_implementation": "Karena tidak ada waktu habis, backend tidak perlu timestamp. Hanya perlu: (a) token ada di system_settings? (b) token yang dikirim == token tersimpan?",
+    "admin_display_barcode_page": "Gunakan qrcode.react <QRCodeSVG value={token} size={280} /> — sudah ada di package.json. Untuk fullscreen: document.documentElement.requestFullscreen(). Untuk print: window.print() dengan CSS @media print yang sembunyikan sidebar.",
+    "backward_compat_gps": "Tidak perlu hapus endpoint /staff-attendance/check-in lama. Backend bisa tetap ada GPS flow untuk keperluan lain. Frontend absen-masuk/page.tsx cukup diganti untuk pakai barcode flow.",
+    "admin_absen_masuk_rekap": "Kolom 'Metode Lokasi' di admin/absen-masuk/page.tsx perlu handle case 'barcode': tampilkan icon QrCode dengan label 'Barcode' — minor change di locationLabel() dan locationIcon() helper.",
+    "settings_page": "src/app/admin/absen-masuk/settings/page.tsx belum ada (Link ke '/admin/absen-masuk/settings' ada di admin/absen-masuk/page.tsx header tapi file belum dibuat). Ini bug existing yang bisa dihandle terpisah — untuk fitur barcode ini, buat halaman settings baru yang gabungkan: jam masuk, GPS settings, dan barcode management.",
+    "jsqr_vs_html5qrcode": "Pakai jsqr (sudah ada) bukan html5-qrcode. html5-qrcode ada di .next cache tapi tidak di package.json — kemungkinan pernah dicoba dan dihapus. jsqr lebih ringan dan cukup untuk decode QR code statis.",
+    "qrcode_react_usage": "import { QRCodeSVG } from 'qrcode.react' — package sudah ada di dependencies. Gunakan SVG bukan Canvas untuk print quality lebih baik.",
+    "existing_settings_link": "Admin page /admin/absen-masuk/page.tsx sudah ada Link ke '/admin/absen-masuk/settings' (baris Settings button) — halaman settings ini belum dibuat. Perlu dibuat sebagai bagian dari fitur ini atau sebagai halaman terpisah yang juga include barcode management."
+  },
+
+  "summary": {
+    "qr_scan_library": "jsqr (sudah ada di package.json, pola sudah ada di scan-qr/page.tsx)",
+    "qr_display_library": "qrcode.react (sudah ada di package.json)",
+    "system_setting_suitable": true,
+    "system_setting_approach": "Tambah konstanta + 2 method (get/set) ke SystemSetting.php, ikuti pola graduation datetime",
+    "migration_new_file_needed": true,
+    "migration_scope": "Hanya ALTER TABLE untuk tambah 'barcode' ke ENUM location_method",
+    "new_pages": [
+      "src/app/admin/absen-masuk/barcode/page.tsx (baru — display + regenerate barcode)"
+    ],
+    "modified_pages": [
+      "src/app/absen-masuk/page.tsx (ganti GPS dengan scan barcode flow)",
+      "src/app/admin/absen-masuk/page.tsx (minor — handle 'barcode' di metode kolom)",
+      "src/services/api.ts (update staffAttendanceAPI)",
+      "src/components/layouts/DashboardLayout.tsx (tambah nav item barcode admin)"
+    ],
+    "backend_files": [
+      "backend/app/Models/SystemSetting.php (tambah konstanta + get/set barcode token)",
+      "backend/app/Http/Controllers/Api/StaffAttendanceController.php (tambah 3 method barcode)",
+      "backend/routes/api.php (tambah 3 endpoint barcode)",
+      "backend/database/migrations/NEW_add_barcode_to_location_method.php"
+    ],
+    "total_new_backend_endpoints": 3,
+    "total_new_frontend_pages": 1,
+    "total_modified_pages": 4
+  }
 }

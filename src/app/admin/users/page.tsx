@@ -63,6 +63,7 @@ const roleOptions = [
   { value: 'siswa', label: 'Siswa' },
   { value: 'guru', label: 'Guru' },
   { value: 'admin', label: 'Admin' },
+  { value: 'staff', label: 'Staff / Pegawai' },
 ];
 
 function AdminUsersPageContent() {
@@ -1166,6 +1167,7 @@ function AdminUsersPageContent() {
               { value: 'siswa', label: 'Siswa' },
               { value: 'guru', label: 'Guru' },
               { value: 'admin', label: 'Admin' },
+              { value: 'staff', label: 'Staff / Pegawai' },
             ]}
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}

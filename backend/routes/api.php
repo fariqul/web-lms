@@ -221,6 +221,9 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::get('/staff-attendance/export', [StaffAttendanceController::class, 'adminExportCsv']);
         Route::get('/staff-attendance/settings', [StaffAttendanceController::class, 'getSettings']);
         Route::post('/staff-attendance/settings', [StaffAttendanceController::class, 'updateSettings']);
+        // ⚠️ Barcode literal routes BEFORE /staff-attendance wildcard
+        Route::get('/staff-attendance/barcode', [StaffAttendanceController::class, 'getBarcodeToken']);
+        Route::post('/staff-attendance/barcode/regenerate', [StaffAttendanceController::class, 'regenerateBarcode']);
         Route::get('/staff-attendance', [StaffAttendanceController::class, 'adminIndex']);
     });
 
@@ -296,6 +299,8 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/staff-attendance/check-in', [StaffAttendanceController::class, 'checkIn']);
         Route::get('/staff-attendance/today', [StaffAttendanceController::class, 'todayStatus']);
         Route::get('/staff-attendance/history', [StaffAttendanceController::class, 'myHistory']);
+        // Barcode check-in — no GPS required
+        Route::post('/staff-attendance/barcode/check-in', [StaffAttendanceController::class, 'barcodeCheckIn']);
     });
 
     // ============================================

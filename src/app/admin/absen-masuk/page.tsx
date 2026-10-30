@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Navigation,
   MapPin,
+  QrCode,
 } from 'lucide-react';
 
 interface StaffRow {
@@ -37,13 +38,15 @@ interface Summary {
 }
 
 const locationLabel = (method: string | null) => {
-  if (method === 'gps')    return 'GPS';
-  if (method === 'manual') return 'Manual';
+  if (method === 'gps')     return 'GPS';
+  if (method === 'barcode') return 'Barcode';
+  if (method === 'manual')  return 'Manual';
   return '-';
 };
 
 const locationIcon = (method: string | null) => {
-  if (method === 'gps') return <Navigation className="w-3.5 h-3.5 text-blue-500" />;
+  if (method === 'gps')     return <Navigation className="w-3.5 h-3.5 text-blue-500" />;
+  if (method === 'barcode') return <QrCode className="w-3.5 h-3.5 text-teal-500" />;
   return <MapPin className="w-3.5 h-3.5 text-slate-400" />;
 };
 
@@ -116,6 +119,12 @@ export default function AdminAbsenMasukPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Rekap kehadiran guru dan staff</p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/absen-masuk/barcode"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-teal-300 dark:border-teal-700 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-sm transition-colors"
+            >
+              <QrCode className="w-4 h-4" /> Barcode
+            </Link>
             <Link
               href="/admin/absen-masuk/settings"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm transition-colors"
