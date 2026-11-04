@@ -106,6 +106,7 @@ export default function ExamTakingPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [examNotFound, setExamNotFound] = useState(false);
   const [startingExam, setStartingExam] = useState(false);
+  const [clientConfig, setClientConfig] = useState<{ snapshot_interval_sec: number; anomaly_trigger_sec: number; anomaly_cooldown_sec: number } | null>(null);
   const autoSubmittedRef = React.useRef(false);
   // Work photo (foto cara kerja) state
   const [workPhotos, setWorkPhotos] = useState<Record<number, string>>({});
@@ -289,13 +290,15 @@ export default function ExamTakingPage() {
   // Cooldown must match POST_DETECTION_COOLDOWN_MS in useProctoring.ts (20 s)
   // so the two mechanisms don't double-send or leave a gap.
   const lastAnomalySnapshotRef = React.useRef<number>(0);
-  const ANOMALY_SNAPSHOT_COOLDOWN_MS = 20_000; // must equal POST_DETECTION_COOLDOWN_MS
+  const anomalyCooldownMs = (clientConfig?.anomaly_cooldown_sec ?? 20) * 1000;
 
   const proctoring = useProctoring({
     examId,
     videoRef,
     enabled: isStarted && isCameraActive,
     detectionInterval: 3000,
+    detectionIntervalMs: (clientConfig?.anomaly_trigger_sec ?? 3) * 1000,
+    cooldownMs: anomalyCooldownMs,
     onDetection: (detection: ProctoringDetection) => {
       // Show brief warning overlay
       if (detection.type === 'no_face' || detection.type === 'multi_face') {
@@ -304,7 +307,7 @@ export default function ExamTakingPage() {
 
         // Hybrid trigger: send snapshot immediately, respecting cooldown
         const now = Date.now();
-        if (now - lastAnomalySnapshotRef.current >= ANOMALY_SNAPSHOT_COOLDOWN_MS) {
+        if (now - lastAnomalySnapshotRef.current >= anomalyCooldownMs) {
           lastAnomalySnapshotRef.current = now;
           // Fire-and-forget — errors handled inside captureSnapshot
           void captureSnapshot();
@@ -621,6 +624,14 @@ export default function ExamTakingPage() {
               setTimeRemaining(remaining);
             }
             syncSnapshotMonitoringState(startData.snapshot_monitor_enabled);
+            // Extract client_config for proctoring params (fallback to defaults if absent)
+            if (startData.client_config) {
+              setClientConfig({
+                snapshot_interval_sec: startData.client_config.snapshot_interval_sec ?? 30,
+                anomaly_trigger_sec: startData.client_config.anomaly_trigger_sec ?? 3,
+                anomaly_cooldown_sec: startData.client_config.anomaly_cooldown_sec ?? 20,
+              });
+            }
             // Restore current question from sessionStorage
             const savedQ = sessionStorage.getItem(`exam_question_${examId}`);
             if (savedQ) setCurrentQuestion(Number(savedQ) || 0);
@@ -935,7 +946,7 @@ export default function ExamTakingPage() {
       if (document.hidden || snapshotCheck) return;
       snapshotCheck = setInterval(() => {
         void doSnapshot();
-      }, 30000);
+      }, (clientConfig?.snapshot_interval_sec ?? 30) * 1000);
 
       // First snapshot after 3s — give camera time to initialize
       firstTimer = setTimeout(() => {
@@ -960,7 +971,7 @@ export default function ExamTakingPage() {
       stopSnapshotPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isStarted, isCameraActive, snapshotMonitoringEnabled, captureSnapshot, syncSnapshotMonitoringState, toast]);
+  }, [isStarted, isCameraActive, snapshotMonitoringEnabled, captureSnapshot, syncSnapshotMonitoringState, toast, clientConfig]);
 
   const fetchExam = useCallback(async () => {
     try {
@@ -1156,6 +1167,15 @@ export default function ExamTakingPage() {
         }
 
         syncSnapshotMonitoringState(startData.snapshot_monitor_enabled);
+
+        // Extract client_config for proctoring params (fallback to defaults if absent)
+        if (startData.client_config) {
+          setClientConfig({
+            snapshot_interval_sec: startData.client_config.snapshot_interval_sec ?? 30,
+            anomaly_trigger_sec: startData.client_config.anomaly_trigger_sec ?? 3,
+            anomaly_cooldown_sec: startData.client_config.anomaly_cooldown_sec ?? 20,
+          });
+        }
       }
 
       // Camera will auto-start via useEffect after isStarted becomes true

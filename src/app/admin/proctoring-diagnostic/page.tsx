@@ -9,6 +9,11 @@ import { TroubleshootingSuggestions } from '@/components/diagnostic/Troubleshoot
 import { TestHistory } from '@/components/diagnostic/TestHistory';
 import { LiveHealthMonitor } from '@/components/diagnostic/LiveHealthMonitor';
 import { InteractiveScenarioTester } from '@/components/diagnostic/InteractiveScenarioTester';
+import { ThresholdSettings } from '@/components/diagnostic/ThresholdSettings';
+import { ConfigVersionHistory } from '@/components/diagnostic/ConfigVersionHistory';
+import { ConfigDiffDialog } from '@/components/diagnostic/ConfigDiffDialog';
+import { getConfig, applyToActive } from '@/services/proctoring-config';
+import type { ConfigState } from '@/types/proctoring-config';
 import { apiGet, apiPost } from '@/lib/api';
 import type {
   DiagnosticPageState,
@@ -20,7 +25,7 @@ import type {
   AnalyzeRequest,
   CompareTestsResponse,
 } from '@/types/diagnostic';
-import { AlertCircle, Activity, Loader2 } from 'lucide-react';
+import { AlertCircle, Activity, Loader2, Settings2 } from 'lucide-react';
 
 /**
  * DiagnosticPage Component
@@ -43,6 +48,19 @@ export default function DiagnosticPage() {
   const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null);
   const [showLandmarks, setShowLandmarks] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [configState, setConfigState] = useState<ConfigState | null>(null);
+  const [showDiffDialog, setShowDiffDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'diagnostic' | 'history' | 'scenarios' | 'config'>('diagnostic');
+
+  const loadConfig = useCallback(async () => {
+    try {
+      const data = await getConfig();
+      setConfigState(data);
+    } catch (error) {
+      console.error('[DiagnosticPage] Failed to load config:', error);
+    }
+  }, []);
 
   /**
    * Load test history from backend
@@ -80,7 +98,8 @@ export default function DiagnosticPage() {
    */
   useEffect(() => {
     loadTestHistory();
-  }, [loadTestHistory]);
+    loadConfig();
+  }, [loadTestHistory, loadConfig]);
 
   /**
    * Handle camera frame capture and analysis
@@ -340,86 +359,169 @@ ${comparison.regressions.map(r => `- ${r.component}: ${r.regression}`).join('\n'
           <LiveHealthMonitor autoRefresh={true} refreshInterval={10000} />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-          {/* Left Column: Camera Preview */}
-          <div className="xl:col-span-1">
-            <CameraPreview
-              onCapture={handleCapture}
-              onSetBaseline={handleSetBaseline}
-              onPermissionDenied={handlePermissionDenied}
-              onError={handleCameraError}
+        {/* Tab Navigation */}
+        <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex gap-1" aria-label="Diagnostic tabs">
+            {(
+              [
+                { key: 'diagnostic' as const, label: 'Kamera & Analisis', icon: null },
+                { key: 'history' as const, label: 'Riwayat', icon: null },
+                { key: 'scenarios' as const, label: 'Skenario', icon: null },
+                { key: 'config' as const, label: 'Konfigurasi Ambang Batas', icon: <Settings2 className="w-4 h-4" /> },
+              ]
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+                aria-selected={activeTab === tab.key}
+                role="tab"
+              >
+                {tab.icon ?? null}
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab: Kamera & Analisis */}
+        {activeTab === 'diagnostic' && (
+          <>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+              {/* Left Column: Camera Preview */}
+              <div className="xl:col-span-1">
+                <CameraPreview
+                  onCapture={handleCapture}
+                  onSetBaseline={handleSetBaseline}
+                  onPermissionDenied={handlePermissionDenied}
+                  onError={handleCameraError}
+                />
+              </div>
+
+              {/* Middle Column: Analysis Results & Detection Overlay */}
+              <div className="xl:col-span-1 space-y-6">
+                {pageState.testStatus === 'analyzing' && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">Analyzing image...</p>
+                  </div>
+                )}
+
+                {pageState.currentTest && capturedImageUrl && (
+                  <>
+                    <DetectionOverlay
+                      imageUrl={capturedImageUrl}
+                      detections={{
+                        objects: pageState.currentTest.detected_objects,
+                        faces: pageState.currentTest.detected_faces,
+                      }}
+                      showLandmarks={showLandmarks}
+                      onToggleLandmarks={() => setShowLandmarks(!showLandmarks)}
+                    />
+                    <AnalysisResults
+                      result={pageState.currentTest}
+                      onDownloadReport={handleDownloadReport}
+                    />
+                  </>
+                )}
+
+                {pageState.testStatus === 'idle' && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
+                    <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Start camera and capture a frame to begin analysis
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Troubleshooting Suggestions */}
+              <div className="xl:col-span-1">
+                {pageState.currentTest ? (
+                  <TroubleshootingSuggestions
+                    suggestions={pageState.currentTest.troubleshooting}
+                  />
+                ) : (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Troubleshooting Suggestions
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                      Troubleshooting suggestions will appear here after analysis
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Tab: Riwayat */}
+        {activeTab === 'history' && (
+          <div>
+            <TestHistory tests={pageState.testHistory} onCompare={handleCompareTests} />
+          </div>
+        )}
+
+        {/* Tab: Skenario */}
+        {activeTab === 'scenarios' && (
+          <div>
+            <InteractiveScenarioTester
+              onRunScenario={handleRunScenario}
+              onRunAllScenarios={handleRunAllScenarios}
             />
           </div>
+        )}
 
-          {/* Middle Column: Analysis Results & Detection Overlay */}
-          <div className="xl:col-span-1 space-y-6">
-            {pageState.testStatus === 'analyzing' && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
-                <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">Analyzing image...</p>
+        {/* Tab: Konfigurasi Ambang Batas */}
+        {activeTab === 'config' && (
+          <div className="space-y-6">
+            {configState === null ? (
+              <div className="flex items-center justify-center py-16 text-gray-500 dark:text-gray-400">
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <span className="text-sm">Memuat konfigurasi…</span>
               </div>
-            )}
-
-            {pageState.currentTest && capturedImageUrl && (
+            ) : (
               <>
-                <DetectionOverlay
-                  imageUrl={capturedImageUrl}
-                  detections={{
-                    objects: pageState.currentTest.detected_objects,
-                    faces: pageState.currentTest.detected_faces,
-                  }}
-                  showLandmarks={showLandmarks}
-                  onToggleLandmarks={() => setShowLandmarks(!showLandmarks)}
+                <ThresholdSettings
+                  configState={configState}
+                  onSaved={() => { loadConfig(); }}
                 />
-                <AnalysisResults
-                  result={pageState.currentTest}
-                  onDownloadReport={handleDownloadReport}
-                />
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowDiffDialog(true)}
+                    disabled={configState.draft_is_same_as_active}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Terapkan ke Active
+                  </button>
+                </div>
+
+                <ConfigVersionHistory onRollbackSuccess={() => { loadConfig(); }} />
+
+                {showDiffDialog && (
+                  <ConfigDiffDialog
+                    isOpen={showDiffDialog}
+                    onClose={() => setShowDiffDialog(false)}
+                    onConfirm={async (notes) => {
+                      await applyToActive(notes);
+                      loadConfig();
+                    }}
+                    configState={configState}
+                  />
+                )}
               </>
             )}
-
-            {pageState.testStatus === 'idle' && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
-                <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">
-                  Start camera and capture a frame to begin analysis
-                </p>
-              </div>
-            )}
           </div>
-
-          {/* Right Column: Troubleshooting Suggestions */}
-          <div className="xl:col-span-1">
-            {pageState.currentTest ? (
-              <TroubleshootingSuggestions
-                suggestions={pageState.currentTest.troubleshooting}
-              />
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Troubleshooting Suggestions
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Troubleshooting suggestions will appear here after analysis
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Interactive Scenario Tester */}
-        <div className="mb-8">
-          <InteractiveScenarioTester
-            onRunScenario={handleRunScenario}
-            onRunAllScenarios={handleRunAllScenarios}
-          />
-        </div>
-
-        {/* Test History */}
-        <div>
-          <TestHistory tests={pageState.testHistory} onCompare={handleCompareTests} />
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

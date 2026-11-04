@@ -22,6 +22,8 @@ interface UseProctoringOptions {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   enabled: boolean;
   detectionInterval?: number;
+  detectionIntervalMs?: number;   // default: 1000 ms (internal detection tick)
+  cooldownMs?: number;            // default: 20000 ms (POST_DETECTION_COOLDOWN_MS)
   onDetection?: (detection: ProctoringDetection) => void;
 }
 
@@ -55,8 +57,20 @@ export function useProctoring({
   videoRef,
   enabled,
   detectionInterval = DETECTION_INTERVAL_MS,
+  detectionIntervalMs,
+  cooldownMs,
   onDetection,
 }: UseProctoringOptions): UseProctoringReturn {
+  // Resolve configurable params with fallback to module-level constants
+  const resolvedCooldownMs = cooldownMs ?? POST_DETECTION_COOLDOWN_MS;
+  const resolvedDetectionIntervalMs = detectionIntervalMs ?? DETECTION_INTERVAL_MS;
+
+  // Keep a ref so analyzeFrame callback can read the latest value without
+  // needing to be recreated each time the cooldown changes.
+  const resolvedCooldownMsRef = useRef(resolvedCooldownMs);
+  useEffect(() => {
+    resolvedCooldownMsRef.current = resolvedCooldownMs;
+  }, [resolvedCooldownMs]);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stats, setStats] = useState<ProctoringStats>({
@@ -159,7 +173,7 @@ export function useProctoring({
           onDetection?.(detection);
 
           streakRef.current = { type: 'none', count: 0 };
-          cooldownRef.current = { type: detectedType, until: now + POST_DETECTION_COOLDOWN_MS };
+          cooldownRef.current = { type: detectedType, until: now + resolvedCooldownMsRef.current };
         }
       }
     } catch (error) {
@@ -173,7 +187,7 @@ export function useProctoring({
   useEffect(() => {
     if (!enabled || !isModelLoaded) return;
     const startDelay = setTimeout(() => {
-      intervalRef.current = setInterval(analyzeFrame, detectionInterval);
+      intervalRef.current = setInterval(analyzeFrame, resolvedDetectionIntervalMs);
     }, 3000);
 
     return () => {
@@ -183,7 +197,7 @@ export function useProctoring({
         intervalRef.current = null;
       }
     };
-  }, [enabled, isModelLoaded, analyzeFrame, detectionInterval]);
+  }, [enabled, isModelLoaded, analyzeFrame, resolvedDetectionIntervalMs]);
 
   return {
     isModelLoaded,
