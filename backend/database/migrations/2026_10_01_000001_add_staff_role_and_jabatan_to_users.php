@@ -9,8 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Extend ENUM role to include 'staff'
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','guru','siswa','staff') DEFAULT 'siswa'");
+        // Extend ENUM role to include 'staff' (MySQL only; SQLite uses TEXT so no-op)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','guru','siswa','staff') DEFAULT 'siswa'");
+        }
 
         // Add jabatan column (position/title) for staff differentiation
         if (!Schema::hasColumn('users', 'jabatan')) {
@@ -22,8 +24,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Revert ENUM (remove 'staff')
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','guru','siswa') DEFAULT 'siswa'");
+        // Revert ENUM (remove 'staff') (MySQL only; SQLite uses TEXT so no-op)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','guru','siswa') DEFAULT 'siswa'");
+        }
 
         if (Schema::hasColumn('users', 'jabatan')) {
             Schema::table('users', function (Blueprint $table) {
