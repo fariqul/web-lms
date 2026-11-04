@@ -12,6 +12,7 @@ import { InteractiveScenarioTester } from '@/components/diagnostic/InteractiveSc
 import { ThresholdSettings } from '@/components/diagnostic/ThresholdSettings';
 import { ConfigVersionHistory } from '@/components/diagnostic/ConfigVersionHistory';
 import { ConfigDiffDialog } from '@/components/diagnostic/ConfigDiffDialog';
+import { ExperimentManager } from '@/components/diagnostic/ExperimentManager';
 import { getConfig, applyToActive } from '@/services/proctoring-config';
 import type { ConfigState } from '@/types/proctoring-config';
 import { apiGet, apiPost } from '@/lib/api';
@@ -51,7 +52,7 @@ export default function DiagnosticPage() {
 
   const [configState, setConfigState] = useState<ConfigState | null>(null);
   const [showDiffDialog, setShowDiffDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<'diagnostic' | 'history' | 'scenarios' | 'config'>('diagnostic');
+  const [activeTab, setActiveTab] = useState<'diagnostic' | 'history' | 'scenarios' | 'config' | 'experiment'>('diagnostic');
 
   const loadConfig = useCallback(async () => {
     try {
@@ -368,6 +369,7 @@ ${comparison.regressions.map(r => `- ${r.component}: ${r.regression}`).join('\n'
                 { key: 'history' as const, label: 'Riwayat', icon: null },
                 { key: 'scenarios' as const, label: 'Skenario', icon: null },
                 { key: 'config' as const, label: 'Konfigurasi Ambang Batas', icon: <Settings2 className="w-4 h-4" /> },
+                { key: 'experiment' as const, label: 'Experiment', icon: null },
               ]
             ).map((tab) => (
               <button
@@ -520,6 +522,13 @@ ${comparison.regressions.map(r => `- ${r.component}: ${r.regression}`).join('\n'
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Tab: Experiment (Tahap 2 — Pengambilan Data Otomatis) */}
+        {activeTab === 'experiment' && (
+          <div>
+            <ExperimentManager />
           </div>
         )}
       </div>
