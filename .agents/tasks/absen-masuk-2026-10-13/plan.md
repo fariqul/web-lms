@@ -176,3 +176,46 @@ sudo systemctl reload nginx
 6. Ubah salah satu threshold, klik 'Simpan Draft'
 7. Klik 'Terapkan ke Active', isi catatan, konfirmasi
 8. Cek tab 'Riwayat Versi' — versi baru harus muncul
+
+## Checklist Deploy Tahap 2 — Pengambilan Data Otomatis
+
+### Migration
+```bash
+php artisan migrate --force
+```
+Migration baru: experiment_sessions, experiment_trials
+
+### Docker volume (tambah ke docker-compose.yml jika belum)
+```yaml
+volumes:
+  - ./backend/storage/experiment-snapshots:/var/www/html/storage/app/public/experiment-snapshots
+```
+Buat direktori di server:
+```bash
+mkdir -p backend/storage/experiment-snapshots
+```
+
+### Storage link (jika belum)
+```bash
+php artisan storage:link
+```
+
+### Clear cache
+```bash
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
+```
+
+### Env var baru di server (.env)
+```
+EXPERIMENT_MIN_CAPTURE_INTERVAL_MS=500
+EXPERIMENT_SNAPSHOT_DISK=experiment_snapshots
+```
+
+### Verifikasi
+- GET /api/experiment-sessions → 200
+- Halaman /admin/proctoring-diagnostic/experiment muncul
+- Buat sesi → start → capture satu trial → lihat trial di Review
+- Export CSV → file ter-download
+- Metrics endpoint return TP/TN/FP/FN

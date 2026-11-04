@@ -47,6 +47,13 @@ return [
             'report' => false,
         ],
 
+        'experiment_snapshots' => [
+            'driver'     => 'local',
+            'root'       => storage_path('app/public/experiment-snapshots'),
+            'url'        => env('APP_URL').'/storage/experiment-snapshots',
+            'visibility' => 'public',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

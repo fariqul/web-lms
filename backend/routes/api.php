@@ -29,6 +29,8 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\ProctoringDiagnosticController;
+use App\Http\Controllers\Api\ProctoringConfigController;
+use App\Http\Controllers\Api\ExperimentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -215,10 +217,43 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         });
 
         // ============================================
+        // PROCTORING CONFIGURATION (Admin only)
+        // ============================================
+        Route::prefix('proctoring-config')->group(function () {
+            Route::get('/', [ProctoringConfigController::class, 'getConfig']);
+            Route::post('/draft', [ProctoringConfigController::class, 'updateDraft']);
+            Route::post('/apply', [ProctoringConfigController::class, 'applyToActive']);
+            Route::get('/history', [ProctoringConfigController::class, 'getVersionHistory']);
+            Route::post('/rollback/{versionId}', [ProctoringConfigController::class, 'rollback']);
+            Route::post('/reset', [ProctoringConfigController::class, 'resetToDefaults']);
+        });
+
+        // ============================================
+        // EXPERIMENT SESSIONS (Admin only)
+        // ============================================
+        Route::prefix('experiment-sessions')->group(function () {
+            Route::get('/', [ExperimentController::class, 'index']);
+            Route::post('/', [ExperimentController::class, 'store']);
+            Route::get('/{id}', [ExperimentController::class, 'show']);
+            Route::post('/{id}/start', [ExperimentController::class, 'start']);
+            Route::post('/{id}/pause', [ExperimentController::class, 'pause']);
+            Route::post('/{id}/resume', [ExperimentController::class, 'resume']);
+            Route::post('/{id}/complete', [ExperimentController::class, 'complete']);
+            Route::post('/{id}/cancel', [ExperimentController::class, 'cancel']);
+            Route::post('/{id}/set-baseline', [ExperimentController::class, 'setBaseline']);
+            Route::get('/{id}/trials', [ExperimentController::class, 'trials']);
+            Route::post('/{id}/capture', [ExperimentController::class, 'capture']);
+            Route::get('/{id}/metrics', [ExperimentController::class, 'metrics']);
+            Route::get('/{id}/sweep', [ExperimentController::class, 'sweep']);
+            Route::get('/{id}/export', [ExperimentController::class, 'exportCsv']);
+            Route::delete('/{id}', [ExperimentController::class, 'destroy']);
+        });
+        Route::patch('/experiment-trials/{id}', [ExperimentController::class, 'updateTrial']);
+
+        // ============================================
         // ABSEN MASUK — Admin rekap & settings
         // ⚠️ Literal routes (export, settings) BEFORE any wildcard
-        // ============================================
-        Route::get('/staff-attendance/export', [StaffAttendanceController::class, 'adminExportCsv']);
+        // ============================================        Route::get('/staff-attendance/export', [StaffAttendanceController::class, 'adminExportCsv']);
         Route::get('/staff-attendance/settings', [StaffAttendanceController::class, 'getSettings']);
         Route::post('/staff-attendance/settings', [StaffAttendanceController::class, 'updateSettings']);
         // ⚠️ Barcode literal routes BEFORE /staff-attendance wildcard

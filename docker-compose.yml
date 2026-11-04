@@ -121,6 +121,7 @@ services:
       PROCTORING_CALIBRATION_ENABLED: ${PROCTORING_CALIBRATION_ENABLED:-true}
     volumes:
       - backend_storage:/var/www/html/storage
+      - ./backend/storage/app/public/experiment-snapshots:/var/www/html/storage/app/public/experiment-snapshots
     deploy:
       resources:
         limits:
