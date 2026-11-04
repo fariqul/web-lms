@@ -16,6 +16,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DemoSeeder::class,
         ]);
+
+        if (\Schema::hasTable('proctoring_configurations')) {
+            $this->call(ProctoringConfigurationSeeder::class);
+        }
     }
 }
 
