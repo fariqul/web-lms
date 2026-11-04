@@ -87,3 +87,92 @@ sudo systemctl reload nginx
 - Jam pulang default di settings: mulai `13:00`, akhir `17:00` — admin bisa ubah di halaman Pengaturan Absen.
 - Jika kolom koordinat sekolah belum dikonfigurasi, validasi radius GPS di-skip (allow all).
 - Halaman print barcode (`/admin/absen-masuk/barcode/print`) adalah tab terpisah, tidak ada auth guard — token dikirim otomatis via Axios interceptor karena bearer token tersimpan di localStorage browser yang sama.
+
+---
+
+## Checklist Deploy — Tahap 1 Proctoring Config UI
+
+**Tanggal implementasi:** 2026-11-01
+
+### File yang Dibuat / Diubah
+
+| File | Status |
+|------|--------|
+| `backend/database/migrations/2026_11_01_000001_create_proctoring_configurations_table.php` | BARU |
+| `backend/database/migrations/2026_11_01_000002_create_proctoring_config_versions_table.php` | BARU |
+| `backend/database/migrations/2026_11_01_000003_add_config_version_to_diagnostic_tests.php` | BARU |
+| `backend/app/Models/ProctoringConfiguration.php` | SUDAH ADA (models sudah lengkap) |
+| `backend/app/Models/ProctoringConfigVersion.php` | SUDAH ADA |
+| `backend/app/Http/Controllers/Api/ProctoringConfigController.php` | SUDAH ADA |
+| `backend/app/Http/Requests/UpdateProctoringConfigRequest.php` | BARU |
+| `backend/database/seeders/ProctoringConfigurationSeeder.php` | BARU |
+| `backend/tests/Feature/ProctoringConfigTest.php` | BARU |
+| `backend/tests/Unit/ProctoringConfigValidationTest.php` | BARU |
+| `backend/proctoring-service/main.py` | DIUBAH |
+| `backend/app/Http/Controllers/Api/ProctoringDiagnosticController.php` | DIUBAH |
+| `backend/app/Jobs/AnalyzeSnapshotJob.php` | DIUBAH |
+| `backend/routes/api.php` | SUDAH ADA (routes proctoring-config sudah ada) |
+| `backend/app/Http/Controllers/Api/ExamController.php` | DIUBAH |
+| `src/types/proctoring-config.ts` | BARU |
+| `src/services/proctoring-config.ts` | BARU |
+| `src/components/diagnostic/ThresholdSettings.tsx` | BARU |
+| `src/components/diagnostic/ConfigDiffDialog.tsx` | BARU |
+| `src/components/diagnostic/ConfigVersionHistory.tsx` | BARU |
+| `src/app/admin/proctoring-diagnostic/page.tsx` | DIUBAH |
+| `src/hooks/useProctoring.ts` | DIUBAH |
+| `src/app/ujian/[id]/page.tsx` | DIUBAH |
+| `backend/.env.example` | DIUBAH |
+
+### Langkah Deploy
+
+1. **Jalankan migration:**
+   ```bash
+   php artisan migrate --force
+   ```
+
+2. **Jalankan seeder:**
+   ```bash
+   php artisan db:seed --class=ProctoringConfigurationSeeder
+   ```
+
+3. **Rebuild container (jika main.py berubah):**
+   ```bash
+   docker compose build proctoring
+   docker compose up -d proctoring
+   ```
+   Backend Laravel tidak perlu rebuild.
+
+4. **Clear cache:**
+   ```bash
+   php artisan config:clear
+   php artisan cache:clear
+   php artisan route:clear
+   ```
+
+5. **Env var baru di server — tambahkan ke .env:**
+   ```
+   PROCTORING_CONFIG_CACHE_TTL=300
+   PROCTORING_USE_DB_CONFIG=true
+   ```
+
+### Verifikasi
+
+- [ ] `GET /api/proctoring-config` dengan token admin mengembalikan HTTP 200
+- [ ] Tab 'Konfigurasi Ambang Batas' muncul di halaman `/admin/proctoring-diagnostic`
+- [ ] Slider/input threshold dapat diubah dan disimpan sebagai draft
+- [ ] Tombol 'Terapkan ke Active' membuka ConfigDiffDialog
+- [ ] Riwayat versi tampil di ConfigVersionHistory
+- [ ] Rollback ke versi sebelumnya berfungsi
+- [ ] Identity mismatch di Diagnostic Tool menggunakan Euclidean distance
+- [ ] `CONFIDENCE_THRESHOLD` default di FastAPI adalah 0.45
+
+### Cara Test Lokal
+
+1. `docker compose up -d`
+2. `php artisan migrate --force`
+3. `php artisan db:seed --class=ProctoringConfigurationSeeder`
+4. Buka `http://localhost/admin/proctoring-diagnostic`
+5. Klik tab 'Konfigurasi Ambang Batas'
+6. Ubah salah satu threshold, klik 'Simpan Draft'
+7. Klik 'Terapkan ke Active', isi catatan, konfirmasi
+8. Cek tab 'Riwayat Versi' — versi baru harus muncul
