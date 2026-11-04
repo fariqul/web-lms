@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProctoringConfiguration;
+use App\Models\ProctoringConfigVersion;
 use App\Models\ProctoringDiagnosticTest;
 use App\Models\ProctoringDiagnosticIssue;
 use App\Services\TroubleshootingEngine;
@@ -106,6 +108,7 @@ class ProctoringDiagnosticController extends Controller
             'image' => 'required|string',
             'test_type' => 'sometimes|in:manual,scenario',
             'scenario_name' => 'sometimes|string|max:50',
+            'config_scope' => 'sometimes|in:draft,active',
         ]);
 
         if ($validator->fails()) {
@@ -120,6 +123,12 @@ class ProctoringDiagnosticController extends Controller
             $imageData = $request->input('image');
             $testType = $request->input('test_type', 'manual');
             $scenarioName = $request->input('scenario_name');
+
+            // Load threshold config based on requested scope
+            $configScope = $request->input('config_scope', 'draft');
+            $config = ($configScope === 'active')
+                ? ProctoringConfiguration::getActive()
+                : ProctoringConfiguration::getDraft();
 
             // Calculate image size (approximate from base64)
             $imageSizeKb = $this->calculateImageSize($imageData);
@@ -137,9 +146,17 @@ class ProctoringDiagnosticController extends Controller
             $proctoringServiceUrl = env('PROCTORING_SERVICE_URL', 'http://proctoring:8001');
             $startTime = microtime(true);
 
+            $thresholdConfig = json_encode([
+                'head_yaw_threshold'       => $config['head_yaw_threshold'],
+                'head_pitch_threshold'     => $config['head_pitch_threshold'],
+                'eye_gaze_threshold'       => $config['eye_gaze_threshold'],
+                'confidence_threshold'     => $config['confidence_threshold'],
+                'face_similarity_threshold' => $config['face_similarity_threshold'],
+            ]);
+
             $response = Http::timeout(60)
                 ->attach('image', $imageContents, 'capture.jpg', ['Content-Type' => $mimeType])
-                ->post("{$proctoringServiceUrl}/analyze");
+                ->post("{$proctoringServiceUrl}/analyze", ['threshold_config' => $thresholdConfig]);
 
             if (!$response->successful()) {
                 throw new Exception("Proctoring service error: " . $response->body());
@@ -188,7 +205,8 @@ class ProctoringDiagnosticController extends Controller
 
             if ($baselineEmbedding && $currentEmbedding) {
                 $identityDistance = $this->calculateEuclideanDistance($baselineEmbedding, $currentEmbedding);
-                if ($identityDistance > 0.6) {
+                $faceSimilarityThreshold = $config['face_similarity_threshold'] ?? 0.6;
+                if ($identityDistance > $faceSimilarityThreshold) {
                     $identityMismatch = true;
                     $analysisResult['risk_score'] = min(100, ($analysisResult['risk_score'] ?? 0) + 50);
                     $analysisResult['message'] = ($analysisResult['message'] ?? '') . " | Wajah berbeda dari baseline!";
@@ -232,6 +250,9 @@ class ProctoringDiagnosticController extends Controller
                 'image_size_kb' => $imageSizeKb,
                 'test_type' => $testType,
                 'scenario_name' => $scenarioName,
+                'config_version_id' => ($configScope === 'active')
+                    ? ProctoringConfigVersion::getLatestVersionNumber('active') ?: null
+                    : null,
             ]);
 
             // 9. Save issues to database

@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\MonitoringSnapshot;
 use App\Models\ProctoringAlert;
 use App\Models\ProctoringCalibrationLog;
+use App\Models\ProctoringConfiguration;
+use App\Models\ProctoringConfigVersion;
 use App\Models\ProctoringScore;
 use App\Models\ExamResult;
 use App\Services\SocketBroadcastService;
@@ -93,11 +95,22 @@ class AnalyzeSnapshotJob implements ShouldQueue
             $mimeMap  = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
             $mimeType = $mimeMap[$ext] ?? 'image/jpeg';
 
-            // ── 2. Call Python microservice ───────────────────────────────
+            // ── 2. Load active proctoring config ──────────────────────────
+            $config = ProctoringConfiguration::getActive();
+
+            // ── 3. Call Python microservice with threshold override ────────
+            $thresholdConfig = json_encode([
+                'head_yaw_threshold'       => $config['head_yaw_threshold'],
+                'head_pitch_threshold'     => $config['head_pitch_threshold'],
+                'eye_gaze_threshold'       => $config['eye_gaze_threshold'],
+                'confidence_threshold'     => $config['confidence_threshold'],
+                'face_similarity_threshold' => $config['face_similarity_threshold'],
+            ]);
+
             /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::timeout(20)
                 ->attach('image', $imageContents, basename($imagePath), ['Content-Type' => $mimeType])
-                ->post("{$proctoringUrl}/analyze");
+                ->post("{$proctoringUrl}/analyze", ['threshold_config' => $thresholdConfig]);
 
             if (!$response->successful()) {
                 $statusCode = $response->status();
@@ -110,9 +123,9 @@ class AnalyzeSnapshotJob implements ShouldQueue
 
             $result = $response->json();
 
-            // ── 3. Persist result + set is_violation ──────────────────────
+            // ── 4. Persist result + set is_violation ──────────────────────
             $riskScore   = (int) ($result['risk_score'] ?? 0);
-            $isViolation = $riskScore >= config('proctoring.risk_score.violation_min', 20);
+            $isViolation = $riskScore >= ($config['risk_violation_min'] ?? config('proctoring.risk_score.violation_min', 20));
 
             $snapshot->update([
                 'analysis_result' => $result,
@@ -230,9 +243,9 @@ class AnalyzeSnapshotJob implements ShouldQueue
             $this->writeCalibrationLog($result, $riskScore, $isViolation, $snapshot);
 
             // ── 8. Broadcast real-time alert ──────────────────────────────
-            $alertAnyMin  = config('proctoring.risk_score.alert_any_min',  15);
-            $alertHighMin = config('proctoring.risk_score.alert_high_min', 30);
-            $alertCritMin = config('proctoring.risk_score.alert_crit_min', 60);
+            $alertAnyMin  = $config['risk_alert_any_min']  ?? config('proctoring.risk_score.alert_any_min',  15);
+            $alertHighMin = $config['risk_alert_high_min'] ?? config('proctoring.risk_score.alert_high_min', 30);
+            $alertCritMin = $config['risk_alert_crit_min'] ?? config('proctoring.risk_score.alert_crit_min', 60);
             $detections   = $result['detections'] ?? [];
 
             if ($riskScore >= $alertAnyMin || !empty($detections)) {
@@ -576,11 +589,14 @@ class AnalyzeSnapshotJob implements ShouldQueue
             return;
         }
 
-        $similarity = $this->calculateCosineSimilarity($baselineEmbedding, $currentEmbedding);
-        $threshold  = config('proctoring.face_similarity_threshold', 0.6);
+        // Use active config threshold (Euclidean distance — K2)
+        $config    = ProctoringConfiguration::getActive();
+        $threshold = (float) ($config['face_similarity_threshold'] ?? config('proctoring.face_similarity_threshold', 0.6));
 
-        if ($similarity < $threshold) {
-            $confidencePct = round((1 - $similarity) * 100, 1);
+        $distance = $this->calculateEuclideanDistance($baselineEmbedding, $currentEmbedding);
+
+        if ($distance > $threshold) {
+            $confidencePct = round($distance * 100, 1);
 
             $this->createAlertIfNotDuplicate('identity_mismatch', [
                 'exam_id'     => $this->examId,
@@ -588,14 +604,14 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 'snapshot_id' => $this->snapshotId,
                 'type'        => 'identity_mismatch',
                 'severity'    => 'critical',
-                'description' => "Wajah tidak cocok dengan baseline — kemungkinan pergantian orang ({$confidencePct}% berbeda)",
-                'confidence'  => 1 - $similarity,
+                'description' => "Wajah tidak cocok dengan baseline — kemungkinan pergantian orang (jarak: {$confidencePct}%)",
+                'confidence'  => min(1.0, $distance),
                 'details'     => [
-                    'similarity'           => round($similarity, 4),
+                    'distance'             => round($distance, 4),
                     'threshold'            => $threshold,
                     'baseline_captured_at' => $examResult->baseline_captured_at?->toIso8601String(),
                 ],
-            ], 'identity_mismatch');  // fixed fingerprint — dedup window controlled by alert_dedup_window_seconds config
+            ], 'identity_mismatch');
 
             // Bump identity_mismatch_score
             $score = ProctoringScore::where('exam_result_id', $this->examResultId)->first();
@@ -608,24 +624,19 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 $score->save();
             }
 
-            Log::warning("[Proctoring] Identity mismatch exam_result {$this->examResultId}: similarity={$similarity}");
+            Log::warning("[Proctoring] Identity mismatch exam_result {$this->examResultId}: distance={$distance}");
         }
     }
 
-    private function calculateCosineSimilarity(array $a, array $b): float
+    private function calculateEuclideanDistance(array $a, array $b): float
     {
-        if (count($a) !== count($b)) return 0.0;
+        if (count($a) !== count($b)) return PHP_FLOAT_MAX;
 
-        $dot = $mag1 = $mag2 = 0.0;
+        $sum = 0.0;
         foreach ($a as $i => $val) {
-            $dot  += $val * $b[$i];
-            $mag1 += $val ** 2;
-            $mag2 += $b[$i] ** 2;
+            $diff = $val - $b[$i];
+            $sum += $diff * $diff;
         }
-
-        $mag1 = sqrt($mag1);
-        $mag2 = sqrt($mag2);
-
-        return ($mag1 == 0 || $mag2 == 0) ? 0.0 : $dot / ($mag1 * $mag2);
+        return sqrt($sum);
     }
 }

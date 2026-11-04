@@ -17,6 +17,7 @@ use App\Models\ExamClassSchedule;
 use App\Models\ClassRoom;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Models\ProctoringConfiguration;
 use App\Support\NomorTes;
 use App\Support\ViolationStrictMode;
 use App\Services\SocketBroadcastService;
@@ -3778,6 +3779,8 @@ class ExamController extends Controller
             ]
         );
 
+        $activeConfig = ProctoringConfiguration::getActive();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -3793,6 +3796,11 @@ class ExamController extends Controller
                 'remaining_time' => $remainingTime,
                 'remainingTime' => $remainingTime,
                 'snapshot_monitor_enabled' => $this->isSnapshotMonitoringEnabled(),
+                'client_config' => [
+                    'snapshot_interval_sec' => $activeConfig['snapshot_interval_sec'] ?? 30,
+                    'anomaly_trigger_sec'   => $activeConfig['anomaly_trigger_sec'] ?? 3,
+                    'anomaly_cooldown_sec'  => $activeConfig['anomaly_cooldown_sec'] ?? 20,
+                ],
             ],
         ]);
 

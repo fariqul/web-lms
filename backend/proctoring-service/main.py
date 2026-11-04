@@ -23,14 +23,14 @@ from contextlib import asynccontextmanager
 import cv2
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # ─── Config ──────────────────────────────────────────────────────────────
 
 MODEL_PATH = os.getenv("YOLO_MODEL", "yolov8n.pt")
-CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.25"))
+CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.45"))
 DEVICE = os.getenv("DEVICE", "0")  # "0" for GPU, "cpu" for CPU
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
@@ -151,6 +151,14 @@ class DetectedObject(BaseModel):
     is_prohibited: bool
 
 
+class ThresholdConfig(BaseModel):
+    head_yaw_threshold: Optional[float] = None
+    head_pitch_threshold: Optional[float] = None
+    eye_gaze_threshold: Optional[float] = None
+    confidence_threshold: Optional[float] = None
+    face_similarity_threshold: Optional[float] = None
+
+
 class FaceAnalysis(BaseModel):
     face_detected: bool
     face_count: int
@@ -164,6 +172,7 @@ class FaceAnalysis(BaseModel):
     eye_gaze_ratio: Optional[float] = None
     is_gaze_deviated: bool = False
     face_embedding: Optional[list[float]] = None  # 128-dim face embedding for identity verification
+    face_distance: Optional[float] = None  # Euclidean distance for identity verification
 
 
 class AnalysisResult(BaseModel):
@@ -316,7 +325,12 @@ def extract_face_embedding(img_rgb: np.ndarray, face_location: Optional[tuple] =
         return None
 
 
-def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
+def analyze_face(
+    img_rgb: np.ndarray,
+    effective_yaw_thresh: float = HEAD_YAW_THRESHOLD,
+    effective_pitch_thresh: float = HEAD_PITCH_THRESHOLD,
+    effective_gaze_thresh: float = EYE_GAZE_THRESHOLD,
+) -> FaceAnalysis:
     """
     Run MediaPipe face detection + face mesh + face embedding extraction.
     Returns face count, head pose, eye gaze info, and face embedding for identity verification.
@@ -434,17 +448,17 @@ def analyze_face(img_rgb: np.ndarray) -> FaceAnalysis:
         abs_yaw = abs(head_yaw)
         abs_pitch = abs(head_pitch)
 
-        if abs_yaw > HEAD_YAW_THRESHOLD:
+        if abs_yaw > effective_yaw_thresh:
             is_looking_away = True
             looking_direction = "left" if head_yaw < 0 else "right"
-        elif abs_pitch > HEAD_PITCH_THRESHOLD:
+        elif abs_pitch > effective_pitch_thresh:
             is_looking_away = True
             looking_direction = "up" if head_pitch > 0 else "down"
 
         # Eye gaze
         gaze = estimate_eye_gaze(landmarks, w, h)
         gaze_ratio = gaze["gaze_ratio"]
-        is_gaze_deviated = gaze["is_deviated"]
+        is_gaze_deviated = gaze_ratio > effective_gaze_thresh
 
         # Calculate absolute face location tuple (top, right, bottom, left) from landmarks
         # This is passed to face_recognition to guarantee accurate embedding extraction.
@@ -510,15 +524,34 @@ async def health():
 
 
 @app.post("/analyze", response_model=AnalysisResult)
-async def analyze_snapshot(image: UploadFile = File(...)):
+async def analyze_snapshot(
+    image: UploadFile = File(...),
+    threshold_config: Optional[str] = Form(None),
+):
     """
     Analyze a monitoring snapshot for:
     1. Suspicious/prohibited objects (YOLO)
     2. Person count (YOLO)
     3. Face presence, head pose, eye gaze (MediaPipe)
+
+    Optional threshold_config: JSON string with per-request threshold overrides.
     """
     if yolo_model is None:
         raise HTTPException(status_code=503, detail="YOLO model not loaded")
+
+    # Parse optional per-request threshold overrides
+    tconf = None
+    if threshold_config:
+        try:
+            import json as _json
+            tconf = ThresholdConfig(**_json.loads(threshold_config))
+        except Exception as e:
+            logger.warning(f"Invalid threshold_config: {e}")
+
+    effective_confidence = (tconf.confidence_threshold if tconf and tconf.confidence_threshold is not None else CONFIDENCE_THRESHOLD)
+    effective_yaw = (tconf.head_yaw_threshold if tconf and tconf.head_yaw_threshold is not None else HEAD_YAW_THRESHOLD)
+    effective_pitch = (tconf.head_pitch_threshold if tconf and tconf.head_pitch_threshold is not None else HEAD_PITCH_THRESHOLD)
+    effective_gaze = (tconf.eye_gaze_threshold if tconf and tconf.eye_gaze_threshold is not None else EYE_GAZE_THRESHOLD)
 
     start_time = time.time()
 
@@ -543,12 +576,12 @@ async def analyze_snapshot(image: UploadFile = File(...)):
                 f"{raw_results[0].names.get(int(b.cls[0]), f'class_{int(b.cls[0])}')}:{float(b.conf[0]):.3f}"
                 for b in raw_boxes
             ]
-            logger.info(f"[YOLO RAW DETECTIONS before threshold {CONFIDENCE_THRESHOLD}]: {', '.join(raw_items) if raw_items else 'None'}")
+            logger.info(f"[YOLO RAW DETECTIONS before threshold {effective_confidence}]: {', '.join(raw_items) if raw_items else 'None'}")
 
         results = yolo_model.predict(
             img_array,
             device=DEVICE,
-            conf=CONFIDENCE_THRESHOLD,
+            conf=effective_confidence,
             verbose=False,
             imgsz=640,
         )
@@ -586,7 +619,7 @@ async def analyze_snapshot(image: UploadFile = File(...)):
                             prohibited_objects.append(det)
 
         # ── MediaPipe Face Analysis ──
-        face_result = analyze_face(img_array)
+        face_result = analyze_face(img_array, effective_yaw, effective_pitch, effective_gaze)
 
         # ── Risk Score Calculation ──
         risk_score = 0
