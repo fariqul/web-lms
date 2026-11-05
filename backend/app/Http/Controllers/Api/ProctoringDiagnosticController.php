@@ -955,13 +955,14 @@ class ProctoringDiagnosticController extends Controller
             $face = [
                 'bbox' => $faceAnalysis['face_bbox'] ?? [0, 0, 0, 0],
                 'head_pose' => [
-                    'yaw' => $faceAnalysis['head_yaw'] ?? 0,
-                    'pitch' => $faceAnalysis['head_pitch'] ?? 0,
-                    'roll' => $faceAnalysis['head_roll'] ?? 0,
+                    'yaw' => $faceAnalysis['head_yaw'] ?? null,
+                    'pitch' => $faceAnalysis['head_pitch'] ?? null,
+                    'roll' => $faceAnalysis['head_roll'] ?? null,
                 ],
                 'eye_gaze' => [
-                    'ratio' => $faceAnalysis['eye_gaze_ratio'] ?? 0,
+                    'ratio' => $faceAnalysis['eye_gaze_ratio'] ?? null,
                 ],
+                'pose_available' => $faceAnalysis['pose_available'] ?? false,
                 'embedding_present' => isset($faceAnalysis['face_embedding']) && $faceAnalysis['face_embedding'] !== null,
             ];
 

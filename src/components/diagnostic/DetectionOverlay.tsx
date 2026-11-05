@@ -199,6 +199,7 @@ function drawHeadPoseArrows(
   const centerY = y + height / 2;
 
   const { yaw, pitch } = face.head_pose;
+  if (yaw === null || pitch === null) return;
 
   // Calculate arrow direction based on yaw and pitch
   // Yaw: rotation around vertical axis (left/right)
@@ -253,7 +254,8 @@ function drawEyeGazeIndicators(
   width: number,
   height: number
 ) {
-  const ratio = face.eye_gaze.ratio ?? 0;
+  const ratio = face.eye_gaze.ratio;
+  if (ratio === null || ratio === undefined) return;
 
   // Approximate eye positions (1/3 from top, 1/4 and 3/4 from left)
   const eyeY = y + height * 0.33;

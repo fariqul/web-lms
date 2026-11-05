@@ -67,13 +67,14 @@ export interface DetectedFace {
   bbox: [number, number, number, number]; // [x1, y1, x2, y2]
   landmarks?: Array<[number, number]>;
   head_pose: {
-    yaw: number;
-    pitch: number;
-    roll: number;
+    yaw: number | null;
+    pitch: number | null;
+    roll: number | null;
   };
   eye_gaze: {
-    ratio: number;
+    ratio: number | null;
   };
+  pose_available?: boolean;
   embedding_present: boolean;
   embedding_dimensions?: number;
 }

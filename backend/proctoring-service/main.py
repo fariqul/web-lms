@@ -167,6 +167,7 @@ class FaceAnalysis(BaseModel):
     head_yaw: Optional[float] = None
     head_pitch: Optional[float] = None
     head_roll: Optional[float] = None
+    pose_available: bool = False  # False = wajah terdeteksi tapi pose/gaze tidak terukur (mesh gagal)
     is_looking_away: bool = False
     looking_direction: str = "center"
     eye_gaze_ratio: Optional[float] = None
@@ -191,10 +192,11 @@ class AnalysisResult(BaseModel):
 # ─── Head Pose Estimation ───────────────────────────────────────────────
 
 
-def estimate_head_pose(landmarks, img_w: int, img_h: int) -> dict:
+def estimate_head_pose(landmarks, img_w: int, img_h: int) -> Optional[dict]:
     """
     Estimate head pose (yaw, pitch, roll) from MediaPipe Face Mesh landmarks
     using solvePnP with a standard 3D face model.
+    Returns None if pose cannot be estimated (degenerate landmarks).
     """
     # 3D model points (standard face proportions)
     model_points = np.array([
@@ -224,13 +226,16 @@ def estimate_head_pose(landmarks, img_w: int, img_h: int) -> dict:
 
     dist_coeffs = np.zeros((4, 1))
 
-    success, rotation_vector, _ = cv2.solvePnP(
-        model_points, image_points, camera_matrix, dist_coeffs,
-        flags=cv2.SOLVEPNP_ITERATIVE,
-    )
+    try:
+        success, rotation_vector, _ = cv2.solvePnP(
+            model_points, image_points, camera_matrix, dist_coeffs,
+            flags=cv2.SOLVEPNP_ITERATIVE,
+        )
+    except cv2.error:
+        return None
 
     if not success:
-        return {"yaw": 0, "pitch": 0, "roll": 0}
+        return None
 
     rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
     sy = math.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
@@ -289,7 +294,7 @@ def estimate_eye_gaze(landmarks, img_w: int, img_h: int) -> dict:
             "is_deviated": deviation > EYE_GAZE_THRESHOLD,
         }
     except (IndexError, AttributeError):
-        return {"gaze_ratio": 0, "is_deviated": False}
+        return {"gaze_ratio": None, "is_deviated": False}
 
 
 def extract_face_embedding(img_rgb: np.ndarray, face_location: Optional[tuple] = None) -> Optional[list[float]]:
@@ -426,12 +431,13 @@ def analyze_face(
             face_embedding=None,
         )
 
-    head_yaw = 0.0
-    head_pitch = 0.0
-    head_roll = 0.0
+    head_yaw: Optional[float] = None
+    head_pitch: Optional[float] = None
+    head_roll: Optional[float] = None
+    pose_available = False
     is_looking_away = False
     looking_direction = "center"
-    gaze_ratio = 0.0
+    gaze_ratio: Optional[float] = None
     is_gaze_deviated = False
     face_location = None
     face_bbox_xyxy = None
@@ -441,24 +447,27 @@ def analyze_face(
 
         # Head pose
         pose = estimate_head_pose(landmarks, w, h)
-        head_yaw = round(pose["yaw"], 1)
-        head_pitch = round(pose["pitch"], 1)
-        head_roll = round(pose["roll"], 1)
+        if pose is not None:
+            head_yaw = round(pose["yaw"], 1)
+            head_pitch = round(pose["pitch"], 1)
+            head_roll = round(pose["roll"], 1)
+            pose_available = True
 
-        abs_yaw = abs(head_yaw)
-        abs_pitch = abs(head_pitch)
+            abs_yaw = abs(head_yaw)
+            abs_pitch = abs(head_pitch)
 
-        if abs_yaw > effective_yaw_thresh:
-            is_looking_away = True
-            looking_direction = "left" if head_yaw < 0 else "right"
-        elif abs_pitch > effective_pitch_thresh:
-            is_looking_away = True
-            looking_direction = "up" if head_pitch > 0 else "down"
+            if abs_yaw > effective_yaw_thresh:
+                is_looking_away = True
+                looking_direction = "left" if head_yaw < 0 else "right"
+            elif abs_pitch > effective_pitch_thresh:
+                is_looking_away = True
+                looking_direction = "up" if head_pitch > 0 else "down"
 
         # Eye gaze
         gaze = estimate_eye_gaze(landmarks, w, h)
-        gaze_ratio = gaze["gaze_ratio"]
-        is_gaze_deviated = gaze_ratio > effective_gaze_thresh
+        if gaze["gaze_ratio"] is not None:
+            gaze_ratio = gaze["gaze_ratio"]
+            is_gaze_deviated = gaze_ratio > effective_gaze_thresh
 
         # Calculate absolute face location tuple (top, right, bottom, left) from landmarks
         # This is passed to face_recognition to guarantee accurate embedding extraction.
@@ -501,6 +510,7 @@ def analyze_face(
         head_yaw=head_yaw,
         head_pitch=head_pitch,
         head_roll=head_roll,
+        pose_available=pose_available,
         is_looking_away=is_looking_away,
         looking_direction=looking_direction,
         eye_gaze_ratio=gaze_ratio,

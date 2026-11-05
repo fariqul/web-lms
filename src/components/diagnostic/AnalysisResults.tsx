@@ -215,22 +215,29 @@ export function AnalysisResults({ result, onDownloadReport }: AnalysisResultsPro
                     <div>
                       <span className="text-gray-500">Yaw:</span>
                       <span className="ml-1 text-gray-900 dark:text-white font-mono">
-                        {face.head_pose.yaw.toFixed(1)}°
+                        {face.head_pose.yaw !== null ? `${face.head_pose.yaw.toFixed(1)}°` : 'N/A'}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Pitch:</span>
                       <span className="ml-1 text-gray-900 dark:text-white font-mono">
-                        {face.head_pose.pitch.toFixed(1)}°
+                        {face.head_pose.pitch !== null ? `${face.head_pose.pitch.toFixed(1)}°` : 'N/A'}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Eye Gaze:</span>
                       <span className="ml-1 text-gray-900 dark:text-white font-mono">
-                        {face.eye_gaze.ratio.toFixed(2)}
+                        {face.eye_gaze.ratio !== null ? face.eye_gaze.ratio.toFixed(2) : 'N/A'}
                       </span>
                     </div>
                   </div>
+
+                  {face.pose_available === false && (
+                    <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Pose/gaze tidak terukur — wajah tidak frontal atau landmark tidak terdeteksi
+                    </div>
+                  )}
 
                   {face.embedding_present && face.embedding_dimensions && (
                     <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
