@@ -18,8 +18,8 @@ return new class extends Migration
             $table->float('confidence_threshold')->default(0.45);
             $table->json('per_class_confidence')->nullable();
             $table->integer('alert_dedup_window_sec')->default(15);
-            $table->json('score_weights');
-            $table->json('score_increments');
+            $table->json('score_weights')->nullable();
+            $table->json('score_increments')->nullable();
             $table->integer('risk_violation_min')->default(20);
             $table->integer('risk_alert_any_min')->default(15);
             $table->integer('risk_alert_high_min')->default(30);

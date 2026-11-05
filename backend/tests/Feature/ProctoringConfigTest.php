@@ -102,7 +102,28 @@ class ProctoringConfigTest extends TestCase
             ->assertJsonPath('success', true);
     }
 
-    // ─── 5. score_weights sum not 1.0 → 422 ─────────────────────────────────
+    // ─── 5. Partial update (only yaw) creates draft without score fields ────
+    // Regression: score_weights/score_increments are nullable; a partial
+    // payload must not fail with "Field doesn't have a default value" (MySQL 1364).
+
+    public function test_update_draft_with_partial_payload_uses_defaults_for_score_fields(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson('/api/proctoring-config/draft', ['head_yaw_threshold' => 21])
+            ->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $draft = ProctoringConfiguration::where('scope', 'draft')->first();
+        $this->assertNotNull($draft);
+        $this->assertEquals(21, $draft->head_yaw_threshold);
+
+        $config = ProctoringConfiguration::getDraft();
+        $this->assertIsArray($config['score_weights']);
+        $this->assertIsArray($config['score_increments']);
+    }
+
+    // ─── 6. score_weights sum not 1.0 → 422 ─────────────────────────────────
 
     public function test_update_draft_fails_when_score_weights_sum_not_one(): void
     {
