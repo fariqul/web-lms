@@ -67,8 +67,9 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Capture ground-truth labels (set before clicking Capture)
-  const [gt, setGt] = useState<GroundTruth>(EMPTY_GT);
+  // Ground-truth category for the next capture ('normal' = no violation enacted).
+  // Single-select: exactly one category per trial.
+  const [gtCategory, setGtCategory] = useState<ExperimentCategory | 'normal'>('normal');
   const [scenario, setScenario] = useState('');
   const [capturing, setCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -175,7 +176,8 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
       const start = performance.now();
       try {
         const opts: CaptureOptions = {
-          ...gt,
+          ...EMPTY_GT,
+          ...(gtCategory !== 'normal' ? { [`gt_${gtCategory}`]: true } : {}),
           scenario: scenario || undefined,
         };
         const res = await captureTrial(sessionId, imageBlob, opts);
@@ -185,6 +187,7 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
         // Prepend the new trial to the local list and refresh counts.
         setTrials((prev) => [res.data, ...prev]);
         setTrialsTotal((t) => t + 1);
+        setGtCategory('normal'); // reset label for the next trial
         await loadSession(); // refresh trial_counts_by_scenario
       } catch (err) {
         setCaptureError(err instanceof Error ? err.message : 'Gagal capture');
@@ -192,7 +195,7 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
         setCapturing(false);
       }
     },
-    [session, gt, scenario, sessionId, loadSession],
+    [session, gtCategory, scenario, sessionId, loadSession],
   );
 
   // ── Metrics ─────────────────────────────────────────────────────────────
@@ -371,7 +374,8 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
           Capture Trial {session.status !== 'running' && <span className="text-red-500">(mulai sesi dulu)</span>}
         </h3>
 
-        {/* Ground-truth label controls (set BEFORE capture) */}
+        {/* Ground-truth category for the NEXT capture — pilih tepat satu.
+            Otomatis kembali ke Normal setelah tiap capture. */}
         <div className="mb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
           <div className="col-span-2 md:col-span-4 lg:col-span-8 mb-1">
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Skenario (opsional)</label>
@@ -383,15 +387,36 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
               className="w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-sm text-gray-900 dark:text-white"
             />
           </div>
+          <label
+            className={`flex items-center gap-1.5 text-xs rounded-lg border px-2 py-1.5 cursor-pointer ${
+              gtCategory === 'normal'
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/40'
+            }`}
+          >
+            <input
+              type="radio"
+              name="gt-category"
+              checked={gtCategory === 'normal'}
+              onChange={() => setGtCategory('normal')}
+              className="rounded"
+            />
+            Normal
+          </label>
           {EXPERIMENT_CATEGORIES.map((cat) => (
             <label
               key={cat}
-              className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-700 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+              className={`flex items-center gap-1.5 text-xs rounded-lg border px-2 py-1.5 cursor-pointer ${
+                gtCategory === cat
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/40'
+              }`}
             >
               <input
-                type="checkbox"
-                checked={gt[`gt_${cat}` as keyof GroundTruth]}
-                onChange={(e) => setGt((p) => ({ ...p, [`gt_${cat}`]: e.target.checked }))}
+                type="radio"
+                name="gt-category"
+                checked={gtCategory === cat}
+                onChange={() => setGtCategory(cat)}
                 className="rounded"
               />
               {CATEGORY_LABELS[cat as ExperimentCategory]}
