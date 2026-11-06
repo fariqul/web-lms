@@ -217,7 +217,10 @@ class ExperimentController extends Controller
                 ], 400);
             }
 
-            $session->update(['baseline_embedding' => $embedding]);
+            $session->update([
+                'baseline_embedding' => $embedding,
+                'baseline_set_at'    => now(),
+            ]);
 
             return response()->json([
                 'success'       => true,
@@ -323,11 +326,6 @@ class ExperimentController extends Controller
                 'face_similarity_threshold' => $config['face_similarity_threshold'],
             ];
 
-            // Attach baseline embedding if available
-            if (!empty($session->baseline_embedding)) {
-                $thresholdConfigData['baseline_embedding'] = $session->baseline_embedding;
-            }
-
             $thresholdConfig = json_encode($thresholdConfigData);
 
             // 8. Send to FastAPI
@@ -363,6 +361,18 @@ class ExperimentController extends Controller
             $faceCount       = $result['face_count'] ?? ($result['multi_face_detection']['face_count'] ?? null);
             $riskScoreRaw    = $result['risk_score'] ?? null;
             $inferenceMsRaw  = $result['processing_time_ms'] ?? $result['inference_ms'] ?? null;
+
+            // The service never computes face_distance — derive it in PHP,
+            // same formula as AnalyzeSnapshotJob, so experiment == exam path.
+            if ($faceDistance === null && $faceDetected) {
+                $currentEmbedding  = $faceAnalysis['face_embedding'] ?? null;
+                $baselineEmbedding = $session->baseline_embedding;
+
+                if (is_array($currentEmbedding) && is_array($baselineEmbedding)
+                    && count($currentEmbedding) === count($baselineEmbedding)) {
+                    $faceDistance = $this->euclideanDistance($baselineEmbedding, $currentEmbedding);
+                }
+            }
 
             // ── Compute component scores ──────────────────────────────────
             $scoreIncrements = $config['score_increments'] ?? [];
@@ -674,6 +684,18 @@ class ExperimentController extends Controller
     // ──────────────────────────────────────────────────────────────────────────
     // exportCsv — download CSV
     // ──────────────────────────────────────────────────────────────────────────
+
+    private function euclideanDistance(array $a, array $b): float
+    {
+        if (count($a) !== count($b)) return PHP_FLOAT_MAX;
+
+        $sum = 0.0;
+        foreach ($a as $i => $val) {
+            $diff = $val - $b[$i];
+            $sum += $diff * $diff;
+        }
+        return sqrt($sum);
+    }
 
     public function exportCsv(int $id)
     {

@@ -12,7 +12,7 @@ class ExperimentSession extends Model
         'name', 'researcher_name', 'lighting', 'device_info', 'distance_cm',
         'notes', 'dataset_split', 'config_scope', 'config_version_id', 'status',
         'started_at', 'completed_at', 'fastapi_device', 'fastapi_model',
-        'baseline_embedding', 'created_by',
+        'baseline_embedding', 'baseline_set_at', 'created_by',
     ];
 
     protected $casts = [
@@ -23,6 +23,7 @@ class ExperimentSession extends Model
         'started_at'         => 'datetime',
         'completed_at'       => 'datetime',
         'baseline_embedding' => 'array',
+        'baseline_set_at'    => 'datetime',
     ];
 
     public function trials(): HasMany
