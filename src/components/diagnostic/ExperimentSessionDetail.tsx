@@ -212,8 +212,8 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
   }, [sessionId]);
 
   useEffect(() => {
-    if (innerTab === 'metrics' && !metrics) loadMetrics();
-  }, [innerTab, metrics, loadMetrics]);
+    if (innerTab === 'metrics') loadMetrics();
+  }, [innerTab, loadMetrics]);
 
   // ── Export CSV ─────────────────────────────────────────────────────────
   const handleExport = useCallback(async () => {
