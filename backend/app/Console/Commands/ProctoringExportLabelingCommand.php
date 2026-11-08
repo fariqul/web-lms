@@ -74,6 +74,8 @@ class ProctoringExportLabelingCommand extends Command
 
         $this->info('Mengambil kandidat calibration log...');
 
+        $disk = Storage::disk('public');
+
         $candidates = ProctoringCalibrationLog::query()
             ->with(['student:id,name', 'snapshot:id,image_path,file_deleted_at'])
             ->whereIn('exam_id', $exams)
@@ -82,7 +84,8 @@ class ProctoringExportLabelingCommand extends Command
             ->get()
             ->filter(fn ($row) => $row->snapshot
                 && $row->snapshot->image_path
-                && $row->snapshot->file_deleted_at === null)
+                && $row->snapshot->file_deleted_at === null
+                && $disk->exists($row->snapshot->image_path))
             ->unique('snapshot_id')
             ->values();
 
@@ -108,7 +111,6 @@ class ProctoringExportLabelingCommand extends Command
         $copied  = 0;
         $missing = 0;
         $rows    = [];
-        $disk    = Storage::disk('public');
 
         $this->info('Menyalin gambar...');
 
@@ -174,7 +176,7 @@ class ProctoringExportLabelingCommand extends Command
         $this->newLine();
         $this->line('  Buka viewer.html di browser (double-click), label frame, lalu Export CSV.');
         $this->line('  Import hasil label:');
-        $this->line('    php artisan proctoring:import-labeling labeling/' . $outputRel . '/labels-*.csv');
+        $this->line('    php artisan proctoring:import-labeling ' . $outputRel . '/labels-*.csv');
         $this->line('  Setelah import:');
         $this->line('    php artisan proctoring:calibration-report');
 

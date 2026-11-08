@@ -89,6 +89,12 @@ class LabelingCommandTest extends TestCase
             }
         }
 
+        // Simulate retention: only 5 of the 12 fake files still exist.
+        $stored = Storage::disk('public')->allFiles('monitoring-snapshots');
+        foreach (array_slice($stored, 0, 7) as $path) {
+            Storage::disk('public')->delete($path);
+        }
+
         $this->artisan('proctoring:export-labeling', [
             '--exam' => [$examId],
             '--limit' => 8,
@@ -103,10 +109,10 @@ class LabelingCommandTest extends TestCase
         $this->assertStringContainsString('const ROWS = [', file_get_contents($dir . '/viewer.html'));
 
         $images = glob($dir . '/images/*.jpg');
-        $this->assertCount(8, $images);
+        $this->assertCount(5, $images, 'only surviving files are exported');
 
         $csv = $this->readCsv($dir . '/labels.csv');
-        $this->assertCount(9, $csv, 'header + 8 frames');
+        $this->assertCount(6, $csv, 'header + 5 frames');
         $this->assertCount(12, $csv[0]);
 
         // Edit: row 1 all true, row 2 all false, row 3 left blank.
