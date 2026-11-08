@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Labeling Proctoring — __EXPORT_ID__</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #121c2e;
+    --panel-2: #17233a;
+    --line: #22314d;
+    --text: #e6edf7;
+    --muted: #8ea0bb;
+    --ok: #22c55e;
+    --true: #f59e0b;
+    --accent: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--line);
+    background: rgba(18, 28, 46, .92); position: sticky; top: 0; z-index: 10;
+  }
+  h1 { font-size: 16px; margin: 0; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .spacer { flex: 1; }
+  .progress { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .progress b { color: var(--text); }
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 16px; padding: 16px 20px 28px;
+  }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .viewer { min-width: 0; }
+  .imgwrap {
+    position: relative; background: #000; border: 1px solid var(--line); border-radius: 12px;
+    height: min(72vh, 760px); display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .imgwrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .missing { color: var(--muted); text-align: center; padding: 24px; }
+  .nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .nav .pos { color: var(--muted); font-variant-numeric: tabular-nums; }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer;
+  }
+  button:hover { border-color: #3a4f75; }
+  button.primary { background: #1d4ed8; border-color: #2563eb; }
+  button.primary:hover { background: #2563eb; }
+  button.ghost { background: transparent; color: var(--muted); }
+  button:disabled { opacity: .4; cursor: default; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; height: fit-content;
+  }
+  .meta { font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--text); font-weight: 600; }
+  .meta .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .hint {
+    margin: 12px 0; font-size: 12px; color: var(--muted);
+    border-left: 3px solid var(--accent); padding-left: 8px;
+  }
+  .chips { display: flex; flex-direction: column; gap: 6px; }
+  .chip {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  }
+  .chip .name { font-size: 13px; }
+  .chip .btns { display: flex; gap: 4px; }
+  .chip .btns button { padding: 3px 9px; font-size: 12px; border-radius: 6px; }
+  .chip .btns button.on-true { background: var(--true); border-color: var(--true); color: #111; font-weight: 600; }
+  .chip .btns button.on-false { background: #334155; border-color: #475569; color: #e2e8f0; }
+  .commit { display: flex; gap: 8px; margin-top: 14px; }
+  .commit button { flex: 1; }
+  .filters { display: flex; gap: 8px; margin-top: 14px; }
+  .filters select {
+    flex: 1; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; font: inherit;
+  }
+  .audit { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .switch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .switch input { accent-color: var(--accent); }
+  .ai { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; }
+  .ai .tag { background: #1e293b; border: 1px solid #334155; border-radius: 999px; padding: 2px 8px; }
+  .ai .tag.hit { background: #7c2d12; border-color: #c2410c; color: #fed7aa; }
+  .note { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
+  #toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: #1e293b; border: 1px solid #334155; color: var(--text);
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; opacity: 0;
+    pointer-events: none; transition: opacity .18s ease;
+  }
+  #toast.show { opacity: 1; }
+  .badge-done { color: var(--ok); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Labeling Dataset Proctoring</h1>
+    <div class="sub">Export __EXPORT_ID__ · __GENERATED_AT__ · ujian __EXAMS__ · seed __SEED__</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="progress"><b id="doneCount">0</b> / <span id="totalCount">0</span> diperiksa</div>
+  <button id="btnExport">Export CSV</button>
+  <button id="btnReset" class="ghost">Reset</button>
+</header>
+
+<main>
+  <section class="viewer">
+    <div class="imgwrap">
+      <img id="img" alt="Snapshot siswa" />
+      <div id="missing" class="missing" hidden>
+        Gambar tidak ditemukan.<br />Frame ini tidak bisa dilabeli — tekan tombol Lewati.
+      </div>
+    </div>
+    <div class="nav">
+      <button id="btnPrev">← Sebelumnya</button>
+      <span class="pos" id="posLabel"></span>
+      <button id="btnNext">Berikutnya →</button>
+      <button id="btnSkip" hidden>Lewati (gambar hilang)</button>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="meta" id="meta"></div>
+    <div class="hint">
+      <b>N</b> = semua normal &amp; lanjut · <b>1–5</b> = tandai kategori · <b>Enter</b> = simpan &amp; lanjut ·
+      <b>←/→</b> = navigasi. Prediksi AI disembunyikan agar label tidak bias.
+    </div>
+    <div class="chips" id="chips"></div>
+
+    <div class="audit">
+      <label class="switch"><input type="checkbox" id="showIdentity" /> Tampilkan indikator identitas</label>
+      <div class="chips" id="identityBox" hidden style="margin-top: 8px;"></div>
+      <p class="note">Kosongkan jika tidak ada foto referensi. Nilai kosong tidak dihitung di metrik.</p>
+    </div>
+
+    <div class="commit">
+      <button id="btnNormal" class="primary">N — Semua normal</button>
+      <button id="btnSave">Simpan (Enter)</button>
+    </div>
+
+    <div class="filters">
+      <select id="filterStatus">
+        <option value="todo">Belum diperiksa</option>
+        <option value="all">Semua frame</option>
+        <option value="done">Sudah diperiksa</option>
+        <option value="skipped">Dilewati</option>
+      </select>
+      <select id="filterStudent"><option value="all">Semua siswa</option></select>
+    </div>
+
+    <div class="audit">
+      <label class="switch"><input type="checkbox" id="showAi" /> Tampilkan prediksi AI (audit)</label>
+      <div class="ai" id="aiBox" hidden></div>
+    </div>
+  </aside>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const ROWS = __ROWS_JSON__;
+const EXPORT_ID = "__EXPORT_ID__";
+const STORAGE_KEY = "proctoring-labeling:" + EXPORT_ID;
+const IND = [
+  ["no_face", "Tanpa wajah"],
+  ["multi_face", "Wajah ganda"],
+  ["head_turn", "Kepala menoleh"],
+  ["eye_gaze", "Mata menyimpang"],
+  ["object_detected", "Objek terlarang"],
+];
+const IDENTITY = ["identity_mismatch", "Identitas tidak cocok"];
+
+const state = {};
+const failedImages = new Set();
+const stored = (() => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  catch (e) { return {}; }
+})();
+ROWS.forEach(r => {
+  state[r.id] = stored[r.id] || { gt: {}, done: false, skipped: false };
+  if (!state[r.id].gt) state[r.id].gt = {};
+});
+
+let queue = [];
+let idx = 0;
+
+const $ = id => document.getElementById(id);
+
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function toast(msg) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+function buildStudentFilter() {
+  const sel = $("filterStudent");
+  const seen = new Map();
+  ROWS.forEach(r => {
+    if (!seen.has(r.student)) seen.set(r.student, r.name || ("Siswa " + r.student));
+  });
+  [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], "id"))
+    .forEach(([id, name]) => {
+      const opt = document.createElement("option");
+      opt.value = String(id);
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+}
+
+function buildQueue() {
+  const status = $("filterStatus").value;
+  const student = $("filterStudent").value;
+  queue = ROWS.filter(r => {
+    const s = state[r.id];
+    if (student !== "all" && String(r.student) !== student) return false;
+    if (status === "todo") return !s.done && !s.skipped;
+    if (status === "done") return s.done;
+    if (status === "skipped") return s.skipped;
+    return true;
+  });
+  idx = 0;
+  render();
+}
+
+function current() {
+  return queue[idx] || null;
+}
+
+function renderProgress() {
+  const done = ROWS.filter(r => state[r.id].done).length;
+  $("doneCount").textContent = String(done);
+  $("totalCount").textContent = String(ROWS.length);
+}
+
+function chipHtml(key, label, value) {
+  return '<div class="chip">' +
+    '<span class="name">' + escapeHtml(label) + '</span>' +
+    '<span class="btns">' +
+      '<button data-k="' + key + '" data-v="1" class="' + (value === true ? "on-true" : "") + '">Ya</button>' +
+      '<button data-k="' + key + '" data-v="0" class="' + (value === false ? "on-false" : "") + '">Tidak</button>' +
+    '</span>' +
+  '</div>';
+}
+
+function showMissing(text) {
+  const img = $("img");
+  const missing = $("missing");
+  img.hidden = true;
+  img.removeAttribute("src");
+  missing.hidden = false;
+  missing.textContent = text;
+  $("btnSkip").hidden = false;
+}
+
+function render() {
+  renderProgress();
+  const row = current();
+  const img = $("img");
+  const missing = $("missing");
+  const skipBtn = $("btnSkip");
+
+  if (!row) {
+    img.hidden = true;
+    img.removeAttribute("src");
+    missing.hidden = false;
+    missing.innerHTML = "Tidak ada frame pada filter ini.";
+    $("meta").innerHTML = "";
+    $("chips").innerHTML = "";
+    $("identityBox").innerHTML = "";
+    $("aiBox").innerHTML = "";
+    $("posLabel").textContent = "0 / 0";
+    skipBtn.hidden = true;
+    return;
+  }
+
+  const s = state[row.id];
+
+  if (failedImages.has(row.image)) {
+    showMissing("Gambar tidak ditemukan. Tekan tombol Lewati.");
+  } else {
+    missing.hidden = true;
+    skipBtn.hidden = true;
+    img.hidden = false;
+    if (img.getAttribute("src") !== row.image) {
+      img.onerror = () => {
+        failedImages.add(row.image);
+        const active = current();
+        if (active && active.image === row.image) {
+          showMissing("Gambar tidak ditemukan. Tekan tombol Lewati.");
+        }
+      };
+      img.src = row.image;
+    }
+  }
+
+  $("meta").innerHTML =
+    '<div class="row"><span>Ujian</span><b>#' + row.exam + '</b></div>' +
+    '<div class="row"><span>Siswa</span><b>' + escapeHtml(row.name || "-") + " (" + row.student + ')</b></div>' +
+    '<div class="row"><span>Waktu</span><b>' + escapeHtml(row.captured || "-") + '</b></div>' +
+    '<div class="row"><span>Snapshot</span><b>#' + row.snapshot + '</b></div>' +
+    '<div class="row"><span>Status</span><b class="' + (s.done ? "badge-done" : "") + '">' +
+      (s.done ? "sudah" : (s.skipped ? "dilewati" : "belum")) + '</b></div>';
+
+  $("chips").innerHTML = IND.map(([k, label]) => chipHtml(k, label, s.gt[k] == null ? null : s.gt[k])).join("");
+  $("identityBox").innerHTML = chipHtml(IDENTITY[0], IDENTITY[1], s.gt[IDENTITY[0]] == null ? null : s.gt[IDENTITY[0]]);
+
+  const showAi = $("showAi").checked;
+  $("aiBox").hidden = !showAi;
+  if (showAi) {
+    const tags = IND.concat([IDENTITY, ["is_violation", "Violation"]]).map(([k, label]) => {
+      const hit = !!row.ai[k];
+      return '<span class="tag ' + (hit ? "hit" : "") + '">' + escapeHtml(label) + ": " + (hit ? "ya" : "tidak") + '</span>';
+    });
+    tags.push('<span class="tag">Risk: ' + escapeHtml(row.ai.risk || "-") +
+      (row.ai.score != null ? " (" + row.ai.score + ")" : "") + '</span>');
+    $("aiBox").innerHTML = tags.join("");
+  }
+
+  $("posLabel").textContent = (idx + 1) + " / " + queue.length;
+  $("btnPrev").disabled = idx === 0;
+  $("btnNext").disabled = idx >= queue.length - 1;
+}
+
+function setGt(key, value) {
+  const row = current();
+  if (!row) return;
+  const s = state[row.id];
+  s.gt[key] = value;
+  if (value === true && key !== "identity_mismatch") {
+    IND.forEach(([k]) => { if (k !== key && s.gt[k] == null) s.gt[k] = false; });
+  }
+  persist();
+  render();
+}
+
+function commit(advance) {
+  const row = current();
+  if (!row) return;
+  const s = state[row.id];
+  const any = IND.some(([k]) => s.gt[k] === true || s.gt[k] === false) || s.gt.identity_mismatch != null;
+  if (!any) {
+    toast("Tekan N untuk semua normal, atau klik kategori.");
+    return;
+  }
+  s.done = true;
+  s.skipped = false;
+  persist();
+  if (advance) next(); else render();
+}
+
+function allNormal() {
+  const row = current();
+  if (!row) return;
+  const s = state[row.id];
+  IND.forEach(([k]) => { s.gt[k] = false; });
+  s.done = true;
+  s.skipped = false;
+  persist();
+  next();
+}
+
+function skip() {
+  const row = current();
+  if (!row) return;
+  state[row.id].skipped = true;
+  state[row.id].done = false;
+  persist();
+  next();
+}
+
+function next() {
+  if (idx < queue.length - 1) { idx++; render(); }
+  else { render(); toast("Frame terakhir pada filter ini."); }
+}
+
+function prev() {
+  if (idx > 0) { idx--; render(); }
+}
+
+function csvEscape(value) {
+  const s = String(value == null ? "" : value);
+  return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportCsv() {
+  const header = [
+    "log_id", "exam_id", "student_id", "snapshot_id", "image", "captured_at",
+    "gt_no_face", "gt_multi_face", "gt_head_turn", "gt_eye_gaze", "gt_object_detected", "gt_identity_mismatch",
+  ];
+  const lines = [header.join(",")];
+  ROWS.forEach(r => {
+    const gt = state[r.id].gt || {};
+    const cell = k => (gt[k] === true ? "1" : gt[k] === false ? "0" : "");
+    lines.push([
+      r.id, r.exam, r.student, r.snapshot, r.image, r.captured,
+      cell("no_face"), cell("multi_face"), cell("head_turn"),
+      cell("eye_gaze"), cell("object_detected"), cell("identity_mismatch"),
+    ].map(csvEscape).join(","));
+  });
+  const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "labels-" + EXPORT_ID + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("CSV diunduh. Import dengan proctoring:import-labeling.");
+}
+
+document.addEventListener("click", e => {
+  const btn = e.target.closest("button[data-k]");
+  if (!btn) return;
+  setGt(btn.dataset.k, btn.dataset.v === "1");
+});
+
+$("btnNormal").addEventListener("click", allNormal);
+$("btnSave").addEventListener("click", () => commit(true));
+$("btnNext").addEventListener("click", next);
+$("btnPrev").addEventListener("click", prev);
+$("btnSkip").addEventListener("click", skip);
+$("btnExport").addEventListener("click", exportCsv);
+$("btnReset").addEventListener("click", () => {
+  if (!confirm("Hapus semua progres labeling untuk export ini?")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  ROWS.forEach(r => { state[r.id] = { gt: {}, done: false, skipped: false }; });
+  idx = 0;
+  render();
+});
+$("filterStatus").addEventListener("change", buildQueue);
+$("filterStudent").addEventListener("change", buildQueue);
+$("showAi").addEventListener("change", render);
+$("showIdentity").addEventListener("change", e => {
+  $("identityBox").hidden = !e.target.checked;
+});
+
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, select, textarea")) return;
+  if (e.key === "n" || e.key === "N") { e.preventDefault(); allNormal(); return; }
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); commit(true); return; }
+  if (e.key === "ArrowRight") { e.preventDefault(); next(); return; }
+  if (e.key === "ArrowLeft") { e.preventDefault(); prev(); return; }
+  if (/^[1-5]$/.test(e.key)) {
+    e.preventDefault();
+    setGt(IND[Number(e.key) - 1][0], true);
+  }
+});
+
+buildStudentFilter();
+buildQueue();
+</script>
+</body>
+</html>
