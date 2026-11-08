@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ProctoringCalibrationLog;
+use App\Models\ProctoringConfiguration;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 
@@ -52,6 +53,9 @@ class ProctoringThresholdAnalysisCommand extends Command
 
     /** @var array<string, array{value:string, basis:string}> */
     private array $recommendations = [];
+
+    /** @var array<string, mixed>|null */
+    private ?array $activeConfig = null;
 
     public function handle(): int
     {
@@ -226,6 +230,17 @@ class ProctoringThresholdAnalysisCommand extends Command
         return null;
     }
 
+    /**
+     * Thresholds the running system actually uses: the `active` DB row wins,
+     * config/env only fall back when that row is missing.
+     *
+     * @return array<string, mixed>
+     */
+    private function activeConfig(): array
+    {
+        return $this->activeConfig ??= ProctoringConfiguration::getActive();
+    }
+
     // ── Dataset summary ──────────────────────────────────────────────────────
 
     private function printDatasetSummary(Collection $rows): void
@@ -245,7 +260,11 @@ class ProctoringThresholdAnalysisCommand extends Command
         $this->line('  Exam                    : <fg=white>' . ($rows->pluck('exam_id')->unique()->sort()->implode(', ') ?: '-') . '</>');
         $this->line('  Siswa unik              : <fg=white>' . $rows->pluck('student_id')->unique()->count() . '</>');
         $this->line('  Rentang waktu           : <fg=white>' . ($first?->format('Y-m-d H:i') ?? '-') . '</> s.d. <fg=white>' . ($last?->format('Y-m-d H:i') ?? '-') . '</>');
-        $this->line('  Ambang aktif            : yaw ' . config('proctoring.head_yaw_threshold') . '°, pitch ' . config('proctoring.head_pitch_threshold') . '°, gaze ' . config('proctoring.eye_gaze_threshold') . ', risk ≥ ' . config('proctoring.risk_score.violation_min'));
+        $config = $this->activeConfig();
+        $this->line('  Ambang aktif            : yaw ' . $this->fmtShort((float) $config['head_yaw_threshold'])
+            . '°, pitch ' . $this->fmtShort((float) $config['head_pitch_threshold'])
+            . '°, gaze ' . $this->fmtShort((float) $config['eye_gaze_threshold'])
+            . ', risk ≥ ' . $this->fmtShort((float) $config['risk_violation_min']));
     }
 
     // ── Head turn ────────────────────────────────────────────────────────────
@@ -292,8 +311,9 @@ class ProctoringThresholdAnalysisCommand extends Command
             'pitch' => abs((float) ($r['pitch'] ?? 0)),
         ])->values()->all();
 
-        $yawCurrent = (float) config('proctoring.head_yaw_threshold', 38);
-        $pitchCurrent = (float) config('proctoring.head_pitch_threshold', 33);
+        $config = $this->activeConfig();
+        $yawCurrent = (float) ($config['head_yaw_threshold'] ?? 38);
+        $pitchCurrent = (float) ($config['head_pitch_threshold'] ?? 33);
         $stepYaw = max(0.5, (float) $this->option('step-yaw'));
         $stepPitch = max(0.5, (float) $this->option('step-pitch'));
 
@@ -377,7 +397,7 @@ class ProctoringThresholdAnalysisCommand extends Command
             'score' => $r['gaze_ratio'] ?? -1.0,
         ])->values()->all();
 
-        $current = (float) config('proctoring.eye_gaze_threshold', 0.48);
+        $current = (float) ($this->activeConfig()['eye_gaze_threshold'] ?? 0.48);
         $step = max(0.005, (float) $this->option('step-gaze'));
         $sweep = $this->sweep(
             $points,
@@ -552,7 +572,7 @@ class ProctoringThresholdAnalysisCommand extends Command
             'score' => (float) $r['risk_score'],
         ])->values()->all();
 
-        $current = (float) config('proctoring.risk_score.violation_min', 20);
+        $current = (float) ($this->activeConfig()['risk_violation_min'] ?? 20);
         $step = max(1.0, (float) $this->option('step-risk'));
         $maxScore = (float) max(array_column($points, 'score'));
 
@@ -1037,6 +1057,11 @@ class ProctoringThresholdAnalysisCommand extends Command
     private function fmtNum(float $value, int $decimals): string
     {
         return number_format($value, $decimals, '.', '');
+    }
+
+    private function fmtShort(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
     }
 
     // ── CSV / option helpers ─────────────────────────────────────────────────

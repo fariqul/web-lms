@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ProctoringConfiguration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -228,6 +229,48 @@ class ThresholdAnalysisCommandTest extends TestCase
         ])
             ->expectsOutputToContain('Skema lama')
             ->expectsOutputToContain('head_turn: F1 100.0%')
+            ->assertExitCode(0);
+    }
+
+    public function test_analysis_uses_active_config_from_database(): void
+    {
+        [$student, $examId] = $this->seedExamContext();
+
+        ProctoringConfiguration::updateOrCreate(['scope' => 'active'], [
+            'head_yaw_threshold' => 31,
+            'head_pitch_threshold' => 66,
+            'eye_gaze_threshold' => 0.48,
+            'risk_violation_min' => 20,
+        ]);
+
+        $base = now()->subMinutes(10);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->insertLog($examId, $student->id, $base->copy()->addSeconds($i * 5), [
+                'head_yaw' => 50.0,
+                'head_pitch' => 5.0,
+                'gt_head_turn' => true,
+                'gt_is_violation' => true,
+            ]);
+        }
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->insertLog($examId, $student->id, $base->copy()->addSeconds(60 + $i * 5), [
+                'head_yaw' => 10.0,
+                'head_pitch' => 5.0,
+                'gt_head_turn' => false,
+                'gt_is_violation' => false,
+            ]);
+        }
+
+        $this->artisan('proctoring:threshold-analysis', [
+            '--indicator' => ['head_turn'],
+            '--min-positives' => 2,
+            '--step-yaw' => 2,
+            '--step-pitch' => 2,
+        ])
+            ->expectsOutputToContain('yaw 31°, pitch 66°')
+            ->expectsOutputToContain('Pitch sweep — yaw tetap 31°')
             ->assertExitCode(0);
     }
 
