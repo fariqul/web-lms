@@ -209,7 +209,7 @@ export interface TrialUpdatePayload {
   gt_eye_gaze_away?: boolean;
   gt_identity_mismatch?: boolean;
   is_invalid?: boolean;
-  invalidation_reason?: string;
+  invalidation_reason?: string | null;
 }
 
 export async function updateTrial(

@@ -61,6 +61,8 @@ interface Props {
 
 type InnerTab = 'trials' | 'metrics' | 'sweep';
 
+const TARGET_SUPPORT = 30;
+
 export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
   const [session, setSession] = useState<ExperimentSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,9 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
   const [trialsPage, setTrialsPage] = useState(1);
   const [trialsLastPage, setTrialsLastPage] = useState(1);
   const [trialsLoading, setTrialsLoading] = useState(false);
+
+  // Collected trials per ground-truth category (valid trials only)
+  const [supportCounts, setSupportCounts] = useState<Partial<Record<ExperimentCategory, number>>>({});
 
   // Inner tab
   const [innerTab, setInnerTab] = useState<InnerTab>('trials');
@@ -104,6 +109,17 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
     }
   }, [sessionId]);
 
+  // Silent refresh — must NOT toggle `loading`, otherwise the early-return
+  // spinner unmounts CameraPreview and kills the live video stream.
+  const refreshSession = useCallback(async () => {
+    try {
+      const res = await getSession(sessionId);
+      setSession(res.data);
+    } catch (err) {
+      console.error('[ExperimentDetail] refreshSession', err);
+    }
+  }, [sessionId]);
+
   const loadTrials = useCallback(async (page = 1) => {
     setTrialsLoading(true);
     try {
@@ -119,10 +135,25 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
     }
   }, [sessionId]);
 
+  // Support counts come from the metrics endpoint (already excludes invalid trials).
+  const loadSupport = useCallback(async () => {
+    try {
+      const data = await getMetrics(sessionId);
+      const counts: Partial<Record<ExperimentCategory, number>> = {};
+      for (const cat of EXPERIMENT_CATEGORIES) {
+        counts[cat] = data.per_category[cat]?.support ?? 0;
+      }
+      setSupportCounts(counts);
+    } catch (err) {
+      console.error('[ExperimentDetail] loadSupport', err);
+    }
+  }, [sessionId]);
+
   useEffect(() => {
     loadSession();
     loadTrials(1);
-  }, [loadSession, loadTrials]);
+    loadSupport();
+  }, [loadSession, loadTrials, loadSupport]);
 
   // ── Lifecycle actions ─────────────────────────────────────────────────
   const runLifecycle = useCallback(
@@ -154,12 +185,12 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
           setCaptureError(res.message || 'Wajah tidak terdeteksi');
           return;
         }
-        await loadSession();
+        await refreshSession();
       } catch (err) {
         setCaptureError(err instanceof Error ? err.message : 'Gagal set baseline');
       }
     },
-    [sessionId, loadSession],
+    [sessionId, refreshSession],
   );
 
   // ── Capture a trial ────────────────────────────────────────────────────
@@ -188,14 +219,15 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
         setTrials((prev) => [res.data, ...prev]);
         setTrialsTotal((t) => t + 1);
         setGtCategory('normal'); // reset label for the next trial
-        await loadSession(); // refresh trial_counts_by_scenario
+        await refreshSession(); // refresh trial_counts_by_scenario (keeps camera alive)
+        await loadSupport();
       } catch (err) {
         setCaptureError(err instanceof Error ? err.message : 'Gagal capture');
       } finally {
         setCapturing(false);
       }
     },
-    [session, gtCategory, scenario, sessionId, loadSession],
+    [session, gtCategory, scenario, sessionId, refreshSession, loadSupport],
   );
 
   // ── Metrics ─────────────────────────────────────────────────────────────
@@ -247,6 +279,7 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
       );
       try {
         await updateTrial(trial.id, { [field]: value });
+        await loadSupport();
       } catch (err) {
         // Revert on failure
         setTrials((prev) =>
@@ -255,23 +288,43 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
         console.error('[ExperimentDetail] toggleTrialGt', err);
       }
     },
-    [],
+    [loadSupport],
   );
 
   const toggleTrialInvalid = useCallback(
     async (trial: ExperimentTrial, value: boolean, reason?: string) => {
+      const prevInvalid = trial.is_invalid;
+      const prevReason = trial.invalidation_reason;
+      // Optimistic update
       setTrials((prev) =>
         prev.map((t) =>
-          t.id === trial.id ? { ...t, is_invalid: value, invalidation_reason: reason ?? t.invalidation_reason } : t,
+          t.id === trial.id
+            ? {
+                ...t,
+                is_invalid: value,
+                invalidation_reason: value ? (reason ?? t.invalidation_reason) : null,
+              }
+            : t,
         ),
       );
       try {
-        await updateTrial(trial.id, { is_invalid: value, invalidation_reason: reason });
+        await updateTrial(trial.id, {
+          is_invalid: value,
+          invalidation_reason: value ? (reason ?? prevReason) : null,
+        });
+        await loadSupport();
       } catch (err) {
+        setTrials((prev) =>
+          prev.map((t) =>
+            t.id === trial.id
+              ? { ...t, is_invalid: prevInvalid, invalidation_reason: prevReason }
+              : t,
+          ),
+        );
         console.error('[ExperimentDetail] toggleTrialInvalid', err);
       }
     },
-    [],
+    [loadSupport],
   );
 
   if (loading) {
@@ -422,6 +475,27 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
               {CATEGORY_LABELS[cat as ExperimentCategory]}
             </label>
           ))}
+        </div>
+
+        {/* Progress support per category (target 30 per protocol) */}
+        <div className="mb-4 flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">
+            Progres kategori (target {TARGET_SUPPORT}):
+          </span>
+          {EXPERIMENT_CATEGORIES.map((cat) => {
+            const count = supportCounts[cat] ?? 0;
+            const tone =
+              count >= TARGET_SUPPORT
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                : count >= 20
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+            return (
+              <span key={cat} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${tone}`}>
+                {CATEGORY_LABELS[cat as ExperimentCategory]} {count}/{TARGET_SUPPORT}
+              </span>
+            );
+          })}
         </div>
 
         {captureError && (
@@ -619,7 +693,7 @@ function TrialsTable({
                     </td>
                   );
                 })}
-                <td className="px-2 py-2 text-center">
+                <td className="px-2 py-2 text-center align-top">
                   <input
                     type="checkbox"
                     checked={!!t.is_invalid}
@@ -627,6 +701,23 @@ function TrialsTable({
                     className="rounded"
                     title="Tandai trial tidak valid"
                   />
+                  {t.is_invalid && (
+                    <input
+                      type="text"
+                      defaultValue={t.invalidation_reason ?? ''}
+                      placeholder="Alasan"
+                      onBlur={(e) => {
+                        const reason = e.target.value.trim();
+                        if (reason !== (t.invalidation_reason ?? '')) {
+                          onToggleInvalid(t, true, reason || undefined);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                      }}
+                      className="mt-1 w-24 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-1 py-0.5 text-[11px] text-gray-900 dark:text-white"
+                    />
+                  )}
                 </td>
               </tr>
             ))}
