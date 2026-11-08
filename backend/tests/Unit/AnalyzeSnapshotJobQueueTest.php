@@ -41,9 +41,9 @@ class AnalyzeSnapshotJobQueueTest extends TestCase
         $method = new \ReflectionMethod(AnalyzeSnapshotJob::class, 'shouldEmitAlert');
         $method->setAccessible(true);
 
-        $phoneFirst = $method->invoke($job, 'object_detected', 15, 'cell phone');
-        $bookFirst = $method->invoke($job, 'object_detected', 15, 'book');
-        $phoneSecond = $method->invoke($job, 'object_detected', 15, 'cell phone');
+        $phoneFirst = $method->invoke($job, 'object_detected', 'cell phone');
+        $bookFirst = $method->invoke($job, 'object_detected', 'book');
+        $phoneSecond = $method->invoke($job, 'object_detected', 'cell phone');
 
         $this->assertTrue($phoneFirst);
         $this->assertTrue($bookFirst);

@@ -212,6 +212,10 @@ class ExamResultsAdminOnlyAccessTest extends TestCase
 
     public function test_admin_can_export_exam_results(): void
     {
+        if (!class_exists(\ZipArchive::class)) {
+            $this->markTestSkipped('Ekstensi zip tidak tersedia lokal; image Docker sudah menyertakannya.');
+        }
+
         $classId = $this->createClassRoom('X-Results-Export-Admin');
         $teacher = $this->createUser('guru', $classId, 'teacher-results-export-admin');
         $admin = $this->createUser('admin', $classId, 'admin-results-export');

@@ -1009,7 +1009,8 @@ class ExamController extends Controller
     public function updateResultScore(Request $request, $resultId)
     {
         $user = $request->user();
-        
+        $result = ExamResult::with('exam')->findOrFail($resultId);
+
         $isAdmin = $user->role === 'admin';
         $isOwnerTeacher = $user->role === 'guru' && ((int) $result->exam->teacher_id === (int) $user->id || ($result->exam->teacher_id === null && $result->exam->type === 'quiz'));
 

@@ -24,6 +24,8 @@ class TroubleshootingEngineTest extends TestCase
             'face_analysis' => [
                 'face_detected' => true,
                 'confidence' => 0.95,
+                'head_yaw' => 0.0,
+                'eye_gaze_ratio' => 0.5,
                 'face_embedding' => array_fill(0, 128, 0.1),
             ],
             'object_detection' => [

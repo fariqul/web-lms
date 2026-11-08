@@ -80,6 +80,13 @@ class ExamViolationPolicyHardeningTest extends TestCase
         ]);
     }
 
+    protected function tearDown(): void
+    {
+        unset($_ENV['EXAM_VIOLATION_STRICT_MODE'], $_SERVER['EXAM_VIOLATION_STRICT_MODE']);
+
+        parent::tearDown();
+    }
+
     public function test_ios_critical_event_is_counted_immediately(): void
     {
         $classId = $this->createClassRoom();
@@ -110,6 +117,9 @@ class ExamViolationPolicyHardeningTest extends TestCase
 
     public function test_non_critical_event_requires_consensus_and_respects_cooldown(): void
     {
+        // Consensus/cooldown hanya aktif di mode non-strict (EXAM_VIOLATION_STRICT_MODE=false).
+        $_ENV['EXAM_VIOLATION_STRICT_MODE'] = 'false';
+
         $classId = $this->createClassRoom();
         $teacher = $this->createUser('guru', $classId, 'teacher-non-critical');
         $student = $this->createUser('siswa', $classId, 'student-non-critical');
