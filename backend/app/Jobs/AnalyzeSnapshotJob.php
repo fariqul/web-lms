@@ -105,6 +105,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 'eye_gaze_threshold'       => $config['eye_gaze_threshold'],
                 'confidence_threshold'     => $config['confidence_threshold'],
                 'face_similarity_threshold' => $config['face_similarity_threshold'],
+                'multi_face_rule'          => config('proctoring.multi_face_rule', 'person_or_face'),
             ]);
 
             /** @var \Illuminate\Http\Client\Response $response */
@@ -170,17 +171,23 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 ], 'suspicious_' . $objectClass);
             }
 
-            // 4b. Multiple persons (YOLO)
-            if (($result['person_count'] ?? 0) > 1) {
+            // 4b. Multiple persons/faces — rule from config
+            if ($this->isMultiFace($result, $faceAnalysis)) {
+                $personCount = (int) ($result['person_count'] ?? 0);
+                $faceCount   = (int) ($faceAnalysis['face_count'] ?? 0);
+                $description = $personCount > 1
+                    ? "{$personCount} orang terdeteksi oleh AI"
+                    : "{$faceCount} wajah terdeteksi oleh AI";
+
                 $this->createAlertIfNotDuplicate('multi_face', [
                     'exam_id'     => $this->examId,
                     'student_id'  => $this->studentId,
                     'snapshot_id' => $this->snapshotId,
                     'type'        => 'multi_face',
                     'severity'    => 'alert',
-                    'description' => "{$result['person_count']} orang terdeteksi oleh AI",
+                    'description' => $description,
                     'confidence'  => 0.9,
-                    'details'     => ['person_count' => $result['person_count']],
+                    'details'     => ['person_count' => $personCount, 'face_count' => $faceCount],
                 ]);
             }
 
@@ -349,8 +356,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
 
             // Derive per-indicator binary decisions from result
             $aiNoFace           = $faceAnalysis ? !($faceAnalysis['face_detected'] ?? true) : false;
-            $aiMultiFace        = ($result['person_count'] ?? 0) > 1
-                                  || (($faceAnalysis['face_count'] ?? 0) > 1);
+            $aiMultiFace        = $this->isMultiFace($result, $faceAnalysis);
             $aiHeadTurn         = (bool) ($faceAnalysis['is_looking_away']  ?? false);
             $aiEyeGaze          = (bool) ($faceAnalysis['is_gaze_deviated'] ?? false);
             $aiObjectDetected   = count($result['prohibited_objects'] ?? []) > 0
@@ -429,7 +435,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
                                     ? (int) ($inc['object_per_item'] ?? 15) : 0,
             'identity_mismatch' => in_array('identity_mismatch', $result['detections'] ?? [], true)
                                     ? (int) ($inc['identity_base'] ?? 30) : 0,
-            'multi_face'        => ($result['person_count'] ?? 0) > 1
+            'multi_face'        => $this->isMultiFace($result, $fa)
                                     ? (int) ($inc['multi_face'] ?? 10) : 0,
             'no_face'           => ($fa && !($fa['face_detected'] ?? true))
                                     ? (int) ($inc['no_face'] ?? 15) : 0,
@@ -469,13 +475,6 @@ class AnalyzeSnapshotJob implements ShouldQueue
             $score->object_detection_score  = min(100, $score->object_detection_score + ($prohibitedCount * (int) ($inc['object_per_item'] ?? 15)));
         }
 
-        // Multi-face (YOLO)
-        $personCount = $result['person_count'] ?? 0;
-        if ($personCount > 1) {
-            $score->multi_face_count++;
-            $score->multi_face_score = min(100, $score->multi_face_score + (int) ($inc['multi_face'] ?? 10));
-        }
-
         // Face analysis (MediaPipe)
         $faceAnalysis = $result['face_analysis'] ?? null;
         if ($faceAnalysis) {
@@ -493,17 +492,32 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 $score->eye_gaze_count = ($score->eye_gaze_count ?? 0) + 1;
                 $score->eye_gaze_score = min(100, ($score->eye_gaze_score ?? 0) + (int) ($inc['eye_gaze'] ?? 5));
             }
+        }
 
-            // Multi-face from MediaPipe (supplements YOLO person_count)
-            if (($faceAnalysis['face_count'] ?? 0) > 1 && $personCount <= 1) {
-                $score->multi_face_count++;
-                $score->multi_face_score = min(100, $score->multi_face_score + (int) ($inc['multi_face'] ?? 10));
-            }
+        // Multi-face — rule from config (person_or_face | face_only)
+        if ($this->isMultiFace($result, $faceAnalysis)) {
+            $score->multi_face_count++;
+            $score->multi_face_score = min(100, $score->multi_face_score + (int) ($inc['multi_face'] ?? 10));
         }
 
         $score->total_score = $this->calculateTotalScore($score);
         $score->risk_level  = $this->calculateRiskLevel($score->total_score);
         $score->save();
+    }
+
+    /**
+     * `person_or_face` (default) counts a second person even when their face is
+     * not visible. `face_only` requires MediaPipe to see more than one face.
+     */
+    private function isMultiFace(array $result, ?array $faceAnalysis): bool
+    {
+        $faceCount = (int) ($faceAnalysis['face_count'] ?? 0);
+
+        if (config('proctoring.multi_face_rule', 'person_or_face') === 'face_only') {
+            return $faceCount > 1;
+        }
+
+        return $faceCount > 1 || ((int) ($result['person_count'] ?? 0)) > 1;
     }
 
     private function calculateTotalScore(ProctoringScore $score): int

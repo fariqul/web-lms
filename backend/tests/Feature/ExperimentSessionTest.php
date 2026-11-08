@@ -44,11 +44,12 @@ class ExperimentSessionTest extends TestCase
         ], $overrides);
     }
 
-    private function fakeFastapiResponse(): array
+    private function fakeFastapiResponse(array $overrides = []): array
     {
-        return [
+        $base = [
             'face_analysis' => [
                 'face_detected'   => true,
+                'face_count'      => 1,
                 'face_confidence' => 0.92,
                 'head_yaw'        => 5.0,
                 'head_pitch'      => 3.0,
@@ -57,12 +58,26 @@ class ExperimentSessionTest extends TestCase
                 'face_distance'   => null,
             ],
             'all_detections'   => [],
-            'face_count'       => 1,
             'person_count'     => 1,
             'risk_score'       => 0,
             'processing_time_ms' => 120,
             'detections'       => [],
         ];
+
+        return array_replace_recursive($base, $overrides);
+    }
+
+    private function runningSession(User $admin, array $overrides = []): ExperimentSession
+    {
+        return ExperimentSession::create(array_merge([
+            'name'            => 'Sesi Uji',
+            'researcher_name' => 'R',
+            'lighting'        => 'normal',
+            'dataset_split'   => 'calibration',
+            'config_scope'    => 'draft',
+            'status'          => 'running',
+            'created_by'      => $admin->id,
+        ], $overrides));
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -168,6 +183,116 @@ class ExperimentSessionTest extends TestCase
             'session_id'   => $session->id,
             'trial_number' => 1,
         ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // 4b. face_count is read from face_analysis (real service response shape)
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function test_capture_reads_face_count_from_face_analysis(): void
+    {
+        $admin = $this->adminUser();
+
+        Http::fake([
+            '*/analyze' => Http::response($this->fakeFastapiResponse([
+                'face_analysis' => ['face_count' => 2],
+                'person_count'  => 1,
+            ]), 200),
+        ]);
+
+        Storage::fake('experiment_snapshots');
+
+        $session = $this->runningSession($admin);
+        $image   = UploadedFile::fake()->image('two-faces.jpg', 640, 480);
+
+        $this->actingAs($admin)
+            ->postJson("/api/experiment-sessions/{$session->id}/capture", ['image' => $image])
+            ->assertStatus(200)
+            ->assertJsonPath('data.face_count', 2)
+            ->assertJsonPath('data.pred_multi_face', true);
+
+        $this->assertDatabaseHas('experiment_trials', [
+            'session_id'       => $session->id,
+            'face_count'       => 2,
+            'pred_multi_face'  => true,
+            'score_multi_face' => 10,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // 4c. Default rule — second person counts even with one visible face
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function test_capture_default_rule_counts_second_person(): void
+    {
+        $admin = $this->adminUser();
+
+        Http::fake([
+            '*/analyze' => Http::response($this->fakeFastapiResponse([
+                'face_analysis' => ['face_count' => 1],
+                'person_count'  => 2,
+            ]), 200),
+        ]);
+
+        Storage::fake('experiment_snapshots');
+
+        $session = $this->runningSession($admin);
+        $image   = UploadedFile::fake()->image('two-persons.jpg', 640, 480);
+
+        $this->actingAs($admin)
+            ->postJson("/api/experiment-sessions/{$session->id}/capture", ['image' => $image])
+            ->assertStatus(200)
+            ->assertJsonPath('data.pred_multi_face', true);
+
+        $this->assertDatabaseHas('experiment_trials', [
+            'session_id'       => $session->id,
+            'pred_multi_face'  => true,
+            'score_multi_face' => 10,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // 4d. face_only rule — person count ignored and rule sent to service
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function test_capture_face_only_rule_ignores_person_count(): void
+    {
+        config(['proctoring.multi_face_rule' => 'face_only']);
+
+        $admin = $this->adminUser();
+
+        Http::fake([
+            '*/analyze' => Http::response($this->fakeFastapiResponse([
+                'face_analysis' => ['face_count' => 1],
+                'person_count'  => 2,
+            ]), 200),
+        ]);
+
+        Storage::fake('experiment_snapshots');
+
+        $session = $this->runningSession($admin);
+        $image   = UploadedFile::fake()->image('person-only.jpg', 640, 480);
+
+        $this->actingAs($admin)
+            ->postJson("/api/experiment-sessions/{$session->id}/capture", ['image' => $image])
+            ->assertStatus(200)
+            ->assertJsonPath('data.face_count', 1)
+            ->assertJsonPath('data.pred_multi_face', false);
+
+        $this->assertDatabaseHas('experiment_trials', [
+            'session_id'       => $session->id,
+            'pred_multi_face'  => false,
+            'score_multi_face' => 0,
+        ]);
+
+        Http::assertSent(function ($request) {
+            $part = collect($request->data())
+                ->first(fn ($item) => is_array($item) && ($item['name'] ?? null) === 'threshold_config');
+
+            $data = json_decode($part['contents'] ?? '{}', true);
+
+            return ($data['multi_face_rule'] ?? null) === 'face_only';
+        });
     }
 
     // ──────────────────────────────────────────────────────────────────────

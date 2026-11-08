@@ -22,6 +22,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Multi-face Rule
+    |--------------------------------------------------------------------------
+    | Sumber keputusan indikator multi-wajah.
+    | person_or_face : >1 orang (YOLO) ATAU >1 wajah (MediaPipe) — default,
+    |                  mempertahankan perilaku produksi saat ini.
+    | face_only      : hanya >1 wajah (MediaPipe); jumlah orang diabaikan.
+    | Nilai lain diperlakukan sebagai person_or_face.
+    */
+    'multi_face_rule' => env('PROCTORING_MULTI_FACE_RULE', 'person_or_face'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Head Pose Thresholds (derajat)
     |--------------------------------------------------------------------------
     | Head yaw  = rotasi kiri/kanan.

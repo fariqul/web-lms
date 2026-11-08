@@ -324,6 +324,7 @@ class ExperimentController extends Controller
                 'eye_gaze_threshold'        => $config['eye_gaze_threshold'],
                 'confidence_threshold'      => $config['confidence_threshold'],
                 'face_similarity_threshold' => $config['face_similarity_threshold'],
+                'multi_face_rule'           => config('proctoring.multi_face_rule', 'person_or_face'),
             ];
 
             $thresholdConfig = json_encode($thresholdConfigData);
@@ -357,8 +358,8 @@ class ExperimentController extends Controller
             $headRoll        = $faceAnalysis['head_roll'] ?? null;
             $eyeGazeRatio    = $faceAnalysis['eye_gaze_ratio'] ?? null;
             $faceDistance    = $faceAnalysis['face_distance'] ?? $result['face_distance'] ?? null;
-            $personCount     = $result['person_count'] ?? null;
-            $faceCount       = $result['face_count'] ?? ($result['multi_face_detection']['face_count'] ?? null);
+            $personCount     = isset($result['person_count']) ? (int) $result['person_count'] : null;
+            $faceCount       = isset($faceAnalysis['face_count']) ? (int) $faceAnalysis['face_count'] : null;
             $riskScoreRaw    = $result['risk_score'] ?? null;
             $inferenceMsRaw  = $result['processing_time_ms'] ?? $result['inference_ms'] ?? null;
 
@@ -389,8 +390,10 @@ class ExperimentController extends Controller
             $confidenceThreshold    = (float) ($config['confidence_threshold'] ?? 0.45);
             $faceSimilarityThreshold = (float) ($config['face_similarity_threshold'] ?? 0.6);
 
+            $multiFaceDetected = $this->isMultiFaceDetected($faceCount, $personCount);
+
             $scoreNoFace   = (!$faceDetected) ? $incNoFace : 0;
-            $scoreMultiFace = ($faceCount !== null && $faceCount > 1) ? $incMultiFace : 0;
+            $scoreMultiFace = $multiFaceDetected ? $incMultiFace : 0;
 
             $scoreHeadTurn = 0;
             if ($headYaw !== null && abs((float) $headYaw) > $headYawThreshold) {
@@ -441,8 +444,7 @@ class ExperimentController extends Controller
 
             // ── AI predictions ────────────────────────────────────────────
             $predNoFace  = !$faceDetected;
-            $predMultiFace = ($faceCount !== null && $faceCount > 1)
-                || ($personCount !== null && $personCount > 1);
+            $predMultiFace = $multiFaceDetected;
 
             $predHeadTurn = false;
             if ($headYaw !== null && abs((float) $headYaw) > $headYawThreshold) {
@@ -684,6 +686,20 @@ class ExperimentController extends Controller
     // ──────────────────────────────────────────────────────────────────────────
     // exportCsv — download CSV
     // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * `person_or_face` (default) keeps the exam-path behaviour: a second person
+     * counts even when their face is not visible. `face_only` requires MediaPipe
+     * to see more than one face.
+     */
+    private function isMultiFaceDetected(?int $faceCount, ?int $personCount): bool
+    {
+        if (config('proctoring.multi_face_rule', 'person_or_face') === 'face_only') {
+            return ($faceCount ?? 0) > 1;
+        }
+
+        return ($faceCount ?? 0) > 1 || ($personCount ?? 0) > 1;
+    }
 
     private function euclideanDistance(array $a, array $b): float
     {

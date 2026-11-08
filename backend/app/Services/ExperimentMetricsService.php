@@ -360,7 +360,7 @@ class ExperimentMetricsService
     {
         $bom     = "\xEF\xBB\xBF";
         $columns = [
-            'trial_number', 'captured_at', 'scenario',
+            'trial_number', 'captured_at', 'scenario', 'snapshot_path',
             'gt_no_face', 'gt_multi_face', 'gt_phone', 'gt_book',
             'gt_head_turn', 'gt_eye_gaze_away', 'gt_identity_mismatch',
             'person_count', 'face_count', 'face_detected',

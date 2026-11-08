@@ -157,6 +157,7 @@ class ThresholdConfig(BaseModel):
     eye_gaze_threshold: Optional[float] = None
     confidence_threshold: Optional[float] = None
     face_similarity_threshold: Optional[float] = None
+    multi_face_rule: Optional[str] = None
 
 
 class FaceAnalysis(BaseModel):
@@ -563,6 +564,16 @@ async def analyze_snapshot(
     effective_pitch = (tconf.head_pitch_threshold if tconf and tconf.head_pitch_threshold is not None else HEAD_PITCH_THRESHOLD)
     effective_gaze = (tconf.eye_gaze_threshold if tconf and tconf.eye_gaze_threshold is not None else EYE_GAZE_THRESHOLD)
 
+    # Multi-face rule: person_or_face (default) or face_only.
+    effective_multi_face_rule = (
+        tconf.multi_face_rule if tconf and tconf.multi_face_rule else "person_or_face"
+    )
+    if effective_multi_face_rule not in ("person_or_face", "face_only"):
+        logger.warning(
+            f"Unknown multi_face_rule '{effective_multi_face_rule}', falling back to person_or_face"
+        )
+        effective_multi_face_rule = "person_or_face"
+
     start_time = time.time()
 
     try:
@@ -635,8 +646,8 @@ async def analyze_snapshot(
         risk_score = 0
         detections: list[str] = []
 
-        # Multiple persons (YOLO)
-        if person_count > 1:
+        # Multiple persons (YOLO) — ignored under face_only
+        if person_count > 1 and effective_multi_face_rule != "face_only":
             risk_score += min(30, (person_count - 1) * 15)
             detections.append(f"multi_person:{person_count}")
 
@@ -682,7 +693,7 @@ async def analyze_snapshot(
         processing_time = (time.time() - start_time) * 1000
 
         message_parts = []
-        if person_count > 1:
+        if person_count > 1 and effective_multi_face_rule != "face_only":
             message_parts.append(f"{person_count} orang terdeteksi")
         if prohibited_objects:
             names = list(set(o.class_name for o in prohibited_objects))

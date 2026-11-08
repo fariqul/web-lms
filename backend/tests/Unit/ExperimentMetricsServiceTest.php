@@ -229,6 +229,7 @@ class ExperimentMetricsServiceTest extends TestCase
             'trial_number'    => 1,
             'captured_at'     => null,
             'scenario'        => 'normal',
+            'snapshot_path'   => '1/photo.jpg',
             'gt_phone'        => true,
             'pred_phone'      => false,
             'is_invalid'      => false,
@@ -244,7 +245,7 @@ class ExperimentMetricsServiceTest extends TestCase
 
         // Column headers
         $requiredColumns = [
-            'trial_number', 'captured_at', 'scenario',
+            'trial_number', 'captured_at', 'scenario', 'snapshot_path',
             'gt_no_face', 'gt_multi_face', 'gt_phone',
             'pred_no_face', 'pred_phone', 'pred_identity_mismatch',
             'inference_ms', 'is_invalid', 'config_scope_used',
@@ -253,6 +254,8 @@ class ExperimentMetricsServiceTest extends TestCase
         foreach ($requiredColumns as $col) {
             $this->assertStringContainsString($col, $csv, "Column '{$col}' missing from CSV header.");
         }
+
+        $this->assertStringContainsString('1/photo.jpg', $csv);
     }
 
     // ──────────────────────────────────────────────────────────────────────
