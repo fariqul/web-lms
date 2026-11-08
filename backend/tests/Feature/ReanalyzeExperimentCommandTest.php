@@ -15,6 +15,7 @@ class ReanalyzeExperimentCommandTest extends TestCase
     use RefreshDatabase;
 
     private string $outputPath;
+    private string $sweepPath;
 
     protected function setUp(): void
     {
@@ -22,12 +23,15 @@ class ReanalyzeExperimentCommandTest extends TestCase
 
         Storage::fake('experiment_snapshots');
         $this->outputPath = storage_path('app/reanalysis-test-' . uniqid() . '.csv');
+        $this->sweepPath = storage_path('app/reanalysis-sweep-test-' . uniqid() . '.csv');
     }
 
     protected function tearDown(): void
     {
-        if (is_file($this->outputPath)) {
-            unlink($this->outputPath);
+        foreach ([$this->outputPath, $this->sweepPath] as $path) {
+            if (is_file($path)) {
+                unlink($path);
+            }
         }
 
         parent::tearDown();
@@ -57,6 +61,8 @@ class ReanalyzeExperimentCommandTest extends TestCase
             'trial_number'   => $number,
             'snapshot_path'  => $path,
             'gt_multi_face'  => $gtMultiFace,
+            'image_width'    => 640,
+            'image_height'   => 480,
             'captured_at'    => now(),
         ]);
     }
@@ -106,8 +112,9 @@ class ReanalyzeExperimentCommandTest extends TestCase
         ]);
 
         $this->artisan('proctoring:reanalyze-experiment', [
-            'session'  => $session->id,
-            '--output' => $this->outputPath,
+            'session'        => $session->id,
+            '--output'       => $this->outputPath,
+            '--sweep-output' => $this->sweepPath,
         ])
             // Each variant must be scored on its own 2 trials, not a shared 4-trial collection.
             ->expectsOutputToContain('face_only: macro precision 1.000 | recall 1.000 | F1 1.000')
@@ -155,13 +162,63 @@ class ReanalyzeExperimentCommandTest extends TestCase
         ]);
 
         $this->artisan('proctoring:reanalyze-experiment', [
-            'session'  => $session->id,
-            '--output' => $this->outputPath,
+            'session'        => $session->id,
+            '--output'       => $this->outputPath,
+            '--sweep-output' => $this->sweepPath,
         ])
             ->expectsOutputToContain('file hilang: 1')
             ->assertExitCode(0);
 
         $this->assertCount(2, $this->csvRows(), 'Only the trial with an existing snapshot is analyzed.');
         Http::assertSentCount(1);
+    }
+
+    public function test_person_filter_ignores_tiny_background_person(): void
+    {
+        $session = $this->makeSession();
+        $this->trial($session, 1, "{$session->id}/a.jpg", false);
+
+        $response = $this->fakeResponse(2, 1);
+        $response['all_detections'] = [
+            // Foreground person, ~37% of a 640x480 frame.
+            ['class_id' => 0, 'class_name' => 'person', 'confidence' => 0.9, 'bbox' => [10, 10, 300, 400]],
+            // Distant/background person, ~0.2% of the frame.
+            ['class_id' => 0, 'class_name' => 'person', 'confidence' => 0.9, 'bbox' => [600, 600, 620, 630]],
+        ];
+
+        Http::fake([
+            '*/analyze' => Http::response($response, 200),
+        ]);
+
+        $this->artisan('proctoring:reanalyze-experiment', [
+            'session'        => $session->id,
+            '--output'       => $this->outputPath,
+            '--sweep-output' => $this->sweepPath,
+            '--person-conf'  => ['0.45'],
+            '--person-area'  => ['0', '1'],
+        ])->assertExitCode(0);
+
+        $handle = fopen($this->sweepPath, 'r');
+        $header = fgetcsv($handle);
+        $rows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            $rows[] = array_combine($header, $row);
+        }
+        fclose($handle);
+
+        $byArea = [];
+        foreach ($rows as $row) {
+            if ($row['filter'] !== 'face_only' && $row['filter'] !== 'person_or_face') {
+                $byArea[$row['min_area_pct']] = $row;
+            }
+        }
+
+        // Unfiltered: the background person counts, producing a false positive.
+        $this->assertSame('1', $byArea['0']['fp']);
+        $this->assertSame('0', $byArea['0']['tn']);
+
+        // Ignoring detections under 1% of the frame removes it.
+        $this->assertSame('0', $byArea['1']['fp']);
+        $this->assertSame('1', $byArea['1']['tn']);
     }
 }

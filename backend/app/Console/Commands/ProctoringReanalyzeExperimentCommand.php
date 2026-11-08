@@ -24,7 +24,11 @@ class ProctoringReanalyzeExperimentCommand extends Command
     protected $signature = 'proctoring:reanalyze-experiment
                             {session          : ID sesi eksperimen}
                             {--service-url=   : Override URL proctoring service}
-                            {--output=        : Path CSV (default reanalysis/experiment-ID-WAKTU.csv)}';
+                            {--output=        : Path CSV (default reanalysis/experiment-ID-WAKTU.csv)}
+                            {--sweep-output=  : Path CSV sweep filter orang (default <output>-person-sweep.csv)}
+                            {--person-conf=*  : Minimum confidence deteksi orang (repeatable, default 0.45 0.55 0.65 0.75)}
+                            {--person-area=*  : Minimum luas bbox orang dalam persen frame (repeatable, default 0 0.25 0.5 1 2 4)}
+                            {--top-filters=8  : Jumlah kombinasi filter terbaik yang ditampilkan}';
 
     protected $description = 'Analisis ulang snapshot trial eksperimen dengan service terbaru (pred_* tidak diubah)';
 
@@ -69,6 +73,7 @@ class ProctoringReanalyzeExperimentCommand extends Command
         ]);
 
         $rows = [];
+        $perTrial = [];
         /** @var array<string, Collection<int, ExperimentTrial>> $metricTrials */
         $metricTrials = [];
         foreach (self::RULES as $variant) {
@@ -105,7 +110,11 @@ class ProctoringReanalyzeExperimentCommand extends Command
                     continue;
                 }
 
-                $observation = $this->evaluate($response->json(), $session, $thresholds);
+                $size = @getimagesizefromstring($image);
+                $width = (int) ($size[0] ?? $trial->image_width ?? 640);
+                $height = (int) ($size[1] ?? $trial->image_height ?? 480);
+
+                $observation = $this->evaluate($response->json(), $session, $thresholds, $width, $height);
             } catch (\Throwable $e) {
                 $failed++;
                 continue;
@@ -119,6 +128,7 @@ class ProctoringReanalyzeExperimentCommand extends Command
             }
 
             $rows[] = $this->csvRow($trial, $observation);
+            $perTrial[] = ['trial' => $trial, 'observation' => $observation];
 
             foreach (self::RULES as $variant) {
                 $metricTrials[$variant]->push(
@@ -153,11 +163,20 @@ class ProctoringReanalyzeExperimentCommand extends Command
         $this->printRuleComparison($metrics);
         $this->printPerCategory($metrics['face_only']);
 
+        $sweep = $this->sweepPersonFilters($perTrial, $metricsService, $metrics);
+        $this->printPersonFilterTop($sweep);
+
         $output = (string) ($this->option('output')
             ?: 'reanalysis/experiment-' . $session->id . '-' . now()->format('YmdHis') . '.csv');
         $absolute = $this->writeCsv($output, $rows);
         if ($absolute !== null) {
             $this->info("CSV: {$absolute}");
+        }
+
+        $sweepOutput = (string) ($this->option('sweep-output') ?: preg_replace('/\.csv$/i', '', $output) . '-person-sweep.csv');
+        $absoluteSweep = $this->writeSweepCsv($sweepOutput, $sweep);
+        if ($absoluteSweep !== null) {
+            $this->info("CSV sweep: {$absoluteSweep}");
         }
 
         return Command::SUCCESS;
@@ -213,10 +232,31 @@ class ProctoringReanalyzeExperimentCommand extends Command
      * Mirrors the capture path in ExperimentController so offline predictions
      * match what a fresh capture would record.
      */
-    private function evaluate(array $result, ExperimentSession $session, array $t): array
+    private function evaluate(array $result, ExperimentSession $session, array $t, int $width, int $height): array
     {
         $face = $result['face_analysis'] ?? [];
         $detections = $result['all_detections'] ?? [];
+
+        $persons = [];
+        foreach ($detections as $det) {
+            $classId = $det['class_id'] ?? null;
+            $name = strtolower($det['class_name'] ?? ($det['class'] ?? ''));
+            if ($classId !== 0 && $name !== 'person') {
+                continue;
+            }
+
+            $areaRatio = 0.0;
+            $bbox = $det['bbox'] ?? null;
+            if (is_array($bbox) && count($bbox) >= 4 && $width > 0 && $height > 0) {
+                $areaRatio = abs(((float) $bbox[2] - (float) $bbox[0]) * ((float) $bbox[3] - (float) $bbox[1]))
+                    / ($width * $height);
+            }
+
+            $persons[] = [
+                'confidence' => (float) ($det['confidence'] ?? 0),
+                'area_ratio' => $areaRatio,
+            ];
+        }
 
         $faceDetected = (bool) ($face['face_detected'] ?? $result['face_detected'] ?? false);
         $personCount = isset($result['person_count']) ? (int) $result['person_count'] : null;
@@ -272,6 +312,7 @@ class ProctoringReanalyzeExperimentCommand extends Command
                 'face_only'      => ($faceCount ?? 0) > 1,
                 'person_or_face' => ($faceCount ?? 0) > 1 || ($personCount ?? 0) > 1,
             ],
+            'person_detections'       => $persons,
             'risk_score_raw'          => $result['risk_score'] ?? null,
             'inference_ms'            => $result['processing_time_ms'] ?? $result['inference_ms'] ?? null,
         ];
@@ -390,10 +431,140 @@ class ProctoringReanalyzeExperimentCommand extends Command
         return $value === null ? '-' : number_format((float) $value, 3);
     }
 
+    /**
+     * @return array<int, array{conf: float, area_pct: float}>
+     */
+    private function personFilterGrid(): array
+    {
+        $confs = array_values(array_filter(
+            array_map('floatval', (array) $this->option('person-conf')),
+            fn ($v) => $v >= 0
+        ));
+        $areas = array_values(array_filter(
+            array_map('floatval', (array) $this->option('person-area')),
+            fn ($v) => $v >= 0
+        ));
+
+        $confs = $confs !== [] ? $confs : [0.45, 0.55, 0.65, 0.75];
+        $areas = $areas !== [] ? $areas : [0, 0.25, 0.5, 1, 2, 4];
+
+        $grid = [];
+        foreach ($confs as $conf) {
+            foreach ($areas as $areaPct) {
+                $grid[] = ['conf' => $conf, 'area_pct' => $areaPct];
+            }
+        }
+
+        return $grid;
+    }
+
+    private function sweepPersonFilters(array $perTrial, ExperimentMetricsService $metricsService, array $baseline): array
+    {
+        $rows = [];
+
+        foreach (self::RULES as $variant) {
+            $metrics = $baseline[$variant];
+            $rows[] = $this->sweepRow(
+                $variant,
+                null,
+                null,
+                $metrics['per_category']['multi_face'],
+                $metrics['overall']
+            );
+        }
+
+        foreach ($this->personFilterGrid() as $filter) {
+            $collection = collect();
+            foreach ($perTrial as $item) {
+                $obs = $item['observation'];
+                $filteredCount = 0;
+                foreach ($obs['person_detections'] as $person) {
+                    if ($person['confidence'] >= $filter['conf']
+                        && $person['area_ratio'] * 100 >= $filter['area_pct']) {
+                        $filteredCount++;
+                    }
+                }
+
+                $multiFace = ($obs['face_count'] ?? 0) > 1 || $filteredCount > 1;
+                $collection->push($this->metricTrial($item['trial'], $obs, $multiFace));
+            }
+
+            $metrics = $metricsService->computeMetrics($collection);
+            $rows[] = $this->sweepRow(
+                $this->filterLabel($filter),
+                $filter['conf'],
+                $filter['area_pct'],
+                $metrics['per_category']['multi_face'],
+                $metrics['overall']
+            );
+        }
+
+        return $rows;
+    }
+
+    private function sweepRow(string $filter, ?float $conf, ?float $areaPct, array $multiFace, array $overall): array
+    {
+        return [
+            'filter'          => $filter,
+            'min_conf'        => $conf,
+            'min_area_pct'    => $areaPct,
+            'tp'              => $multiFace['tp'],
+            'tn'              => $multiFace['tn'],
+            'fp'              => $multiFace['fp'],
+            'fn'              => $multiFace['fn'],
+            'precision'       => $multiFace['precision'],
+            'recall'          => $multiFace['recall'],
+            'f1'              => $multiFace['f1'],
+            'macro_precision' => $overall['precision'],
+            'macro_recall'    => $overall['recall'],
+            'macro_f1'        => $overall['f1'],
+        ];
+    }
+
+    private function printPersonFilterTop(array $sweep): void
+    {
+        $sorted = $sweep;
+        usort($sorted, fn ($a, $b) => ($b['macro_f1'] ?? -1) <=> ($a['macro_f1'] ?? -1));
+
+        $rows = [];
+        foreach (array_slice($sorted, 0, max(1, (int) $this->option('top-filters'))) as $row) {
+            $rows[] = [
+                $row['filter'],
+                $row['tp'], $row['tn'], $row['fp'], $row['fn'],
+                $this->fmt($row['precision']),
+                $this->fmt($row['recall']),
+                $this->fmt($row['f1']),
+                $this->fmt($row['macro_f1']),
+            ];
+        }
+
+        $this->line('Sweep filter deteksi orang (offline; hanya memengaruhi varian person_or_face):');
+        $this->table(
+            ['Filter', 'TP', 'TN', 'FP', 'FN', 'Precision', 'Recall', 'F1', 'Macro F1'],
+            $rows
+        );
+    }
+
+    private function filterLabel(array $filter): string
+    {
+        return sprintf('conf>=%.2f area>=%s%%', $filter['conf'], $this->trimPct($filter['area_pct']));
+    }
+
+    private function trimPct(float $pct): string
+    {
+        return rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.');
+    }
+
+    private function absolutePath(string $path): string
+    {
+        $isAbsolute = preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $path) === 1;
+
+        return $isAbsolute ? $path : storage_path('app/' . $path);
+    }
+
     private function writeCsv(string $path, array $rows): ?string
     {
-        $absolute = preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $path) === 1;
-        $fullPath = $absolute ? $path : storage_path('app/' . $path);
+        $fullPath = $this->absolutePath($path);
 
         $directory = dirname($fullPath);
         if (!is_dir($directory)) {
@@ -420,6 +591,49 @@ class ProctoringReanalyzeExperimentCommand extends Command
 
         foreach ($rows as $row) {
             fputcsv($handle, $row);
+        }
+
+        fclose($handle);
+
+        return $fullPath;
+    }
+
+    private function writeSweepCsv(string $path, array $rows): ?string
+    {
+        $fullPath = $this->absolutePath($path);
+
+        $directory = dirname($fullPath);
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        $handle = fopen($fullPath, 'w');
+        if (!$handle) {
+            $this->error("Tidak bisa menulis {$fullPath}");
+
+            return null;
+        }
+
+        fputcsv($handle, [
+            'filter', 'min_conf', 'min_area_pct',
+            'tp', 'tn', 'fp', 'fn',
+            'precision', 'recall', 'f1',
+            'macro_precision', 'macro_recall', 'macro_f1',
+        ]);
+
+        foreach ($rows as $row) {
+            fputcsv($handle, [
+                $row['filter'],
+                $row['min_conf'] ?? '',
+                $row['min_area_pct'] ?? '',
+                $row['tp'], $row['tn'], $row['fp'], $row['fn'],
+                $row['precision'] ?? '',
+                $row['recall'] ?? '',
+                $row['f1'] ?? '',
+                $row['macro_precision'] ?? '',
+                $row['macro_recall'] ?? '',
+                $row['macro_f1'] ?? '',
+            ]);
         }
 
         fclose($handle);
