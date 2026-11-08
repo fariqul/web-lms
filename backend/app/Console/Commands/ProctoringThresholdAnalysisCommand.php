@@ -135,6 +135,14 @@ class ProctoringThresholdAnalysisCommand extends Command
         $face = $row->face_analysis ?? [];
         $detections = array_values(array_filter($row->raw_detections ?? [], 'is_string'));
 
+        $yaw = $this->floatOrNull($face['head_yaw'] ?? null);
+        $pitch = $this->floatOrNull($face['head_pitch'] ?? null);
+
+        // Logs written before 2026-11-05 have no pose_available key. Back then
+        // failed mesh estimation stored 0.0 instead of null, so treat non-null
+        // angles as measurable instead of discarding every legacy row.
+        $hasPoseFlag = array_key_exists('pose_available', $face);
+
         return [
             'id' => $row->id,
             'exam_id' => $row->exam_id,
@@ -161,9 +169,12 @@ class ProctoringThresholdAnalysisCommand extends Command
             'risk_score' => (int) $row->risk_score_raw,
             'face_detected' => (bool) ($face['face_detected'] ?? false),
             'face_count' => (int) ($face['face_count'] ?? 0),
-            'pose_available' => (bool) ($face['pose_available'] ?? false),
-            'yaw' => $this->floatOrNull($face['head_yaw'] ?? null),
-            'pitch' => $this->floatOrNull($face['head_pitch'] ?? null),
+            'pose_available' => $hasPoseFlag
+                ? (bool) $face['pose_available']
+                : ($yaw !== null && $pitch !== null),
+            'legacy_pose' => !$hasPoseFlag,
+            'yaw' => $yaw,
+            'pitch' => $pitch,
             'gaze_ratio' => $this->floatOrNull($face['eye_gaze_ratio'] ?? null),
             'detections' => $detections,
             'prohibited_names' => $this->prohibitedNames($detections),
@@ -253,6 +264,15 @@ class ProctoringThresholdAnalysisCommand extends Command
 
         $stored = $this->evalRule($labeled, fn (array $r) => $r['ai']['head_turn'], 'head_turn');
         $this->printRuleTable([['ai_head_turn (keputusan tersimpan)', $stored]]);
+
+        $anglesAvailable = $labeled->filter(fn (array $r) => $r['yaw'] !== null && $r['pitch'] !== null);
+        $anglesAvailablePos = $anglesAvailable->filter(fn (array $r) => $r['gt']['head_turn'])->count();
+        $this->line("  Yaw/pitch tersedia      : {$anglesAvailable->count()}/{$n} baris ({$anglesAvailablePos}/{$positives} GT+).");
+
+        $legacy = $labeled->filter(fn (array $r) => $r['legacy_pose']);
+        if ($legacy->isNotEmpty()) {
+            $this->line("  Skema lama (tanpa pose_available): <fg=yellow>{$legacy->count()}</> baris — yaw/pitch 0.0 berarti pose gagal diukur, jadi pose tidak terukur bisa lebih banyak dari yang terdeteksi.");
+        }
 
         $noPose = $labeled->filter(fn (array $r) => !$r['pose_available'] || $r['yaw'] === null || $r['pitch'] === null);
         if ($noPose->isNotEmpty()) {
@@ -981,7 +1001,7 @@ class ProctoringThresholdAnalysisCommand extends Command
 
     private function basis(string $label, array $metrics): string
     {
-        return sprintf(
+        $basis = sprintf(
             '%s: F1 %.1f%%, presisi %.1f%%, recall %.1f%% (TP %d / FP %d / FN %d, n=%d)',
             $label,
             $metrics['f1'] * 100,
@@ -992,6 +1012,12 @@ class ProctoringThresholdAnalysisCommand extends Command
             $metrics['fn'],
             $metrics['n'],
         );
+
+        if ($metrics['f1'] < 0.5) {
+            $basis .= ' ⚠ F1 rendah — sinyal tidak terpisah baik';
+        }
+
+        return $basis;
     }
 
     private function pct(float $value): string

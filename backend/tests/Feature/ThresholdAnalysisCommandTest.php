@@ -17,31 +17,7 @@ class ThresholdAnalysisCommandTest extends TestCase
         $outputDir = storage_path('app/threshold-test');
         File::deleteDirectory($outputDir);
 
-        $teacher = User::factory()->create(['role' => 'guru']);
-        $student = User::factory()->create(['role' => 'siswa']);
-
-        $classId = DB::table('classes')->insertGetId([
-            'name' => 'XII IPA 1',
-            'grade_level' => 'XII',
-            'academic_year' => '2026/2027',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $examId = DB::table('exams')->insertGetId([
-            'class_id' => $classId,
-            'teacher_id' => $teacher->id,
-            'title' => 'Ujian Uji Ambang',
-            'subject' => 'Matematika',
-            'start_time' => now()->subHour(),
-            'end_time' => now(),
-            'duration' => 60,
-            'total_questions' => 10,
-            'status' => 'completed',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
+        [$student, $examId] = $this->seedExamContext();
         $base = now()->subMinutes(30);
 
         // Head-turn positives: large yaw, measured pose.
@@ -219,6 +195,75 @@ class ThresholdAnalysisCommandTest extends TestCase
         File::deleteDirectory($outputDir);
     }
 
+    public function test_legacy_rows_without_pose_flag_still_sweep_angles(): void
+    {
+        [$student, $examId] = $this->seedExamContext();
+        $base = now()->subMinutes(10);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->insertLog($examId, $student->id, $base->copy()->addSeconds($i * 5), [
+                'head_yaw' => 50.0,
+                'head_pitch' => 5.0,
+                'legacy_pose' => true,
+                'gt_head_turn' => true,
+                'gt_is_violation' => true,
+            ]);
+        }
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->insertLog($examId, $student->id, $base->copy()->addSeconds(60 + $i * 5), [
+                'head_yaw' => 10.0,
+                'head_pitch' => 5.0,
+                'legacy_pose' => true,
+                'gt_head_turn' => false,
+                'gt_is_violation' => false,
+            ]);
+        }
+
+        $this->artisan('proctoring:threshold-analysis', [
+            '--indicator' => ['head_turn'],
+            '--min-positives' => 2,
+            '--step-yaw' => 2,
+            '--step-pitch' => 2,
+        ])
+            ->expectsOutputToContain('Skema lama')
+            ->expectsOutputToContain('head_turn: F1 100.0%')
+            ->assertExitCode(0);
+    }
+
+    /**
+     * @return array{0: User, 1: int}
+     */
+    private function seedExamContext(): array
+    {
+        $teacher = User::factory()->create(['role' => 'guru']);
+        $student = User::factory()->create(['role' => 'siswa']);
+
+        $classId = DB::table('classes')->insertGetId([
+            'name' => 'XII IPA 1',
+            'grade_level' => 'XII',
+            'academic_year' => '2026/2027',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $examId = DB::table('exams')->insertGetId([
+            'class_id' => $classId,
+            'teacher_id' => $teacher->id,
+            'title' => 'Ujian Uji Ambang',
+            'subject' => 'Matematika',
+            'start_time' => now()->subHour(),
+            'end_time' => now(),
+            'duration' => 60,
+            'total_questions' => 10,
+            'status' => 'completed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return [$student, $examId];
+    }
+
     /**
      * Insert one labeled calibration row with a stored face_analysis JSON.
      */
@@ -237,6 +282,10 @@ class ThresholdAnalysisCommandTest extends TestCase
             'eye_gaze_ratio' => $data['eye_gaze_ratio'] ?? null,
             'is_gaze_deviated' => $data['ai_eye_gaze'] ?? false,
         ];
+
+        if (!empty($data['legacy_pose'])) {
+            unset($faceAnalysis['pose_available']);
+        }
 
         DB::table('proctoring_calibration_logs')->insert([
             'exam_id' => $examId,
