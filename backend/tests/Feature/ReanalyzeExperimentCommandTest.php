@@ -108,7 +108,11 @@ class ReanalyzeExperimentCommandTest extends TestCase
         $this->artisan('proctoring:reanalyze-experiment', [
             'session'  => $session->id,
             '--output' => $this->outputPath,
-        ])->assertExitCode(0);
+        ])
+            // Each variant must be scored on its own 2 trials, not a shared 4-trial collection.
+            ->expectsOutputToContain('face_only: macro precision 1.000 | recall 1.000 | F1 1.000')
+            ->expectsOutputToContain('person_or_face: macro precision 0.500 | recall 1.000 | F1 0.667')
+            ->assertExitCode(0);
 
         $rows = $this->csvRows();
         $this->assertCount(3, $rows, 'Header plus two analyzed trials expected.');

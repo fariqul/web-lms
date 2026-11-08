@@ -70,7 +70,10 @@ class ProctoringReanalyzeExperimentCommand extends Command
 
         $rows = [];
         /** @var array<string, Collection<int, ExperimentTrial>> $metricTrials */
-        $metricTrials = array_fill_keys(self::RULES, collect());
+        $metricTrials = [];
+        foreach (self::RULES as $variant) {
+            $metricTrials[$variant] = collect();
+        }
         $missing = 0;
         $failed = 0;
         $faceOnlyCount = 0;
