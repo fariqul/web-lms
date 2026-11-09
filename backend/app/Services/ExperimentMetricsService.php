@@ -366,6 +366,8 @@ class ExperimentMetricsService
             'person_count', 'face_count', 'face_detected',
             'head_yaw', 'head_pitch', 'head_roll',
             'eye_gaze_ratio', 'face_distance',
+            'client_face_detected', 'client_face_count', 'client_face_confidence',
+            'client_face_bbox', 'client_model', 'client_latency_ms', 'client_error',
             'risk_score_raw', 'total_score', 'risk_level',
             'pred_no_face', 'pred_multi_face', 'pred_phone', 'pred_book',
             'pred_head_turn', 'pred_eye_gaze_away', 'pred_identity_mismatch',
@@ -376,7 +378,7 @@ class ExperimentMetricsService
         $boolFields = [
             'gt_no_face', 'gt_multi_face', 'gt_phone', 'gt_book',
             'gt_head_turn', 'gt_eye_gaze_away', 'gt_identity_mismatch',
-            'face_detected',
+            'face_detected', 'client_face_detected',
             'pred_no_face', 'pred_multi_face', 'pred_phone', 'pred_book',
             'pred_head_turn', 'pred_eye_gaze_away', 'pred_identity_mismatch',
             'is_invalid',
@@ -403,6 +405,10 @@ class ExperimentMetricsService
                 // Booleans as 1 / 0
                 if (in_array($col, $boolFields)) {
                     $value = $value !== null && $value !== '' ? ($value ? '1' : '0') : '';
+                }
+
+                if (is_array($value)) {
+                    $value = json_encode($value);
                 }
 
                 // Escape CSV field

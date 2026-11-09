@@ -483,6 +483,18 @@ class ExperimentController extends Controller
                 $configVersionId = $latestVersion?->id;
             }
 
+            // ── Client-side face-api.js observation (layer comparison) ────
+            $clientBbox = null;
+            $rawClientBbox = $request->input('client_face_bbox');
+            if (is_string($rawClientBbox) && $rawClientBbox !== '') {
+                $decodedBbox = json_decode($rawClientBbox, true);
+                if (is_array($decodedBbox)
+                    && count($decodedBbox) >= 4
+                    && count($decodedBbox) === count(array_filter($decodedBbox, 'is_numeric'))) {
+                    $clientBbox = array_map('floatval', $decodedBbox);
+                }
+            }
+
             // ── Trial number ──────────────────────────────────────────────
             $trialNumber = $session->trials()->count() + 1;
 
@@ -513,6 +525,19 @@ class ExperimentController extends Controller
                 'all_detections'         => $allDetections ?: null,
                 'risk_score_raw'         => $riskScoreRaw,
                 'fastapi_detections'     => $fastapiDetections,
+                'client_face_detected'   => $request->has('client_face_detected')
+                    ? $request->boolean('client_face_detected') : null,
+                'client_face_count'      => $request->filled('client_face_count')
+                    ? (int) $request->input('client_face_count') : null,
+                'client_face_confidence' => $request->filled('client_face_confidence')
+                    ? (float) $request->input('client_face_confidence') : null,
+                'client_face_bbox'       => $clientBbox,
+                'client_model'           => $request->filled('client_model')
+                    ? (string) $request->input('client_model') : null,
+                'client_latency_ms'      => $request->filled('client_latency_ms')
+                    ? (int) $request->input('client_latency_ms') : null,
+                'client_error'           => $request->filled('client_error')
+                    ? (string) $request->input('client_error') : null,
                 'score_no_face'          => $scoreNoFace,
                 'score_multi_face'       => $scoreMultiFace,
                 'score_head_turn'        => $scoreHeadTurn,

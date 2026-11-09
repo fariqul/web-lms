@@ -24,6 +24,13 @@ class CaptureTrialRequest extends FormRequest
             'gt_eye_gaze_away'     => 'nullable|boolean',
             'gt_identity_mismatch' => 'nullable|boolean',
             'end_to_end_ms'        => 'nullable|integer|min:0',
+            'client_face_detected'   => 'nullable|boolean',
+            'client_face_count'      => 'nullable|integer|min:0|max:20',
+            'client_face_confidence' => 'nullable|numeric|min:0|max:1',
+            'client_face_bbox'       => 'nullable|json',
+            'client_model'           => 'nullable|string|max:64',
+            'client_latency_ms'      => 'nullable|integer|min:0|max:60000',
+            'client_error'           => 'nullable|string|max:255',
         ];
     }
 }
