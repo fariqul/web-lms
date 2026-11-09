@@ -63,6 +63,13 @@ export interface ExperimentTrial extends GroundTruth {
   eye_gaze_ratio: number | null;
   face_distance: number | null;
   all_detections: Array<Record<string, unknown>> | null;
+  client_face_detected: boolean | null;
+  client_face_count: number | null;
+  client_face_confidence: number | null;
+  client_face_bbox: number[] | null;
+  client_model: string | null;
+  client_latency_ms: number | null;
+  client_error: string | null;
   risk_score_raw: number | null;
   fastapi_detections: Array<unknown> | null;
   score_no_face: number | null;

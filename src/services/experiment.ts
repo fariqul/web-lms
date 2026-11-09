@@ -9,6 +9,7 @@
  */
 
 import { apiGet, apiPost, apiDelete, apiRequest, getApiUrl } from '@/lib/api';
+import type { ClientFaceObservation } from '@/utils/faceDetection';
 import type {
   CaptureResponse,
   CreateSessionPayload,
@@ -172,6 +173,7 @@ export async function listTrials(
 export interface CaptureOptions extends GroundTruth {
   scenario?: string;
   end_to_end_ms?: number;
+  client?: ClientFaceObservation;
 }
 
 export async function captureTrial(
@@ -190,6 +192,19 @@ export async function captureTrial(
     gt_eye_gaze_away: options.gt_eye_gaze_away ? '1' : '0',
     gt_identity_mismatch: options.gt_identity_mismatch ? '1' : '0',
   };
+
+  if (options.client) {
+    const client = options.client;
+    fields.client_face_detected = client.detected === null ? undefined : client.detected ? '1' : '0';
+    fields.client_face_count = client.count ?? undefined;
+    fields.client_face_confidence = client.confidence ?? undefined;
+    fields.client_face_bbox = client.box
+      ? JSON.stringify([client.box.x, client.box.y, client.box.width, client.box.height])
+      : undefined;
+    fields.client_model = client.model;
+    fields.client_latency_ms = client.latencyMs ?? undefined;
+    fields.client_error = client.error ?? undefined;
+  }
 
   const res = await multipartPost(`/api/experiment-sessions/${sessionId}/capture`, image, fields);
   if (!res.ok) throw new Error(await extractError(res));

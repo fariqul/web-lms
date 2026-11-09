@@ -49,6 +49,100 @@ export interface FaceDetectionResult {
   };
 }
 
+/** Client-layer observation recorded alongside a server measurement. */
+export interface ClientFaceObservation {
+  detected: boolean | null;
+  count: number | null;
+  confidence: number | null;
+  box: { x: number; y: number; width: number; height: number } | null;
+  model: string;
+  latencyMs: number | null;
+  error: string | null;
+}
+
+const CAPTURE_MODEL = 'tiny_face_detector@416/0.5';
+const CAPTURE_INPUT_SIZE = 416;
+const CAPTURE_SCORE_THRESHOLD = 0.5;
+
+/**
+ * Detect all faces in the exact frame that is uploaded, so client and server
+ * measurements describe the same image. Never throws: failures are reported
+ * through `error`, and `detected` stays null so nothing is recorded as a
+ * negative the model never actually judged.
+ */
+export async function detectFacesInImage(blob: Blob): Promise<ClientFaceObservation> {
+  const started = performance.now();
+  const base: ClientFaceObservation = {
+    detected: null,
+    count: null,
+    confidence: null,
+    box: null,
+    model: CAPTURE_MODEL,
+    latencyMs: null,
+    error: null,
+  };
+
+  if (typeof window === 'undefined') {
+    return { ...base, error: 'not_browser' };
+  }
+
+  const isLoaded = await loadFaceDetectionModels();
+  if (!isLoaded) {
+    return { ...base, error: 'model_not_loaded' };
+  }
+
+  try {
+    const faceapi = await import('face-api.js');
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      bitmap.close();
+      return { ...base, error: 'canvas_unavailable' };
+    }
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+
+    const options = new faceapi.TinyFaceDetectorOptions({
+      inputSize: CAPTURE_INPUT_SIZE,
+      scoreThreshold: CAPTURE_SCORE_THRESHOLD,
+    });
+    const detections = await faceapi.detectAllFaces(canvas, options);
+
+    let largest: { score: number; box: { x: number; y: number; width: number; height: number } } | null = null;
+    for (const det of detections) {
+      if (!largest || det.box.width * det.box.height > largest.box.width * largest.box.height) {
+        largest = { score: det.score, box: det.box };
+      }
+    }
+
+    return {
+      detected: detections.length > 0,
+      count: detections.length,
+      confidence: largest ? Math.round(largest.score * 1000) / 1000 : null,
+      box: largest
+        ? {
+            x: Math.round(largest.box.x),
+            y: Math.round(largest.box.y),
+            width: Math.round(largest.box.width),
+            height: Math.round(largest.box.height),
+          }
+        : null,
+      model: CAPTURE_MODEL,
+      latencyMs: Math.round(performance.now() - started),
+      error: null,
+    };
+  } catch (err) {
+    return {
+      ...base,
+      latencyMs: Math.round(performance.now() - started),
+      error: (err instanceof Error ? err.message : 'detection_failed').slice(0, 200),
+    };
+  }
+}
+
 /**
  * Detect a single face in an HTMLVideoElement.
  */

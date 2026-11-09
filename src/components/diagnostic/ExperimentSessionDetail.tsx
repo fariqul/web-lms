@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { CameraPreview } from '@/components/diagnostic/CameraPreview';
+import { detectFacesInImage } from '@/utils/faceDetection';
 import { ExperimentMetricsView } from '@/components/diagnostic/ExperimentMetricsView';
 import { ExperimentSweepChart } from '@/components/diagnostic/ExperimentSweepChart';
 import {
@@ -204,13 +205,17 @@ export function ExperimentSessionDetail({ sessionId, onBack }: Props) {
 
       setCapturing(true);
       setCaptureError(null);
-      const start = performance.now();
       try {
+        // Measure the client layer on the uploaded blob so both layers see
+        // the exact same frame.
+        const client = await detectFacesInImage(imageBlob);
         const opts: CaptureOptions = {
           ...EMPTY_GT,
           ...(gtCategory !== 'normal' ? { [`gt_${gtCategory}`]: true } : {}),
           scenario: scenario || undefined,
+          client,
         };
+        const start = performance.now();
         const res = await captureTrial(sessionId, imageBlob, opts);
         opts.end_to_end_ms = Math.round(performance.now() - start);
 
@@ -656,6 +661,12 @@ function TrialsTable({
               <th className="px-2 py-2 text-left">Skenario</th>
               <th className="px-2 py-2 text-center">Risk</th>
               <th className="px-2 py-2 text-center">Score</th>
+              <th
+                className="px-2 py-2 text-center"
+                title="Jumlah wajah: server / klien (face-api.js)"
+              >
+                Wajah S/K
+              </th>
               {EXPERIMENT_CATEGORIES.map((cat) => (
                 <th key={cat} className="px-2 py-2 text-center" title={CATEGORY_LABELS[cat as ExperimentCategory]}>
                   {cat === 'no_face' ? 'NoFace' : cat === 'multi_face' ? 'Multi' : cat === 'eye_gaze_away' ? 'Gaze' : cat === 'identity_mismatch' ? 'ID' : CATEGORY_LABELS[cat as ExperimentCategory]}
@@ -679,6 +690,18 @@ function TrialsTable({
                   <RiskBadge level={t.risk_level} />
                 </td>
                 <td className="px-2 py-2 text-center text-gray-700 dark:text-gray-300">{t.total_score ?? 0}</td>
+                <td
+                  className="px-2 py-2 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap"
+                  title={
+                    t.client_error
+                      ? `Klien error: ${t.client_error}`
+                      : t.client_model
+                        ? `${t.client_model} · conf ${t.client_face_confidence ?? '—'} · ${t.client_latency_ms ?? '—'} ms`
+                        : 'Tidak ada data klien'
+                  }
+                >
+                  {t.face_count ?? '—'} / {t.client_face_count ?? (t.client_error ? 'err' : '—')}
+                </td>
                 {EXPERIMENT_CATEGORIES.map((cat) => {
                   const field = `gt_${cat}` as keyof GroundTruth;
                   return (
