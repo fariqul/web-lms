@@ -6,7 +6,9 @@ Dokumen ini menjadi panduan operasional pengambilan data untuk menjawab rumusan 
 dan MediaPipe pada SMA Negeri 15 Makassar*.
 
 Asumsi: fitur Experiment sudah di-deploy (termasuk perbaikan kamera yang tetap menyala
-antar-capture) dan konfigurasi threshold hasil kalibrasi sudah tersedia.
+antar-capture) dan konfigurasi threshold hasil kalibrasi sudah tersedia. Ambang yang terpasang
+saat dokumen ini diperbarui: **yaw 31°, pitch 66°, gaze 0.48, face_distance 0.55, confidence 0.45**
+(config versi 1).
 
 ---
 
@@ -17,7 +19,8 @@ antar-capture) dan konfigurasi threshold hasil kalibrasi sudah tersedia.
    (contoh: `30`), dan `lighting` sesuai kondisi ruangan.
 2. Catat konfigurasi yang dipakai: setelah kalibrasi, apply draft → active, lalu **semua sesi uji
    memakai `config_scope = active`** agar `config_version_id` tersimpan per trial
-   (reproducibility untuk laporan skripsi).
+   (reproducibility untuk laporan skripsi). Catat nomor versinya di catatan sesi
+   (mis. `v1 = yaw 31°, pitch 66°, gaze 0.48, face_distance 0.55, confidence 0.45`).
 3. Ambil baseline **dari operator A** (wajah yang sama sepanjang sesi). Pastikan badge
    "Baseline ✓" muncul sebelum capture pertama.
 4. Tentukan `dataset_split`:
@@ -46,9 +49,31 @@ ke **Normal** setelah capture selesai.
 | Multi face        | Orang kedua masuk frame, wajah terlihat jelas di samping operator  | objek terlarang                          |
 | Phone             | Pegang HP hingga terlihat kamera                                   | orang kedua                              |
 | Book              | Pegang buku hingga terlihat kamera                                 | orang kedua                              |
-| Head turn         | Menoleh melewati 38° (yaw) / 33° (pitch)                           | orang kedua, objek terlarang             |
+| Head turn         | Menoleh sehingga \|yaw\| > 31° atau \|pitch\| > 66° (lihat sub-skenario di bawah) | orang kedua, objek terlarang             |
 | Eye gaze away     | Mata melihat ke samping/bawah tanpa menoleh                        | orang kedua, objek terlarang             |
 | Identity mismatch | **Operator A keluar frame total**, orang B sendirian menghadap kamera | wajah operator A atau orang lain terlihat |
+
+### Sub-skenario head turn (ambang aktif yaw 31°, pitch 66°)
+
+Kategori `head_turn` sekarang berarti **|yaw| > 31° ATAU |pitch| > 66°**. Jangan lagi memakai
+patokan lama 38°/33° saat memberi label. Pecah kategori ini menjadi sub-skenario sudut dan simpan
+sudutnya di nama `scenario` supaya detection rate per sudut bisa dihitung dari CSV:
+
+| Sub-skenario             | Gerakan                      | Contoh `scenario`              |
+|--------------------------|------------------------------|--------------------------------|
+| Yaw kecil (batas bawah)  | menoleh ±20°                 | `head_turn_yaw20_normal_30`    |
+| Yaw sedang               | menoleh ±35°                 | `head_turn_yaw35_normal_30`    |
+| Yaw besar                | menoleh ±50°                 | `head_turn_yaw50_normal_30`    |
+| Pitch sedang             | mendongak/menunduk ±50°      | `head_turn_pitch50_normal_30`  |
+| Pitch besar              | mendongak/menunduk ±70°      | `head_turn_pitch70_normal_30`  |
+
+Semua sub-skenario di atas tetap diberi `gt_head_turn = true` karena gerakannya disengaja; blok
+Normal yang menyediakan contoh negatif. Tujuannya bukan mengejar recall 100%, melainkan
+menunjukkan titik kerja ambang pada kurva sudut — laporkan berapa persen tiap sudut terdeteksi.
+
+Jika operator melakukan gerakan yang tidak sesuai definisi baru (mis. mengangguk 40° lalu diberi
+label positif), trial itu akan tercatat sebagai FN padahal ambang bekerja sesuai desain. Tandai
+`is_invalid`, dan jangan mengubah label setelah melihat prediksi.
 
 Jika dua kondisi sempat muncul bersamaan (contoh: orang B masuk frame tetapi wajah operator A
 masih terlihat sehingga `multi_face` ikut terpicu), tandai trial tersebut **`is_invalid`** dengan
@@ -87,8 +112,11 @@ Kamera tetap menyala antar-capture (tidak perlu klik "Start Camera Test" lagi).
 ## G. Setelah data terkumpul
 
 1. **Blok kalibrasi:** buka tab Threshold Sweep, catat threshold terpilih
-   (referensi: `face_distance` ±0.55, `confidence` 0.45, `yaw` 38, `pitch` 33, `gaze` 0.48).
-   Terapkan sekali, lalu bekukan untuk blok uji.
+   (referensi terpasang: `yaw` 31, `pitch` 66, `gaze` 0.48, `face_distance` 0.55,
+   `confidence` 0.45; config v1). Sweep di UI hanya menguji satu parameter — kombinasi yaw×pitch
+   dievaluasi dari CSV sesi atau `php artisan proctoring:threshold-analysis`. Terapkan sekali,
+   lalu bekukan untuk blok uji, dan **jangan mengubah config `active` selama sesi uji berlangsung**
+   (setiap capture membaca ambang terbaru, sedangkan `config_version_id` sesi dikunci saat dibuat).
 2. **Blok uji:** buka tab Metrics, catat TP/TN/FP/FN, accuracy, precision, recall, dan F1 per
    kategori — langsung menjadi tabel BAB IV sesuai Tabel 3.1 proposal.
 3. **Export CSV** setiap sesi sebagai lampiran data mentah.
@@ -109,7 +137,8 @@ Kamera tetap menyala antar-capture (tidak perlu klik "Start Camera Test" lagi).
 ## Checklist cepat sebelum mulai
 
 - [ ] Deploy terbaru aktif, migrasi `baseline_set_at` sudah dijalankan
-- [ ] Threshold hasil kalibrasi sudah di-apply ke active
+- [ ] Threshold hasil kalibrasi sudah di-apply ke active dan terverifikasi (yaw 31°, pitch 66°)
+- [ ] Nomor versi config (v1) dicatat di catatan sesi; config tidak diubah selama sesi uji
 - [ ] Baseline operator A tersimpan (badge "Baseline ✓")
 - [ ] `lighting`, `distance_cm`, `device_info`, `dataset_split` terisi
 - [ ] Kamera menyala dan tetap hidup setelah capture pertama

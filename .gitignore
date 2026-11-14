@@ -46,6 +46,12 @@ next-env.d.ts
 
 .worktrees/
 
+# k6 load-test credentials (copy from accounts.example.json)
+/scripts/load/accounts.json
+
+# Biometric frames for k6 /analyze stress test
+/scripts/load/images/
+
 # Original landing page source (already integrated into Next.js)
 /landing_page/
 

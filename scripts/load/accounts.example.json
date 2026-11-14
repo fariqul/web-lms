@@ -1,0 +1,12 @@
+[
+  { "login": "0000000001", "password": "GantiPasswordLoadTest1" },
+  { "login": "0000000002", "password": "GantiPasswordLoadTest2" },
+  { "login": "0000000003", "password": "GantiPasswordLoadTest3" },
+  { "login": "0000000004", "password": "GantiPasswordLoadTest4" },
+  { "login": "0000000005", "password": "GantiPasswordLoadTest5" },
+  { "login": "0000000006", "password": "GantiPasswordLoadTest6" },
+  { "login": "0000000007", "password": "GantiPasswordLoadTest7" },
+  { "login": "0000000008", "password": "GantiPasswordLoadTest8" },
+  { "login": "0000000009", "password": "GantiPasswordLoadTest9" },
+  { "login": "0000000010", "password": "GantiPasswordLoadTest10" }
+]
