@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\ProctoringDiagnosticController;
 use App\Http\Controllers\Api\ProctoringConfigController;
 use App\Http\Controllers\Api\ExperimentController;
+use App\Http\Controllers\Api\SnapshotImageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +71,11 @@ Route::prefix('public')->group(function () {
     Route::get('/news', [NewsController::class, 'publicIndex']);
     Route::get('/news/{slug}', [NewsController::class, 'publicShow']);
 });
+
+// Snapshot biometrik disajikan dari disk privat lewat URL bertanda tangan berumur pendek.
+Route::get('/monitoring-snapshots/{snapshot}/image', [SnapshotImageController::class, 'show'])
+    ->middleware('signed')
+    ->name('monitoring-snapshots.image');
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle])->group(function () use ($dashboardThrottle, $notificationThrottle, $examPollingThrottle) {

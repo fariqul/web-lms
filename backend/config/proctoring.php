@@ -170,4 +170,7 @@ return [
         'violation_keep' => (bool) env('PROCTORING_VIOLATION_KEEP', true),
     ],
 
+    // Masa berlaku URL bertanda tangan untuk menampilkan snapshot (menit).
+    'snapshot_url_ttl_minutes' => (int) env('SNAPSHOT_URL_TTL_MINUTES', 60),
+
 ];

@@ -2115,8 +2115,11 @@ class ExamController extends Controller
             ProctoringScore::where('exam_id', $exam->id)->delete();
             // Delete monitoring snapshots for this exam
             MonitoringSnapshot::where('exam_id', $exam->id)->each(function (MonitoringSnapshot $snap) {
-                if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
-                    Storage::disk('public')->delete($snap->image_path);
+                foreach (['local', 'public'] as $diskName) {
+                    $disk = Storage::disk($diskName);
+                    if ($snap->image_path && $disk->exists($snap->image_path)) {
+                        $disk->delete($snap->image_path);
+                    }
                 }
                 $snap->delete();
             });
@@ -2198,8 +2201,11 @@ class ExamController extends Controller
             MonitoringSnapshot::where('exam_id', $examId)
                 ->get()
                 ->each(function (MonitoringSnapshot $snap) use (&$snapshotsDeleted) {
-                    if ($snap->image_path && Storage::disk('public')->exists($snap->image_path)) {
-                        Storage::disk('public')->delete($snap->image_path);
+                    foreach (['local', 'public'] as $diskName) {
+                        $disk = Storage::disk($diskName);
+                        if ($snap->image_path && $disk->exists($snap->image_path)) {
+                            $disk->delete($snap->image_path);
+                        }
                     }
                     $snap->delete();
                     $snapshotsDeleted++;
@@ -4668,7 +4674,7 @@ class ExamController extends Controller
 
         $screenshotPath = null;
         if ($request->hasFile('screenshot')) {
-            $screenshotPath = $request->file('screenshot')->store('violation-screenshots', 'public');
+            $screenshotPath = $request->file('screenshot')->store('violation-screenshots', 'local');
         }
 
         $violation = Violation::create([
@@ -4684,7 +4690,7 @@ class ExamController extends Controller
 
         // Also save a violation snapshot for admin review (permanent, not cleaned up)
         if ($request->hasFile('screenshot')) {
-            $violationImagePath = $request->file('screenshot')->store('monitoring-snapshots', 'public');
+            $violationImagePath = $request->file('screenshot')->store('monitoring-snapshots', 'local');
             MonitoringSnapshot::create([
                 'exam_result_id' => $result->id,
                 'user_id'        => $user->id,
@@ -4848,7 +4854,7 @@ class ExamController extends Controller
         // deleted files the moment a new snapshot arrived, making them unavailable for
         // admin review within the same session. The cleanup command handles deletion.
         $retentionHours = (int) config('proctoring.retention.hours', 48);
-        $imagePath = $request->file('image')->store('monitoring-snapshots', 'public');
+        $imagePath = $request->file('image')->store('monitoring-snapshots', 'local');
 
         $snapshot = DB::transaction(function () use ($exam, $user, $result, $imagePath, $retentionHours) {
             // Expire (but do NOT delete) old non-violation snapshots for this student.
@@ -4892,6 +4898,7 @@ class ExamController extends Controller
         app(SocketBroadcastService::class)->examSnapshot($exam->id, [
             'student_id'  => $user->id,
             'image_path'  => $imagePath,
+            'image_url'   => $snapshot->image_url,
             'captured_at' => $this->toSchoolIso8601(now()),
         ]);
 

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
  *  2. Optionally delete physical files for very old violation snapshots
  *     (only when --include-violations flag is given — not done automatically).
  *
- *  3. Clean up orphan files: image files in storage/app/public/monitoring-snapshots/
+ *  3. Clean up orphan files: image files in storage/app/private/monitoring-snapshots/
  *     that have no corresponding DB row.
  *
  * Safe to run multiple times (idempotent).
@@ -35,7 +35,8 @@ class ProctoringCleanupCommand extends Command
     {
         $isDryRun          = (bool) $this->option('dry-run');
         $includeViolations = (bool) $this->option('include-violations');
-        $disk              = Storage::disk('public');
+        $disk              = Storage::disk('local');
+        $legacyDisk        = Storage::disk('public');
 
         if ($isDryRun) {
             $this->info('[DRY RUN] No files will be deleted.');
@@ -57,7 +58,7 @@ class ProctoringCleanupCommand extends Command
 
         $this->info("Checking expired snapshots...");
 
-        $query->chunkById(200, function ($snapshots) use ($disk, $isDryRun, &$deleted, &$errors) {
+        $query->chunkById(200, function ($snapshots) use ($disk, $legacyDisk, $isDryRun, &$deleted, &$errors) {
             foreach ($snapshots as $snapshot) {
                 $path = $snapshot->image_path;
 
@@ -79,6 +80,9 @@ class ProctoringCleanupCommand extends Command
                 try {
                     if ($disk->exists($path)) {
                         $disk->delete($path);
+                    }
+                    if ($legacyDisk->exists($path)) {
+                        $legacyDisk->delete($path);
                     }
 
                     $snapshot->update(['file_deleted_at' => now()]);

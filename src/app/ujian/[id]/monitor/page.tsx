@@ -62,7 +62,7 @@ interface Participant {
   answered_count: number;
   total_questions: number;
   score: number | null;
-  latest_snapshot: { image_path: string; captured_at: string } | null;
+  latest_snapshot: { image_path: string; image_url?: string | null; captured_at: string } | null;
   ios_ignored_count: number;
   ios_ignored_last_at: string | null;
   violation_details: Array<{
@@ -135,7 +135,7 @@ export default function MonitorUjianPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [realtimeEvents, setRealtimeEvents] = useState<Array<{ type: string; message: string; time: Date }>>([]);
-  const [snapshotModal, setSnapshotModal] = useState<{ student: Student; snapshot: { image_path: string; captured_at: string } } | null>(null);
+  const [snapshotModal, setSnapshotModal] = useState<{ student: Student; snapshot: { image_path: string; image_url?: string | null; captured_at: string } } | null>(null);
   const [snapshotModalImageError, setSnapshotModalImageError] = useState(false);
   const [snapshotImageErrors, setSnapshotImageErrors] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -170,7 +170,7 @@ export default function MonitorUjianPage() {
     admin_note: string | null;
     created_at: string;
     student?: { id: number; name: string; nisn: string };
-    snapshot?: { id: number; image_path: string; captured_at: string; is_violation: boolean } | null;
+    snapshot?: { id: number; image_path: string; image_url?: string | null; captured_at: string; is_violation: boolean } | null;
     reviewer?: { id: number; name: string } | null;
   }
 
@@ -470,11 +470,15 @@ export default function MonitorUjianPage() {
 
     // Snapshot uploaded
     examSocket.on(`exam.${examId}.snapshot`, (data: unknown) => {
-      const d = data as { student_id?: number; image_path?: string; captured_at?: string };
+      const d = data as { student_id?: number; image_path?: string; image_url?: string | null; captured_at?: string };
       setParticipants(prev => prev.map(p =>
         p.student.id === d.student_id ? {
           ...p,
-          latest_snapshot: { image_path: d.image_path || '', captured_at: d.captured_at || new Date().toISOString() },
+          latest_snapshot: {
+            image_path: d.image_path || '',
+            image_url: d.image_url ?? null,
+            captured_at: d.captured_at || new Date().toISOString(),
+          },
         } : p
       ));
     });
@@ -700,7 +704,9 @@ export default function MonitorUjianPage() {
     return `${minutes}m ${seconds}d`;
   };
 
-  const resolveSnapshotUrl = (imagePath: string, capturedAt?: string | null) => {
+  const resolveSnapshotUrl = (imagePath: string, capturedAt?: string | null, imageUrl?: string | null) => {
+    // Signed URL sudah membawa tanda tangan; menambahkan query lain akan merusaknya.
+    if (imageUrl) return imageUrl;
     const baseUrl = getSecureFileUrl(imagePath);
     if (!capturedAt) return baseUrl;
     const separator = baseUrl.includes('?') ? '&' : '?';
@@ -1038,7 +1044,7 @@ export default function MonitorUjianPage() {
                         {alert.snapshot?.image_path ? (
                           <div className="w-20 h-16 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-700 relative">
                             <img
-                              src={getSecureFileUrl(alert.snapshot.image_path)}
+                              src={alert.snapshot.image_url || getSecureFileUrl(alert.snapshot.image_path)}
                               alt="snapshot"
                               className="w-full h-full object-cover"
                               onError={(e) => {
@@ -1433,7 +1439,8 @@ export default function MonitorUjianPage() {
                                     key={snapshotKey}
                                     src={resolveSnapshotUrl(
                                       participant.latest_snapshot?.image_path || '',
-                                      participant.latest_snapshot?.captured_at
+                                      participant.latest_snapshot?.captured_at,
+                                      participant.latest_snapshot?.image_url
                                     )}
                                     alt={participant.student.name}
                                     fill
@@ -1733,7 +1740,7 @@ export default function MonitorUjianPage() {
                   </div>
                 ) : (
                   <Image
-                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path, snapshotModal.snapshot.captured_at)}
+                    src={resolveSnapshotUrl(snapshotModal.snapshot.image_path, snapshotModal.snapshot.captured_at, snapshotModal.snapshot.image_url)}
                     alt={`Snapshot ${snapshotModal.student.name}`}
                     fill
                     unoptimized

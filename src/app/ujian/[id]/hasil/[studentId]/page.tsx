@@ -75,6 +75,7 @@ interface AnswerData {
 interface SnapshotData {
   id: number;
   image_path: string;
+  image_url?: string | null;
   captured_at: string;
 }
 
@@ -326,7 +327,7 @@ export default function HasilSiswaPage() {
               {snapshots.map((snap) => (
                 <div key={snap.id} className="text-center">
                   <Image
-                    src={getSecureFileUrl(snap.image_path)}
+                    src={snap.image_url || getSecureFileUrl(snap.image_path)}
                     alt="Monitoring"
                     width={240}
                     height={240}

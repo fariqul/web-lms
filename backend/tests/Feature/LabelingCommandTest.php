@@ -16,7 +16,7 @@ class LabelingCommandTest extends TestCase
 
     public function test_export_label_and_import_roundtrip(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $dir = storage_path('app/labeling/test-export');
         File::deleteDirectory($dir);
@@ -59,7 +59,7 @@ class LabelingCommandTest extends TestCase
 
             for ($i = 0; $i < 6; $i++) {
                 $path = "monitoring-snapshots/test-{$student->id}-{$i}.jpg";
-                Storage::disk('public')->put($path, 'fake-image');
+                Storage::disk('local')->put($path, 'fake-image');
 
                 $snapshotId = DB::table('monitoring_snapshots')->insertGetId([
                     'exam_result_id' => $resultId,
@@ -90,9 +90,9 @@ class LabelingCommandTest extends TestCase
         }
 
         // Simulate retention: only 5 of the 12 fake files still exist.
-        $stored = Storage::disk('public')->allFiles('monitoring-snapshots');
+        $stored = Storage::disk('local')->allFiles('monitoring-snapshots');
         foreach (array_slice($stored, 0, 7) as $path) {
-            Storage::disk('public')->delete($path);
+            Storage::disk('local')->delete($path);
         }
 
         $this->artisan('proctoring:export-labeling', [

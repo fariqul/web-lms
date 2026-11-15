@@ -74,7 +74,7 @@ class ProctoringExportLabelingCommand extends Command
 
         $this->info('Mengambil kandidat calibration log...');
 
-        $disk = Storage::disk('public');
+        $disk = Storage::disk('local');
 
         $candidates = ProctoringCalibrationLog::query()
             ->with(['student:id,name', 'snapshot:id,image_path,file_deleted_at'])
