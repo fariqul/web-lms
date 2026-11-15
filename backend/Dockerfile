@@ -28,7 +28,8 @@ RUN echo "upload_max_filesize = 100M" > /usr/local/etc/php/conf.d/production.ini
     && echo "max_input_vars = 5000" >> /usr/local/etc/php/conf.d/production.ini \
     && echo "realpath_cache_size = 4096K" >> /usr/local/etc/php/conf.d/production.ini \
     && echo "realpath_cache_ttl = 600" >> /usr/local/etc/php/conf.d/production.ini \
-    && echo "session.gc_maxlifetime = 7200" >> /usr/local/etc/php/conf.d/production.ini
+    && echo "session.gc_maxlifetime = 7200" >> /usr/local/etc/php/conf.d/production.ini \
+    && echo "expose_php = Off" >> /usr/local/etc/php/conf.d/production.ini
 
 # PHP OPcache — Maximum Performance (per MySQL/PHP best practices 2024)
 RUN echo "[opcache]" > /usr/local/etc/php/conf.d/opcache.ini \
@@ -69,8 +70,10 @@ RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/apache2.conf
 # Allow .htaccess
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
-# Set ServerName to suppress warning
-RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+# Set ServerName to suppress warning and hide server version
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf \
+    && echo "ServerTokens Prod" >> /etc/apache2/apache2.conf \
+    && echo "ServerSignature Off" >> /etc/apache2/apache2.conf
 
 # Tune Apache KeepAlive for high concurrency
 RUN echo "KeepAlive On" >> /etc/apache2/apache2.conf \

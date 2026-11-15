@@ -38,7 +38,6 @@ use App\Http\Controllers\Api\ExperimentController;
 |--------------------------------------------------------------------------
 */
 
-$loginThrottle = (string) env('LOGIN_THROTTLE', '1800,1');
 $apiThrottle = (string) env('API_THROTTLE', '1400,1');
 $dashboardThrottle = (string) env('DASHBOARD_THROTTLE', '120,1');
 $notificationThrottle = (string) env('NOTIFICATION_THROTTLE', '240,1');
@@ -54,8 +53,8 @@ Route::get('/health', function () {
 });
 
 // Public routes with rate limiting for login (prevent brute force)
-// High limit because school network shares single public IP — many users login simultaneously
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:' . $loginThrottle);
+// Limit per account+IP (5/min) and per IP (300/min); see AppServiceProvider.
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 // Password reset (public, rate limited)
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
