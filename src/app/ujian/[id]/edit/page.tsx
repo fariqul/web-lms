@@ -38,6 +38,7 @@ import { bankQuestionAPI } from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
 import { downloadSEBConfig, type SEBExamSettings, DEFAULT_SEB_SETTINGS } from '@/utils/seb';
+import { exportExamToDocx } from '@/utils/exportExamDocx';
 import { MathText } from '@/components/ui/MathText';
 import { useExamSocket } from '@/hooks/useSocket';
 
@@ -91,6 +92,7 @@ interface ExamData {
   status: string;
   start_time: string;
   end_time: string;
+  teacher?: { name: string };
   is_locked?: boolean;
   locked_by?: number;
   locked_at?: string;
@@ -155,6 +157,10 @@ export default function EditSoalPage() {
   const [exportingBankSoal, setExportingBankSoal] = useState(false);
   const [exportGradeLevel, setExportGradeLevel] = useState<'10' | '11' | '12' | 'semua'>('10');
   const [exportDifficulty, setExportDifficulty] = useState<'mudah' | 'sedang' | 'sulit'>('sedang');
+  const [showExportWord, setShowExportWord] = useState(false);
+  const [exportingWord, setExportingWord] = useState(false);
+  const [wordIncludeAnswerKey, setWordIncludeAnswerKey] = useState(false);
+  const [wordIncludeIdentity, setWordIncludeIdentity] = useState(true);
   // Class management states
   const [showClassesModal, setShowClassesModal] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<{ id: number; name: string; grade_level?: string }[]>([]);
@@ -300,6 +306,7 @@ export default function EditSoalPage() {
           status: data.status,
           start_time: data.start_time,
           end_time: data.end_time,
+          teacher: data.teacher,
           is_locked: data.is_locked ?? false,
           locked_by: data.locked_by,
           locked_at: data.locked_at,
@@ -1066,6 +1073,47 @@ export default function EditSoalPage() {
     }
   };
 
+  const handleExportToWord = async () => {
+    if (!exam || questions.length === 0) return;
+    setExportingWord(true);
+    try {
+      await exportExamToDocx(
+        {
+          title: exam.title,
+          subject: exam.subject,
+          className: exam.classes?.length
+            ? exam.classes.map((cls) => cls.name).join(', ')
+            : exam.class_name,
+          teacherName: exam.teacher?.name,
+          startTime: exam.start_time,
+          endTime: exam.end_time,
+          duration: exam.duration,
+        },
+        questions.map((q) => ({
+          passage: q.passage,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          order: q.order,
+          image: q.image,
+          essay_keywords: q.essay_keywords,
+          options: q.options.map((opt) => ({
+            text: opt.text,
+            is_correct: opt.is_correct,
+            image: opt.image,
+          })),
+        })),
+        { includeAnswerKey: wordIncludeAnswerKey, includeIdentity: wordIncludeIdentity }
+      );
+      toast.success(`${questions.length} soal berhasil diekspor ke Word`);
+      setShowExportWord(false);
+    } catch (error) {
+      console.error('Failed to export to Word:', error);
+      toast.error('Gagal mengekspor soal ke Word');
+    } finally {
+      setExportingWord(false);
+    }
+  };
+
   const handleOptionChange = (index: number, value: string) => {
     const updatedOptions = [...newQuestion.options];
     updatedOptions[index].text = value;
@@ -1602,6 +1650,16 @@ export default function EditSoalPage() {
               className="text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
             >
               Ekspor ke Bank Soal
+            </Button>
+          )}
+          {questions.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowExportWord(true)}
+              leftIcon={<Download className="w-4 h-4" />}
+              className="text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-700 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+            >
+              Ekspor ke Word
             </Button>
           )}
         </div>
@@ -2688,6 +2746,65 @@ export default function EditSoalPage() {
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengekspor...</>
                 ) : (
                   <><BookUp className="w-4 h-4 mr-2" /> Ekspor {questions.length} Soal</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export to Word Modal */}
+      {showExportWord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowExportWord(false)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+              Ekspor ke Word
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              {questions.length} soal dari ujian &ldquo;{exam?.title}&rdquo; akan diunduh sebagai dokumen .docx (A4).
+            </p>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wordIncludeIdentity}
+                  onChange={(e) => setWordIncludeIdentity(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-sky-600 focus:ring-sky-500"
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-300">
+                  Sertakan baris identitas siswa
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">Nama, kelas, dan nomor absen di bawah kop soal</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={wordIncludeAnswerKey}
+                  onChange={(e) => setWordIncludeAnswerKey(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-sky-600 focus:ring-sky-500"
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-300">
+                  Sertakan kunci jawaban
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">Ditambahkan pada halaman terpisah di akhir dokumen</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" onClick={() => setShowExportWord(false)} className="flex-1">
+                Batal
+              </Button>
+              <Button
+                onClick={handleExportToWord}
+                disabled={exportingWord}
+                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white"
+              >
+                {exportingWord ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Menyiapkan...</>
+                ) : (
+                  <><Download className="w-4 h-4 mr-2" /> Unduh .docx</>
                 )}
               </Button>
             </div>
