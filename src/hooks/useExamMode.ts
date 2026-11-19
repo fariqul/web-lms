@@ -130,6 +130,16 @@ export function useExamMode({
   
   const [baselineCaptured, setBaselineCaptured] = useState(false);
 
+  // Latest callbacks in refs: inline props from the page get new identities on
+  // every render, which would otherwise rebuild the violation listeners (and
+  // reset the app-leave timer) and the heartbeat interval on every tick.
+  const onViolationRef = useRef(onViolation);
+  const onForceSubmitRef = useRef(onForceSubmit);
+  useEffect(() => {
+    onViolationRef.current = onViolation;
+    onForceSubmitRef.current = onForceSubmit;
+  }, [onViolation, onForceSubmit]);
+
   const applyFreezeWindow = useCallback((freezeSeconds: number) => {
     const durationMs = Math.max(0, freezeSeconds) * 1000;
     if (durationMs <= 0) {
@@ -231,17 +241,17 @@ export function useExamMode({
         
         // Force submit if max violations exceeded
         if (data.force_submit) {
-          onForceSubmit?.();
+          onForceSubmitRef.current?.();
           return;
         }
       }
       
       setViolations(prev => [...prev, type]);
-      onViolation?.(type);
+      onViolationRef.current?.(type);
     } catch (error) {
       console.error('Failed to report violation:', error);
     }
-  }, [examId, onViolation, onForceSubmit, captureViolationBlob, applyFreezeWindow, isIOS, isMobile]);
+  }, [examId, captureViolationBlob, applyFreezeWindow, isIOS, isMobile]);
 
   // Activate monitoring — can be called independently of fullscreen
   const activateMonitoring = useCallback(() => {
@@ -1071,7 +1081,7 @@ export function useExamMode({
         }
 
         if (data.force_submit) {
-          onForceSubmit?.();
+          onForceSubmitRef.current?.();
         }
       } catch {
         // Heartbeat failures are non-fatal; violation reporting remains active.
@@ -1079,7 +1089,7 @@ export function useExamMode({
     }, 15000);
 
     return () => clearInterval(intervalId);
-  }, [examId, onForceSubmit, applyFreezeWindow]);
+  }, [examId, applyFreezeWindow]);
 
   // Camera health check + auto-restart on consecutive snapshot failures
   // Also handle track ended gracefully on mobile (don't immediately report violation)

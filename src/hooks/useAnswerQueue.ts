@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import api from '@/services/api';
 
 /**
@@ -67,6 +67,13 @@ export function useAnswerQueue({
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const flushingRef = useRef(false);
+
+  // Latest callback in a ref: an inline onPermanentFailure prop would otherwise
+  // change flushQueue's identity on every render and cascade into callers.
+  const onPermanentFailureRef = useRef(onPermanentFailure);
+  useEffect(() => {
+    onPermanentFailureRef.current = onPermanentFailure;
+  }, [onPermanentFailure]);
 
   // Storage key for this exam
   const storageKey = `${STORAGE_KEY_PREFIX}${examId}`;
@@ -135,40 +142,47 @@ export function useAnswerQueue({
     questionIds.forEach(qId => { savingStatuses[qId] = 'saving'; });
     setSaveStatuses(prev => ({ ...prev, ...savingStatuses }));
 
+    const savedIds: number[] = [];
     try {
-      // Build batch payload
-      const answersPayload = Array.from(batch.entries()).map(([questionId, item]) => ({
-        question_id: questionId,
-        answer: item.answer,
-      }));
+      // Backend caps each batch at 50 answers; send larger queues in chunks.
+      const BATCH_LIMIT = 50;
+      const entries = Array.from(batch.entries());
 
-      await api.post(`/exams/${examId}/answers/batch`, {
-        answers: answersPayload,
-      });
+      for (let offset = 0; offset < entries.length; offset += BATCH_LIMIT) {
+        const chunk = entries.slice(offset, offset + BATCH_LIMIT);
 
-      // Success — remove from queue, mark as saved
-      const successStatuses: Record<number, AnswerSaveStatus> = {};
-      questionIds.forEach(qId => {
+        await api.post(`/exams/${examId}/answers/batch`, {
+          answers: chunk.map(([questionId, item]) => ({
+            question_id: questionId,
+            answer: item.answer,
+          })),
+        });
+
         // Only remove if the queue still has the same timestamp (hasn't been updated)
-        const current = queueRef.current.get(qId);
-        const original = batch.get(qId);
-        if (current && original && current.timestamp === original.timestamp) {
-          queueRef.current.delete(qId);
-        }
-        successStatuses[qId] = 'saved';
-      });
+        chunk.forEach(([questionId, original]) => {
+          const current = queueRef.current.get(questionId);
+          if (current && current.timestamp === original.timestamp) {
+            queueRef.current.delete(questionId);
+          }
+          savedIds.push(questionId);
+        });
+      }
+
+      persistQueue();
+
+      const successStatuses: Record<number, AnswerSaveStatus> = {};
+      savedIds.forEach(qId => { successStatuses[qId] = 'saved'; });
 
       if (mountedRef.current) {
         setSaveStatuses(prev => ({ ...prev, ...successStatuses }));
       }
-      persistQueue();
 
       // Clear 'saved' status after 3s
       setTimeout(() => {
         if (mountedRef.current) {
           setSaveStatuses(prev => {
             const updated = { ...prev };
-            questionIds.forEach(qId => {
+            savedIds.forEach(qId => {
               if (updated[qId] === 'saved') {
                 updated[qId] = 'idle';
               }
@@ -195,6 +209,9 @@ export function useAnswerQueue({
           } else {
             errorStatuses[qId] = 'pending';
           }
+        } else if (savedIds.includes(qId)) {
+          // Already saved by an earlier chunk before this one failed
+          errorStatuses[qId] = 'saved';
         }
       });
 
@@ -205,7 +222,7 @@ export function useAnswerQueue({
 
       // Notify permanent failures
       permanentFails.forEach(qId => {
-        onPermanentFailure?.(qId);
+        onPermanentFailureRef.current?.(qId);
       });
 
       // Schedule retry with exponential backoff
@@ -224,7 +241,7 @@ export function useAnswerQueue({
         setIsSaving(queueRef.current.size > 0);
       }
     }
-  }, [examId, maxRetries, onPermanentFailure, persistQueue]);
+  }, [examId, maxRetries, persistQueue]);
 
   // Queue an answer (with debounce)
   const queueAnswer = useCallback((questionId: number, answer: string) => {
@@ -277,12 +294,12 @@ export function useAnswerQueue({
   const pendingCount = queueRef.current.size;
   const errorCount = Object.values(saveStatuses).filter(s => s === 'error').length;
 
-  return {
+  return useMemo(() => ({
     queueAnswer,
     flushAll,
     saveStatuses,
     pendingCount,
     errorCount,
     isSaving,
-  };
+  }), [queueAnswer, flushAll, saveStatuses, pendingCount, errorCount, isSaving]);
 }

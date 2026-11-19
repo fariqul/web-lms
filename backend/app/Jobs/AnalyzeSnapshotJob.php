@@ -84,16 +84,16 @@ class AnalyzeSnapshotJob implements ShouldQueue
 
         try {
             // ── 1. Read image ─────────────────────────────────────────────
+            // New snapshots live on the private 'local' disk (a3538a3); older
+            // files may still sit on 'public', so try both.
             $imagePath = $snapshot->image_path;
-            if (!Storage::disk('public')->exists($imagePath)) {
+            $imageContents = $this->readStoredImage($imagePath);
+            if ($imageContents === null) {
                 Log::warning("[Proctoring] Image not found: {$imagePath}");
                 return;
             }
 
-            $imageContents = Storage::disk('public')->get($imagePath);
-            $ext      = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
-            $mimeMap  = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
-            $mimeType = $mimeMap[$ext] ?? 'image/jpeg';
+            $mimeType = $this->mimeFromPath($imagePath);
 
             // ── 2. Load active proctoring config ──────────────────────────
             $config = ProctoringConfiguration::getActive();
@@ -274,7 +274,8 @@ class AnalyzeSnapshotJob implements ShouldQueue
                         'detections'    => $detections,
                         'face_analysis' => $result['face_analysis'] ?? null,
                         'snapshot_id'   => $this->snapshotId,
-                    ]
+                    ],
+                    "exam.{$this->examId}"
                 );
             }
 
@@ -290,15 +291,13 @@ class AnalyzeSnapshotJob implements ShouldQueue
     {
         $imagePath = $this->baselinePath;
 
-        if (!Storage::disk('public')->exists($imagePath)) {
+        $imageContents = $this->readStoredImage($imagePath);
+        if ($imageContents === null) {
             Log::warning("[Proctoring] Baseline image not found: {$imagePath}");
             return;
         }
 
-        $imageContents = Storage::disk('public')->get($imagePath);
-        $ext      = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
-        $mimeMap  = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
-        $mimeType = $mimeMap[$ext] ?? 'image/jpeg';
+        $mimeType = $this->mimeFromPath($imagePath);
 
         try {
             $response = Http::timeout(20)
@@ -652,5 +651,36 @@ class AnalyzeSnapshotJob implements ShouldQueue
             $sum += $diff * $diff;
         }
         return sqrt($sum);
+    }
+
+    /**
+     * Read an image from the private disk first, then fall back to the public
+     * disk for files captured before the a3538a3 migration.
+     */
+    private function readStoredImage(string $path): ?string
+    {
+        foreach (['local', 'public'] as $diskName) {
+            try {
+                $disk = Storage::disk($diskName);
+                if ($disk->exists($path)) {
+                    return $disk->get($path);
+                }
+            } catch (\Throwable $e) {
+                Log::warning("[Proctoring] Failed reading {$path} from {$diskName} disk: {$e->getMessage()}");
+            }
+        }
+
+        return null;
+    }
+
+    private function mimeFromPath(string $path): string
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        return match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png'         => 'image/png',
+            'webp'        => 'image/webp',
+            default       => 'image/jpeg',
+        };
     }
 }

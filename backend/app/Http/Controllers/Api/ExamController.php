@@ -3441,6 +3441,19 @@ class ExamController extends Controller
                 'message' => 'Soal ujian ini telah dikunci oleh admin. Hubungi admin untuk membuka kunci.',
             ], 403);
         }
+
+        // Deleting a question cascades to its answers and renumbers the exam,
+        // which would silently change scores of students still working.
+        $hasActiveAttempts = ExamResult::where('exam_id', $exam->id)
+            ->where('status', 'in_progress')
+            ->exists();
+
+        if ($hasActiveAttempts) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak dapat dihapus saat masih ada siswa yang mengerjakan. Ubah teks soal atau akhiri ujian terlebih dahulu.',
+            ], 422);
+        }
         
         $deletedOrder = $question->order;
 
@@ -3616,7 +3629,8 @@ class ExamController extends Controller
         }
 
         // Check existing result (with lock to prevent race condition on double-click)
-        $result = DB::transaction(function () use ($exam, $user) {
+        $joinedEvent = null;
+        $result = DB::transaction(function () use ($exam, $user, &$joinedEvent) {
             $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
                 ->lockForUpdate()
@@ -3635,34 +3649,34 @@ class ExamController extends Controller
                     'status' => 'in_progress',
                 ]);
 
-                // Broadcast: student joined exam
-                try {
-                    app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
-                        'student_id' => $user->id,
-                        'student_name' => $user->name,
-                        'started_at' => $this->toSchoolIso8601(now()),
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::warning('Broadcast examStudentJoined failed: ' . $e->getMessage());
-                }
+                $joinedEvent = [
+                    'student_id' => $user->id,
+                    'student_name' => $user->name,
+                    'started_at' => $this->toSchoolIso8601(now()),
+                ];
             } else if ($result->started_at === null) {
                 $result->started_at = now();
                 $result->save();
 
-                // Broadcast: student joined exam
-                try {
-                    app(SocketBroadcastService::class)->examStudentJoined($exam->id, [
-                        'student_id' => $user->id,
-                        'student_name' => $user->name,
-                        'started_at' => $this->toSchoolIso8601(now()),
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::warning('Broadcast examStudentJoined failed: ' . $e->getMessage());
-                }
+                $joinedEvent = [
+                    'student_id' => $user->id,
+                    'student_name' => $user->name,
+                    'started_at' => $this->toSchoolIso8601(now()),
+                ];
             }
 
             return $result;
         });
+
+        // Broadcast after commit so a rolled-back transaction never leaves a
+        // phantom "student joined" event on the monitoring dashboard.
+        if ($joinedEvent !== null) {
+            try {
+                app(SocketBroadcastService::class)->examStudentJoined($exam->id, $joinedEvent);
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast examStudentJoined failed: ' . $e->getMessage());
+            }
+        }
 
         if ($result === 'completed') {
             return response()->json([
@@ -4026,8 +4040,11 @@ class ExamController extends Controller
     {
         $request->validate([
             'answers' => 'required|array|min:1|max:50',
-            'answers.*.question_id' => 'required|integer|exists:questions,id',
-            'answers.*.answer' => 'required|string',
+            // No exists rule: a question removed mid-exam must not fail the whole
+            // batch (it would block every following autosave). Unknown ids are
+            // skipped by the loop below.
+            'answers.*.question_id' => 'required|integer',
+            'answers.*.answer' => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -4082,13 +4099,22 @@ class ExamController extends Controller
             ->keyBy('id');
 
         $savedCount = 0;
+        $clearedCount = 0;
 
         foreach ($request->answers as $answerData) {
             $question = $questions->get($answerData['question_id']);
             if (!$question) continue;
 
-            $answerText = trim($answerData['answer']);
-            if ($answerText === '') continue;
+            $answerText = trim((string) ($answerData['answer'] ?? ''));
+            if ($answerText === '') {
+                // Cleared answer: drop any previously saved value so a stale
+                // selection is not graded after the student emptied it.
+                $clearedCount += Answer::where('student_id', $user->id)
+                    ->where('question_id', $question->id)
+                    ->where('exam_id', $exam->id)
+                    ->delete();
+                continue;
+            }
 
             // Auto-grade
             $isCorrect = null;
@@ -4153,7 +4179,7 @@ class ExamController extends Controller
         }
 
         // Broadcast progress ONCE for the batch (not per answer)
-        if ($savedCount > 0) {
+        if ($savedCount > 0 || $clearedCount > 0) {
             $answeredCount = Answer::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)->count();
             app(SocketBroadcastService::class)->examAnswerProgress($exam->id, [
@@ -4165,7 +4191,7 @@ class ExamController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => ['saved_count' => $savedCount],
+            'data' => ['saved_count' => $savedCount, 'cleared_count' => $clearedCount],
         ]);
     }
 
@@ -4324,7 +4350,8 @@ class ExamController extends Controller
         }
 
         // Use transaction with lock to prevent double-submit race condition
-        $responseData = DB::transaction(function () use ($exam, $user, $request) {
+        $submittedEvent = null;
+        $responseData = DB::transaction(function () use ($exam, $user, $request, &$submittedEvent) {
             $result = ExamResult::where('exam_id', $exam->id)
                 ->where('student_id', $user->id)
                 ->where('status', 'in_progress')
@@ -4391,6 +4418,15 @@ class ExamController extends Controller
 
                     $answerText = trim($answerText);
                     if ($answerText === '') {
+                        $question = $questions->get($questionId);
+                        if ($question) {
+                            // Cleared answer: delete the saved row instead of
+                            // keeping a stale value that would still be graded.
+                            Answer::where('student_id', $user->id)
+                                ->where('question_id', $question->id)
+                                ->where('exam_id', $exam->id)
+                                ->delete();
+                        }
                         continue;
                     }
 
@@ -4483,17 +4519,13 @@ class ExamController extends Controller
             $result->status = $hasUngradedEssays ? 'submitted' : 'graded';
             $result->calculateScore();
 
-            // Broadcast: student submitted
-            try {
-                app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
-                    'student_id' => $user->id,
-                    'student_name' => $user->name,
-                    'score' => $result->score,
-                    'finished_at' => $this->toSchoolIso8601($result->finished_at),
-                ]);
-            } catch (\Throwable $e) {
-                Log::warning('Broadcast examStudentSubmitted failed: ' . $e->getMessage());
-            }
+            // Broadcast after the transaction commits (see below).
+            $submittedEvent = [
+                'student_id' => $user->id,
+                'student_name' => $user->name,
+                'score' => $result->score,
+                'finished_at' => $this->toSchoolIso8601($result->finished_at),
+            ];
 
             $defaultMsg = $exam->type === 'quiz' ? 'Quiz berhasil diselesaikan' : 'Ujian berhasil diselesaikan';
             $response = [
@@ -4521,6 +4553,16 @@ class ExamController extends Controller
                 'success' => false,
                 'message' => $responseData['message'],
             ], 422);
+        }
+
+        // Broadcast only after commit so monitoring never shows a submission
+        // that was rolled back.
+        if ($submittedEvent !== null) {
+            try {
+                app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, $submittedEvent);
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast examStudentSubmitted failed: ' . $e->getMessage());
+            }
         }
 
         return response()->json($responseData);
@@ -4770,9 +4812,25 @@ class ExamController extends Controller
             return response()->json(['success' => false, 'message' => 'Ujian tidak aktif'], 400);
         }
 
-        // Store baseline image
-        $imagePath = $request->file('image')->store('monitoring-baselines', 'public');
-        
+        // Store baseline image on the private disk — it is biometric data.
+        $imagePath = $request->file('image')->store('monitoring-baselines', 'local');
+
+        // Remove the previous baseline file (may still live on the public disk
+        // for uploads made before this change).
+        $previousPath = $result->proctoring_baseline_path;
+        if ($previousPath && $previousPath !== $imagePath) {
+            foreach (['local', 'public'] as $diskName) {
+                try {
+                    $disk = Storage::disk($diskName);
+                    if ($disk->exists($previousPath)) {
+                        $disk->delete($previousPath);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("[Proctoring] Failed to delete old baseline {$previousPath} from {$diskName}: {$e->getMessage()}");
+                }
+            }
+        }
+
         // Save baseline path to ExamResult
         $result->update([
             'proctoring_baseline_path' => $imagePath,
@@ -4934,22 +4992,46 @@ class ExamController extends Controller
 
         $examEnded = $exam->end_time && now()->greaterThan($exam->end_time);
 
-        // Auto-submit any in_progress results if exam time has ended
-        if ($examEnded) {
-            DB::transaction(function () use ($exam) {
-                $expiredResults = ExamResult::where('exam_id', $exam->id)
-                    ->where('status', 'in_progress')
-                    ->lockForUpdate()
-                    ->get();
+        // Auto-submit in_progress results whose effective window has ended.
+        // Use the published class schedule window when present: a class that
+        // finished earlier must not stay in_progress, and a class with a later
+        // window must not be cut off by the exam-level end_time.
+        $windowsNow = now();
+        $publishedSchedules = ExamClassSchedule::where('exam_id', $exam->id)
+            ->where('is_published', true)
+            ->get()
+            ->keyBy('class_id');
 
-                foreach ($expiredResults as $expiredResult) {
-                    $expiredResult->status = 'completed';
-                    $expiredResult->finished_at = $exam->end_time;
-                    $expiredResult->submitted_at = $exam->end_time;
-                    $expiredResult->calculateScore();
-                }
-            });
-        }
+        $resolveWindowEnd = function (?int $classId) use ($exam, $publishedSchedules): ?Carbon {
+            $schedule = $classId ? $publishedSchedules->get($classId) : null;
+            if ($schedule && !empty($schedule->end_time)) {
+                return Carbon::parse($schedule->end_time);
+            }
+            return !empty($exam->end_time) ? Carbon::parse($exam->end_time) : null;
+        };
+
+        DB::transaction(function () use ($exam, $windowsNow, $resolveWindowEnd) {
+            $expiredResults = ExamResult::with('student:id,class_id')
+                ->where('exam_id', $exam->id)
+                ->where('status', 'in_progress')
+                ->lockForUpdate()
+                ->get()
+                ->filter(function (ExamResult $result) use ($exam, $windowsNow, $resolveWindowEnd) {
+                    $classId = $result->student?->class_id ?? $exam->class_id;
+                    $endTime = $resolveWindowEnd($classId);
+                    return $endTime !== null && $windowsNow->greaterThan($endTime);
+                });
+
+            foreach ($expiredResults as $expiredResult) {
+                $classId = $expiredResult->student?->class_id ?? $exam->class_id;
+                $endTime = $resolveWindowEnd($classId);
+
+                $expiredResult->status = 'completed';
+                $expiredResult->finished_at = $endTime;
+                $expiredResult->submitted_at = $endTime;
+                $expiredResult->calculateScore();
+            }
+        });
 
         // Get all exam results (refresh after auto-submit)
         $results = ExamResult::with(['student:id,name,nisn,nomor_tes,class_id', 'student.classRoom:id,name'])
@@ -5108,7 +5190,7 @@ class ExamController extends Controller
             'average_score' => $finished->count() > 0 ? $finished->avg('percentage') : null,
             'highest_score' => $finished->count() > 0 ? $finished->max('percentage') : null,
             'lowest_score' => $finished->count() > 0 ? $finished->min('percentage') : null,
-            'passed' => $results->where('percentage', '>=', $exam->passing_score)->count(),
+            'passed' => $finished->where('percentage', '>=', $exam->passing_score)->count(),
             'total_essay_questions' => $totalEssayQuestions,
             'total_ungraded_essays' => $totalUngradedEssays,
             'students_with_ungraded' => $totalStudentsWithUngraded,
@@ -5383,6 +5465,54 @@ class ExamController extends Controller
      * Get live monitoring data - OPTIMIZED
      * Includes all students in class: not_started, in_progress, and completed
      */
+    /**
+     * Internal: authorize a socket client to join the exam.{id} room.
+     * Called by socket-server with the shared secret and the client's bearer token.
+     * Does not require the exam to be published — rooms carry live-edit events.
+     */
+    public function socketExamAccess(Request $request)
+    {
+        if (!hash_equals(
+            (string) config('app.socket_internal_secret'),
+            (string) $request->bearerToken()
+        )) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'token' => 'required|string',
+            'exam_id' => 'required|integer',
+        ]);
+
+        $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($request->input('token'));
+        $user = $accessToken?->tokenable;
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $exam = Exam::find((int) $request->input('exam_id'));
+        if (!$exam) {
+            return response()->json(['success' => false, 'message' => 'Exam not found'], 404);
+        }
+
+        $allowed = false;
+        if ($user->role === 'admin') {
+            $allowed = true;
+        } elseif ($user->role === 'guru') {
+            $allowed = (int) $exam->teacher_id === (int) $user->id
+                || ($exam->teacher_id === null && $exam->type === 'quiz');
+        } elseif ($user->role === 'siswa') {
+            $examClassIds = $exam->classes()->pluck('classes.id')->toArray();
+            if (empty($examClassIds)) {
+                $examClassIds = [$exam->class_id];
+            }
+            $allowed = in_array($user->class_id, $examClassIds);
+        }
+
+        return response()->json(['success' => $allowed], $allowed ? 200 : 403);
+    }
+
     public function monitoring(Request $request, Exam $exam)
     {
         $user = $request->user();
@@ -5771,8 +5901,10 @@ class ExamController extends Controller
         }
 
         // Force-finish all in-progress results in a transaction
-        $forceFinishedCount = DB::transaction(function () use ($exam) {
-            $inProgressResults = ExamResult::where('exam_id', $exam->id)
+        $submittedEvents = [];
+        $forceFinishedCount = DB::transaction(function () use ($exam, &$submittedEvents) {
+            $inProgressResults = ExamResult::with('student:id,name')
+                ->where('exam_id', $exam->id)
                 ->where('status', 'in_progress')
                 ->lockForUpdate()
                 ->get();
@@ -5785,13 +5917,12 @@ class ExamController extends Controller
                 $result->calculateScore();
                 $count++;
 
-                // Broadcast: student submitted (so monitoring page updates)
-                app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, [
+                $submittedEvents[] = [
                     'student_id' => $result->student_id,
                     'student_name' => $result->student->name ?? 'Unknown',
                     'score' => $result->percentage,
                     'force_ended' => true,
-                ]);
+                ];
             }
 
             // Update exam status and end_time
@@ -5801,6 +5932,15 @@ class ExamController extends Controller
 
             return $count;
         });
+
+        // Broadcast submissions only after commit.
+        foreach ($submittedEvents as $submittedEvent) {
+            try {
+                app(SocketBroadcastService::class)->examStudentSubmitted($exam->id, $submittedEvent);
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast examStudentSubmitted failed: ' . $e->getMessage());
+            }
+        }
 
         // Broadcast exam ended event so student browsers know to stop
         app(SocketBroadcastService::class)->examEnded($exam->id, [

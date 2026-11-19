@@ -71,6 +71,14 @@ export function useProctoring({
   useEffect(() => {
     resolvedCooldownMsRef.current = resolvedCooldownMs;
   }, [resolvedCooldownMs]);
+
+  // Latest callback in a ref: an inline onDetection prop gets a new identity on
+  // every render, which would recreate analyzeFrame and restart — and thus
+  // cancel — the detection interval before it ever fires.
+  const onDetectionRef = useRef(onDetection);
+  useEffect(() => {
+    onDetectionRef.current = onDetection;
+  }, [onDetection]);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stats, setStats] = useState<ProctoringStats>({
@@ -170,7 +178,7 @@ export function useProctoring({
             totalDetections: prev.totalDetections + 1,
           }));
 
-          onDetection?.(detection);
+          onDetectionRef.current?.(detection);
 
           streakRef.current = { type: 'none', count: 0 };
           cooldownRef.current = { type: detectedType, until: now + resolvedCooldownMsRef.current };
@@ -182,7 +190,7 @@ export function useProctoring({
       analyzingRef.current = false;
       setIsAnalyzing(false);
     }
-  }, [videoRef, isModelLoaded, onDetection]);
+  }, [videoRef, isModelLoaded]);
 
   useEffect(() => {
     if (!enabled || !isModelLoaded) return;

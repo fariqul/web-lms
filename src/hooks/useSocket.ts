@@ -113,6 +113,18 @@ export function useExamSocket(examId: number) {
     emit('leave-exam', { examId });
   }, [emit, examId]);
 
+  // Auto-join the exam room for every page that uses this hook (student exam,
+  // monitor, results, edit). Consumers only registered listeners before, so
+  // room-scoped broadcasts were never delivered.
+  useEffect(() => {
+    if (!isConnected) return;
+
+    joinExamRoom();
+    return () => {
+      leaveExamRoom();
+    };
+  }, [isConnected, joinExamRoom, leaveExamRoom]);
+
   const onStudentJoined = useCallback((callback: (data: unknown) => void) => {
     on(`exam.${examId}.student-joined`, callback);
   }, [on, examId]);

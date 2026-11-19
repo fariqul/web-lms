@@ -11,7 +11,7 @@ const MAX_CONNECTIONS = 2000; // Higher headroom for 64GB server
 const RATE_LIMIT_WINDOW = 1000; // 1 second window
 const RATE_LIMIT_MAX = 30; // max events per window per socket
 const CONNECTION_TIMEOUT = 45000; // 45 seconds for slow connections
-const ALLOWED_SYSTEM_ROOMS = new Set(['system.snapshot-monitor', 'system.exam-results-visibility']);
+const ALLOWED_SYSTEM_ROOMS = new Set(['system.snapshot-monitor', 'system.exam-results-visibility', 'system.admin-alerts']);
 
 const httpServer = createServer((req, res) => {
   // Health check endpoint with detailed stats
@@ -169,6 +169,31 @@ async function resolveUserIdFromToken(token) {
   }
 }
 
+// Ask the backend whether this bearer token may join an exam room.
+// The backend resolves the token and enforces role/class/ownership rules.
+async function canJoinExamRoom(token, examId) {
+  if (!token || typeof token !== 'string') {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${BACKEND_API_URL}/internal/socket/exam-access`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${INTERNAL_SECRET}`,
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ token, exam_id: Number(examId) }),
+    });
+
+    return response.ok;
+  } catch (err) {
+    console.error('[auth] Failed to verify exam room access:', err?.message || err);
+    return false;
+  }
+}
+
 io.on('connection', (socket) => {
   const token = socket.handshake.auth?.token;
   console.log(`[connect] ${socket.id} (total: ${io.engine.clientsCount})`);
@@ -206,10 +231,24 @@ io.on('connection', (socket) => {
     }
   };
 
-  // Join exam monitoring room (for teachers)
-  socket.on('join-exam', ({ examId }) => {
-    if (!examId) return;
-    const room = `exam.${examId}`;
+  // Join exam room (admin, exam owner guru, or students of the exam's classes).
+  // Authorization is resolved by the backend via /internal/socket/exam-access.
+  socket.on('join-exam', async (payload = {}) => {
+    const id = Number(payload?.examId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    const room = `exam.${id}`;
+
+    socket.data.examAccess = socket.data.examAccess || new Map();
+    if (!socket.data.examAccess.has(id)) {
+      socket.data.examAccess.set(id, await canJoinExamRoom(token, id));
+    }
+
+    if (!socket.data.examAccess.get(id)) {
+      socket.emit('error', { message: 'Unauthorized join-exam request' });
+      console.warn(`[auth] join-exam rejected for socket ${socket.id}: exam=${id}`);
+      return;
+    }
+
     if (joinRoom(room)) {
       console.log(`[room] ${socket.id} joined ${room}`);
       socket.emit('room-joined', { room, members: roomMembers.get(room)?.size || 0 });

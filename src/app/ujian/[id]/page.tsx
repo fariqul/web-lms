@@ -92,7 +92,8 @@ export default function ExamTakingPage() {
   const router = useRouter();
   const toast = useToast();
   const { resolvedTheme, toggleTheme } = useTheme();
-  const examId = Number(params.id) || 1;
+  const parsedExamId = Number(params.id);
+  const examId = Number.isInteger(parsedExamId) && parsedExamId > 0 ? parsedExamId : NaN;
   
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<ExamData | null>(null);
@@ -108,6 +109,12 @@ export default function ExamTakingPage() {
   const [startingExam, setStartingExam] = useState(false);
   const [clientConfig, setClientConfig] = useState<{ snapshot_interval_sec: number; anomaly_trigger_sec: number; anomaly_cooldown_sec: number } | null>(null);
   const autoSubmittedRef = React.useRef(false);
+  // Latest answers in a ref so callbacks fired from timers/polling always see
+  // the current values without being recreated on every keystroke.
+  const answersRef = React.useRef<Record<number, string>>({});
+  React.useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
   // Work photo (foto cara kerja) state
   const [workPhotos, setWorkPhotos] = useState<Record<number, string>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
@@ -163,6 +170,12 @@ export default function ExamTakingPage() {
       toast.error(`Jawaban soal #${questions.findIndex(q => q.id === questionId) + 1} gagal tersimpan. Periksa koneksi internet.`);
     },
   });
+
+  // Keep the queue API in a ref so timer/polling callbacks stay stable.
+  const answerQueueRef = React.useRef(answerQueue);
+  React.useEffect(() => {
+    answerQueueRef.current = answerQueue;
+  }, [answerQueue]);
 
   // Clear exam session flags (call before navigating away after submit)
   const clearExamSession = React.useCallback(() => {
@@ -243,16 +256,50 @@ export default function ExamTakingPage() {
   });
   const isAnswerFrozen = freezeUntil !== null;
 
+  const forceExitRef = React.useRef(false);
   const forceExitExamByAdmin = React.useCallback(() => {
+    if (forceExitRef.current) return;
+    forceExitRef.current = true;
     setSubmitting(true);
-    stopCamera();
-    clearExamSession();
-    toast.warning('Ujian telah diselesaikan oleh admin. Jawaban Anda telah dikumpulkan otomatis.');
-    setTimeout(() => {
-      isNavigatingAwayRef.current = true;
-      router.push('/ujian-siswa?reason=admin_ended');
-    }, 1500);
-  }, [stopCamera, clearExamSession, toast, router]);
+    void (async () => {
+      // Persist whatever is still queued before leaving, then close the attempt
+      // server-side so the last keystrokes are not lost when the exam is ended.
+      const persistAndFinish = async () => {
+        await answerQueueRef.current.flushAll();
+        const entries = Object.entries(answersRef.current);
+        if (entries.length > 0) {
+          await api.post(`/exams/${examId}/answers/batch`, {
+            answers: entries.map(([questionId, value]) => ({
+              question_id: Number(questionId),
+              answer: value,
+            })),
+          });
+        }
+        await api.post(`/exams/${examId}/finish`, {
+          answers: answersRef.current,
+          force_submit: true,
+        });
+      };
+
+      try {
+        // Never hold the student on the page if the network is slow.
+        await Promise.race([
+          persistAndFinish(),
+          new Promise((resolve) => setTimeout(resolve, 6000)),
+        ]);
+      } catch {
+        // Server-side force finish still applies; never block the exit.
+      } finally {
+        stopCamera();
+        clearExamSession();
+        toast.warning('Ujian telah diselesaikan oleh admin. Jawaban Anda telah dikumpulkan otomatis.');
+        setTimeout(() => {
+          isNavigatingAwayRef.current = true;
+          router.push('/ujian-siswa?reason=admin_ended');
+        }, 1500);
+      }
+    })();
+  }, [stopCamera, clearExamSession, toast, router, examId]);
 
   const [snapshotStatus, setSnapshotStatus] = useState<'idle' | 'capturing' | 'success' | 'error'>('idle');
   const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
@@ -477,17 +524,11 @@ export default function ExamTakingPage() {
     const handleQuestionDeleted = (data: unknown) => {
       const { question_id } = data as { question_id: number; deleted_order: number; total_questions: number };
       if (!question_id) return;
-      setQuestions(prev => {
-        const filtered = prev.filter(q => q.id !== question_id);
-        // Renumber remaining questions
-        return filtered.map((q, idx) => ({ ...q, number: idx + 1 }));
-      });
-      // Adjust current question index if needed
-      setCurrentQuestion(prev => {
-        const newLength = questions.length - 1;
-        if (prev >= newLength && newLength > 0) return newLength - 1;
-        return prev;
-      });
+      setQuestions(prev =>
+        prev
+          .filter(q => q.id !== question_id)
+          .map((q, idx) => ({ ...q, number: idx + 1 }))
+      );
     };
 
     examSocket.onQuestionAdded(handleQuestionAdded);
@@ -499,7 +540,15 @@ export default function ExamTakingPage() {
       examSocket.off(`exam.${examId}.question-updated`);
       examSocket.off(`exam.${examId}.question-deleted`);
     };
-  }, [isStarted, examId, examSocket, questions.length]);
+  }, [isStarted, examId, examSocket]);
+
+  // Keep the current index inside the question list after live edits/deletes.
+  useEffect(() => {
+    setCurrentQuestion(prev => {
+      if (questions.length === 0) return 0;
+      return Math.min(prev, questions.length - 1);
+    });
+  }, [questions.length]);
 
   const syncTimeFromServer = useCallback(async (force: boolean = false) => {
     try {
@@ -974,6 +1023,12 @@ export default function ExamTakingPage() {
   }, [isStarted, isCameraActive, snapshotMonitoringEnabled, captureSnapshot, syncSnapshotMonitoringState, toast, clientConfig]);
 
   const fetchExam = useCallback(async () => {
+    if (!Number.isFinite(examId)) {
+      setLoading(false);
+      setExamNotFound(true);
+      return;
+    }
+
     try {
       const response = await api.get(`/exams/${examId}`);
       const examData = response.data?.data;
@@ -1042,6 +1097,13 @@ export default function ExamTakingPage() {
     }
   }, [answers, clearExamSession, exam?.duration, examId, flushAnswersBeforeFinish, router, timeRemaining, toast]);
 
+  // Keep the latest autoSubmit closure in a ref so the 1-second countdown
+  // interval is installed once instead of being torn down on every render.
+  const autoSubmitRef = React.useRef(autoSubmitExam);
+  React.useEffect(() => {
+    autoSubmitRef.current = autoSubmitExam;
+  }, [autoSubmitExam]);
+
   useEffect(() => {
     if (!isStarted) return;
     const timer = setInterval(() => {
@@ -1051,7 +1113,7 @@ export default function ExamTakingPage() {
           // Auto-submit when time is up (only once)
           if (!autoSubmittedRef.current) {
             autoSubmittedRef.current = true;
-            autoSubmitExam();
+            void autoSubmitRef.current();
           }
           return 0;
         }
@@ -1059,7 +1121,7 @@ export default function ExamTakingPage() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [isStarted, autoSubmitExam]);
+  }, [isStarted]);
 
   // === FIX 2: Timer re-sync from server every 60 seconds ===
   useEffect(() => {
@@ -1282,8 +1344,10 @@ export default function ExamTakingPage() {
       selected = [...selected, optionText];
     }
     if (selected.length === 0) {
-      // Remove answer if nothing selected
-      setAnswers((prev) => { const next = { ...prev }; delete next[questionId]; return next; });
+      // Remove answer if nothing selected — keep the empty value in state and
+      // sync it so the server deletes the previously saved answer.
+      setAnswers((prev) => ({ ...prev, [questionId]: '' }));
+      answerQueue.queueAnswer(questionId, '');
       return;
     }
     const answer = JSON.stringify(selected);
@@ -1503,7 +1567,9 @@ export default function ExamTakingPage() {
   }
 
   const question = questions[currentQuestion];
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.values(answers).filter(
+    (value) => typeof value === 'string' && value.trim() !== ''
+  ).length;
 
   if (!isStarted) {
     return (
@@ -1804,6 +1870,26 @@ export default function ExamTakingPage() {
               </Button>
             </div>
           </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // All questions may be removed temporarily while a teacher edits the exam.
+  // Render a safe placeholder instead of dereferencing an undefined question.
+  if (!question) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full p-6 text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-teal-500 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Soal Sedang Diperbarui</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">
+            Pengajar sedang memperbarui daftar soal. Jawaban Anda tetap tersimpan.
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Muat Ulang
+          </Button>
         </Card>
       </div>
     );

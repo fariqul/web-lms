@@ -77,6 +77,9 @@ Route::get('/monitoring-snapshots/{snapshot}/image', [SnapshotImageController::c
     ->middleware('signed')
     ->name('monitoring-snapshots.image');
 
+// Internal: authorizes socket room joins (shared secret, called by socket-server).
+Route::post('/internal/socket/exam-access', [ExamController::class, 'socketExamAccess']);
+
 // Protected routes
 Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle])->group(function () use ($dashboardThrottle, $notificationThrottle, $examPollingThrottle) {
     // Auth - All authenticated users
@@ -172,15 +175,10 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         Route::post('/exams/{exam}/unlock', [ExamController::class, 'unlockExam']);
 
         // ============================================
-        // PROCTORING MONITOR (Admin only)
-        // ⚠️ ROUTE ORDER MATTERS: literal paths (/pending-count) MUST appear
-        //    before wildcard paths (/{alert}) on the same prefix.
-        //    Same pattern as graduation routes below — do not reorder.
+        // PROCTORING HITL ACTIONS (Admin only)
+        // Read endpoints live in the admin+guru exam group so the owning
+        // teacher can open the monitoring page without 403s.
         // ============================================
-        Route::get('/exams/{exam}/proctoring-scores', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'scores']);
-        Route::get('/exams/{exam}/proctoring-alerts', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'alerts']);
-        // ⚠️ Literal — must stay before any GET /proctoring-alerts/{alert} wildcard
-        Route::get('/exams/{exam}/proctoring-alerts/pending-count', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'pendingCount']);
         // HITL: admin review AI alert → formal violation or dismissed
         Route::post('/proctoring-alerts/{alert}/review', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'reviewAlert']);
         // Legacy: acknowledge only (mark as seen, no decision)
@@ -415,6 +413,13 @@ Route::middleware(['auth:sanctum', 'blocked.student', 'throttle:' . $apiThrottle
         
         // Exam monitoring (admin + exam owner guru)
         Route::get('/exams/{exam}/monitoring', [ExamController::class, 'monitoring']);
+
+        // Proctoring read endpoints (admin + exam owner guru) — the controller
+        // enforces exam ownership; review actions stay admin-only above.
+        Route::get('/exams/{exam}/proctoring-scores', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'scores']);
+        Route::get('/exams/{exam}/proctoring-alerts', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'alerts']);
+        // Literal path must stay before any GET /proctoring-alerts/{alert} wildcard
+        Route::get('/exams/{exam}/proctoring-alerts/pending-count', [\App\Http\Controllers\Api\ProctoringMonitorController::class, 'pendingCount']);
 
         // Question management (shared — admin can edit even locked exams)
         Route::post('/exams/{exam}/duplicate-from-exam', [ExamController::class, 'duplicateFromExam']);
