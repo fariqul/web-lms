@@ -45,7 +45,7 @@ const SUBJECTS = [
   'Bahasa Jerman', 'Matematika', 'Matematika Tingkat Lanjut',
   'Fisika', 'Kimia', 'Biologi', 'Sejarah', 'Sejarah Tingkat Lanjut',
   'Sosiologi', 'Ekonomi', 'Geografi', 'Pendidikan Pancasila',
-  'Informatika', 'Seni Budaya', 'Pendidikan Agama Islam',
+  'Informatika', 'KKA', 'Seni Budaya', 'Pendidikan Agama Islam',
   'Pendidikan Agama Kristen', 'PJOK', 'Prakarya dan Kewirausahaan',
 ];
 

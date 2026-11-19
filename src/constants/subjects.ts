@@ -19,6 +19,7 @@ export const SUBJECT_LIST = [
   'Geografi',
   'Pendidikan Pancasila',
   'Informatika',
+  'KKA',
   'Seni Budaya',
   'Pendidikan Agama Islam',
   'Pendidikan Agama Kristen',

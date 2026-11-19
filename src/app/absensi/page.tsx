@@ -47,6 +47,7 @@ const subjects = [
   { value: 'Geografi', label: 'Geografi' },
   { value: 'Pendidikan Pancasila', label: 'Pendidikan Pancasila' },
   { value: 'Informatika', label: 'Informatika' },
+  { value: 'KKA', label: 'KKA' },
   { value: 'Seni Budaya', label: 'Seni Budaya' },
   { value: 'Pendidikan Agama Islam', label: 'Pendidikan Agama Islam' },
   { value: 'Pendidikan Agama Kristen', label: 'Pendidikan Agama Kristen' },

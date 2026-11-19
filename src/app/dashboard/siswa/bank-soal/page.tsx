@@ -47,6 +47,7 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; color: string; iconColor:
   'Geografi': { icon: Globe2, color: 'bg-cyan-100', iconColor: 'text-cyan-500' },
   'Pendidikan Pancasila': { icon: ScrollText, color: 'bg-indigo-100', iconColor: 'text-indigo-500' },
   'Informatika': { icon: GraduationCap, color: 'bg-slate-100', iconColor: 'text-slate-600 dark:text-slate-400' },
+  'KKA': { icon: GraduationCap, color: 'bg-cyan-100', iconColor: 'text-cyan-600' },
   'Seni Budaya': { icon: BookMarked, color: 'bg-rose-100', iconColor: 'text-rose-500' },
   'Pendidikan Agama Islam': { icon: BookOpen, color: 'bg-violet-100', iconColor: 'text-violet-500' },
   'Pendidikan Agama Kristen': { icon: BookOpen, color: 'bg-violet-50', iconColor: 'text-violet-400' },
