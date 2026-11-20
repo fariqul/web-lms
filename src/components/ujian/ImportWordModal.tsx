@@ -223,7 +223,25 @@ function wordRunText(r: Element): string {
     else if (ch.localName === 'tab') t += '\t';
     else if (ch.localName === 'br') t += '\n';
   }
-  return t;
+
+  const properties = childrenNS(r, W_NS, 'rPr')[0];
+  const alignment = properties ? childrenNS(properties, W_NS, 'vertAlign')[0] : undefined;
+  const position = alignment?.getAttributeNS(W_NS, 'val') || alignment?.getAttribute('w:val');
+  if (position !== 'subscript' && position !== 'superscript') return t;
+
+  const escapes: Record<string, string> = {
+    '\\': '\\textbackslash{}',
+    '$': '\\textdollar{}',
+    '^': '\\textasciicircum{}',
+    '~': '\\textasciitilde{}',
+  };
+  const script = position === 'subscript' ? '_' : '^';
+
+  // Keep line breaks outside math delimiters and Word text literal inside scripts.
+  return t.replace(/[^\t\r\n]+/g, (text) => {
+    const escaped = text.replace(/[\\{}$&#%_^~]/g, (char) => escapes[char] ?? `\\${char}`);
+    return '$' + `{}${script}{\\text{${escaped}}}` + '$';
+  });
 }
 
 /** Extract text from a paragraph, including inline math as LaTeX $...$ and wrapped elements */
@@ -1335,7 +1353,7 @@ export function ImportWordModal({
                       {q.passage && (
                         <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                           <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5">Bacaan:</p>
-                          <p className="text-xs text-blue-800 dark:text-blue-200 line-clamp-3 whitespace-pre-line">{q.passage}</p>
+                          <MathText text={q.passage} as="p" className="text-xs text-blue-800 dark:text-blue-200 line-clamp-3 whitespace-pre-line" />
                         </div>
                       )}
 
