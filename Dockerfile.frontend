@@ -12,7 +12,9 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 # Rewrites in next.config.ts are baked into routes-manifest at build time,
 # so BACKEND_URL must be present here, not only at runtime.
 ARG BACKEND_URL=https://api.libelslms.my.id
-ARG NEXT_PUBLIC_API_URL=https://api.libelslms.my.id
+# services/api.ts uses this as an axios baseURL and appends '/login' etc.,
+# so it must include the /api prefix.
+ARG NEXT_PUBLIC_API_URL=https://api.libelslms.my.id/api
 ARG NEXT_PUBLIC_SOCKET_URL=https://api.libelslms.my.id
 ENV BACKEND_URL=${BACKEND_URL} \
     NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \

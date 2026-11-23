@@ -159,7 +159,7 @@ services:
       dockerfile: Dockerfile.frontend
       args:
         BACKEND_URL: ${FRONTEND_BACKEND_URL:-https://api.libelslms.my.id}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.libelslms.my.id}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.libelslms.my.id/api}
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.libelslms.my.id}
     container_name: lms-frontend
     restart: unless-stopped
