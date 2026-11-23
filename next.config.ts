@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Standalone output is only needed for the self-hosted Docker image;
+  // Vercel keeps its default build output.
+  output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
   reactCompiler: true,
   compress: true,
   poweredByHeader: false,

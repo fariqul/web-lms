@@ -150,6 +150,28 @@ services:
     networks:
       - lms-network
 
+  # Next.js frontend (self-hosted, replaces Vercel)
+  # NEXT_PUBLIC_* values are inlined at build time, so they are build args,
+  # not runtime environment variables.
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        BACKEND_URL: ${FRONTEND_BACKEND_URL:-https://api.libelslms.my.id}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.libelslms.my.id}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.libelslms.my.id}
+    container_name: lms-frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - lms-network
+
   # Nginx Reverse Proxy (with custom global config)
   nginx:
     image: nginx:alpine
@@ -163,6 +185,7 @@ services:
     depends_on:
       - backend
       - socket
+      - frontend
     deploy:
       resources:
         limits:

@@ -1,0 +1,18 @@
+# Only the Next.js app is built into the frontend image.
+node_modules
+.next
+.git
+.gitignore
+tsconfig.tsbuildinfo
+.env*
+backend
+mysql
+nginx
+socket-server
+landing_page
+scripts
+docs
+skills-lock.json
+*.xlsx
+*.docx
+*.md
