@@ -11,8 +11,6 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@types/katex": "^0.16.8",
-    "@vercel/analytics": "^1.6.1",
-    "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.15.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

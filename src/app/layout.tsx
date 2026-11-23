@@ -10,9 +10,6 @@ import { OfflineBanner } from "@/components/ui/OfflineBanner";
 import { SessionEventHandler } from "@/components/auth/SessionEventHandler";
 import { AdminProctoringAlerts } from "@/components/admin/AdminProctoringAlerts";
 
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
@@ -64,8 +61,6 @@ export default function RootLayout({
             </ToastProvider>
           </AuthProvider>
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
         <script
           data-goatcounter="https://ilham.goatcounter.com/count"
           async
