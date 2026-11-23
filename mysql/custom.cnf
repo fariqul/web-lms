@@ -7,8 +7,8 @@
 # ============================================
 # CONNECTION MANAGEMENT
 # ============================================
-max_connections = 800
-max_user_connections = 700
+max_connections = 1000
+max_user_connections = 900
 wait_timeout = 300
 interactive_timeout = 300
 # Skip reverse DNS lookups for faster connections
@@ -78,6 +78,9 @@ innodb_thread_concurrency = 0
 # ============================================
 # BINARY LOGGING (enable if you want point-in-time recovery)
 # ============================================
+# MySQL 8.0 logs by default. With sync_binlog=1 every commit costs a second
+# fsync, which serialised the write path during the exam load test.
+sync_binlog = 0
 # binlog_expire_logs_seconds = 604800
 # server-id = 1
 # log-bin = mysql-bin

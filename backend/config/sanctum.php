@@ -49,6 +49,10 @@ return [
 
     'expiration' => env('SANCTUM_TOKEN_EXPIRATION', 60 * 24), // 24 hours default
 
+    // Every authenticated request otherwise issues an UPDATE on personal_access_tokens,
+    // which saturated MySQL during the 776-student exam session.
+    'last_used_at' => false,
+
     /*
     |--------------------------------------------------------------------------
     | Token Prefix
