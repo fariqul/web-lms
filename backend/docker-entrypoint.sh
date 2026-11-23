@@ -18,7 +18,7 @@ DB_DATABASE=${DB_DATABASE:-lms}
 DB_USERNAME=${DB_USERNAME:-root}
 DB_PASSWORD=${DB_PASSWORD:-}
 
-SESSION_DRIVER=${SESSION_DRIVER:-database}
+SESSION_DRIVER=${SESSION_DRIVER:-redis}
 SESSION_LIFETIME=${SESSION_LIFETIME:-120}
 SESSION_DOMAIN=${SESSION_DOMAIN:-}
 SESSION_SECURE_COOKIE=${SESSION_SECURE_COOKIE:-true}
@@ -32,7 +32,7 @@ FRONTEND_URL=${FRONTEND_URL:-https://web-lms-rowr.vercel.app}
 SOCKET_SERVER_URL=${SOCKET_SERVER_URL:-http://socket:6001}
 SOCKET_INTERNAL_SECRET=${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
 
-QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
 LOGIN_THROTTLE=${LOGIN_THROTTLE:-1800,1}
 API_THROTTLE=${API_THROTTLE:-1400,1}
 GLOBAL_API_THROTTLE=${GLOBAL_API_THROTTLE:-3500,1}
@@ -184,9 +184,9 @@ start_workers() {
         (
             while true; do
                 if [ "$QUEUE_MAX_TIME_EFFECTIVE" -gt 0 ]; then
-                    php artisan queue:work database --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --max-time=${QUEUE_MAX_TIME_EFFECTIVE} --quiet
+                    php artisan queue:work "${QUEUE_CONNECTION:-redis}" --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --max-time=${QUEUE_MAX_TIME_EFFECTIVE} --quiet
                 else
-                    php artisan queue:work database --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --quiet
+                    php artisan queue:work "${QUEUE_CONNECTION:-redis}" --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --quiet
                 fi
 
                 exit_code=$?

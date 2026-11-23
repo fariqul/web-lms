@@ -76,12 +76,13 @@ innodb_lock_wait_timeout = 30
 innodb_thread_concurrency = 0
 
 # ============================================
-# BINARY LOGGING (enable if you want point-in-time recovery)
+# BINARY LOGGING (disabled)
 # ============================================
-# MySQL 8.0 logs by default. With sync_binlog=1 every commit costs a second
-# fsync, which serialised the write path during the exam load test.
-sync_binlog = 0
-# binlog_expire_logs_seconds = 604800
+# No replica and no point-in-time recovery target: the binlog only consumed
+# disk and added fsync work. Re-enable log-bin + server-id if replication or
+# PITR is ever needed.
+disable-log-bin = 1
+# binlog_expire_logs_seconds = 86400
 # server-id = 1
 # log-bin = mysql-bin
 

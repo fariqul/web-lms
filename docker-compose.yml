@@ -63,7 +63,7 @@ services:
       DB_DATABASE: ${DB_DATABASE:-sma15_lms}
       DB_USERNAME: ${DB_USERNAME:-lms_user}
       DB_PASSWORD: ${DB_PASSWORD:-LmsSekolah123!}
-      SESSION_DRIVER: database
+      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
       SESSION_LIFETIME: 120
       SESSION_SECURE_COOKIE: "false"
       # Redis via predis (pure PHP — no phpredis extension needed)
@@ -77,7 +77,7 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-https://www.libelslms.my.id}
       SOCKET_SERVER_URL: "http://socket:6001"
       SOCKET_INTERNAL_SECRET: ${SOCKET_INTERNAL_SECRET:-lms-socket-secret-key-2026}
-      QUEUE_CONNECTION: database
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
       LOGIN_THROTTLE: ${LOGIN_THROTTLE:-1800,1}
       API_THROTTLE: ${API_THROTTLE:-1400,1}
       GLOBAL_API_THROTTLE: ${GLOBAL_API_THROTTLE:-3500,1}
@@ -194,6 +194,8 @@ services:
       - lms-network
 
   # Cloudflare Named Tunnel (production)
+  # Two connectors share the same tunnel token; Cloudflare load-balances
+  # between them so one connector stalling cannot take the site down.
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: lms-tunnel
@@ -204,7 +206,30 @@ services:
       - tunnel
       - --no-autoupdate
       - --protocol
-      - http2
+      - auto
+      - run
+      - --token
+      - ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - nginx
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - lms-network
+
+  cloudflared-2:
+    image: cloudflare/cloudflared:latest
+    container_name: lms-tunnel-2
+    restart: unless-stopped
+    environment:
+      CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --protocol
+      - auto
       - run
       - --token
       - ${CLOUDFLARE_TUNNEL_TOKEN}

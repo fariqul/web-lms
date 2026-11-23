@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
+    // Exam question images are immutable once uploaded; cache optimized
+    // variants for 7 days so the optimizer never re-processes them mid-exam.
+    minimumCacheTTL: 604800,
     remotePatterns: [
       {
         protocol: 'http',
