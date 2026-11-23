@@ -18,6 +18,33 @@ class AnalyzeSnapshotJobQueueTest extends TestCase
         $this->assertSame('proctoring', $job->queue);
     }
 
+    public function test_snapshot_multi_face_rule_defaults_to_face_only(): void
+    {
+        $this->assertSame('face_only', config('proctoring.snapshot_multi_face_rule'));
+
+        $job = new AnalyzeSnapshotJob(1, 12, 22, 32);
+        $method = new \ReflectionMethod(AnalyzeSnapshotJob::class, 'isMultiFace');
+        $method->setAccessible(true);
+
+        $this->assertFalse($method->invoke($job, ['person_count' => 2], ['face_count' => 1]));
+        $this->assertTrue($method->invoke($job, ['person_count' => 1], ['face_count' => 2]));
+    }
+
+    public function test_snapshot_multi_face_rule_is_independent_from_experiment_rule(): void
+    {
+        config([
+            'proctoring.multi_face_rule'          => 'face_only',
+            'proctoring.snapshot_multi_face_rule' => 'person_or_face',
+        ]);
+
+        $job = new AnalyzeSnapshotJob(1, 12, 22, 32);
+        $method = new \ReflectionMethod(AnalyzeSnapshotJob::class, 'isMultiFace');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($job, ['person_count' => 2], ['face_count' => 1]));
+        $this->assertTrue($method->invoke($job, ['person_count' => 1], ['face_count' => 2]));
+    }
+
     public function test_should_emit_alert_returns_false_when_recent_duplicate_exists(): void
     {
         Cache::flush();

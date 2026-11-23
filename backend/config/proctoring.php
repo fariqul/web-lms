@@ -34,6 +34,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Snapshot Multi-face Rule (ujian)
+    |--------------------------------------------------------------------------
+    | Aturan multi-wajah untuk analisis snapshot ujian, terpisah dari aturan
+    | eksperimen terkontrol di atas. Hold-out 2026-11-23 (n=988):
+    | face_count > 1 → presisi 66.7%, F1 46.5%; person_count > 1 → presisi
+    | 12.7%, F1 21.5%.
+    */
+    'snapshot_multi_face_rule' => env('PROCTORING_SNAPSHOT_MULTI_FACE_RULE', 'face_only'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Head Pose Thresholds (derajat)
     |--------------------------------------------------------------------------
     | Head yaw  = rotasi kiri/kanan.

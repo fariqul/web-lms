@@ -121,6 +121,7 @@ services:
       PROCTORING_RETENTION_HOURS: ${PROCTORING_RETENTION_HOURS:-48}
       PROCTORING_VIOLATION_KEEP: ${PROCTORING_VIOLATION_KEEP:-true}
       PROCTORING_CALIBRATION_ENABLED: ${PROCTORING_CALIBRATION_ENABLED:-true}
+      PROCTORING_SNAPSHOT_MULTI_FACE_RULE: ${PROCTORING_SNAPSHOT_MULTI_FACE_RULE:-face_only}
     volumes:
       - backend_storage:/var/www/html/storage
       - ./backend/storage/app/public/experiment-snapshots:/var/www/html/storage/app/public/experiment-snapshots

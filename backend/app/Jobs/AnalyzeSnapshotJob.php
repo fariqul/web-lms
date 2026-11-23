@@ -105,7 +105,7 @@ class AnalyzeSnapshotJob implements ShouldQueue
                 'eye_gaze_threshold'       => $config['eye_gaze_threshold'],
                 'confidence_threshold'     => $config['confidence_threshold'],
                 'face_similarity_threshold' => $config['face_similarity_threshold'],
-                'multi_face_rule'          => config('proctoring.multi_face_rule', 'person_or_face'),
+                'multi_face_rule'          => config('proctoring.snapshot_multi_face_rule', 'face_only'),
             ]);
 
             /** @var \Illuminate\Http\Client\Response $response */
@@ -505,14 +505,15 @@ class AnalyzeSnapshotJob implements ShouldQueue
     }
 
     /**
-     * `person_or_face` (default) counts a second person even when their face is
-     * not visible. `face_only` requires MediaPipe to see more than one face.
+     * `face_only` (default for exam snapshots) requires MediaPipe to see more
+     * than one face. `person_or_face` also counts a second person whose face is
+     * not visible; it stays the rule for controlled experiment captures.
      */
     private function isMultiFace(array $result, ?array $faceAnalysis): bool
     {
         $faceCount = (int) ($faceAnalysis['face_count'] ?? 0);
 
-        if (config('proctoring.multi_face_rule', 'person_or_face') === 'face_only') {
+        if (config('proctoring.snapshot_multi_face_rule', 'face_only') === 'face_only') {
             return $faceCount > 1;
         }
 
