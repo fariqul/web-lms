@@ -14,17 +14,22 @@ class CompareLayersCommandTest extends TestCase
 
     private string $outputPath;
 
+    private string $mcnemarPath;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->outputPath = storage_path('app/layers-test-' . uniqid() . '.csv');
+        $this->outputPath  = storage_path('app/layers-test-' . uniqid() . '.csv');
+        $this->mcnemarPath = preg_replace('/\.csv$/', '', $this->outputPath) . '-mcnemar.csv';
     }
 
     protected function tearDown(): void
     {
-        if (is_file($this->outputPath)) {
-            unlink($this->outputPath);
+        foreach ([$this->outputPath, $this->mcnemarPath] as $path) {
+            if (is_file($path)) {
+                unlink($path);
+            }
         }
 
         parent::tearDown();
@@ -76,6 +81,26 @@ class CompareLayersCommandTest extends TestCase
         return $found;
     }
 
+    private function mcnemarRow(string $category, string $comparison): array
+    {
+        $handle = fopen($this->mcnemarPath, 'r');
+        $header = fgetcsv($handle);
+        $found  = null;
+
+        while (($line = fgetcsv($handle)) !== false) {
+            $row = array_combine($header, $line);
+            if ($row['category'] === $category && $row['comparison'] === $comparison) {
+                $found = $row;
+            }
+        }
+
+        fclose($handle);
+
+        $this->assertNotNull($found, "Baris McNemar {$category}/{$comparison} tidak ditemukan.");
+
+        return $found;
+    }
+
     public function test_compares_client_and_server_for_multi_face(): void
     {
         $session = $this->makeSession();
@@ -112,6 +137,8 @@ class CompareLayersCommandTest extends TestCase
         ])
             ->expectsOutputToContain('gabungan AND')
             ->expectsOutputToContain('tanpa data klien: 1')
+            ->expectsOutputToContain('Uji McNemar')
+            ->expectsOutputToContain('eksak binomial')
             ->assertExitCode(0);
 
         $server = $this->csvRow('multi_face', 'server');
@@ -138,6 +165,16 @@ class CompareLayersCommandTest extends TestCase
         $this->assertSame(['1', '2', '0', '1', '4'], [
             $and['tp'], $and['tn'], $and['fp'], $and['fn'], $and['n'],
         ]);
+
+        $this->assertNotSame('', $server['accuracy_ci_low']);
+        $this->assertNotSame('', $server['accuracy_ci_high']);
+
+        $mcnemar = $this->mcnemarRow('multi_face', 'klien saja vs server');
+        $this->assertSame(['1', '2', '3', 'eksak binomial'], [
+            $mcnemar['b'], $mcnemar['c'], $mcnemar['discordant'], $mcnemar['method'],
+        ]);
+        $this->assertSame('1', $mcnemar['p_value']);
+        $this->assertSame('tidak berbeda', $mcnemar['better']);
 
         // The command must never rewrite frozen predictions.
         $this->assertTrue($a->fresh()->pred_multi_face);
@@ -190,5 +227,11 @@ class CompareLayersCommandTest extends TestCase
         $this->assertSame(['0', '1', '0', '1', '2'], [
             $and['tp'], $and['tn'], $and['fp'], $and['fn'], $and['n'],
         ]);
+
+        $mcnemar = $this->mcnemarRow('no_face', 'klien saja vs server');
+        $this->assertSame(['0', '2', '2', 'eksak binomial'], [
+            $mcnemar['b'], $mcnemar['c'], $mcnemar['discordant'], $mcnemar['method'],
+        ]);
+        $this->assertSame('0.5', $mcnemar['p_value']);
     }
 }
