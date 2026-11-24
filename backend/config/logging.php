@@ -55,7 +55,8 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'daily,telegram')),
-            'ignore_exceptions' => false,
+            // A failing log handler (e.g. unwritable file) must never turn a request into a 500.
+            'ignore_exceptions' => (bool) env('LOG_STACK_IGNORE_EXCEPTIONS', true),
         ],
 
         'telegram' => [

@@ -10,6 +10,8 @@ APP_URL=${APP_URL:-http://localhost}
 
 LOG_CHANNEL=${LOG_CHANNEL:-stack}
 LOG_LEVEL=${LOG_LEVEL:-info}
+LOG_STACK=${LOG_STACK:-daily,telegram}
+LOG_STACK_IGNORE_EXCEPTIONS=${LOG_STACK_IGNORE_EXCEPTIONS:-true}
 
 DB_CONNECTION=${DB_CONNECTION:-mysql}
 DB_HOST=${DB_HOST:-mysql}
@@ -121,6 +123,11 @@ php artisan route:cache
 php artisan view:cache
 echo "Production caches built successfully"
 
+# Runtime files must be owned by the web user: Apache and the queue workers below
+# run as www-data. Root-owned files (e.g. a daily log created at midnight by a root
+# worker) make every web request that logs fail with a 500 until ownership is fixed.
+chown -R www-data:www-data storage bootstrap/cache .env 2>/dev/null || true
+
 # Start queue workers in separate pools to isolate proctoring load.
 # Backward compatibility:
 # - If only legacy QUEUE_WORKERS is set, split it into default/proctoring so proctoring jobs never stall.
@@ -183,10 +190,11 @@ start_workers() {
         worker_index="$i"
         (
             while true; do
+                # Run as www-data so log/cache files created by workers stay writable by Apache.
                 if [ "$QUEUE_MAX_TIME_EFFECTIVE" -gt 0 ]; then
-                    php artisan queue:work "${QUEUE_CONNECTION:-redis}" --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --max-time=${QUEUE_MAX_TIME_EFFECTIVE} --quiet
+                    su -s /bin/sh www-data -c "php artisan queue:work ${QUEUE_CONNECTION:-redis} --queue=${queue_name} --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --max-time=${QUEUE_MAX_TIME_EFFECTIVE} --quiet"
                 else
-                    php artisan queue:work "${QUEUE_CONNECTION:-redis}" --queue="${queue_name}" --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --quiet
+                    su -s /bin/sh www-data -c "php artisan queue:work ${QUEUE_CONNECTION:-redis} --queue=${queue_name} --sleep=${QUEUE_SLEEP:-1} --tries=${QUEUE_TRIES:-3} --quiet"
                 fi
 
                 exit_code=$?
@@ -211,7 +219,7 @@ echo "Total queue workers started: default=${QUEUE_WORKERS_DEFAULT_COUNT}, proct
 # Start Laravel scheduler (runs every minute, triggers cleanup, etc.)
 (
     while true; do
-        php artisan schedule:run --quiet
+        su -s /bin/sh www-data -c "php artisan schedule:run --quiet"
         sleep 60
     done
 ) &
