@@ -40,7 +40,7 @@ class AuthController extends Controller
 
         // Check if user is blocked (students and teachers)
         if (in_array($user->role, ['siswa', 'guru']) && $user->is_blocked) {
-            $reason = $user->block_reason ?: 'Akun Anda diblokir oleh admin.';
+            $reason = $user->block_reason ?: 'Akun Anda telah diblokir oleh sistem.';
             return response()->json([
                 'success' => false,
                 'message' => $reason,

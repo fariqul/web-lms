@@ -23,7 +23,7 @@ class BlockedStudentMiddleware
         }
 
         if ($user && in_array($user->role, ['siswa', 'guru']) && (bool) $user->is_blocked) {
-            $reason = $user->block_reason ?: 'Akun Anda diblokir oleh admin.';
+            $reason = $user->block_reason ?: 'Akun Anda telah diblokir oleh sistem.';
 
             return response()->json([
                 'success' => false,

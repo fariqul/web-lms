@@ -104,7 +104,7 @@ export default function LoginPage() {
     if (reason === 'blocked') {
       recognizedReason = true;
       setAlertKind('blocked');
-      setError('Akun Anda telah diblokir oleh admin. Silakan hubungi admin untuk informasi lebih lanjut.');
+      setError('Akun Anda telah diblokir oleh sistem. Silakan hubungi admin untuk informasi lebih lanjut.');
     } else if (reason === 'session_expired') {
       recognizedReason = true;
       setAlertKind('session');
@@ -159,7 +159,7 @@ export default function LoginPage() {
         setError(serverMessage || 'Akun sedang login di perangkat lain.');
       } else if (status === 403 && errorCode === 'ACCOUNT_BLOCKED') {
         setAlertKind('blocked');
-        setError(serverMessage || 'Akun Anda diblokir. Hubungi admin untuk informasi lebih lanjut.');
+        setError(serverMessage || 'Akun Anda telah diblokir oleh sistem. Hubungi admin untuk informasi lebih lanjut.');
       } else if (status === 401 || status === 403) {
         setAlertKind('error');
         setError('Email/NIS atau password salah. Silakan coba lagi.');

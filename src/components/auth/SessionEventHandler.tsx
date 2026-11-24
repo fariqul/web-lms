@@ -78,7 +78,7 @@ export function SessionEventHandler() {
           : 'session_expired';
       const message = customEvent.detail?.message ||
         (reason === 'blocked'
-          ? 'Akun Anda diblokir oleh admin. Anda akan dikeluarkan dari sistem.'
+          ? 'Akun Anda telah diblokir oleh sistem. Anda akan dikeluarkan dari sistem.'
           : reason === 'removed_by_admin'
             ? 'Anda dikeluarkan sementara dari ujian oleh admin. Silakan login kembali.'
           : 'Sesi Anda berakhir. Anda akan diarahkan ke halaman login.');

@@ -37,7 +37,7 @@ class UserController extends Controller
             app(SocketBroadcastService::class)->notifyUser($user->id, [
                 'type' => 'force_logout',
                 'reason' => 'blocked',
-                'message' => $message ?: ($user->block_reason ?: 'Akun Anda diblokir oleh admin.'),
+                'message' => $message ?: ($user->block_reason ?: 'Akun Anda telah diblokir oleh sistem.'),
                 'user_id' => $user->id,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -1422,7 +1422,7 @@ class UserController extends Controller
         $user->is_blocked = $request->is_blocked;
         
         if ($request->is_blocked) {
-            $user->block_reason = $request->reason ?: 'Diblokir oleh admin';
+            $user->block_reason = $request->reason ?: 'Diblokir oleh sistem';
             $user->blocked_at = now();
         } else {
             $user->block_reason = null;
@@ -1507,7 +1507,7 @@ class UserController extends Controller
         ];
 
         if ($request->is_blocked) {
-            $updateData['block_reason'] = $request->reason ?: 'Diblokir oleh admin';
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir oleh sistem';
             $updateData['blocked_at'] = now();
         } else {
             $updateData['block_reason'] = null;
@@ -1517,7 +1517,7 @@ class UserController extends Controller
         User::whereIn('id', $users->pluck('id'))->update($updateData);
 
         if ($request->is_blocked) {
-            $reason = $request->reason ?: 'Diblokir oleh admin';
+            $reason = $request->reason ?: 'Diblokir oleh sistem';
             foreach ($users as $student) {
                 if ($student instanceof User) {
                     $this->broadcastBlockedForceLogout($student, $reason);
@@ -1558,7 +1558,7 @@ class UserController extends Controller
         ];
 
         if ($request->is_blocked) {
-            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal oleh admin';
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal oleh sistem';
             $updateData['blocked_at'] = now();
         } else {
             $updateData['block_reason'] = null;
@@ -1568,7 +1568,7 @@ class UserController extends Controller
         User::whereIn('role', ['siswa', 'guru'])->update($updateData);
 
         if ($request->is_blocked) {
-            $reason = $request->reason ?: 'Diblokir massal oleh admin';
+            $reason = $request->reason ?: 'Diblokir massal oleh sistem';
             foreach ($users as $student) {
                 if ($student instanceof User) {
                     $this->broadcastBlockedForceLogout($student, $reason);
@@ -1612,7 +1612,7 @@ class UserController extends Controller
         ];
 
         if ($request->is_blocked) {
-            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal per kelas oleh admin';
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal per kelas oleh sistem';
             $updateData['blocked_at'] = now();
         } else {
             $updateData['block_reason'] = null;
@@ -1624,7 +1624,7 @@ class UserController extends Controller
             ->update($updateData);
 
         if ($request->is_blocked) {
-            $reason = $request->reason ?: 'Diblokir massal per kelas oleh admin';
+            $reason = $request->reason ?: 'Diblokir massal per kelas oleh sistem';
             foreach ($users as $student) {
                 if ($student instanceof User) {
                     $this->broadcastBlockedForceLogout($student, $reason);
@@ -1671,7 +1671,7 @@ class UserController extends Controller
         ];
 
         if ($request->is_blocked) {
-            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal per angkatan oleh admin';
+            $updateData['block_reason'] = $request->reason ?: 'Diblokir massal per angkatan oleh sistem';
             $updateData['blocked_at'] = now();
         } else {
             $updateData['block_reason'] = null;
@@ -1683,7 +1683,7 @@ class UserController extends Controller
             ->update($updateData);
 
         if ($request->is_blocked) {
-            $reason = $request->reason ?: 'Diblokir massal per angkatan oleh admin';
+            $reason = $request->reason ?: 'Diblokir massal per angkatan oleh sistem';
             foreach ($users as $student) {
                 if ($student instanceof User) {
                     $this->broadcastBlockedForceLogout($student, $reason);

@@ -164,7 +164,7 @@ api.interceptors.response.use(
         const hasToken = !!localStorage.getItem('token');
 
         if (isBlockedAccount && hasToken) {
-          emitForceLogoutEvent('blocked', responseData?.message || 'Akun Anda diblokir oleh admin.');
+          emitForceLogoutEvent('blocked', responseData?.message || 'Akun Anda telah diblokir oleh sistem.');
         } else if (isUnauthenticated && hasToken) {
           emitForceLogoutEvent('session_expired', 'Sesi Anda berakhir. Silakan login kembali.');
         }
