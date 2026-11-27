@@ -1003,7 +1003,7 @@ export default function MonitorUjianPage() {
               </div>
               <button
                 onClick={() => setShowReviewPanel(false)}
-                className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/40 text-slate-500"
+                className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 hover:text-amber-800"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1012,7 +1012,7 @@ export default function MonitorUjianPage() {
             {/* Alert list */}
             <div className="divide-y divide-amber-100 dark:divide-amber-900/30 max-h-[480px] overflow-y-auto">
               {pendingAlerts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col items-center justify-center py-10 text-slate-600 dark:text-slate-400">
                   <ShieldCheck className="w-10 h-10 mb-2 text-green-400" />
                   <p className="text-sm font-medium">Semua alert sudah direview</p>
                   <p className="text-xs mt-1">Tidak ada deteksi AI yang menunggu keputusan</p>
@@ -1129,7 +1129,7 @@ export default function MonitorUjianPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-2 border-t border-amber-200 dark:border-amber-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <div className="px-4 py-2 border-t border-amber-200 dark:border-amber-800 text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
               <span>
                 <strong>Konfirmasi</strong> = catat sebagai pelanggaran resmi (violation_count naik) ·
