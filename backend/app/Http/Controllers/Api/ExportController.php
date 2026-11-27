@@ -330,7 +330,7 @@ class ExportController extends Controller
         }
 
         // Write to temp file and return
-        $filename = 'Hasil_Ujian_' . str_replace(' ', '_', $exam->title) . '_' . date('Y-m-d');
+        $filename = 'Hasil_Ujian_' . str_replace(' ', '_', $this->sanitizeFilename($exam->title)) . '_' . date('Y-m-d');
         $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_');
         $writer = new Xlsx($spreadsheet);
         $writer->save($tempFile);
@@ -419,7 +419,7 @@ class ExportController extends Controller
         $html = $this->examResultsPdfHtml($exam, $className, $rows, $totalCount, $avgScore, $passCount, $missingCount);
 
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape');
-        $filename = 'Hasil_Ujian_' . str_replace(' ', '_', $exam->title) . '_' . date('Y-m-d') . '.pdf';
+        $filename = 'Hasil_Ujian_' . str_replace(' ', '_', $this->sanitizeFilename($exam->title)) . '_' . date('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
     }
@@ -808,9 +808,15 @@ class ExportController extends Controller
     // =========================================
     // GENERIC EXPORT (PhpSpreadsheet + DomPDF)
     // =========================================
+    private function sanitizeFilename(string $name): string
+    {
+        // Content-Disposition rejects "/" and "\" (Symfony HeaderUtils); exam titles may contain them.
+        return str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '-', $name);
+    }
+
     private function generateExport(array $data, string $format, string $filenameBase)
     {
-        $filename = str_replace(' ', '_', $filenameBase) . '_' . date('Y-m-d');
+        $filename = str_replace(' ', '_', $this->sanitizeFilename($filenameBase)) . '_' . date('Y-m-d');
 
         if ($format === 'xlsx') {
             return $this->generateXlsx($data, $filename);
@@ -1261,7 +1267,7 @@ class ExportController extends Controller
         }
 
         // Write to temp file and return
-        $filename = 'Hasil_Quiz_' . str_replace(' ', '_', $quiz->title) . '_' . date('Y-m-d');
+        $filename = 'Hasil_Quiz_' . str_replace(' ', '_', $this->sanitizeFilename($quiz->title)) . '_' . date('Y-m-d');
         $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_');
         $writer = new Xlsx($spreadsheet);
         $writer->save($tempFile);
@@ -1347,7 +1353,7 @@ class ExportController extends Controller
         $html = $this->quizResultsPdfHtml($quiz, $className, $rows, $totalCount, $avgScore, $passCount, $missingCount, $passingScore);
 
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape');
-        $filename = 'Hasil_Quiz_' . str_replace(' ', '_', $quiz->title) . '_' . date('Y-m-d') . '.pdf';
+        $filename = 'Hasil_Quiz_' . str_replace(' ', '_', $this->sanitizeFilename($quiz->title)) . '_' . date('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
     }
