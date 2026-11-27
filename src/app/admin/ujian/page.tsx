@@ -1102,27 +1102,25 @@ export default function AdminUjianPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-800 via-indigo-700 to-purple-600 dark:from-indigo-900 dark:via-indigo-800 dark:to-purple-700 p-5 sm:p-6 shadow-lg shadow-indigo-900/20">
-          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+        <div className="relative overflow-hidden rounded-2xl bg-indigo-900 p-5 sm:p-6 shadow-lg shadow-indigo-900/20">
           <div className="relative">
             <h1 className="text-2xl font-bold text-white">Kelola Ujian</h1>
             <p className="text-indigo-100/80">Publish, jadwalkan, dan monitoring ujian CBT</p>
             {/* Quick stats */}
             <div className="flex gap-4 mt-4">
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+              <div className="bg-white/10 rounded-lg px-3 py-2">
                 <p className="text-xs text-white/70">Draft</p>
                 <p className="text-lg font-bold text-white">{draftExams.length}</p>
               </div>
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+              <div className="bg-white/10 rounded-lg px-3 py-2">
                 <p className="text-xs text-white/70">Terjadwal</p>
                 <p className="text-lg font-bold text-white">{scheduledExams.length}</p>
               </div>
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+              <div className="bg-white/10 rounded-lg px-3 py-2">
                 <p className="text-xs text-white/70">Berlangsung</p>
                 <p className="text-lg font-bold text-white">{activeExams.length}</p>
               </div>
-              <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+              <div className="bg-white/10 rounded-lg px-3 py-2">
                 <p className="text-xs text-white/70">Selesai</p>
                 <p className="text-lg font-bold text-white">{completedExams.length}</p>
               </div>

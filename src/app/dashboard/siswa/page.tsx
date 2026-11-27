@@ -281,10 +281,8 @@ export default function SiswaDashboard() {
       <div className="space-y-6 max-w-[1280px] mx-auto stagger-children">
 
         {/* ── Welcome Header ─────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-500 dark:from-sky-800 dark:via-blue-800 dark:to-cyan-700 p-5 sm:p-6 shadow-lg shadow-blue-800/20 hero-radial">
+        <div className="relative overflow-hidden rounded-2xl bg-sky-800 p-5 sm:p-6 shadow-lg shadow-blue-800/20">
           {/* Decorative circles */}
-          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
           <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-lg shadow-black/10 overflow-hidden ring-2 ring-white/30">

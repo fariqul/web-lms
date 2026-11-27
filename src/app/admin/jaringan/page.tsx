@@ -344,9 +344,7 @@ export default function JaringanSekolahPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
-          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+        <div className="relative overflow-hidden rounded-2xl bg-slate-800 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
           <div className="relative flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-white">Pengaturan Jaringan Sekolah</h1>

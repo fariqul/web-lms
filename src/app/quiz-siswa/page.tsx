@@ -63,9 +63,7 @@ export default function QuizSiswaPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-800 via-violet-700 to-purple-600 dark:from-violet-900 dark:via-violet-800 dark:to-purple-700 p-5 sm:p-6 shadow-lg shadow-violet-900/20">
-          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+        <div className="relative overflow-hidden rounded-2xl bg-violet-900 p-5 sm:p-6 shadow-lg shadow-violet-900/20">
           <div className="relative">
             <h1 className="text-2xl font-bold text-white">Quiz Saya</h1>
             <p className="text-violet-100/80">Daftar quiz dan ujian harian yang tersedia</p>

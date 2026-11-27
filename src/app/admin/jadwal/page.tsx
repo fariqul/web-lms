@@ -329,9 +329,7 @@ export default function AdminJadwalPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
-          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full blur-sm" />
-          <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-white/[0.07] rounded-full blur-sm" />
+        <div className="relative overflow-hidden rounded-2xl bg-slate-800 p-5 sm:p-6 shadow-lg shadow-slate-900/20">
           <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white">Manajemen Jadwal</h1>
