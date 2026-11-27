@@ -4921,6 +4921,9 @@ class ExamController extends Controller
                 ->where('student_id', $user->id)
                 ->where('is_violation', false)
                 ->whereNull('file_deleted_at')
+                // Only frames still marked live need expiring. Without this the UPDATE
+                // relocked every historical frame on each snapshot POST (lock convoy).
+                ->where('expires_at', '>', now())
                 ->update(['expires_at' => now()]);
 
             return MonitoringSnapshot::create([
